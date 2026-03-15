@@ -1,0 +1,109 @@
+# ==============================
+# PYTHON
+# ==============================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.eggs/
+.env
+.env.*
+.venv/
+venv/
+ENV/
+env/
+pip-log.txt
+pip-delete-this-directory.txt
+
+
+# ==============================
+# DJANGO
+# ==============================
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+*.mo
+*.pot
+
+
+# ==============================
+# DJANGO MIGRATIONS
+# (keep __init__.py)
+# ==============================
+**/migrations/*
+!**/migrations/__init__.py
+
+
+# ==============================
+# SECRETS / CREDENTIALS
+# ==============================
+.env
+.env.local
+.env.production
+.env.staging
+.env.dev
+secrets.json
+credentials.json
+
+
+# ==============================
+# IDE / EDITORS
+# ==============================
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+
+# ==============================
+# OS FILES
+# ==============================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+
+# ==============================
+# BUILD / DEPLOY
+# ==============================
+*.pem
+*.key
+*.crt
+*.pid
+*.sock
+*.log
+
+
+# ==============================
+# TEST / COVERAGE
+# ==============================
+htmlcov/
+.coverage
+.coverage.*
+.tox/
+.pytest_cache/
+
+
+# ==============================
+# FRONTEND / NODE (if any)
+# ==============================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dist/
+build/
+
+
+# ==============================
+# CUSTOM PROJECT FILES
+# ==============================
+product_add.py
+seed_*.py
+*.bak
+*.tmp

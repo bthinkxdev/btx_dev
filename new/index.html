@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#09090b">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>BThinkX Dev — Building Scalable Digital Products & Growth Systems</title>
+  <meta name="description" content="We design and develop high-performance e-commerce platforms, custom software systems, and scalable digital products that help businesses grow faster.">
+  <meta property="og:title" content="BThinkX Dev">
+  <meta property="og:description" content="Building Scalable Digital Products & Growth Systems">
+  <meta property="og:type" content="website">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter+Tight:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/bthinkx.css">
+</head>
+<body>
+
+<!-- â”€â”€â”€ BLOB BACKGROUND â”€â”€â”€ -->
+<div class="blob-canvas hero-blobs" aria-hidden="true">
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+  <div class="blob blob-4"></div>
+</div>
+<div class="site-grid" aria-hidden="true"></div>
+<!-- FLOATING IMAGE BACKGROUND -->
+<div class="float-img-bg" aria-hidden="true">
+  <div class="float-img fi-1"><img src="assets/images/WjMeLOt3HEE9cWpQCCn4avE7yEg051d.png" alt="" loading="lazy"></div>
+  <div class="float-img fi-2"><img src="assets/images/XwI5wzRuTMGLVI1af3OdSHlZY051d.png" alt="" loading="lazy"></div>
+  <div class="float-img fi-3"><img src="assets/images/bOO4XuFblOppGu6c1CuEVWunI9I051d.png" alt="" loading="lazy"></div>
+  <div class="float-img fi-4"><img src="assets/images/1u4DE0vUDM2pUNaxOmXKxW7CXUkd809.png" alt="" loading="lazy"></div>
+</div>
+
+<!-- â”€â”€â”€ CURSOR GLOW â”€â”€â”€ -->
+<div id="cursor-glow" aria-hidden="true"></div>
+
+<!-- â”€â”€â”€ PILL NAVBAR â”€â”€â”€ -->
+<nav class="navbar-pill" id="navbar">
+  <div class="pill-wrap">
+    <a href="index.html" class="pill-logo">
+      <img src="assets/images/logo.jpg" alt="BThinkX" class="logo-icon logo-img">
+      <span>BThinkX Dev</span>
+    </a>
+    <div class="pill-sep"></div>
+    <div class="pill-links">
+      <a href="index.html" class="active">Home</a>
+      <a href="services.html">Services</a>
+      <a href="portfolio.html">Work</a>
+    </div>
+    <div class="pill-sep"></div>
+    <button class="pill-menu-btn" id="pillMenuBtn" aria-expanded="false">
+      <span class="pill-menu-icon">
+        <span></span><span></span><span></span>
+        <span></span><span></span><span></span>
+        <span></span><span></span><span></span>
+      </span>
+      Menu
+    </button>
+    <a href="contact.html" class="btn btn-primary btn-sm">Start Project</a>
+  </div>
+
+  <!-- DROPDOWN -->
+  <div class="pill-dropdown" id="pillDropdown">
+    <div class="pill-dropdown-header">
+      <span class="pill-nav-label" style="margin:0">Menu</span>
+      <button type="button" class="pill-dropdown-close" id="pillDropdownClose" aria-label="Close menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div class="pill-nav-cols">
+      <div class="pill-nav-col">
+        <span class="pill-nav-label">Services</span>
+        <a href="services.html">E-commerce Development</a>
+        <a href="services.html">SaaS Platforms</a>
+        <a href="services.html">Custom Software</a>
+        <a href="services.html">AI &amp; Automation</a>
+        <a href="services.html">Digital Marketing</a>
+        <a href="services.html">Performance Optimization</a>
+      </div>
+      <div class="pill-nav-col">
+        <span class="pill-nav-label">Company</span>
+        <a href="about.html">About Us</a>
+        <a href="portfolio.html">Our Work</a>
+        <a href="blog.html">Blog &amp; Insights</a>
+        <a href="contact.html">Contact</a>
+      </div>
+    </div>
+    <div class="pill-dropdown-footer">
+      <div class="pill-socials">
+        <a href="#" aria-label="X/Twitter">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        </a>
+        <a href="#" aria-label="LinkedIn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z"/><circle cx="4" cy="4" r="2"/></svg>
+        </a>
+        <a href="#" aria-label="GitHub">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0012 2z"/></svg>
+        </a>
+        <a href="#" aria-label="Instagram">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+        </a>
+      </div>
+      <a href="contact.html" class="btn btn-primary btn-xs">Book a Free Call <svg class="btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+    </div>
+  </div>
+</nav>
+
+<!-- Mobile overlay nav (same UI as desktop dropdown) -->
+<div class="mobile-nav-overlay" id="mobileNav">
+  <div class="mobile-nav-content">
+    <div class="mobile-nav-header"><span class="mobile-nav-title">Navigation</span><button type="button" class="mobile-close-btn" id="mobileClose" aria-label="Close menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg></button></div>
+    <div class="pill-nav-cols">
+      <div class="pill-nav-col">
+        <span class="pill-nav-label">Services</span>
+        <a href="services.html">E-commerce Development</a>
+        <a href="services.html">SaaS Platforms</a>
+        <a href="services.html">Custom Software</a>
+        <a href="services.html">AI &amp; Automation</a>
+        <a href="services.html">Digital Marketing</a>
+        <a href="services.html">Performance Optimization</a>
+      </div>
+      <div class="pill-nav-col">
+        <span class="pill-nav-label">Company</span>
+        <a href="about.html">About Us</a>
+        <a href="portfolio.html">Our Work</a>
+        <a href="blog.html">Blog &amp; Insights</a>
+        <a href="contact.html">Contact</a>
+      </div>
+    </div>
+    <div class="pill-dropdown-footer">
+      <div class="pill-socials">
+        <a href="#" aria-label="X/Twitter"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
+        <a href="#" aria-label="LinkedIn"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z"/><circle cx="4" cy="4" r="2"/></svg></a>
+        <a href="#" aria-label="GitHub"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0012 2z"/></svg></a>
+        <a href="#" aria-label="Instagram"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg></a>
+      </div>
+      <a href="contact.html" class="btn btn-primary btn-xs">Book a Free Call <svg class="btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+    </div>
+  </div>
+</div>
+
+<!-- â”€â”€â”€ HERO â”€â”€â”€ -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-content">
+
+      <div class="hero-left">
+        <div class="hero-eyebrow animate-up">
+          <span class="hero-eyebrow-dot" aria-hidden="true"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.4h7.6l-6 4.6 2.3 7-6.3-4.6L12 21l-6.3-4.6 2.3-7-6-4.6h7.6L12 2z"/></svg></span>
+          Technology Studio
+        </div>
+        <h1 class="animate-up delay-1">
+          Building <span class="hero-highlight">Powerful Digital</span><br>
+          Products for Modern<br>Businesses
+        </h1>
+        <p class="hero-sub animate-up delay-2">
+          We design and develop high-performance e-commerce platforms, custom software systems, and scalable digital products that help businesses grow faster.
+        </p>
+        <div class="hero-actions animate-up delay-3">
+          <a href="contact.html" class="btn btn-primary btn-lg">Start Your Project</a>
+          <a href="portfolio.html" class="btn btn-secondary btn-lg">View Our Work</a>
+        </div>
+        <div class="hero-stats animate-up delay-4">
+          <div>
+            <div class="hero-stat-num">50+</div>
+            <div class="hero-stat-label">Projects Delivered</div>
+          </div>
+          <div>
+            <div class="hero-stat-num">10+</div>
+            <div class="hero-stat-label">Global Clients</div>
+          </div>
+          <div>
+            <div class="hero-stat-num">99%</div>
+            <div class="hero-stat-label">Client Satisfaction</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-right animate-up delay-2">
+        <!-- Floating metric cards -->
+        <div class="hero-card-1">
+          <div class="hc-icon purple">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+          </div>
+          <div class="hc-text">
+            <h5>Revenue Growth</h5>
+            <span>Avg. 3x after launch</span>
+          </div>
+        </div>
+        <div class="hero-card-2">
+          <div class="hc-icon teal">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4"/></svg>
+          </div>
+          <div class="hc-text">
+            <h5>Performance Score</h5>
+            <span>95+ Core Web Vitals</span>
+          </div>
+        </div>
+        <div class="hero-visual">
+          <img src="assets/images/DiXxGZkzHIAgH7qrHyIAOf2yXJIefe1.jpg" alt="BThinkX Dev — Digital Dashboard" loading="eager">
+          <div class="hero-visual-overlay"></div>
+          <div class="hero-floating-badge">
+            <div class="live-dot"></div>
+            <span>Available for new projects</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- â”€â”€â”€ TECH LOGOS â”€â”€â”€ -->
+<div class="logos-section z-content">
+  <div class="container">
+    <p class="logos-label">Technology Stack We Master</p>
+    <div class="logos-track">
+      <div class="tech-logo">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg>
+        Django
+      </div>
+      <div class="tech-logo">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>
+        React
+      </div>
+      <div class="tech-logo">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M11.5 2L2 7v10l9.5 5 9.5-5V7L11.5 2z"/></svg>
+        Next.js
+      </div>
+      <div class="tech-logo">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l9 5v10l-9 5-9-5V7z"/></svg>
+        MERN Stack
+      </div>
+      <div class="tech-logo">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 100 20A10 10 0 0012 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+        AI / ML
+      </div>
+      <div class="tech-logo">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+        PostgreSQL
+      </div>
+      <div class="tech-logo">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg>
+        Cloud / AWS
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- â”€â”€â”€ SERVICES â”€â”€â”€ -->
+<section class="z-content" id="services">
+  <div class="container">
+    <div class="section-header">
+      <div class="badge animate-up">What We Build</div>
+      <h2 class="animate-up delay-1">Services That Drive Growth</h2>
+      <p class="animate-up delay-2">From e-commerce to AI-powered automation, we deliver technology solutions that scale with your business.</p>
+    </div>
+    <div class="services-grid">
+      <div class="service-card animate-up delay-1">
+        <div class="service-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+        </div>
+        <h3>E-commerce Development</h3>
+        <p>High-performance online stores built for scale and conversions. Custom Shopify, WooCommerce, and headless commerce solutions.</p>
+      </div>
+      <div class="service-card animate-up delay-2">
+        <div class="service-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        </div>
+        <h3>Custom Software Development</h3>
+        <p>Tailored business systems designed precisely for your workflows. ERPs, CRMs, dashboards, and internal tools.</p>
+      </div>
+      <div class="service-card animate-up delay-3">
+        <div class="service-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        </div>
+        <h3>Web Application Development</h3>
+        <p>Modern apps using Django, React, and scalable cloud architecture. SaaS platforms, portals, and progressive web apps.</p>
+      </div>
+      <div class="service-card animate-up delay-1">
+        <div class="service-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2a10 10 0 0110 10c0 4.8-3.4 8.8-8 9.7"/><path d="M12 2a10 10 0 00-10 10c0 4.8 3.4 8.8 8 9.7"/><circle cx="12" cy="12" r="3"/></svg>
+        </div>
+        <h3>AI &amp; Automation</h3>
+        <p>Smart automation and AI tools that streamline operations, reduce manual work, and unlock intelligent insights.</p>
+      </div>
+      <div class="service-card animate-up delay-2">
+        <div class="service-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+        </div>
+        <h3>Digital Marketing &amp; SEO</h3>
+        <p>Data-driven SEO, growth strategies, and performance marketing systems that acquire and retain customers.</p>
+      </div>
+      <div class="service-card animate-up delay-3">
+        <div class="service-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+        </div>
+        <h3>Performance Optimization</h3>
+        <p>Speed, scalability, and technical SEO improvements that reduce load times and improve Core Web Vitals scores.</p>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:44px" class="animate-up">
+      <a href="services.html" class="btn btn-ghost">Explore All Services <svg class="btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+    </div>
+  </div>
+</section>
+
+<!-- â”€â”€â”€ WHY CHOOSE US â”€â”€â”€ -->
+<section class="metrics-section z-content">
+  <div class="container">
+    <div class="metrics-inner">
+      <div>
+        <div class="badge animate-up" style="margin-bottom:18px">Why BThinkX Dev</div>
+        <h2 class="animate-up delay-1">We Build Technology That Supports Long-Term Business Growth</h2>
+        <p class="animate-up delay-2" style="margin-top:14px">Every product we build is architected for scale — clean code, modern stack, and proven engineering practices your business can depend on.</p>
+        <div class="metrics-grid animate-up delay-2">
+          <div class="metric-card">
+            <div class="metric-num">50+</div>
+            <div class="metric-label">Projects Delivered</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-num">10+</div>
+            <div class="metric-label">Global Clients</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-num">100%</div>
+            <div class="metric-label">Modern Stack</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-num" aria-hidden="true"><svg width="32" height="16" viewBox="0 0 32 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 8c0-4 4-8 8-8s8 4 8 8-4 8-8 8-8-4-8-8zM28 8c0-4-4-8-8-8s-8 4-8 8 4 8 8 8 8-4 8-8z"/></svg></div>
+            <div class="metric-label">Scalable Architecture</div>
+          </div>
+        </div>
+        <div style="margin-top:28px" class="animate-up delay-3">
+          <div class="feature-item">
+            <div class="feature-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <div class="feature-text"><h4>Agile Delivery</h4><p>Fast iterations, clear communication, on-time delivery.</p></div>
+          </div>
+          <div class="feature-item">
+            <div class="feature-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <div class="feature-text"><h4>Production-Grade Code</h4><p>Clean, tested, documented code built to last.</p></div>
+          </div>
+          <div class="feature-item">
+            <div class="feature-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <div class="feature-text"><h4>Post-Launch Support</h4><p>Ongoing support and iteration after deployment.</p></div>
+          </div>
+        </div>
+      </div>
+      <div class="animate-up delay-2">
+        <div class="metrics-visual">
+          <img src="assets/images/8CYomO3dZZ1U75cCJgRI2DgBoM9245.png" alt="Dashboard Preview" loading="lazy">
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- â”€â”€â”€ PORTFOLIO PREVIEW â”€â”€â”€ -->
+<section class="z-content" id="portfolio">
+  <div class="container">
+    <div class="section-header">
+      <div class="badge animate-up">Our Work</div>
+      <h2 class="animate-up delay-1">Products We've Shipped</h2>
+      <p class="animate-up delay-2">From enterprise platforms to intelligent SaaS systems — a sample of what we build.</p>
+    </div>
+    <div class="portfolio-grid">
+      <div class="portfolio-card animate-up delay-1">
+        <img class="portfolio-img" src="assets/images/CN6LevoxCwc2wM9z513MTNApD4Uc8d8.jpg" alt="Enterprise E-commerce Platform" loading="lazy">
+        <div class="portfolio-overlay"></div>
+        <div class="portfolio-info">
+          <span class="portfolio-cat">E-commerce</span>
+          <h3>Enterprise E-commerce Platform</h3>
+          <p>Multi-vendor marketplace with real-time inventory and advanced analytics.</p>
+          <div class="portfolio-tags">
+            <span class="portfolio-tag">Next.js</span><span class="portfolio-tag">Django</span><span class="portfolio-tag">PostgreSQL</span>
+          </div>
+        </div>
+      </div>
+      <div class="portfolio-card animate-up delay-2">
+        <img class="portfolio-img" src="assets/images/HGUyRo3Ko6fOp6Ks3LrpzaNBBVkfef8.jpg" alt="AI Business Dashboard" loading="lazy">
+        <div class="portfolio-overlay"></div>
+        <div class="portfolio-info">
+          <span class="portfolio-cat">SaaS / AI</span>
+          <h3>AI Business Dashboard</h3>
+          <p>Intelligent analytics platform with predictive insights and automated reporting.</p>
+          <div class="portfolio-tags">
+            <span class="portfolio-tag">React</span><span class="portfolio-tag">Python</span><span class="portfolio-tag">AI/ML</span>
+          </div>
+        </div>
+      </div>
+      <div class="portfolio-card animate-up delay-3">
+        <img class="portfolio-img" src="assets/images/Rjwq6SPWHl5dLNnlsMTBgNGsewe8c1.jpg" alt="Custom CRM System" loading="lazy">
+        <div class="portfolio-overlay"></div>
+        <div class="portfolio-info">
+          <span class="portfolio-cat">Software</span>
+          <h3>Custom CRM System</h3>
+          <p>Sales pipeline management system built for a 200-person team.</p>
+          <div class="portfolio-tags">
+            <span class="portfolio-tag">MERN Stack</span><span class="portfolio-tag">AWS</span>
+          </div>
+        </div>
+      </div>
+      <div class="portfolio-card animate-up delay-4">
+        <img class="portfolio-img" src="assets/images/tPqHwKj0H2QZxoHvnhGA5OvON893c4.jpg" alt="Marketing Automation" loading="lazy">
+        <div class="portfolio-overlay"></div>
+        <div class="portfolio-info">
+          <span class="portfolio-cat">Automation</span>
+          <h3>Marketing Automation Platform</h3>
+          <p>End-to-end campaign management with AI-powered audience segmentation.</p>
+          <div class="portfolio-tags">
+            <span class="portfolio-tag">React</span><span class="portfolio-tag">Django</span><span class="portfolio-tag">Redis</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:44px" class="animate-up">
+      <a href="portfolio.html" class="btn btn-ghost">View All Projects <svg class="btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+    </div>
+  </div>
+</section>
+
+<!-- â”€â”€â”€ PROCESS â”€â”€â”€ -->
+<section class="process-section z-content">
+  <div class="container">
+    <div class="section-header">
+      <div class="badge animate-up">How We Work</div>
+      <h2 class="animate-up delay-1">Our Process</h2>
+      <p class="animate-up delay-2">A structured, transparent process from strategy to launch — and beyond.</p>
+    </div>
+    <div class="process-steps">
+      <div class="process-step animate-up delay-1">
+        <div class="process-num">01</div>
+        <h3>Strategy &amp; Planning</h3>
+        <p>Deep-dive into your business goals, market, and technical requirements to define the right architecture and roadmap.</p>
+      </div>
+      <div class="process-step animate-up delay-2">
+        <div class="process-num">02</div>
+        <h3>Product Design</h3>
+        <p>UI/UX design focused on conversion and usability. Wireframes, prototypes, and design systems built for your brand.</p>
+      </div>
+      <div class="process-step animate-up delay-3">
+        <div class="process-num">03</div>
+        <h3>Development</h3>
+        <p>Agile development sprints with weekly demos. Clean, scalable code reviewed and tested at every stage.</p>
+      </div>
+      <div class="process-step animate-up delay-4">
+        <div class="process-num">04</div>
+        <h3>Launch &amp; Growth</h3>
+        <p>Deployment, performance monitoring, and ongoing iteration to grow your product post-launch.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- â”€â”€â”€ CTA â”€â”€â”€ -->
+<section class="cta-section z-content">
+  <div class="cta-bg"></div>
+  <div class="container">
+    <div class="cta-inner animate-up">
+      <div class="badge" style="margin:0 auto 20px">Let's Work Together</div>
+      <h2>Ready to Build Something Powerful?</h2>
+      <p>Let's create technology that accelerates your business growth. Tell us about your project and we'll get back to you within 24 hours.</p>
+      <div class="cta-actions">
+        <a href="contact.html" class="btn btn-primary btn-lg">Start Your Project</a>
+        <a href="contact.html" class="btn btn-secondary btn-lg">Contact Us</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- â”€â”€â”€ FOOTER â”€â”€â”€ -->
+<footer class="footer z-content">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a href="index.html" class="footer-logo-link">
+          <img src="assets/images/logo.jpg" alt="BThinkX" class="logo-icon logo-img">
+          BThinkX Dev
+        </a>
+        <p>Building scalable digital products and growth systems for modern businesses worldwide.</p>
+        <div class="footer-social">
+          <a href="#" aria-label="LinkedIn"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z"/><circle cx="4" cy="4" r="2"/></svg></a>
+          <a href="#" aria-label="Twitter"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
+          <a href="#" aria-label="GitHub"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0012 2z"/></svg></a>
+        </div>
+      </div>
+      <div class="footer-col">
+        <h5>Services</h5>
+        <a href="services.html">E-commerce Dev</a>
+        <a href="services.html">Custom Software</a>
+        <a href="services.html">Web Applications</a>
+        <a href="services.html">AI &amp; Automation</a>
+        <a href="services.html">Digital Marketing</a>
+      </div>
+      <div class="footer-col">
+        <h5>Company</h5>
+        <a href="about.html">About Us</a>
+        <a href="portfolio.html">Our Work</a>
+        <a href="blog.html">Blog</a>
+        <a href="contact.html">Contact</a>
+      </div>
+      <div class="footer-col">
+        <h5>Contact</h5>
+        <a href="mailto:hello@bthinkxdev.com">hello@bthinkxdev.com</a>
+        <a href="contact.html">Start a Project</a>
+        <a href="contact.html">Get a Quote</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 BThinkX Dev. All rights reserved.</span>
+      <span>Building Scalable Digital Products &amp; Growth Systems</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* â”€â”€ Cursor glow â”€â”€ */
+const glow = document.getElementById('cursor-glow');
+window.addEventListener('mousemove', e => {
+  glow.style.left = e.clientX + 'px';
+  glow.style.top  = e.clientY + 'px';
+});
+
+/* â”€â”€ Pill menu toggle â”€â”€ */
+const pillMenuBtn  = document.getElementById('pillMenuBtn');
+const pillDropdown = document.getElementById('pillDropdown');
+pillMenuBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  const isOpen = pillDropdown.classList.toggle('open');
+  pillMenuBtn.classList.toggle('open', isOpen);
+  pillMenuBtn.setAttribute('aria-expanded', isOpen);
+});
+document.addEventListener('click', e => {
+  if (e.target.closest('#pillDropdownClose')) {
+    pillDropdown.classList.remove('open');
+    pillMenuBtn.classList.remove('open');
+    pillMenuBtn.setAttribute('aria-expanded', 'false');
+    return;
+  }
+  if (!e.target.closest('.navbar-pill')) {
+    pillDropdown.classList.remove('open');
+    pillMenuBtn.classList.remove('open');
+  }
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    pillDropdown.classList.remove('open');
+    pillMenuBtn.classList.remove('open');
+  }
+});
+
+/* â”€â”€ Mobile nav â”€â”€ */
+const mobileNav   = document.getElementById('mobileNav');
+const mobileClose = document.getElementById('mobileClose');
+// On small screens, the "Menu" text on pill opens the mobile overlay
+pillMenuBtn.addEventListener('click', () => {
+  if (window.innerWidth <= 640) {
+    mobileNav.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    pillDropdown.classList.remove('open');
+  }
+});
+mobileClose.addEventListener('click', () => {
+  mobileNav.classList.remove('open');
+  document.body.style.overflow = '';
+});
+mobileNav.querySelectorAll('a').forEach(a => a.addEventListener('click', () => {
+  mobileNav.classList.remove('open');
+  document.body.style.overflow = '';
+}));
+
+/* â”€â”€ Scroll-triggered animations â”€â”€ */
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.09, rootMargin: '0px 0px -36px 0px' });
+document.querySelectorAll('.animate-up, .animate-fade').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
+

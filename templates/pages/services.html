@@ -1,0 +1,457 @@
+{% extends 'pages/base.html' %}
+{% load static %}
+
+{% block title %}Services — BThinkX Dev{% endblock %}
+{% block meta_description %}E-commerce development, custom SaaS systems, automation software, and digital marketing infrastructure built by BThinkX Dev.{% endblock %}
+
+{% block extra_head %}
+<style>
+:root { --font-display: "Inter Tight", "Inter", system-ui, sans-serif; }
+
+    .service-detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 64px;
+      align-items: center;
+      margin-bottom: 100px;
+    }
+    .service-detail-grid:last-child { margin-bottom: 0; }
+    .service-detail-grid.reverse { direction: rtl; }
+    .service-detail-grid.reverse > * { direction: ltr; }
+    .service-detail-visual {
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-lg);
+    }
+    .service-detail-visual img { width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block; }
+    .service-detail-content .badge { margin-bottom: 18px; }
+    .service-detail-content h2 { margin-bottom: 16px; }
+    .service-detail-content p { margin-bottom: 24px; font-size: 1rem; }
+    .service-features-list { margin: 24px 0; }
+    .service-feature {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .service-feature:last-child { border-bottom: none; }
+    .service-feature-check {
+      width: 22px; height: 22px; flex-shrink: 0;
+      background: var(--accent-dim);
+      border: 1px solid var(--accent-border);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--accent);
+      font-size: 0.65rem;
+      margin-top: 1px;
+    }
+    .service-feature span { font-size: 0.9rem; color: var(--text-secondary); }
+
+    .tech-stack-section { background: var(--bg-secondary); }
+    .tech-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .tech-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      text-align: center;
+      transition: all var(--t);
+    }
+    .tech-card:hover { border-color: var(--accent-border); transform: translateY(-3px); }
+    .tech-card-icon {
+      width: 52px; height: 52px;
+      background: var(--accent-dim);
+      border-radius: var(--radius-md);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 14px;
+      color: var(--accent);
+      font-size: 1.4rem;
+    }
+    .tech-card h4 { font-size: 0.95rem; margin-bottom: 6px; }
+    .tech-card p { font-size: 0.8rem; }
+
+    .pricing-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    .pricing-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      padding: 36px;
+      transition: all var(--t);
+      position: relative;
+    }
+    .pricing-card.featured {
+      border-color: var(--accent-border);
+      background: linear-gradient(145deg, rgba(165,164,250,0.07) 0%, var(--bg-card) 100%);
+      box-shadow: 0 0 40px rgba(165,164,250,0.1);
+    }
+    .pricing-badge {
+      position: absolute;
+      top: -12px; left: 50%; transform: translateX(-50%);
+      background: var(--accent);
+      color: #0A0A0B;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 4px 14px;
+      border-radius: var(--radius-full);
+      white-space: nowrap;
+    }
+    .pricing-card h3 { font-size: 1.1rem; margin-bottom: 8px; }
+    .pricing-card .price {
+      font-family: var(--font-display);
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: -0.03em;
+      margin: 16px 0 6px;
+    }
+    .pricing-card .price-note { font-size: 0.82rem; color: var(--text-muted); margin-bottom: 24px; }
+    .pricing-list { margin: 20px 0 28px; }
+    .pricing-list li {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+      padding: 7px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .pricing-list li:last-child { border-bottom: none; }
+    .pricing-list li::before {
+      content: '';
+      width: 6px; height: 6px;
+      background: var(--accent);
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    @media(max-width:1024px){
+      .tech-cards{grid-template-columns:repeat(2,1fr)}
+      .service-detail-grid{gap:48px}
+    }
+    @media(max-width:768px){
+      .service-detail-grid{grid-template-columns:1fr;gap:28px;direction:ltr !important;margin-bottom:56px !important}
+      .service-detail-grid.reverse{direction:ltr !important}
+      .service-detail-grid.reverse>*{direction:ltr !important}
+      .service-detail-content p{font-size:.94rem}
+    }
+    @media(max-width:640px){
+      .tech-cards{grid-template-columns:1fr 1fr;gap:12px}
+      .tech-card{padding:18px}
+      .tech-card-icon{width:44px;height:44px;font-size:1.2rem}
+    }
+    @media(max-width:480px){
+      .service-features-list{margin:18px 0}
+      .service-feature{padding:10px 0;gap:9px}
+      .service-detail-visual img{aspect-ratio:16/9}
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- PAGE HERO -->
+<div class="page-hero">
+  <div class="container">
+    <div class="badge animate-up" style="margin: 0 auto 18px;">What We Build</div>
+    <h1 class="animate-up delay-1">Services That Scale Your Business</h1>
+    <p class="animate-up delay-2">From high-performance e-commerce platforms to AI-powered automation systems — we build the technology your business needs to compete and grow.</p>
+  </div>
+</div>
+
+<!-- â”€â”€â”€ E-COMMERCE â”€â”€â”€ -->
+<section style="padding-top: 0;">
+  <div class="container">
+
+    <div class="service-detail-grid">
+      <div class="service-detail-visual animate-up">
+        <img src="{% static 'assets/images/CN6LevoxCwc2wM9z513MTNApD4Uc8d8.jpg' %}" alt="E-commerce Development" loading="lazy">
+      </div>
+      <div class="service-detail-content">
+        <div class="badge animate-up delay-1">E-commerce</div>
+        <h2 class="animate-up delay-1">High-Performance Online Stores</h2>
+        <p class="animate-up delay-2">We build e-commerce platforms engineered for speed, conversion, and scale. Whether you need a custom storefront or a full multi-vendor marketplace, we deliver solutions that drive revenue.</p>
+        <div class="service-features-list animate-up delay-3">
+          <div class="service-feature">
+            <div class="service-feature-check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <span>Custom Shopify & headless commerce development</span>
+          </div>
+          <div class="service-feature">
+            <div class="service-feature-check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <span>Multi-vendor marketplace platforms</span>
+          </div>
+          <div class="service-feature">
+            <div class="service-feature-check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <span>Product catalog, inventory & order management</span>
+          </div>
+          <div class="service-feature">
+            <div class="service-feature-check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <span>Payment gateway integrations (Stripe, PayPal, more)</span>
+          </div>
+          <div class="service-feature">
+            <div class="service-feature-check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <span>Conversion rate optimization & A/B testing</span>
+          </div>
+          <div class="service-feature">
+            <div class="service-feature-check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <span>Sub-2s load times with Core Web Vitals optimization</span>
+          </div>
+        </div>
+        <div class="animate-up delay-4">
+          <a href="{% url 'pages:contact' %}" class="btn btn-primary">Get E-commerce Quote</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="service-detail-grid reverse">
+      <div class="service-detail-visual animate-up">
+        <img src="{% static 'assets/images/HGUyRo3Ko6fOp6Ks3LrpzaNBBVkfef8.jpg' %}" alt="SaaS Development" loading="lazy">
+      </div>
+      <div class="service-detail-content">
+        <div class="badge animate-up delay-1">SaaS Platforms</div>
+        <h2 class="animate-up delay-1">Custom SaaS Systems Built to Scale</h2>
+        <p class="animate-up delay-2">We design and build SaaS products from the ground up — multi-tenant architectures, subscription billing, user management, and the dashboards your customers will love.</p>
+        <div class="service-features-list animate-up delay-3">
+          <div class="service-feature">
+            <div class="service-feature-check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <span>Multi-tenant SaaS architecture</span>
+          </div>
+          <div class="service-feature">
+            <div class="service-feature-check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <span>Subscription billing with Stripe Billing</span>
+          </div>
+          <div class="service-feature">
+            <div class="service-feature-check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <span>Role-based access control & permissions</span>
+          </div>
+          <div class="service-feature">
+            <div class="service-feature-check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <span>Real-time dashboards & analytics</span>
+          </div>
+          <div class="service-feature">
+            <div class="service-feature-check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <span>API-first design for third-party integrations</span>
+          </div>
+        </div>
+        <div class="animate-up delay-4">
+          <a href="{% url 'pages:contact' %}" class="btn btn-primary">Discuss Your SaaS Idea</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="service-detail-grid">
+      <div class="service-detail-visual animate-up">
+        <img src="{% static 'assets/images/Rjwq6SPWHl5dLNnlsMTBgNGsewe8c1.jpg' %}" alt="Custom Software" loading="lazy">
+      </div>
+      <div class="service-detail-content">
+        <div class="badge animate-up delay-1">Custom Software</div>
+        <h2 class="animate-up delay-1">Tailored Business Systems</h2>
+        <p class="animate-up delay-2">We build custom software designed for your workflows — ERPs, CRMs, internal tools, and business systems that fit your team and scale with growth.</p>
+        <div class="service-features-list animate-up delay-3">
+          <div class="service-feature">
+            <div class="service-feature-check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <span>Custom CRM & ERP development</span>
+          </div>
+          <div class="service-feature">
+            <div class="service-feature-check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <span>Internal dashboards & reporting tools</span>
+          </div>
+          <div class="service-feature">
+            <div class="service-feature-check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <span>Workflow & process management systems</span>
+          </div>
+          <div class="service-feature">
+            <div class="service-feature-check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <span>Database design & data migration</span>
+          </div>
+          <div class="service-feature">
+            <div class="service-feature-check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <span>Integrations with existing tools & APIs</span>
+          </div>
+        </div>
+        <div class="animate-up delay-4">
+          <a href="{% url 'pages:contact' %}" class="btn btn-primary">Discuss Your Project</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="service-detail-grid reverse">
+      <div class="service-detail-visual animate-up">
+        <img src="{% static 'assets/images/ai_Business_Automation.png' %}" alt="AI &amp; Automation" loading="lazy">
+      </div>
+      <div class="service-detail-content">
+        <div class="badge animate-up delay-1">AI &amp; Automation</div>
+        <h2 class="animate-up delay-1">AI &amp; Business Automation</h2>
+        <p class="animate-up delay-2">Stop doing repetitive work manually. We build intelligent automation systems that integrate your tools, process data, and trigger actions — saving hours every day.</p>
+        <div class="service-features-list animate-up delay-3">
+          <div class="service-feature">
+            <div class="service-feature-check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <span>Workflow automation & business process management</span>
+          </div>
+          <div class="service-feature">
+            <div class="service-feature-check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <span>AI-powered data processing & classification</span>
+          </div>
+          <div class="service-feature">
+            <div class="service-feature-check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <span>CRM, ERP & third-party API integrations</span>
+          </div>
+          <div class="service-feature">
+            <div class="service-feature-check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <span>Chatbot & intelligent assistant development</span>
+          </div>
+          <div class="service-feature">
+            <div class="service-feature-check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <span>Scheduled jobs, webhooks, and event pipelines</span>
+          </div>
+        </div>
+        <div class="animate-up delay-4">
+          <a href="{% url 'pages:contact' %}" class="btn btn-primary">Automate Your Business</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="service-detail-grid">
+      <div class="service-detail-visual animate-up">
+        <img src="{% static 'assets/images/tPqHwKj0H2QZxoHvnhGA5OvON893c4.jpg' %}" alt="Digital Marketing Infrastructure" loading="lazy">
+      </div>
+      <div class="service-detail-content">
+        <div class="badge animate-up delay-1">Digital Marketing</div>
+        <h2 class="animate-up delay-1">Digital Marketing Infrastructure</h2>
+        <p class="animate-up delay-2">We don't just build websites — we build growth systems. SEO infrastructure, performance marketing tracking, and data pipelines that give you full visibility into what drives revenue.</p>
+        <div class="service-features-list animate-up delay-3">
+          <div class="service-feature">
+            <div class="service-feature-check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <span>Technical SEO audits & on-page optimization</span>
+          </div>
+          <div class="service-feature">
+            <div class="service-feature-check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <span>Analytics setup: GA4, Segment, Mixpanel</span>
+          </div>
+          <div class="service-feature">
+            <div class="service-feature-check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <span>Marketing automation (email, SMS, push)</span>
+          </div>
+          <div class="service-feature">
+            <div class="service-feature-check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <span>Conversion tracking & attribution modeling</span>
+          </div>
+          <div class="service-feature">
+            <div class="service-feature-check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <span>Content marketing strategy & execution</span>
+          </div>
+        </div>
+        <div class="animate-up delay-4">
+          <a href="{% url 'pages:contact' %}" class="btn btn-primary">Grow Your Traffic</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="service-detail-grid reverse">
+      <div class="service-detail-visual animate-up">
+        <img src="{% static 'assets/images/8CYomO3dZZ1U75cCJgRI2DgBoM9245.png' %}" alt="Performance Optimization" loading="lazy">
+      </div>
+      <div class="service-detail-content">
+        <div class="badge animate-up delay-1">Performance Optimization</div>
+        <h2 class="animate-up delay-1">Speed, Scale &amp; Core Web Vitals</h2>
+        <p class="animate-up delay-2">We optimize existing applications for speed and scalability — reducing load times, improving Core Web Vitals scores, and ensuring your product can handle growth.</p>
+        <div class="service-features-list animate-up delay-3">
+          <div class="service-feature">
+            <div class="service-feature-check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <span>Core Web Vitals &amp; Lighthouse optimization</span>
+          </div>
+          <div class="service-feature">
+            <div class="service-feature-check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <span>Front-end and backend performance audits</span>
+          </div>
+          <div class="service-feature">
+            <div class="service-feature-check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <span>Database query optimization &amp; indexing</span>
+          </div>
+          <div class="service-feature">
+            <div class="service-feature-check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <span>Caching strategies (Redis, CDN, static assets)</span>
+          </div>
+          <div class="service-feature">
+            <div class="service-feature-check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <span>Scalability reviews &amp; architecture improvements</span>
+          </div>
+        </div>
+        <div class="animate-up delay-4">
+          <a href="{% url 'pages:contact' %}" class="btn btn-primary">Optimize Your App</a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- TECH STACK -->
+<section class="tech-stack-section">
+  <div class="container">
+    <div class="section-header">
+      <div class="badge animate-up">Technology</div>
+      <h2 class="animate-up delay-1">Our Technology Expertise</h2>
+      <p class="animate-up delay-2">We select the right tools for each project — proven technologies with modern architecture patterns.</p>
+    </div>
+    <div class="tech-cards">
+      <div class="tech-card animate-up delay-1">
+        <div class="tech-card-icon" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 18l6-6-6-6M8 6v12"/></svg></div>
+        <h4>Django / Python</h4>
+        <p>Robust backend APIs, admin panels, and data processing systems.</p>
+      </div>
+      <div class="tech-card animate-up delay-2">
+        <div class="tech-card-icon" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg></div>
+        <h4>React / Next.js</h4>
+        <p>Fast, SEO-friendly frontends with server-side rendering.</p>
+      </div>
+      <div class="tech-card animate-up delay-3">
+        <div class="tech-card-icon" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/></svg></div>
+        <h4>Node.js / MERN</h4>
+        <p>Full-stack JavaScript applications with real-time capabilities.</p>
+      </div>
+      <div class="tech-card animate-up delay-4">
+        <div class="tech-card-icon" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2a4 4 0 00-4 4v2H6a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V10a2 2 0 00-2-2h-2V6a4 4 0 00-4-4z"/></svg></div>
+        <h4>AI / Machine Learning</h4>
+        <p>OpenAI integrations, LangChain, custom ML model deployment.</p>
+      </div>
+      <div class="tech-card animate-up delay-1">
+        <div class="tech-card-icon" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z"/></svg></div>
+        <h4>Cloud (AWS / GCP)</h4>
+        <p>Scalable cloud deployments with CI/CD and auto-scaling.</p>
+      </div>
+      <div class="tech-card animate-up delay-2">
+        <div class="tech-card-icon" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></div>
+        <h4>PostgreSQL / Redis</h4>
+        <p>Reliable databases with caching for high-performance apps.</p>
+      </div>
+      <div class="tech-card animate-up delay-3">
+        <div class="tech-card-icon" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z"/><path d="M9 4v16M15 4v16M4 9h16M4 15h16"/></svg></div>
+        <h4>Docker / Kubernetes</h4>
+        <p>Containerized deployments and orchestration at scale.</p>
+      </div>
+      <div class="tech-card animate-up delay-4">
+        <div class="tech-card-icon" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+        <h4>Security & DevOps</h4>
+        <p>OWASP best practices, SSL, monitoring, and automated pipelines.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section">
+  <div class="cta-bg"></div>
+  <div class="container">
+    <div class="cta-inner animate-up">
+      <div class="badge" style="margin: 0 auto 20px;">Start Today</div>
+      <h2>Not Sure Which Service You Need?</h2>
+      <p>Tell us your business challenge and we'll recommend the right technology solution. Free 30-minute consultation.</p>
+      <div class="cta-actions">
+        <a href="{% url 'pages:contact' %}" class="btn btn-primary btn-lg">Book a Free Call</a>
+        <a href="{% url 'pages:portfolio' %}" class="btn btn-secondary btn-lg">See Our Work</a>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

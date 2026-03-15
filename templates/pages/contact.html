@@ -1,0 +1,238 @@
+{% extends 'pages/base.html' %}
+{% load static %}
+
+{% block title %}Contact — BThinkX Dev{% endblock %}
+{% block meta_description %}Start your project with BThinkX Dev. Tell us about your idea and we'll get back to you within 24 hours.{% endblock %}
+
+{% block extra_head %}
+<style>
+  :root { --font-display: "Inter Tight", "Inter", system-ui, sans-serif; }
+  .contact-grid { display: grid; grid-template-columns: 1fr 1.6fr; gap: 60px; align-items: flex-start; }
+  .contact-info h2 { margin-bottom: 16px; }
+  .contact-info > p { margin-bottom: 40px; font-size: 1rem; }
+  .contact-methods { display: flex; flex-direction: column; gap: 14px; }
+  .contact-method { display: flex; align-items: flex-start; gap: 16px; padding: 18px 20px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); transition: all var(--t); }
+  .contact-method:hover { border-color: var(--accent-border); }
+  .contact-method-icon { width: 40px; height: 40px; flex-shrink: 0; background: var(--accent-dim); border: 1px solid var(--accent-border); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; color: var(--accent); }
+  .contact-method-text h4 { font-size: 0.88rem; margin-bottom: 3px; }
+  .contact-method-text a, .contact-method-text span { font-size: 0.88rem; color: var(--text-secondary); }
+  .contact-method-text a:hover { color: var(--accent); }
+  .contact-availability { margin-top: 32px; padding: 20px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); display: flex; align-items: flex-start; gap: 14px; }
+  .avail-dot { width: 10px; height: 10px; flex-shrink: 0; background: #34d399; border-radius: 50%; margin-top: 5px; animation: pulse 2s ease infinite; }
+  .contact-availability h4 { font-size: 0.9rem; margin-bottom: 4px; }
+  .contact-availability p { font-size: 0.82rem; }
+  .contact-form-wrap { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-xl); padding: 40px; box-shadow: var(--shadow-card); }
+  .contact-form-wrap h3 { font-size: 1.3rem; margin-bottom: 8px; }
+  .contact-form-wrap > p { font-size: 0.9rem; margin-bottom: 28px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-submit { display: flex; align-items: center; gap: 16px; margin-top: 8px; }
+  .form-note { font-size: 0.8rem; color: var(--text-muted); }
+  .form-success { display: none; text-align: center; padding: 40px 20px; }
+  .form-success .success-icon { width: 64px; height: 64px; background: rgba(52, 211, 153, 0.12); border: 2px solid rgba(52, 211, 153, 0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-size: 1.6rem; }
+  .form-success h3 { margin-bottom: 10px; }
+  .form-success p { font-size: 0.9rem; }
+  .faq-section { background: var(--bg-secondary); }
+  .faq-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  .faq-item { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 24px; cursor: pointer; transition: all var(--t); }
+  .faq-item:hover { border-color: var(--accent-border); }
+  .faq-question { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; font-size: 0.95rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0; }
+  .faq-answer { display: none; font-size: 0.88rem; color: var(--text-secondary); margin-top: 14px; line-height: 1.65; }
+  .faq-item.open .faq-answer { display: block; }
+  .faq-toggle { flex-shrink: 0; color: var(--accent); font-size: 1.2rem; line-height: 1; margin-top: -2px; transition: transform var(--t); }
+  .faq-item.open .faq-toggle { transform: rotate(45deg); }
+  @media(max-width:1024px){ .contact-grid{grid-template-columns:1fr;gap:36px} .faq-grid{grid-template-columns:1fr} }
+  @media(max-width:768px){ .form-row{grid-template-columns:1fr !important;gap:0} .contact-form-wrap{padding:24px 20px} .faq-grid{grid-template-columns:1fr} }
+  @media(max-width:480px){ .contact-form-wrap{padding:20px 14px} .contact-form-wrap h3{font-size:1.1rem} .contact-method{padding:12px 14px;gap:12px} .contact-method-icon{width:36px;height:36px} .form-submit{flex-direction:column;align-items:stretch} .form-submit .btn{justify-content:center} .form-submit .form-note{font-size:.76rem} .contact-availability{padding:16px} .faq-question{font-size:.88rem} }
+  @media(max-width:375px){ .contact-form-wrap{padding:16px 12px} }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- PAGE HERO -->
+<div class="page-hero">
+  <div class="container">
+    <div class="badge animate-up" style="margin: 0 auto 18px;">Let's Talk</div>
+    <h1 class="animate-up delay-1">Start Your Project Today</h1>
+    <p class="animate-up delay-2">Tell us about your idea, challenge, or project. We respond within 24 hours and offer a free 30-minute strategy call for qualified projects.</p>
+  </div>
+</div>
+
+<!-- CONTACT SECTION -->
+<section style="padding-top: 0;">
+  <div class="container">
+    <div class="contact-grid">
+      <div class="animate-up">
+        <h2>Get in Touch</h2>
+        <p>Whether you're ready to start or just exploring your options, we're here to help.</p>
+        <div class="contact-methods">
+          <div class="contact-method">
+            <div class="contact-method-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
+            <div class="contact-method-text"><h4>Email Us</h4><a href="mailto:hello@bthinkxdev.com">hello@bthinkxdev.com</a></div>
+          </div>
+          <div class="contact-method">
+            <div class="contact-method-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.82 19.79 19.79 0 01.02 1.18 2 2 0 012 0h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 14v2.92z"/></svg></div>
+            <div class="contact-method-text"><h4>WhatsApp / Telegram</h4><span>Available for quick discussions</span></div>
+          </div>
+          <div class="contact-method">
+            <div class="contact-method-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+            <div class="contact-method-text"><h4>Response Time</h4><span>Within 24 hours on business days</span></div>
+          </div>
+          <div class="contact-method">
+            <div class="contact-method-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
+            <div class="contact-method-text"><h4>Location</h4><span>Remote-first, serving clients globally</span></div>
+          </div>
+        </div>
+        <div class="contact-availability">
+          <div class="avail-dot"></div>
+          <div>
+            <h4>Currently Accepting Projects</h4>
+            <p>We have limited slots available for Q2 2026. Reach out now to secure your spot in our pipeline.</p>
+          </div>
+        </div>
+      </div>
+      <div class="animate-up delay-2">
+        <div class="contact-form-wrap">
+          <h3>Tell Us About Your Project</h3>
+          <p>Fill out the form below and we'll get back to you with next steps.</p>
+          <form id="contactForm" method="post" action="{% url 'pages:contact_submit' %}" novalidate>
+            {% csrf_token %}
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="name">Full Name *</label>
+                <input class="form-control" type="text" id="name" name="name" placeholder="John Smith" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="email">Email Address *</label>
+                <input class="form-control" type="email" id="email" name="email" placeholder="john@company.com" required>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="company">Company / Brand</label>
+                <input class="form-control" type="text" id="company" name="company" placeholder="Your Company">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="budget">Estimated Budget</label>
+                <select class="form-control" id="budget" name="budget">
+                  <option value="">Select a range...</option>
+                  <option value="<5k">Under $5,000</option>
+                  <option value="5-15k">$5,000 — $15,000</option>
+                  <option value="15-30k">$15,000 — $30,000</option>
+                  <option value="30-50k">$30,000 — $50,000</option>
+                  <option value="50k+">$50,000+</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="projectType">Project Type *</label>
+              <select class="form-control" id="projectType" name="project_type" required>
+                <option value="">Select a service...</option>
+                <option value="ecommerce">E-commerce Development</option>
+                <option value="saas">SaaS Platform / Web Application</option>
+                <option value="software">Custom Software / Business System</option>
+                <option value="automation">AI & Automation</option>
+                <option value="marketing">Digital Marketing & SEO</option>
+                <option value="performance">Performance Optimization</option>
+                <option value="other">Other / Not Sure Yet</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="message">Project Details *</label>
+              <textarea class="form-control" id="message" name="message" rows="5" placeholder="Tell us about your project — what you're building, your current challenges, and your goals. The more detail you share, the better we can help." required></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="timeline">Desired Timeline</label>
+              <select class="form-control" id="timeline" name="timeline">
+                <option value="">When do you want to launch?</option>
+                <option value="asap">As soon as possible</option>
+                <option value="1-3months">1—3 months</option>
+                <option value="3-6months">3—6 months</option>
+                <option value="6months+">6+ months / flexible</option>
+              </select>
+            </div>
+            <div class="form-submit">
+              <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                Send Message
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              </button>
+              <span class="form-note">We respond within 24 hours</span>
+            </div>
+          </form>
+          <div class="form-success" id="formSuccess">
+            <div class="success-icon" aria-hidden="true"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <h3>Message Sent!</h3>
+            <p>Thanks for reaching out. We'll review your project and get back to you within 24 hours to discuss next steps.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="faq-section">
+  <div class="container">
+    <div class="section-header">
+      <div class="badge animate-up">FAQ</div>
+      <h2 class="animate-up delay-1">Common Questions</h2>
+    </div>
+    <div class="faq-grid">
+      <div class="faq-item animate-up delay-1">
+        <div class="faq-question">How long does a typical project take?<span class="faq-toggle">+</span></div>
+        <div class="faq-answer">It depends on the scope. A basic web application takes 4—8 weeks. A full e-commerce platform or SaaS product typically takes 8—16 weeks. We'll give you a precise timeline after the discovery call.</div>
+      </div>
+      <div class="faq-item animate-up delay-2">
+        <div class="faq-question">Do you work with international clients?<span class="faq-toggle">+</span></div>
+        <div class="faq-answer">Yes — 100%. We work with clients across Europe, North America, the Middle East, and beyond. All communication is in English, and we're used to async collaboration across time zones.</div>
+      </div>
+      <div class="faq-item animate-up delay-3">
+        <div class="faq-question">What's your pricing model?<span class="faq-toggle">+</span></div>
+        <div class="faq-answer">We offer fixed-price projects for well-scoped work, and time-and-materials engagements for longer, evolving products. We'll recommend the right model during the scoping call.</div>
+      </div>
+      <div class="faq-item animate-up delay-4">
+        <div class="faq-question">Will I own the code and IP?<span class="faq-toggle">+</span></div>
+        <div class="faq-answer">Absolutely. Upon full payment, all source code, assets, and intellectual property are fully transferred to you. We include this in every contract, no exceptions.</div>
+      </div>
+      <div class="faq-item animate-up delay-1">
+        <div class="faq-question">Do you provide ongoing support after launch?<span class="faq-toggle">+</span></div>
+        <div class="faq-answer">Yes. We offer monthly retainer packages for maintenance, feature development, and technical support. We also provide a 30-day bug fix guarantee on all projects after launch.</div>
+      </div>
+      <div class="faq-item animate-up delay-2">
+        <div class="faq-question">Can you work with an existing codebase?<span class="faq-toggle">+</span></div>
+        <div class="faq-answer">Yes. We frequently take on existing Django, React, or Node.js projects to add features, fix issues, or scale the architecture. We'll start with a code audit to understand what you have.</div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('contactForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  var form = this;
+  var btn = document.getElementById('submitBtn');
+  var successEl = document.getElementById('formSuccess');
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
+  var fd = new FormData(form);
+  fd.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+  fetch("{% url 'pages:contact_submit' %}", {
+    method: 'POST',
+    body: fd,
+    credentials: 'same-origin',
+    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+  }).then(function(r) { return r.json().then(function(data) { return { ok: r.ok, data: data }; }); })
+    .then(function(result) {
+      if (result.ok && result.data.success) {
+        form.style.display = 'none';
+        if (successEl) successEl.style.display = 'block';
+      } else {
+        if (btn) { btn.disabled = false; btn.innerHTML = 'Send Message <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>'; }
+        alert(result.data.errors ? Object.values(result.data.errors).join(' ') : 'Something went wrong. Please try again.');
+      }
+    }).catch(function() {
+      if (btn) { btn.disabled = false; btn.innerHTML = 'Send Message <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>'; }
+      alert('Network error. Please try again.');
+    });
+});
+</script>
+{% endblock %}

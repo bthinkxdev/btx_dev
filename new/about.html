@@ -1,0 +1,552 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#09090b">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>About — BThinkX Dev</title>
+  <meta name="description" content="BThinkX Dev is a technology-driven development and marketing agency focused on building scalable digital products for modern businesses.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/bthinkx.css">
+  <style>
+    :root { --font-display: "Inter Tight", "Inter", system-ui, sans-serif; }
+
+    .about-mission {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 80px;
+      align-items: center;
+    }
+    .about-mission-visual {
+      position: relative;
+    }
+    .about-mission-img {
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-lg);
+    }
+    .about-mission-img img { width: 100%; aspect-ratio: 4/3; object-fit: cover; }
+    .about-mission-badge {
+      position: absolute;
+      top: 24px; right: -20px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 16px 20px;
+      text-align: center;
+      box-shadow: var(--shadow-md);
+    }
+    .about-mission-badge .num {
+      font-family: var(--font-display);
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--accent);
+      line-height: 1;
+    }
+    .about-mission-badge .lbl { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+
+    .values-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    .value-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      transition: all var(--t);
+    }
+    .value-card:hover { border-color: var(--accent-border); transform: translateY(-3px); }
+    .value-num {
+      font-family: var(--font-display);
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--accent-dim);
+      letter-spacing: -0.05em;
+      margin-bottom: 14px;
+      background: linear-gradient(135deg, var(--accent), transparent);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .value-card h3 { font-size: 1.05rem; margin-bottom: 10px; }
+    .value-card p { font-size: 0.88rem; }
+
+    .team-section { background: var(--bg-secondary); }
+    .team-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+    .team-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      transition: all var(--t);
+    }
+    .team-card:hover { border-color: var(--border-hover); transform: translateY(-4px); }
+    .team-img-wrap { aspect-ratio: 1; overflow: hidden; }
+    .team-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.4s ease; }
+    .team-card:hover .team-img { transform: scale(1.05); }
+    .team-info { padding: 22px; }
+    .team-info h3 { font-size: 1rem; margin-bottom: 4px; }
+    .team-role { font-size: 0.82rem; color: var(--accent); font-weight: 600; margin-bottom: 10px; }
+    .team-info p { font-size: 0.85rem; }
+    .team-skills { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 14px; }
+    .team-skill {
+      font-size: 0.7rem;
+      padding: 3px 10px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-full);
+      color: var(--text-muted);
+    }
+
+    .timeline { max-width: 700px; margin: 0 auto; }
+    .timeline-item {
+      display: grid;
+      grid-template-columns: 100px 1fr;
+      gap: 24px;
+      margin-bottom: 40px;
+      align-items: flex-start;
+    }
+    .timeline-year {
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--accent);
+      text-align: right;
+      padding-top: 2px;
+    }
+    .timeline-content {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 20px 24px;
+      position: relative;
+    }
+    .timeline-content::before {
+      content: '';
+      position: absolute;
+      left: -8px; top: 14px;
+      width: 14px; height: 14px;
+      background: var(--accent);
+      border-radius: 50%;
+      border: 3px solid var(--bg-primary);
+    }
+    .timeline-content h4 { font-size: 0.95rem; margin-bottom: 6px; }
+    .timeline-content p { font-size: 0.85rem; }
+
+    .clients-section { padding: 48px 0; border-top: 1px solid var(--border); }
+    .clients-logos { display: flex; justify-content: center; align-items: center; gap: 40px; flex-wrap: wrap; }
+    .client-logo {
+      padding: 14px 24px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      transition: all var(--t);
+    }
+    .client-logo:hover { color: var(--text-primary); border-color: var(--border-hover); }
+
+    @media(max-width:1024px){
+      .values-grid{grid-template-columns:repeat(2,1fr)}
+      .team-grid{grid-template-columns:repeat(2,1fr)}
+    }
+    @media(max-width:768px){
+      .about-mission{grid-template-columns:1fr;gap:32px}
+      .about-mission-badge{display:none}
+      .values-grid{grid-template-columns:repeat(2,1fr)}
+      .team-grid{grid-template-columns:repeat(2,1fr)}
+      .timeline-item{grid-template-columns:68px 1fr;gap:12px}
+      .timeline-content{padding:14px 16px}
+      .clients-grid{gap:10px}
+    }
+    @media(max-width:640px){
+      .values-grid{grid-template-columns:1fr}
+      .team-grid{grid-template-columns:1fr}
+    }
+    @media(max-width:480px){
+      .timeline-item{grid-template-columns:54px 1fr;gap:10px}
+      .timeline-year{font-size:.88rem;padding-top:16px}
+      .timeline-content h4{font-size:.96rem}
+      .timeline-content p{font-size:.84rem}
+      .value-card{padding:20px}
+      .team-card{padding:22px}
+      .team-avatar{width:64px;height:64px;font-size:1.1rem;margin-bottom:14px}
+      .client-logo{padding:12px 18px;font-size:.82rem}
+    }
+    @media(max-width:375px){
+      .about-mission-text h2{font-size:1.3rem}
+    }
+  </style>
+</head>
+<body>
+
+<!-- BLOB BACKGROUND -->
+<div class="blob-canvas" aria-hidden="true">
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+  <div class="blob blob-4"></div>
+</div>
+<div class="site-grid" aria-hidden="true"></div>
+<!-- FLOATING IMAGE BACKGROUND -->
+<div class="float-img-bg" aria-hidden="true">
+  <div class="float-img fi-1"><img src="assets/images/WjMeLOt3HEE9cWpQCCn4avE7yEg051d.png" alt="" loading="lazy"></div>
+  <div class="float-img fi-2"><img src="assets/images/XwI5wzRuTMGLVI1af3OdSHlZY051d.png" alt="" loading="lazy"></div>
+</div>
+<div id="cursor-glow" aria-hidden="true"></div>
+
+<!-- PILL NAVBAR -->
+<nav class="navbar-pill" id="navbar">
+  <div class="pill-wrap">
+    <a href="index.html" class="pill-logo">
+      <img src="assets/images/logo.jpg" alt="BThinkX" class="logo-icon logo-img">
+      <span>BThinkX Dev</span>
+    </a>
+    <div class="pill-sep"></div>
+    <div class="pill-links">
+      <a href="index.html">Home</a>
+      <a href="services.html">Services</a>
+      <a href="portfolio.html">Work</a>
+    </div>
+    <div class="pill-sep"></div>
+    <button class="pill-menu-btn" id="pillMenuBtn" aria-expanded="false">
+      <span class="pill-menu-icon"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span>
+      Menu
+    </button>
+    <a href="contact.html" class="btn btn-primary btn-sm">Start Project</a>
+  </div>
+  <div class="pill-dropdown" id="pillDropdown">
+    <div class="pill-dropdown-header">
+      <span class="pill-nav-label" style="margin:0">Menu</span>
+      <button type="button" class="pill-dropdown-close" id="pillDropdownClose" aria-label="Close menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div class="pill-nav-cols">
+      <div class="pill-nav-col">
+        <span class="pill-nav-label">Services</span>
+        <a href="services.html">E-commerce Development</a>
+        <a href="services.html">SaaS Platforms</a>
+        <a href="services.html">Custom Software</a>
+        <a href="services.html">AI &amp; Automation</a>
+        <a href="services.html">Digital Marketing</a>
+      </div>
+      <div class="pill-nav-col">
+        <span class="pill-nav-label">Company</span>
+        <a href="about.html">About Us</a>
+        <a href="portfolio.html">Our Work</a>
+        <a href="blog.html">Blog &amp; Insights</a>
+        <a href="contact.html">Contact</a>
+      </div>
+    </div>
+    <div class="pill-dropdown-footer">
+      <div class="pill-socials">
+        <a href="#" aria-label="Twitter"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
+        <a href="#" aria-label="LinkedIn"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z"/><circle cx="4" cy="4" r="2"/></svg></a>
+        <a href="#" aria-label="GitHub"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0012 2z"/></svg></a>
+      </div>
+      <a href="contact.html" class="btn btn-primary btn-xs">Book a Free Call <svg class="btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+    </div>
+  </div>
+</nav>
+<div class="mobile-nav-overlay" id="mobileNav">
+  <div class="mobile-nav-content">
+    <div class="mobile-nav-header"><span class="mobile-nav-title">Navigation</span><button type="button" class="mobile-close-btn" id="mobileClose" aria-label="Close menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg></button></div>
+    <div class="pill-nav-cols">
+      <div class="pill-nav-col">
+        <span class="pill-nav-label">Services</span>
+        <a href="services.html">E-commerce Development</a>
+        <a href="services.html">SaaS Platforms</a>
+        <a href="services.html">Custom Software</a>
+        <a href="services.html">AI &amp; Automation</a>
+        <a href="services.html">Digital Marketing</a>
+        <a href="services.html">Performance Optimization</a>
+      </div>
+      <div class="pill-nav-col">
+        <span class="pill-nav-label">Company</span>
+        <a href="about.html">About Us</a>
+        <a href="portfolio.html">Our Work</a>
+        <a href="blog.html">Blog &amp; Insights</a>
+        <a href="contact.html">Contact</a>
+      </div>
+    </div>
+    <div class="pill-dropdown-footer">
+      <div class="pill-socials">
+        <a href="#" aria-label="X/Twitter"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
+        <a href="#" aria-label="LinkedIn"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z"/><circle cx="4" cy="4" r="2"/></svg></a>
+        <a href="#" aria-label="GitHub"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0012 2z"/></svg></a>
+        <a href="#" aria-label="Instagram"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg></a>
+      </div>
+      <a href="contact.html" class="btn btn-primary btn-xs">Book a Free Call <svg class="btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE HERO -->
+<div class="page-hero">
+  <div class="container">
+    <div class="badge animate-up" style="margin: 0 auto 18px;">Our Story</div>
+    <h1 class="animate-up delay-1">A Technology Studio Built for the Digital Age</h1>
+    <p class="animate-up delay-2">We're BThinkX Dev — a technology-driven development and marketing agency focused on building scalable digital products for modern businesses.</p>
+  </div>
+</div>
+
+<!-- MISSION -->
+<section>
+  <div class="container">
+    <div class="about-mission">
+      <div class="about-mission-visual animate-up">
+        <div class="about-mission-img">
+          <img src="assets/images/DiXxGZkzHIAgH7qrHyIAOf2yXJIefe1.jpg" alt="BThinkX Dev Team" loading="lazy">
+        </div>
+        <div class="about-mission-badge">
+          <div class="num">2019</div>
+          <div class="lbl">Founded</div>
+        </div>
+      </div>
+      <div class="animate-up delay-2">
+        <div class="badge" style="margin-bottom:18px;">Our Mission</div>
+        <h2 style="margin-bottom: 18px;">We Help Businesses Build Products That Last</h2>
+        <p style="margin-bottom: 16px;">
+          BThinkX Dev was founded with one mission: to make great software engineering accessible to e-commerce brands, startups, and businesses that need to move fast without compromising quality.
+        </p>
+        <p style="margin-bottom: 16px;">
+          We've spent years building products across industries — from high-traffic marketplaces to AI-powered SaaS tools — and we understand what it takes to ship software that actually works in production.
+        </p>
+        <p style="margin-bottom: 32px;">
+          Our approach is simple: understand your business deeply, architect the right solution, and build it with the standards and craftsmanship that your customers deserve.
+        </p>
+        <a href="contact.html" class="btn btn-primary">Work with Us</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- VALUES -->
+<section style="background: var(--bg-secondary);">
+  <div class="container">
+    <div class="section-header">
+      <div class="badge animate-up">What Drives Us</div>
+      <h2 class="animate-up delay-1">Our Core Values</h2>
+      <p class="animate-up delay-2">The principles we operate by and hold ourselves accountable to on every project.</p>
+    </div>
+    <div class="values-grid">
+      <div class="value-card animate-up delay-1">
+        <div class="value-num">01</div>
+        <h3>Quality Over Speed</h3>
+        <p>We move fast, but never at the expense of code quality. Every line we write is reviewed, tested, and built to last.</p>
+      </div>
+      <div class="value-card animate-up delay-2">
+        <div class="value-num">02</div>
+        <h3>Business Outcomes First</h3>
+        <p>Technology is a means to an end. We stay focused on the business outcome — revenue, retention, efficiency — not just shipping features.</p>
+      </div>
+      <div class="value-card animate-up delay-3">
+        <div class="value-num">03</div>
+        <h3>Radical Transparency</h3>
+        <p>You'll always know exactly where your project stands. Weekly updates, open communication, and no surprises.</p>
+      </div>
+      <div class="value-card animate-up delay-1">
+        <div class="value-num">04</div>
+        <h3>Architecture That Scales</h3>
+        <p>We build with scale in mind from day one. What works for 1,000 users should still work for 1,000,000.</p>
+      </div>
+      <div class="value-card animate-up delay-2">
+        <div class="value-num">05</div>
+        <h3>Long-Term Partnership</h3>
+        <p>Our best client relationships are long-term ones. We grow alongside our clients and stay invested in their success.</p>
+      </div>
+      <div class="value-card animate-up delay-3">
+        <div class="value-num">06</div>
+        <h3>Continuous Learning</h3>
+        <p>Technology moves fast. We stay ahead by constantly learning, experimenting, and bringing cutting-edge approaches to every project.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TEAM -->
+<section class="team-section">
+  <div class="container">
+    <div class="section-header">
+      <div class="badge animate-up">The Team</div>
+      <h2 class="animate-up delay-1">People Behind the Products</h2>
+      <p class="animate-up delay-2">A small, senior team of engineers, designers, and strategists who love building things that work.</p>
+    </div>
+    <div class="team-grid">
+      <div class="team-card animate-up delay-1">
+        <div class="team-img-wrap">
+          <img class="team-img" src="assets/images/vqhPY3xuYY20Mjk7hXlhhGS5Cfgc717.jpg" alt="Team Lead" loading="lazy">
+        </div>
+        <div class="team-info">
+          <h3>Backend Engineering Lead</h3>
+          <div class="team-role">Senior Django / Python Developer</div>
+          <p>7+ years building production-grade backend systems, APIs, and data pipelines for high-growth companies.</p>
+          <div class="team-skills">
+            <span class="team-skill">Django</span>
+            <span class="team-skill">Python</span>
+            <span class="team-skill">PostgreSQL</span>
+            <span class="team-skill">AWS</span>
+          </div>
+        </div>
+      </div>
+      <div class="team-card animate-up delay-2">
+        <div class="team-img-wrap">
+          <img class="team-img" src="assets/images/zdlF4pVvQUrfmpTAxk21ZbXt4b4c717.jpg" alt="Frontend Lead" loading="lazy">
+        </div>
+        <div class="team-info">
+          <h3>Frontend Engineering Lead</h3>
+          <div class="team-role">React / Next.js Specialist</div>
+          <p>Expert in React ecosystem, Next.js app architecture, and building high-performance, accessible user interfaces.</p>
+          <div class="team-skills">
+            <span class="team-skill">React</span>
+            <span class="team-skill">Next.js</span>
+            <span class="team-skill">TypeScript</span>
+            <span class="team-skill">Tailwind</span>
+          </div>
+        </div>
+      </div>
+      <div class="team-card animate-up delay-3">
+        <div class="team-img-wrap">
+          <img class="team-img" src="assets/images/9pmV8Rjhl56Is0AguVOneDJuyccc717.jpg" alt="Design Lead" loading="lazy">
+        </div>
+        <div class="team-info">
+          <h3>Product Design Lead</h3>
+          <div class="team-role">UX / Product Designer</div>
+          <p>Designs user experiences that are intuitive, conversion-focused, and aligned with both user needs and business goals.</p>
+          <div class="team-skills">
+            <span class="team-skill">Figma</span>
+            <span class="team-skill">UX Research</span>
+            <span class="team-skill">Design Systems</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TIMELINE -->
+<section>
+  <div class="container">
+    <div class="section-header">
+      <div class="badge animate-up">Our Journey</div>
+      <h2 class="animate-up delay-1">How We Got Here</h2>
+    </div>
+    <div class="timeline animate-up delay-1">
+      <div class="timeline-item">
+        <div class="timeline-year">2019</div>
+        <div class="timeline-content">
+          <h4>Founded BThinkX Dev</h4>
+          <p>Started as a freelance development studio focused on Django web applications for local businesses.</p>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-year">2020</div>
+        <div class="timeline-content">
+          <h4>First E-commerce Client</h4>
+          <p>Built our first major e-commerce platform — a multi-vendor marketplace that grew to $2M ARR in its first year.</p>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-year">2021</div>
+        <div class="timeline-content">
+          <h4>Expanded to SaaS & React</h4>
+          <p>Added React and Next.js expertise. Started building SaaS products from scratch for international startups.</p>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-year">2022</div>
+        <div class="timeline-content">
+          <h4>AI & Automation Practice</h4>
+          <p>Launched our AI integrations and business automation practice, integrating LLMs and ML into client products.</p>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-year">2023</div>
+        <div class="timeline-content">
+          <h4>10+ Global Clients</h4>
+          <p>Reached 10+ active international clients across e-commerce, fintech, HR tech, and media sectors.</p>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-year">2025</div>
+        <div class="timeline-content">
+          <h4>50+ Projects Delivered</h4>
+          <p>Crossed the 50-project milestone. Expanded our team with senior engineers across the full stack.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section">
+  <div class="cta-bg"></div>
+  <div class="container">
+    <div class="cta-inner animate-up">
+      <div class="badge" style="margin: 0 auto 20px;">Join Our Clients</div>
+      <h2>Build Your Next Product With Us</h2>
+      <p>We work with e-commerce brands, startups, and companies that need technology built right. Let's start with a conversation.</p>
+      <div class="cta-actions">
+        <a href="contact.html" class="btn btn-primary btn-lg">Start a Conversation</a>
+        <a href="portfolio.html" class="btn btn-secondary btn-lg">See Our Work</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a href="index.html" class="footer-logo-link">
+          <img src="assets/images/logo.jpg" alt="BThinkX" class="logo-icon logo-img">
+          BThinkX Dev
+        </a>
+        <p>Building scalable digital products and growth systems for modern businesses worldwide.</p>
+        <div class="footer-social">
+          <a href="#" aria-label="LinkedIn"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z"/><circle cx="4" cy="4" r="2"/></svg></a>
+          <a href="#" aria-label="Twitter"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
+          <a href="#" aria-label="GitHub"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0012 2z"/></svg></a>
+        </div>
+      </div>
+      <div class="footer-col">
+        <h5>Services</h5>
+        <a href="services.html">E-commerce Dev</a>
+        <a href="services.html">Custom Software</a>
+        <a href="services.html">Web Applications</a>
+        <a href="services.html">AI &amp; Automation</a>
+        <a href="services.html">Digital Marketing</a>
+      </div>
+      <div class="footer-col">
+        <h5>Company</h5>
+        <a href="about.html">About Us</a>
+        <a href="portfolio.html">Our Work</a>
+        <a href="blog.html">Blog</a>
+        <a href="contact.html">Contact</a>
+      </div>
+      <div class="footer-col">
+        <h5>Contact</h5>
+        <a href="mailto:hello@bthinkxdev.com">hello@bthinkxdev.com</a>
+        <a href="contact.html">Start a Project</a>
+        <a href="contact.html">Get a Quote</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 BThinkX Dev. All rights reserved.</span>
+      <span>Building Scalable Digital Products &amp; Growth Systems</span>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/bthinkx.js"></script>
+</body>
+</html>
+
+
+
+

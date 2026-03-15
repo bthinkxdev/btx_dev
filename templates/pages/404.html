@@ -1,0 +1,157 @@
+{% extends 'pages/base.html' %}
+{% load static %}
+
+{% block title %}404 — Page Not Found | BThinkX Dev{% endblock %}
+{% block extra_head %}
+<style>
+:root { --font-display: "Inter Tight", "Inter", system-ui, sans-serif; }
+
+    body { display: flex; flex-direction: column; min-height: 100vh; }
+
+    .error-page {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .error-bg {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 70% 60% at 50% 40%, rgba(165,164,250,0.1) 0%, transparent 65%);
+    }
+    .error-grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+      background-size: 60px 60px;
+      mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 20%, transparent 100%);
+    }
+
+    .error-content {
+      position: relative;
+      z-index: 2;
+      padding: 80px 24px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .error-num {
+      font-family: var(--font-display);
+      font-size: clamp(6rem, 20vw, 10rem);
+      font-weight: 800;
+      letter-spacing: -0.06em;
+      line-height: 0.9;
+      background: linear-gradient(135deg, rgba(165,164,250,0.4) 0%, rgba(165,164,250,0.08) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+      display: block;
+      position: relative;
+    }
+    .error-num::after {
+      content: '404';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-secondary) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      opacity: 0.15;
+      filter: blur(20px);
+      transform: translateY(8px);
+    }
+
+    .error-content h1 {
+      font-size: clamp(1.5rem, 4vw, 2.2rem);
+      margin-bottom: 16px;
+    }
+    .error-content p {
+      font-size: 1.05rem;
+      max-width: 420px;
+      margin: 0 auto 36px;
+    }
+    .error-actions { display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; }
+
+    .error-links {
+      margin-top: 56px;
+      padding-top: 40px;
+      border-top: 1px solid var(--border);
+    }
+    .error-links h4 {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 20px;
+    }
+    .error-link-grid {
+      display: flex;
+      justify-content: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .error-link {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-full);
+      font-size: 0.88rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      transition: all var(--transition);
+    }
+    .error-link:hover { color: var(--text-primary); border-color: var(--border-hover); background: var(--bg-card-hover); }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- 404 CONTENT -->
+<main class="error-page">
+  <div class="error-bg"></div>
+  <div class="error-grid"></div>
+  <div class="error-content">
+    <span class="error-num">404</span>
+    <h1>This page doesn't exist</h1>
+    <p>The page you're looking for may have been moved, renamed, or doesn't exist. Let's get you back on track.</p>
+    <div class="error-actions">
+      <a href="{% url 'pages:index' %}" class="btn btn-primary btn-lg">Back to Home</a>
+      <a href="{% url 'pages:contact' %}" class="btn btn-secondary btn-lg">Contact Us</a>
+    </div>
+    <div class="error-links">
+      <h4>You might be looking for</h4>
+      <div class="error-link-grid">
+        <a href="{% url 'pages:services' %}" class="error-link">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          Services
+        </a>
+        <a href="{% url 'pages:portfolio' %}" class="error-link">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
+          Portfolio
+        </a>
+        <a href="{% url 'pages:about' %}" class="error-link">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          About Us
+        </a>
+        <a href="{% url 'pages:blog' %}" class="error-link">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Blog
+        </a>
+        <a href="{% url 'pages:contact' %}" class="error-link">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          Contact
+        </a>
+      </div>
+    </div>
+  </div>
+</main>
+{% endblock %}

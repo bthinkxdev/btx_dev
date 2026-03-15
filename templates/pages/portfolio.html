@@ -1,0 +1,365 @@
+{% extends 'pages/base.html' %}
+{% load static %}
+
+{% block title %}Portfolio — BThinkX Dev{% endblock %}
+{% block meta_description %}Explore BThinkX Dev's portfolio of e-commerce platforms, SaaS systems, AI dashboards, and automation software.{% endblock %}
+
+{% block extra_head %}
+<style>
+:root { --font-display: "Inter Tight", "Inter", system-ui, sans-serif; }
+
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 56px;
+    }
+    .filter-btn {
+      padding: 8px 20px;
+      border-radius: var(--radius-full);
+      font-size: 0.85rem;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      background: transparent;
+      cursor: pointer;
+      transition: all var(--t);
+      font-family: var(--font-body);
+    }
+    .filter-btn:hover, .filter-btn.active {
+      background: var(--accent-dim);
+      border-color: var(--accent-border);
+      color: var(--accent);
+    }
+
+    .projects-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+
+    .project-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      transition: all var(--t);
+    }
+    .project-card:hover {
+      border-color: var(--border-hover);
+      transform: translateY(-5px);
+      box-shadow: var(--shadow-lg);
+    }
+    .project-card:hover .project-img { transform: scale(1.04); }
+    .project-img-wrap { overflow: hidden; aspect-ratio: 16/10; }
+    .project-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
+
+    .project-body { padding: 24px; }
+    .project-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .project-cat {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .project-year { font-size: 0.78rem; color: var(--text-muted); }
+    .project-body h3 { font-size: 1.05rem; margin-bottom: 10px; }
+    .project-body p { font-size: 0.88rem; line-height: 1.65; margin-bottom: 18px; }
+    .project-stack { display: flex; gap: 8px; flex-wrap: wrap; }
+    .stack-tag {
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 4px 11px;
+      background: rgba(255,255,255,0.05);
+      color: var(--text-secondary);
+      border-radius: var(--radius-full);
+      border: 1px solid var(--border);
+    }
+
+    .project-card.featured {
+      grid-column: span 2;
+    }
+    .project-card.featured .project-img-wrap { aspect-ratio: 21/9; }
+
+    .results-strip {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      margin-top: 16px;
+    }
+    .result-item {
+      background: var(--bg-card);
+      padding: 14px 16px;
+      text-align: center;
+    }
+    .result-num { font-size: 1.2rem; font-weight: 700; color: var(--accent); letter-spacing: -0.03em; }
+    .result-label { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; }
+
+    @media(max-width:1024px){
+      .projects-grid{grid-template-columns:repeat(2,1fr)}
+      .project-card.featured{grid-column:span 2}
+    }
+    @media(max-width:768px){
+      .projects-grid{grid-template-columns:1fr}
+      .project-card.featured{grid-column:span 1}
+      .project-card.featured .project-img-wrap{aspect-ratio:16/10}
+      .results-strip{grid-template-columns:repeat(3,1fr)}
+      .filter-bar{gap:8px;flex-wrap:wrap;justify-content:flex-start}
+      .filter-btn{font-size:.76rem;padding:7px 14px}
+    }
+    @media(max-width:640px){
+      .filter-bar{gap:6px}
+      .filter-btn{font-size:.72rem;padding:6px 12px}
+    }
+    @media(max-width:480px){
+      .results-strip{grid-template-columns:1fr 1fr 1fr;gap:0}
+      .result-num{font-size:1rem}
+      .result-label{font-size:.66rem}
+      .project-info{padding:16px}
+      .project-tags{flex-wrap:nowrap;overflow:hidden}
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- PAGE HERO -->
+<div class="page-hero">
+  <div class="container">
+    <div class="badge animate-up" style="margin: 0 auto 18px;">Our Work</div>
+    <h1 class="animate-up delay-1">Products We've Shipped</h1>
+    <p class="animate-up delay-2">A collection of e-commerce platforms, SaaS systems, automation tools, and digital products we've built for clients worldwide.</p>
+  </div>
+</div>
+
+<section>
+  <div class="container">
+    <!-- Filters -->
+    <div class="filter-bar animate-up">
+      <button class="filter-btn active" data-filter="all">All Projects</button>
+      <button class="filter-btn" data-filter="ecommerce">E-commerce</button>
+      <button class="filter-btn" data-filter="saas">SaaS</button>
+      <button class="filter-btn" data-filter="software">Software</button>
+      <button class="filter-btn" data-filter="automation">Automation</button>
+    </div>
+
+    <!-- Projects Grid -->
+    <div class="projects-grid" id="projectsGrid">
+
+      <!-- Featured: E-commerce Platform -->
+      <div class="project-card featured animate-up delay-1" data-category="ecommerce">
+        <div class="project-img-wrap">
+          <img class="project-img" src="{% static 'assets/images/CN6LevoxCwc2wM9z513MTNApD4Uc8d8.jpg' %}" alt="Enterprise E-commerce Platform" loading="lazy">
+        </div>
+        <div class="project-body">
+          <div class="project-meta">
+            <span class="project-cat">E-commerce Platform</span>
+            <span class="project-year">2025</span>
+          </div>
+          <h3>Enterprise Multi-Vendor Marketplace</h3>
+          <p>A large-scale B2B marketplace serving 300+ vendors and 50,000+ SKUs. Built with headless Next.js frontend, Django REST API backend, and real-time inventory tracking.</p>
+          <div class="project-stack">
+            <span class="stack-tag">Next.js</span>
+            <span class="stack-tag">Django</span>
+            <span class="stack-tag">PostgreSQL</span>
+            <span class="stack-tag">Redis</span>
+            <span class="stack-tag">AWS</span>
+            <span class="stack-tag">Stripe</span>
+          </div>
+          <div class="results-strip">
+            <div class="result-item"><div class="result-num">3x</div><div class="result-label">Revenue Growth</div></div>
+            <div class="result-item"><div class="result-num">1.2s</div><div class="result-label">Load Time</div></div>
+            <div class="result-item"><div class="result-num">+68%</div><div class="result-label">Conversion Rate</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI Dashboard -->
+      <div class="project-card animate-up delay-2" data-category="saas">
+        <div class="project-img-wrap">
+          <img class="project-img" src="{% static 'assets/images/HGUyRo3Ko6fOp6Ks3LrpzaNBBVkfef8.jpg' %}" alt="AI Business Dashboard" loading="lazy">
+        </div>
+        <div class="project-body">
+          <div class="project-meta">
+            <span class="project-cat">SaaS / AI</span>
+            <span class="project-year">2025</span>
+          </div>
+          <h3>AI Business Intelligence Dashboard</h3>
+          <p>Real-time analytics platform with GPT-powered insights, predictive forecasting, and automated reporting for a fintech startup.</p>
+          <div class="project-stack">
+            <span class="stack-tag">React</span>
+            <span class="stack-tag">Python</span>
+            <span class="stack-tag">OpenAI</span>
+            <span class="stack-tag">FastAPI</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- CRM System -->
+      <div class="project-card animate-up delay-3" data-category="software">
+        <div class="project-img-wrap">
+          <img class="project-img" src="{% static 'assets/images/Rjwq6SPWHl5dLNnlsMTBgNGsewe8c1.jpg' %}" alt="Custom CRM" loading="lazy">
+        </div>
+        <div class="project-body">
+          <div class="project-meta">
+            <span class="project-cat">Custom Software</span>
+            <span class="project-year">2025</span>
+          </div>
+          <h3>Custom CRM & Sales Pipeline System</h3>
+          <p>A full-featured CRM replacing Salesforce for a 200-person sales team — custom workflows, reporting, and email integration.</p>
+          <div class="project-stack">
+            <span class="stack-tag">MERN Stack</span>
+            <span class="stack-tag">AWS Lambda</span>
+            <span class="stack-tag">MongoDB</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Marketing Automation -->
+      <div class="project-card animate-up delay-1" data-category="automation">
+        <div class="project-img-wrap">
+          <img class="project-img" src="{% static 'assets/images/tPqHwKj0H2QZxoHvnhGA5OvON893c4.jpg' %}" alt="Marketing Automation" loading="lazy">
+        </div>
+        <div class="project-body">
+          <div class="project-meta">
+            <span class="project-cat">Automation</span>
+            <span class="project-year">2024</span>
+          </div>
+          <h3>Marketing Automation Platform</h3>
+          <p>Multi-channel campaign orchestration with AI-powered audience segmentation, A/B testing, and attribution modeling.</p>
+          <div class="project-stack">
+            <span class="stack-tag">React</span>
+            <span class="stack-tag">Django</span>
+            <span class="stack-tag">Celery</span>
+            <span class="stack-tag">Redis</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Subscription Ecommerce -->
+      <div class="project-card animate-up delay-2" data-category="ecommerce">
+        <div class="project-img-wrap">
+          <img class="project-img" src="{% static 'assets/images/gEGt81C3YZFSpxbB1qa5dt9dM945d.jpg' %}" alt="Subscription Box Platform" loading="lazy">
+        </div>
+        <div class="project-body">
+          <div class="project-meta">
+            <span class="project-cat">E-commerce</span>
+            <span class="project-year">2024</span>
+          </div>
+          <h3>Subscription Box E-commerce Platform</h3>
+          <p>Custom subscription commerce platform with recurring billing, box curation tools, and customer portal.</p>
+          <div class="project-stack">
+            <span class="stack-tag">Next.js</span>
+            <span class="stack-tag">Stripe Billing</span>
+            <span class="stack-tag">Node.js</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ERP System -->
+      <div class="project-card animate-up delay-3" data-category="software">
+        <div class="project-img-wrap">
+          <img class="project-img" src="{% static 'assets/images/DiXxGZkzHIAgH7qrHyIAOf2yXJIefe1.jpg' %}" alt="ERP System" loading="lazy">
+        </div>
+        <div class="project-body">
+          <div class="project-meta">
+            <span class="project-cat">Enterprise Software</span>
+            <span class="project-year">2024</span>
+          </div>
+          <h3>Manufacturing ERP System</h3>
+          <p>Production tracking, procurement, warehouse management, and financial reporting for a mid-size manufacturer.</p>
+          <div class="project-stack">
+            <span class="stack-tag">Django</span>
+            <span class="stack-tag">React</span>
+            <span class="stack-tag">PostgreSQL</span>
+            <span class="stack-tag">Docker</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- SaaS HR Platform -->
+      <div class="project-card animate-up delay-1" data-category="saas">
+        <div class="project-img-wrap">
+          <img class="project-img" src="{% static 'assets/images/L4oyRbGGv65UpD8tSz5jSpwsiXc2c08.jpg' %}" alt="HR SaaS Platform" loading="lazy">
+        </div>
+        <div class="project-body">
+          <div class="project-meta">
+            <span class="project-cat">SaaS</span>
+            <span class="project-year">2024</span>
+          </div>
+          <h3>HR Management SaaS Platform</h3>
+          <p>Multi-tenant HR platform with employee management, payroll, leave tracking, and performance review modules.</p>
+          <div class="project-stack">
+            <span class="stack-tag">Next.js</span>
+            <span class="stack-tag">Django REST</span>
+            <span class="stack-tag">PostgreSQL</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chatbot -->
+      <div class="project-card animate-up delay-2" data-category="automation">
+        <div class="project-img-wrap">
+          <img class="project-img" src="{% static 'assets/images/LZvOnAeAC86C9fYtXWPMEmCFXYk6442.jpg' %}" alt="AI Chatbot" loading="lazy">
+        </div>
+        <div class="project-body">
+          <div class="project-meta">
+            <span class="project-cat">AI / Automation</span>
+            <span class="project-year">2024</span>
+          </div>
+          <h3>AI Customer Support Chatbot</h3>
+          <p>RAG-powered chatbot trained on product documentation that handles 70% of support tickets automatically.</p>
+          <div class="project-stack">
+            <span class="stack-tag">Python</span>
+            <span class="stack-tag">LangChain</span>
+            <span class="stack-tag">OpenAI</span>
+            <span class="stack-tag">Pinecone</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Headless CMS -->
+      <div class="project-card animate-up delay-3" data-category="software">
+        <div class="project-img-wrap">
+          <img class="project-img" src="{% static 'assets/images/hajcoZAfhm9MXDuOSNR6Z51qhU4850.jpg' %}" alt="Digital Publishing Platform" loading="lazy">
+        </div>
+        <div class="project-body">
+          <div class="project-meta">
+            <span class="project-cat">Software</span>
+            <span class="project-year">2023</span>
+          </div>
+          <h3>Digital Publishing Platform</h3>
+          <p>Headless CMS with multi-language support, SEO tools, and content scheduling for a media company with 2M monthly readers.</p>
+          <div class="project-stack">
+            <span class="stack-tag">Next.js</span>
+            <span class="stack-tag">Sanity CMS</span>
+            <span class="stack-tag">Vercel</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section" style="padding-top: 48px;">
+  <div class="cta-bg"></div>
+  <div class="container">
+    <div class="cta-inner animate-up">
+      <div class="badge" style="margin: 0 auto 20px;">Start Building</div>
+      <h2>Have a Project in Mind?</h2>
+      <p>Let's talk about your idea. We'll scope it, price it, and build it — on time, on budget.</p>
+      <div class="cta-actions">
+        <a href="{% url 'pages:contact' %}" class="btn btn-primary btn-lg">Start Your Project</a>
+        <a href="{% url 'pages:services' %}" class="btn btn-secondary btn-lg">Our Services</a>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
