@@ -10,9 +10,19 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>{% block title %}BThinkX Dev{% endblock %}</title>
   <meta name="description" content="{% block meta_description %}Building Scalable Digital Products & Growth Systems{% endblock %}">
-  <meta property="og:title" content="BThinkX Dev">
+  <link rel="canonical" href="{{ request.build_absolute_uri }}">
+  <!-- Open Graph: WhatsApp, Facebook, LinkedIn, Slack, iMessage, etc. -->
+  <meta property="og:site_name" content="BThinkX Dev">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:type" content="{% block og_type %}website{% endblock %}">
+  <meta property="og:url" content="{{ request.build_absolute_uri }}">
+  <meta property="og:title" content="{% block og_title %}BThinkX Dev{% endblock %}">
   <meta property="og:description" content="{% block og_description %}Building Scalable Digital Products & Growth Systems{% endblock %}">
-  <meta property="og:type" content="website">
+  <meta property="og:image" content="{% block og_image %}{{ request.scheme }}://{{ request.get_host }}{% static 'assets/images/DiXxGZkzHIAgH7qrHyIAOf2yXJIefe1.jpg' %}{% endblock %}">
+  <meta property="og:image:alt" content="{% block og_image_alt %}BThinkX Dev — digital products & growth systems{% endblock %}">
+  <!-- Twitter/X uses og:title, og:description, og:image when these are omitted -->
+  <meta name="twitter:card" content="summary_large_image">
+  {% block og_extra %}{% endblock %}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter+Tight:wght@500;600;700;800&display=swap" rel="stylesheet">
