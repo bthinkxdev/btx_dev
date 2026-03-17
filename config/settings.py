@@ -75,6 +75,9 @@ STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'new']  # {% static 'assets/bthinkx.css' %} -> new/assets/bthinkx.css
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Email: contact form notifications (Gmail SMTP)
@@ -92,3 +95,11 @@ DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
 
 # Address to receive contact form submissions
 CONTACT_EMAIL_TO = os.environ.get('CONTACT_EMAIL_TO', 'achujosephsl@gmail.com')
+
+# Public site URL (used in blog notification emails and unsubscribe links)
+SITE_BASE_URL = os.environ.get('SITE_BASE_URL', 'http://127.0.0.1:8000').rstrip('/')
+
+# Delay between each subscriber email when notifying about a new blog post (SMTP rate limiting)
+NEWSLETTER_EMAIL_INTERVAL_SECONDS = float(
+    os.environ.get('NEWSLETTER_EMAIL_INTERVAL_SECONDS', '2.0')
+)

@@ -1,0 +1,16 @@
+{% extends 'pages/base.html' %}
+{% block title %}Unsubscribed — BThinkX Dev{% endblock %}
+{% block content %}
+<div class="page-hero">
+  <div class="container" style="text-align:center;max-width:480px;">
+    {% if ok %}
+    <h1 class="animate-up">You’re unsubscribed</h1>
+    <p class="animate-up delay-1" style="color:var(--text-secondary);">You won’t receive blog updates from BThinkX Dev anymore. You can subscribe again anytime from the blog page.</p>
+    {% else %}
+    <h1 class="animate-up">Link not found</h1>
+    <p class="animate-up delay-1" style="color:var(--text-secondary);">This unsubscribe link is invalid or already used.</p>
+    {% endif %}
+    <a href="{% url 'pages:blog' %}" class="btn btn-primary animate-up delay-2" style="margin-top:24px;">Back to blog</a>
+  </div>
+</div>
+{% endblock %}

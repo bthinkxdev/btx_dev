@@ -260,63 +260,41 @@
   </div>
 </section>
 
-<!-- TEAM -->
+<!-- TEAM (dynamic) -->
 <section class="team-section">
   <div class="container">
     <div class="section-header">
-      <div class="badge animate-up">The Team</div>
-      <h2 class="animate-up delay-1">People Behind the Products</h2>
-      <p class="animate-up delay-2">A small, senior team of engineers, designers, and strategists who love building things that work.</p>
+      <div class="badge animate-up">{% if team_section %}{{ team_section.badge }}{% else %}The Team{% endif %}</div>
+      <h2 class="animate-up delay-1">{% if team_section %}{{ team_section.heading }}{% else %}People Behind the Products{% endif %}</h2>
+      <p class="animate-up delay-2">{% if team_section %}{{ team_section.subheading }}{% else %}A small, senior team of engineers, designers, and strategists who love building things that work.{% endif %}</p>
     </div>
+    {% if team_members %}
     <div class="team-grid">
-      <div class="team-card animate-up delay-1">
+      {% for member in team_members %}
+      <div class="team-card animate-up {% cycle 'delay-1' 'delay-2' 'delay-3' %}">
         <div class="team-img-wrap">
-          <img class="team-img" src="{% static 'assets/images/vqhPY3xuYY20Mjk7hXlhhGS5Cfgc717.jpg' %}" alt="Team Lead" loading="lazy">
+          <img class="team-img" src="{{ member.photo.url }}" alt="{{ member.title }}" loading="lazy">
         </div>
         <div class="team-info">
-          <h3>Backend Engineering Lead</h3>
-          <div class="team-role">Senior Django / Python Developer</div>
-          <p>7+ years building production-grade backend systems, APIs, and data pipelines for high-growth companies.</p>
+          <h3>{{ member.title }}</h3>
+          <div class="team-role">{{ member.role }}</div>
+          <p>{{ member.bio }}</p>
+          {% if member.skill_list %}
           <div class="team-skills">
-            <span class="team-skill">Django</span>
-            <span class="team-skill">Python</span>
-            <span class="team-skill">PostgreSQL</span>
-            <span class="team-skill">AWS</span>
+            {% for skill in member.skill_list %}
+            <span class="team-skill">{{ skill }}</span>
+            {% endfor %}
           </div>
+          {% endif %}
         </div>
       </div>
-      <div class="team-card animate-up delay-2">
-        <div class="team-img-wrap">
-          <img class="team-img" src="{% static 'assets/images/zdlF4pVvQUrfmpTAxk21ZbXt4b4c717.jpg' %}" alt="Frontend Lead" loading="lazy">
-        </div>
-        <div class="team-info">
-          <h3>Frontend Engineering Lead</h3>
-          <div class="team-role">React / Next.js Specialist</div>
-          <p>Expert in React ecosystem, Next.js app architecture, and building high-performance, accessible user interfaces.</p>
-          <div class="team-skills">
-            <span class="team-skill">React</span>
-            <span class="team-skill">Next.js</span>
-            <span class="team-skill">TypeScript</span>
-            <span class="team-skill">Tailwind</span>
-          </div>
-        </div>
-      </div>
-      <div class="team-card animate-up delay-3">
-        <div class="team-img-wrap">
-          <img class="team-img" src="{% static 'assets/images/9pmV8Rjhl56Is0AguVOneDJuyccc717.jpg' %}" alt="Design Lead" loading="lazy">
-        </div>
-        <div class="team-info">
-          <h3>Product Design Lead</h3>
-          <div class="team-role">UX / Product Designer</div>
-          <p>Designs user experiences that are intuitive, conversion-focused, and aligned with both user needs and business goals.</p>
-          <div class="team-skills">
-            <span class="team-skill">Figma</span>
-            <span class="team-skill">UX Research</span>
-            <span class="team-skill">Design Systems</span>
-          </div>
-        </div>
-      </div>
+      {% endfor %}
     </div>
+    {% else %}
+    <p class="animate-up delay-1" style="text-align:center;max-width:520px;margin:0 auto;color:var(--text-muted);font-size:0.95rem;">
+      Team profiles will appear here once added in the admin. Add each person under <strong>Team members</strong> with a photo, title, role, and bio.
+    </p>
+    {% endif %}
   </div>
 </section>
 

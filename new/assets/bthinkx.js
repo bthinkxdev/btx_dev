@@ -3,6 +3,44 @@
 (function () {
   'use strict';
 
+  /* ── Ambient graphics: remove after intro fade (saves GPU; reload = replay) ── */
+  const ambientGfx = document.querySelector('.ambient-gfx');
+  if (ambientGfx && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const finish = function () {
+      ambientGfx.classList.add('ambient-gfx--done');
+    };
+    ambientGfx.addEventListener('animationend', function (e) {
+      if (e.target === ambientGfx && e.animationName === 'ambientGfxIntro') finish();
+    });
+    setTimeout(finish, 5000);
+  } else if (ambientGfx && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    ambientGfx.classList.add('ambient-gfx--done');
+  }
+
+  /* ── WhatsApp: every 15s highlight + “Connect with us” tooltip ── */
+  const waWrap = document.getElementById('whatsappFloatWrap');
+  const waTip = document.getElementById('whatsappTooltip');
+  const waReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (waWrap && !waReduced) {
+    const INTERVAL_MS = 15000;
+    const BURST_MS = 3200;
+    function waBurst() {
+      waWrap.classList.add('wa-burst');
+      if (waTip) {
+        waTip.setAttribute('aria-hidden', 'false');
+      }
+      clearTimeout(waWrap._waHide);
+      waWrap._waHide = setTimeout(function () {
+        waWrap.classList.remove('wa-burst');
+        if (waTip) waTip.setAttribute('aria-hidden', 'true');
+      }, BURST_MS);
+    }
+    setTimeout(function () {
+      waBurst();
+      setInterval(waBurst, INTERVAL_MS);
+    }, INTERVAL_MS);
+  }
+
   /* ── Cursor glow ── */
   const glow = document.getElementById('cursor-glow');
   if (glow) {
@@ -119,13 +157,36 @@
     });
   }
 
-  /* Standalone blog tabs */
-  document.querySelectorAll('.blog-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.blog-tab').forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
+  /* Close menu after clicking a Services submenu link (still jumps to #section) */
+  document.querySelectorAll('.pill-dropdown a.services-nav-link, #mobileNav a.services-nav-link').forEach(a => {
+    a.addEventListener('click', () => {
+      closeDropdown();
+      closeMobileNav();
     });
   });
+
+  /* Blog listing: topic filters + hide cards by category */
+  const blogFilterTabs = document.querySelectorAll('.blog-filter-tabs [data-blog-filter]');
+  if (blogFilterTabs.length) {
+    blogFilterTabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        const f = tab.getAttribute('data-blog-filter');
+        blogFilterTabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        document.querySelectorAll('[data-blog-category]').forEach(el => {
+          const c = el.getAttribute('data-blog-category');
+          el.style.display = f === 'all' || f === c ? '' : 'none';
+        });
+      });
+    });
+  } else {
+    document.querySelectorAll('.blog-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.blog-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+      });
+    });
+  }
 
   /* ── Contact form ── */
   const contactForm = document.getElementById('contactForm');

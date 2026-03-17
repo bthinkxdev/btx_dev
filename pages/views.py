@@ -2,33 +2,144 @@ import logging
 
 from django.conf import settings
 from django.core.mail import send_mail
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import ensure_csrf_cookie
-from .forms import ContactForm
+
+from .forms import ContactForm, NewsletterSubscribeForm
+from .models import (
+    BlogPageSettings,
+    BlogPost,
+    NewsletterSubscriber,
+    Project,
+    TeamMember,
+    TeamSection,
+)
 
 logger = logging.getLogger(__name__)
 
-
 def index(request):
-    return render(request, 'pages/index.html')
-
+    homepage_projects = (
+        Project.objects.filter(show_on_homepage=True)
+        .filter(image__isnull=False)
+        .exclude(image='')
+        .order_by('sort_order', '-year', '-created_at')[:4]
+    )
+    return render(request, 'pages/index.html', {'homepage_projects': homepage_projects})
 
 def services(request):
     return render(request, 'pages/services.html')
 
-
 def portfolio(request):
-    return render(request, 'pages/portfolio.html')
+    with_image = Project.objects.filter(image__isnull=False).exclude(image='')
+    featured_project = (
+        with_image.filter(is_featured=True)
+        .order_by('sort_order', '-year', '-created_at')
+        .first()
+    )
+    other_projects = with_image.order_by('sort_order', '-year', '-created_at')
+    if featured_project:
+        other_projects = other_projects.exclude(pk=featured_project.pk)
+
+    context = {
+        'featured_project': featured_project,
+        'projects': other_projects,
+    }
+    return render(request, 'pages/portfolio.html', context)
 
 
 def about(request):
-    return render(request, 'pages/about.html')
+    team_section = TeamSection.objects.first()
+    team_members = (
+        TeamMember.objects.filter(is_active=True)
+        .filter(photo__isnull=False)
+        .exclude(photo='')
+        .order_by('sort_order', 'id')
+    )
+    return render(
+        request,
+        'pages/about.html',
+        {
+            'team_section': team_section,
+            'team_members': team_members,
+        },
+    )
 
 
 def blog(request):
-    return render(request, 'pages/blog.html')
+    blog_settings = BlogPageSettings.objects.first()
+    posts = list(
+        BlogPost.objects.filter(is_published=True)
+        .filter(featured_image__isnull=False)
+        .exclude(featured_image='')
+        .order_by('-published_at')
+    )
+    featured_post = None
+    sidebar_posts = []
+    grid_posts = []
+    if posts:
+        featured_post = next((p for p in posts if p.is_featured), None) or posts[0]
+        rest = [p for p in posts if p.pk != featured_post.pk]
+        sidebar_posts = rest[:3]
+        grid_posts = rest[3:]
+
+    listed = []
+    if featured_post:
+        listed.append(featured_post)
+    listed.extend(sidebar_posts)
+    listed.extend(grid_posts)
+    seen_cat = set()
+    blog_categories = []
+    for p in sorted(listed, key=lambda x: (x.category.lower(), x.title)):
+        if p.category_slug not in seen_cat:
+            seen_cat.add(p.category_slug)
+            blog_categories.append({'name': p.category, 'slug': p.category_slug})
+
+    return render(
+        request,
+        'pages/blog.html',
+        {
+            'blog_settings': blog_settings,
+            'featured_post': featured_post,
+            'sidebar_posts': sidebar_posts,
+            'grid_posts': grid_posts,
+            'blog_categories': blog_categories,
+        },
+    )
+
+
+@require_http_methods(['POST'])
+def newsletter_subscribe(request):
+    form = NewsletterSubscribeForm(request.POST)
+    if form.is_valid():
+        form.save()
+        return JsonResponse(
+            {
+                'success': True,
+                'message': "You're subscribed. We'll email you when we publish new articles.",
+            }
+        )
+    err = form.errors.get('email', ['Enter a valid email address.'])[0]
+    return JsonResponse({'success': False, 'message': str(err)}, status=400)
+
+
+def newsletter_unsubscribe(request, token):
+    sub = NewsletterSubscriber.objects.filter(unsubscribe_token=token).first()
+    if not sub:
+        return render(request, 'pages/newsletter_unsubscribed.html', {'ok': False}, status=404)
+    if sub.is_active:
+        sub.is_active = False
+        sub.save(update_fields=['is_active'])
+    return render(request, 'pages/newsletter_unsubscribed.html', {'ok': True})
+
+
+def blog_post(request, slug):
+    post = get_object_or_404(
+        BlogPost.objects.filter(is_published=True),
+        slug=slug,
+    )
+    return render(request, 'pages/blog_post.html', {'post': post})
 
 
 @ensure_csrf_cookie

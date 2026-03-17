@@ -137,240 +137,99 @@
 {% endblock %}
 
 {% block content %}
-<!-- PAGE HERO -->
 <div class="page-hero">
   <div class="container">
-    <div class="badge animate-up" style="margin: 0 auto 18px;">Insights & Guides</div>
-    <h1 class="animate-up delay-1">The BThinkX Dev Blog</h1>
-    <p class="animate-up delay-2">Deep dives into e-commerce engineering, AI automation, modern web development, and scaling digital products.</p>
+    <div class="badge animate-up" style="margin: 0 auto 18px;">{% if blog_settings %}{{ blog_settings.hero_badge }}{% else %}Insights &amp; Guides{% endif %}</div>
+    <h1 class="animate-up delay-1">{% if blog_settings %}{{ blog_settings.hero_heading }}{% else %}The BThinkX Dev Blog{% endif %}</h1>
+    <p class="animate-up delay-2">{% if blog_settings %}{{ blog_settings.hero_subheading }}{% else %}Deep dives into e-commerce engineering, AI automation, modern web development, and scaling digital products.{% endif %}</p>
   </div>
 </div>
 
 <section>
   <div class="container">
-
-    <!-- Featured Post + Sidebar -->
+    {% if featured_post or sidebar_posts or grid_posts %}
     <div class="blog-featured animate-up">
-      <a href="#" class="blog-featured-card" style="text-decoration:none;">
+      {% if featured_post %}
+      <a href="{% url 'pages:blog_post' featured_post.slug %}" class="blog-featured-card" style="text-decoration:none;" data-blog-category="{{ featured_post.category_slug }}">
         <div class="featured-thumb">
-          <img src="{% static 'assets/images/CN6LevoxCwc2wM9z513MTNApD4Uc8d8.jpg' %}" alt="Scaling E-commerce Platforms" loading="lazy">
+          <img src="{{ featured_post.featured_image.url }}" alt="{{ featured_post.title }}" loading="lazy">
         </div>
         <div class="featured-body">
-          <span class="blog-tag">E-commerce</span>
-          <h2>How to Scale an E-commerce Platform from 10K to 1M Orders</h2>
-          <p>The architectural decisions, database patterns, and caching strategies that make the difference between a store that breaks at scale and one that handles Black Friday traffic without breaking a sweat.</p>
-          <div style="display:flex;align-items:center;gap:16px;">
+          <span class="blog-tag">{{ featured_post.category }}</span>
+          <h2>{{ featured_post.title }}</h2>
+          <p>{{ featured_post.excerpt }}</p>
+          <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
             <span class="blog-read-more">Read Article <svg class="btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
-            <span class="blog-date">March 2026 Â· 12 min read</span>
+            <span class="blog-date">{{ featured_post.published_at|date:"F Y" }}{% if featured_post.read_time_minutes %} · {{ featured_post.read_time_minutes }} min read{% endif %}</span>
           </div>
         </div>
       </a>
+      {% endif %}
 
       <div class="blog-sidebar">
-        <a href="#" class="blog-mini-card" style="text-decoration:none;">
+        {% for post in sidebar_posts %}
+        <a href="{% url 'pages:blog_post' post.slug %}" class="blog-mini-card" style="text-decoration:none;" data-blog-category="{{ post.category_slug }}">
           <div class="blog-mini-thumb">
-            <img src="{% static 'assets/images/HGUyRo3Ko6fOp6Ks3LrpzaNBBVkfef8.jpg' %}" alt="AI in Business" loading="lazy">
+            <img src="{{ post.featured_image.url }}" alt="{{ post.title }}" loading="lazy">
           </div>
           <div class="blog-mini-body">
-            <span class="blog-tag">AI / Automation</span>
-            <h4>Integrating OpenAI into Production Django Apps</h4>
-            <span class="blog-date">Feb 2026</span>
+            <span class="blog-tag">{{ post.category }}</span>
+            <h4>{{ post.title }}</h4>
+            <span class="blog-date">{{ post.published_at|date:"M Y" }}</span>
           </div>
         </a>
-        <a href="#" class="blog-mini-card" style="text-decoration:none;">
-          <div class="blog-mini-thumb">
-            <img src="{% static 'assets/images/Rjwq6SPWHl5dLNnlsMTBgNGsewe8c1.jpg' %}" alt="Next.js" loading="lazy">
-          </div>
-          <div class="blog-mini-body">
-            <span class="blog-tag">Web Dev</span>
-            <h4>Next.js App Router: What Changed and What Still Works</h4>
-            <span class="blog-date">Feb 2026</span>
-          </div>
-        </a>
-        <a href="#" class="blog-mini-card" style="text-decoration:none;">
-          <div class="blog-mini-thumb">
-            <img src="{% static 'assets/images/DiXxGZkzHIAgH7qrHyIAOf2yXJIefe1.jpg' %}" alt="Growth Systems" loading="lazy">
-          </div>
-          <div class="blog-mini-body">
-            <span class="blog-tag">Growth</span>
-            <h4>Building a Digital Growth System That Compounds Over Time</h4>
-            <span class="blog-date">Jan 2026</span>
-          </div>
-        </a>
+        {% endfor %}
       </div>
     </div>
 
-    <!-- Filter Tabs -->
-    <div class="blog-filter-tabs animate-up">
-      <button class="blog-tab active">All Topics</button>
-      <button class="blog-tab">E-commerce</button>
-      <button class="blog-tab">AI & Automation</button>
-      <button class="blog-tab">Web Development</button>
-      <button class="blog-tab">Growth Systems</button>
-      <button class="blog-tab">Django</button>
-      <button class="blog-tab">React</button>
+    <div class="blog-filter-tabs animate-up" data-tab-group="blog">
+      <button type="button" class="blog-tab active" data-blog-filter="all">All Topics</button>
+      {% for cat in blog_categories %}
+      <button type="button" class="blog-tab" data-blog-filter="{{ cat.slug }}">{{ cat.name }}</button>
+      {% endfor %}
     </div>
 
-    <!-- All Posts Grid -->
     <div class="blog-grid">
-
-      <a href="#" class="blog-card animate-up delay-1" style="text-decoration:none;">
+      {% for post in grid_posts %}
+      <a href="{% url 'pages:blog_post' post.slug %}" class="blog-card animate-up {% cycle 'delay-1' 'delay-2' 'delay-3' %}" style="text-decoration:none;" data-blog-category="{{ post.category_slug }}">
         <div class="blog-thumb">
-          <img src="{% static 'assets/images/tPqHwKj0H2QZxoHvnhGA5OvON893c4.jpg' %}" alt="E-commerce Performance" loading="lazy">
+          <img src="{{ post.featured_image.url }}" alt="{{ post.title }}" loading="lazy">
         </div>
         <div class="blog-body">
           <div class="blog-meta">
-            <span class="blog-tag">E-commerce</span>
-            <span class="blog-date">March 10, 2026</span>
+            <span class="blog-tag">{{ post.category }}</span>
+            <span class="blog-date">{{ post.published_at|date:"F j, Y" }}</span>
           </div>
-          <h3>Core Web Vitals for E-commerce: A Complete Technical Guide</h3>
-          <p>How to measure, diagnose, and fix LCP, CLS, and INP on high-traffic product pages using real-world techniques.</p>
+          <h3>{{ post.title }}</h3>
+          <p>{{ post.excerpt }}</p>
           <span class="blog-read-more">Read More <svg class="btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
         </div>
       </a>
-
-      <a href="#" class="blog-card animate-up delay-2" style="text-decoration:none;">
-        <div class="blog-thumb">
-          <img src="{% static 'assets/images/LZvOnAeAC86C9fYtXWPMEmCFXYk6442.jpg' %}" alt="RAG Applications" loading="lazy">
-        </div>
-        <div class="blog-body">
-          <div class="blog-meta">
-            <span class="blog-tag">AI / Automation</span>
-            <span class="blog-date">March 5, 2026</span>
-          </div>
-          <h3>Building Production RAG Applications with LangChain and Django</h3>
-          <p>A practical walkthrough of building, evaluating, and deploying a RAG system that actually works in production environments.</p>
-          <span class="blog-read-more">Read More <svg class="btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
-        </div>
-      </a>
-
-      <a href="#" class="blog-card animate-up delay-3" style="text-decoration:none;">
-        <div class="blog-thumb">
-          <img src="{% static 'assets/images/gEGt81C3YZFSpxbB1qa5dt9dM945d.jpg' %}" alt="SaaS Architecture" loading="lazy">
-        </div>
-        <div class="blog-body">
-          <div class="blog-meta">
-            <span class="blog-tag">Web Dev</span>
-            <span class="blog-date">Feb 28, 2026</span>
-          </div>
-          <h3>Multi-Tenant SaaS Architecture Patterns in Django 5</h3>
-          <p>The three main approaches to multi-tenancy in Django — schema-based, row-based, and database-per-tenant — and when to use each one.</p>
-          <span class="blog-read-more">Read More <svg class="btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
-        </div>
-      </a>
-
-      <a href="#" class="blog-card animate-up delay-1" style="text-decoration:none;">
-        <div class="blog-thumb">
-          <img src="{% static 'assets/images/L4oyRbGGv65UpD8tSz5jSpwsiXc2c08.jpg' %}" alt="Headless Commerce" loading="lazy">
-        </div>
-        <div class="blog-body">
-          <div class="blog-meta">
-            <span class="blog-tag">E-commerce</span>
-            <span class="blog-date">Feb 20, 2026</span>
-          </div>
-          <h3>Headless Commerce vs Traditional: Which Is Right for Your Business?</h3>
-          <p>An honest breakdown of when headless e-commerce makes sense — and when it's overkill that will slow you down.</p>
-          <span class="blog-read-more">Read More <svg class="btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
-        </div>
-      </a>
-
-      <a href="#" class="blog-card animate-up delay-2" style="text-decoration:none;">
-        <div class="blog-thumb">
-          <img src="{% static 'assets/images/hajcoZAfhm9MXDuOSNR6Z51qhU4850.jpg' %}" alt="Celery Task Queues" loading="lazy">
-        </div>
-        <div class="blog-body">
-          <div class="blog-meta">
-            <span class="blog-tag">Django</span>
-            <span class="blog-date">Feb 14, 2026</span>
-          </div>
-          <h3>Django Celery in Production: Patterns for Reliable Background Jobs</h3>
-          <p>Task retries, monitoring with Flower, preventing duplicates, and the patterns we use on every Django production system we build.</p>
-          <span class="blog-read-more">Read More <svg class="btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
-        </div>
-      </a>
-
-      <a href="#" class="blog-card animate-up delay-3" style="text-decoration:none;">
-        <div class="blog-thumb">
-          <img src="{% static 'assets/images/wYTfVdBneZIe0GOfvDFs9JJQVo3696.jpg' %}" alt="Digital Growth Systems" loading="lazy">
-        </div>
-        <div class="blog-body">
-          <div class="blog-meta">
-            <span class="blog-tag">Growth Systems</span>
-            <span class="blog-date">Feb 7, 2026</span>
-          </div>
-          <h3>The 5 Analytics Stacks We Recommend in 2026</h3>
-          <p>GA4, Segment, Mixpanel, PostHog, and Plausible — compared honestly with real setup costs, learning curves, and trade-offs.</p>
-          <span class="blog-read-more">Read More <svg class="btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
-        </div>
-      </a>
-
-      <a href="#" class="blog-card animate-up delay-1" style="text-decoration:none;">
-        <div class="blog-thumb">
-          <img src="{% static 'assets/images/MjRs0XwTMjgcxacS6QONLHJpX90317a.jpg' %}" alt="React Server Components" loading="lazy">
-        </div>
-        <div class="blog-body">
-          <div class="blog-meta">
-            <span class="blog-tag">React</span>
-            <span class="blog-date">Jan 28, 2026</span>
-          </div>
-          <h3>React Server Components: What They Are and When to Use Them</h3>
-          <p>A clear explanation of RSC with practical examples from real projects — where they help performance and where they add complexity.</p>
-          <span class="blog-read-more">Read More <svg class="btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
-        </div>
-      </a>
-
-      <a href="#" class="blog-card animate-up delay-2" style="text-decoration:none;">
-        <div class="blog-thumb">
-          <img src="{% static 'assets/images/4WRdapoL1fjAVxgeRVe1ERfi65w18d6.jpg' %}" alt="Automation ROI" loading="lazy">
-        </div>
-        <div class="blog-body">
-          <div class="blog-meta">
-            <span class="blog-tag">AI / Automation</span>
-            <span class="blog-date">Jan 20, 2026</span>
-          </div>
-          <h3>Calculating the ROI of Business Process Automation</h3>
-          <p>A framework for measuring time savings, error reduction, and cost per outcome when automating business workflows with software.</p>
-          <span class="blog-read-more">Read More <svg class="btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
-        </div>
-      </a>
-
-      <a href="#" class="blog-card animate-up delay-3" style="text-decoration:none;">
-        <div class="blog-thumb">
-          <img src="{% static 'assets/images/l0PcWoiiQGav82bvoukxu8hej04427.jpg' %}" alt="PostgreSQL Performance" loading="lazy">
-        </div>
-        <div class="blog-body">
-          <div class="blog-meta">
-            <span class="blog-tag">Web Dev</span>
-            <span class="blog-date">Jan 12, 2026</span>
-          </div>
-          <h3>PostgreSQL Query Optimization: From Slow to Fast in Real Apps</h3>
-          <p>The exact EXPLAIN ANALYZE workflow, index strategies, and common N+1 patterns we debug when onboarding new Django projects.</p>
-          <span class="blog-read-more">Read More <svg class="btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
-        </div>
-      </a>
-
+      {% endfor %}
     </div>
-
-    <div style="text-align:center;margin-top:48px;" class="animate-up">
-      <button class="btn btn-secondary btn-lg">Load More Articles</button>
-    </div>
-
+    {% else %}
+    <p class="animate-up" style="text-align:center;max-width:520px;margin:0 auto 48px;color:var(--text-muted);">
+      No articles yet. Add <strong>Blog posts</strong> in the admin (title, slug, category, excerpt, body, featured image, publish date). Mark one as featured for the hero card.
+    </p>
+    {% endif %}
   </div>
 </section>
 
-<!-- NEWSLETTER -->
 <section class="newsletter-section">
   <div class="container">
     <div class="newsletter-inner">
       <div class="animate-up">
-        <div class="badge" style="margin-bottom:16px;">Stay Updated</div>
-        <h2>Get Weekly Engineering Insights</h2>
-        <p>No fluff. Just practical deep dives on building scalable digital products — straight to your inbox every week.</p>
-        <p style="font-size:0.82rem;margin-top:12px;color:var(--text-muted);">Join 1,200+ engineers and founders who already subscribe.</p>
+        <div class="badge" style="margin-bottom:16px;">{% if blog_settings %}{{ blog_settings.newsletter_badge }}{% else %}Stay Updated{% endif %}</div>
+        <h2>{% if blog_settings %}{{ blog_settings.newsletter_heading }}{% else %}Get Weekly Engineering Insights{% endif %}</h2>
+        <p>{% if blog_settings %}{{ blog_settings.newsletter_text }}{% else %}No fluff. Just practical deep dives on building scalable digital products — straight to your inbox every week.{% endif %}</p>
+        {% if blog_settings.newsletter_subtext %}
+        <p style="font-size:0.82rem;margin-top:12px;color:var(--text-muted);">{{ blog_settings.newsletter_subtext }}</p>
+        {% endif %}
       </div>
       <div class="animate-up delay-2">
-        <form class="newsletter-form" onsubmit="event.preventDefault(); this.innerHTML='<p style=\'color:var(--accent);font-weight:600;\'>&#10003; You\'re subscribed! Welcome aboard.</p>'">
-          <input type="email" placeholder="your@email.com" required>
+        <form class="newsletter-form" id="blogNewsletterForm" method="post" action="{% url 'pages:newsletter_subscribe' %}">
+          {% csrf_token %}
+          <input type="email" name="email" placeholder="your@email.com" required autocomplete="email">
           <button type="submit" class="btn btn-primary">Subscribe</button>
         </form>
         <p style="font-size:0.78rem;color:var(--text-muted);margin-top:12px;">No spam, ever. Unsubscribe anytime with one click.</p>
@@ -378,4 +237,44 @@
     </div>
   </div>
 </section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  var form = document.getElementById('blogNewsletterForm');
+  if (!form) return;
+  var tokenInput = form.querySelector('[name=csrfmiddlewaretoken]');
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var btn = form.querySelector('button[type="submit"]');
+    var input = form.querySelector('input[name="email"]');
+    if (!input.value.trim()) return;
+    btn.disabled = true;
+    var body = 'email=' + encodeURIComponent(input.value.trim());
+    fetch(form.action, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-CSRFToken': tokenInput ? tokenInput.value : ''
+      },
+      body: body,
+      credentials: 'same-origin'
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (x) {
+        if (x.ok && x.d.success) {
+          form.innerHTML = '<p style="color:var(--accent);font-weight:600;">✓ ' + (x.d.message || 'Subscribed.') + '</p>';
+        } else {
+          btn.disabled = false;
+          alert(x.d.message || 'Please check your email address.');
+        }
+      })
+      .catch(function () {
+        btn.disabled = false;
+        alert('Something went wrong. Try again.');
+      });
+  });
+})();
+</script>
 {% endblock %}

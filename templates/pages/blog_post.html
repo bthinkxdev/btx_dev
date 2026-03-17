@@ -1,0 +1,64 @@
+{% extends 'pages/base.html' %}
+{% load static %}
+
+{% block title %}{{ post.title }} — BThinkX Dev{% endblock %}
+{% block meta_description %}{{ post.get_meta_description }}{% endblock %}
+
+{% block extra_head %}
+<style>
+:root { --font-display: "Inter Tight", "Inter", system-ui, sans-serif; }
+    .blog-article-hero { padding-bottom: 32px; border-bottom: 1px solid var(--border); margin-bottom: 40px; }
+    .blog-article-hero .blog-tag { display: inline-block; margin-bottom: 14px; }
+    .blog-article-hero h1 { font-size: clamp(1.5rem, 4vw, 2.1rem); margin-bottom: 16px; line-height: 1.2; }
+    .blog-article-meta { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 28px; }
+    .blog-article-thumb {
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      margin-bottom: 36px;
+      aspect-ratio: 21/9;
+      max-height: 420px;
+    }
+    .blog-article-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .blog-article-body {
+      max-width: 720px;
+      margin: 0 auto;
+      font-size: 1.02rem;
+      line-height: 1.75;
+      color: var(--text-secondary);
+    }
+    .blog-article-body p { margin-bottom: 1.25em; }
+    .blog-back { margin-top: 48px; text-align: center; }
+    @media(max-width:768px){
+      .blog-article-thumb{aspect-ratio:16/9;max-height:none}
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<article class="page-hero" style="padding-bottom: 0;">
+  <div class="container">
+    <div class="blog-article-hero animate-up">
+      <a href="{% url 'pages:blog' %}" class="blog-read-more" style="margin-bottom:20px;display:inline-flex;">← Back to Blog</a>
+      <span class="blog-tag">{{ post.category }}</span>
+      <h1>{{ post.title }}</h1>
+      <div class="blog-article-meta">
+        {{ post.published_at|date:"F j, Y" }}
+        {% if post.read_time_minutes %}· {{ post.read_time_minutes }} min read{% endif %}
+      </div>
+      {% if post.featured_image %}
+      <div class="blog-article-thumb">
+        <img src="{{ post.featured_image.url }}" alt="{{ post.title }}" loading="eager">
+      </div>
+      {% endif %}
+    </div>
+    <div class="blog-article-body animate-up delay-1">
+      {{ post.body|linebreaks }}
+    </div>
+    <div class="blog-back animate-up">
+      <a href="{% url 'pages:blog' %}" class="btn btn-secondary">More articles</a>
+      <a href="{% url 'pages:contact' %}" class="btn btn-primary" style="margin-left:12px;">Work with us</a>
+    </div>
+  </div>
+</article>
+{% endblock %}

@@ -151,197 +151,79 @@
     <!-- Projects Grid -->
     <div class="projects-grid" id="projectsGrid">
 
-      <!-- Featured: E-commerce Platform -->
-      <div class="project-card featured animate-up delay-1" data-category="ecommerce">
+      {% if featured_project %}
+      <div class="project-card featured animate-up delay-1" data-category="{{ featured_project.category }}">
         <div class="project-img-wrap">
-          <img class="project-img" src="{% static 'assets/images/CN6LevoxCwc2wM9z513MTNApD4Uc8d8.jpg' %}" alt="Enterprise E-commerce Platform" loading="lazy">
+          <img
+            class="project-img"
+            src="{{ featured_project.image.url }}"
+            alt="{{ featured_project.title }}"
+            loading="lazy"
+          >
         </div>
         <div class="project-body">
           <div class="project-meta">
-            <span class="project-cat">E-commerce Platform</span>
-            <span class="project-year">2025</span>
+            <span class="project-cat">
+              {% if featured_project.get_category_display %}
+                {{ featured_project.get_category_display }}
+              {% else %}
+                {{ featured_project.category|title }}
+              {% endif %}
+            </span>
+            {% if featured_project.year %}
+            <span class="project-year">{{ featured_project.year }}</span>
+            {% endif %}
           </div>
-          <h3>Enterprise Multi-Vendor Marketplace</h3>
-          <p>A large-scale B2B marketplace serving 300+ vendors and 50,000+ SKUs. Built with headless Next.js frontend, Django REST API backend, and real-time inventory tracking.</p>
+          <h3>{{ featured_project.title }}</h3>
+          <p>{{ featured_project.short_description }}</p>
+          {% if featured_project.stack.all %}
           <div class="project-stack">
-            <span class="stack-tag">Next.js</span>
-            <span class="stack-tag">Django</span>
-            <span class="stack-tag">PostgreSQL</span>
-            <span class="stack-tag">Redis</span>
-            <span class="stack-tag">AWS</span>
-            <span class="stack-tag">Stripe</span>
+            {% for tag in featured_project.stack.all %}
+              <span class="stack-tag">{{ tag.name }}</span>
+            {% endfor %}
           </div>
-          <div class="results-strip">
-            <div class="result-item"><div class="result-num">3x</div><div class="result-label">Revenue Growth</div></div>
-            <div class="result-item"><div class="result-num">1.2s</div><div class="result-label">Load Time</div></div>
-            <div class="result-item"><div class="result-num">+68%</div><div class="result-label">Conversion Rate</div></div>
-          </div>
+          {% endif %}
         </div>
       </div>
+      {% endif %}
 
-      <!-- AI Dashboard -->
-      <div class="project-card animate-up delay-2" data-category="saas">
+      {% for project in projects %}
+      <div class="project-card animate-up delay-{{ forloop.counter|add:1|divisibleby:3|yesno:'3,2' }}" data-category="{{ project.category }}">
         <div class="project-img-wrap">
-          <img class="project-img" src="{% static 'assets/images/HGUyRo3Ko6fOp6Ks3LrpzaNBBVkfef8.jpg' %}" alt="AI Business Dashboard" loading="lazy">
+          <img
+            class="project-img"
+            src="{{ project.image.url }}"
+            alt="{{ project.title }}"
+            loading="lazy"
+          >
         </div>
         <div class="project-body">
           <div class="project-meta">
-            <span class="project-cat">SaaS / AI</span>
-            <span class="project-year">2025</span>
+            <span class="project-cat">
+              {% if project.get_category_display %}
+                {{ project.get_category_display }}
+              {% else %}
+                {{ project.category|title }}
+              {% endif %}
+            </span>
+            {% if project.year %}
+            <span class="project-year">{{ project.year }}</span>
+            {% endif %}
           </div>
-          <h3>AI Business Intelligence Dashboard</h3>
-          <p>Real-time analytics platform with GPT-powered insights, predictive forecasting, and automated reporting for a fintech startup.</p>
+          <h3>{{ project.title }}</h3>
+          <p>{{ project.short_description }}</p>
+          {% if project.stack.all %}
           <div class="project-stack">
-            <span class="stack-tag">React</span>
-            <span class="stack-tag">Python</span>
-            <span class="stack-tag">OpenAI</span>
-            <span class="stack-tag">FastAPI</span>
+            {% for tag in project.stack.all %}
+              <span class="stack-tag">{{ tag.name }}</span>
+            {% endfor %}
           </div>
+          {% endif %}
         </div>
       </div>
-
-      <!-- CRM System -->
-      <div class="project-card animate-up delay-3" data-category="software">
-        <div class="project-img-wrap">
-          <img class="project-img" src="{% static 'assets/images/Rjwq6SPWHl5dLNnlsMTBgNGsewe8c1.jpg' %}" alt="Custom CRM" loading="lazy">
-        </div>
-        <div class="project-body">
-          <div class="project-meta">
-            <span class="project-cat">Custom Software</span>
-            <span class="project-year">2025</span>
-          </div>
-          <h3>Custom CRM & Sales Pipeline System</h3>
-          <p>A full-featured CRM replacing Salesforce for a 200-person sales team — custom workflows, reporting, and email integration.</p>
-          <div class="project-stack">
-            <span class="stack-tag">MERN Stack</span>
-            <span class="stack-tag">AWS Lambda</span>
-            <span class="stack-tag">MongoDB</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Marketing Automation -->
-      <div class="project-card animate-up delay-1" data-category="automation">
-        <div class="project-img-wrap">
-          <img class="project-img" src="{% static 'assets/images/tPqHwKj0H2QZxoHvnhGA5OvON893c4.jpg' %}" alt="Marketing Automation" loading="lazy">
-        </div>
-        <div class="project-body">
-          <div class="project-meta">
-            <span class="project-cat">Automation</span>
-            <span class="project-year">2024</span>
-          </div>
-          <h3>Marketing Automation Platform</h3>
-          <p>Multi-channel campaign orchestration with AI-powered audience segmentation, A/B testing, and attribution modeling.</p>
-          <div class="project-stack">
-            <span class="stack-tag">React</span>
-            <span class="stack-tag">Django</span>
-            <span class="stack-tag">Celery</span>
-            <span class="stack-tag">Redis</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Subscription Ecommerce -->
-      <div class="project-card animate-up delay-2" data-category="ecommerce">
-        <div class="project-img-wrap">
-          <img class="project-img" src="{% static 'assets/images/gEGt81C3YZFSpxbB1qa5dt9dM945d.jpg' %}" alt="Subscription Box Platform" loading="lazy">
-        </div>
-        <div class="project-body">
-          <div class="project-meta">
-            <span class="project-cat">E-commerce</span>
-            <span class="project-year">2024</span>
-          </div>
-          <h3>Subscription Box E-commerce Platform</h3>
-          <p>Custom subscription commerce platform with recurring billing, box curation tools, and customer portal.</p>
-          <div class="project-stack">
-            <span class="stack-tag">Next.js</span>
-            <span class="stack-tag">Stripe Billing</span>
-            <span class="stack-tag">Node.js</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- ERP System -->
-      <div class="project-card animate-up delay-3" data-category="software">
-        <div class="project-img-wrap">
-          <img class="project-img" src="{% static 'assets/images/DiXxGZkzHIAgH7qrHyIAOf2yXJIefe1.jpg' %}" alt="ERP System" loading="lazy">
-        </div>
-        <div class="project-body">
-          <div class="project-meta">
-            <span class="project-cat">Enterprise Software</span>
-            <span class="project-year">2024</span>
-          </div>
-          <h3>Manufacturing ERP System</h3>
-          <p>Production tracking, procurement, warehouse management, and financial reporting for a mid-size manufacturer.</p>
-          <div class="project-stack">
-            <span class="stack-tag">Django</span>
-            <span class="stack-tag">React</span>
-            <span class="stack-tag">PostgreSQL</span>
-            <span class="stack-tag">Docker</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- SaaS HR Platform -->
-      <div class="project-card animate-up delay-1" data-category="saas">
-        <div class="project-img-wrap">
-          <img class="project-img" src="{% static 'assets/images/L4oyRbGGv65UpD8tSz5jSpwsiXc2c08.jpg' %}" alt="HR SaaS Platform" loading="lazy">
-        </div>
-        <div class="project-body">
-          <div class="project-meta">
-            <span class="project-cat">SaaS</span>
-            <span class="project-year">2024</span>
-          </div>
-          <h3>HR Management SaaS Platform</h3>
-          <p>Multi-tenant HR platform with employee management, payroll, leave tracking, and performance review modules.</p>
-          <div class="project-stack">
-            <span class="stack-tag">Next.js</span>
-            <span class="stack-tag">Django REST</span>
-            <span class="stack-tag">PostgreSQL</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Chatbot -->
-      <div class="project-card animate-up delay-2" data-category="automation">
-        <div class="project-img-wrap">
-          <img class="project-img" src="{% static 'assets/images/LZvOnAeAC86C9fYtXWPMEmCFXYk6442.jpg' %}" alt="AI Chatbot" loading="lazy">
-        </div>
-        <div class="project-body">
-          <div class="project-meta">
-            <span class="project-cat">AI / Automation</span>
-            <span class="project-year">2024</span>
-          </div>
-          <h3>AI Customer Support Chatbot</h3>
-          <p>RAG-powered chatbot trained on product documentation that handles 70% of support tickets automatically.</p>
-          <div class="project-stack">
-            <span class="stack-tag">Python</span>
-            <span class="stack-tag">LangChain</span>
-            <span class="stack-tag">OpenAI</span>
-            <span class="stack-tag">Pinecone</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Headless CMS -->
-      <div class="project-card animate-up delay-3" data-category="software">
-        <div class="project-img-wrap">
-          <img class="project-img" src="{% static 'assets/images/hajcoZAfhm9MXDuOSNR6Z51qhU4850.jpg' %}" alt="Digital Publishing Platform" loading="lazy">
-        </div>
-        <div class="project-body">
-          <div class="project-meta">
-            <span class="project-cat">Software</span>
-            <span class="project-year">2023</span>
-          </div>
-          <h3>Digital Publishing Platform</h3>
-          <p>Headless CMS with multi-language support, SEO tools, and content scheduling for a media company with 2M monthly readers.</p>
-          <div class="project-stack">
-            <span class="stack-tag">Next.js</span>
-            <span class="stack-tag">Sanity CMS</span>
-            <span class="stack-tag">Vercel</span>
-          </div>
-        </div>
-      </div>
+      {% empty %}
+      <p>No projects have been added yet. Please add projects in the admin.</p>
+      {% endfor %}
 
     </div>
   </div>

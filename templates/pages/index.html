@@ -41,30 +41,30 @@
         </div>
       </div>
       <div class="hero-right animate-up delay-2">
-        <div class="hero-card-1">
-          <div class="hc-icon purple">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
-          </div>
-          <div class="hc-text">
-            <h5>Revenue Growth</h5>
-            <span>Avg. 3x after launch</span>
-          </div>
-        </div>
-        <div class="hero-card-2">
-          <div class="hc-icon teal">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4"/></svg>
-          </div>
-          <div class="hc-text">
-            <h5>Performance Score</h5>
-            <span>95+ Core Web Vitals</span>
-          </div>
-        </div>
         <div class="hero-visual">
           <img src="{% static 'assets/images/DiXxGZkzHIAgH7qrHyIAOf2yXJIefe1.jpg' %}" alt="BThinkX Dev — Digital Dashboard" loading="eager">
           <div class="hero-visual-overlay"></div>
+          <div class="hero-card-1">
+            <div class="hc-icon purple">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+            </div>
+            <div class="hc-text">
+              <h5>Revenue Growth</h5>
+              <span>Avg. 3x after launch</span>
+            </div>
+          </div>
+          <div class="hero-card-2">
+            <div class="hc-icon teal">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4"/></svg>
+            </div>
+            <div class="hc-text">
+              <h5>Sucessfully Launched</h5>
+              <span>95+ Stores</span>
+            </div>
+          </div>
           <div class="hero-floating-badge">
             <div class="live-dot"></div>
-            <span>Available for new projects</span>
+            <span>We are ready to launch your store</span>
           </div>
         </div>
       </div>
@@ -189,54 +189,87 @@
       <p class="animate-up delay-2">From enterprise platforms to intelligent SaaS systems — a sample of what we build.</p>
     </div>
     <div class="portfolio-grid">
-      <div class="portfolio-card animate-up delay-1">
-        <img class="portfolio-img" src="{% static 'assets/images/CN6LevoxCwc2wM9z513MTNApD4Uc8d8.jpg' %}" alt="Enterprise E-commerce Platform" loading="lazy">
-        <div class="portfolio-overlay"></div>
-        <div class="portfolio-info">
-          <span class="portfolio-cat">E-commerce</span>
-          <h3>Enterprise E-commerce Platform</h3>
-          <p>Multi-vendor marketplace with real-time inventory and advanced analytics.</p>
-          <div class="portfolio-tags">
-            <span class="portfolio-tag">Next.js</span><span class="portfolio-tag">Django</span><span class="portfolio-tag">PostgreSQL</span>
+      {% if homepage_projects %}
+        {% for project in homepage_projects %}
+        <div class="portfolio-card animate-up delay-{{ forloop.counter }}">
+          <img
+            class="portfolio-img"
+            src="{{ project.image.url }}"
+            alt="{{ project.title }}"
+            loading="lazy"
+          >
+          <div class="portfolio-overlay"></div>
+          <div class="portfolio-info">
+            <span class="portfolio-cat">
+              {% if project.get_category_display %}
+                {{ project.get_category_display }}
+              {% else %}
+                {{ project.category|title }}
+              {% endif %}
+            </span>
+            <h3>{{ project.title }}</h3>
+            <p>{{ project.short_description }}</p>
+            {% if project.stack.all %}
+            <div class="portfolio-tags">
+              {% for tag in project.stack.all %}
+                <span class="portfolio-tag">{{ tag.name }}</span>
+              {% endfor %}
+            </div>
+            {% endif %}
           </div>
         </div>
-      </div>
-      <div class="portfolio-card animate-up delay-2">
-        <img class="portfolio-img" src="{% static 'assets/images/HGUyRo3Ko6fOp6Ks3LrpzaNBBVkfef8.jpg' %}" alt="AI Business Dashboard" loading="lazy">
-        <div class="portfolio-overlay"></div>
-        <div class="portfolio-info">
-          <span class="portfolio-cat">SaaS / AI</span>
-          <h3>AI Business Dashboard</h3>
-          <p>Intelligent analytics platform with predictive insights and automated reporting.</p>
-          <div class="portfolio-tags">
-            <span class="portfolio-tag">React</span><span class="portfolio-tag">Python</span><span class="portfolio-tag">AI/ML</span>
+        {% endfor %}
+      {% else %}
+        <!-- Fallback to static examples if no projects exist yet -->
+        <div class="portfolio-card animate-up delay-1">
+          <img class="portfolio-img" src="{% static 'assets/images/CN6LevoxCwc2wM9z513MTNApD4Uc8d8.jpg' %}" alt="Enterprise E-commerce Platform" loading="lazy">
+          <div class="portfolio-overlay"></div>
+          <div class="portfolio-info">
+            <span class="portfolio-cat">E-commerce</span>
+            <h3>Enterprise E-commerce Platform</h3>
+            <p>Multi-vendor marketplace with real-time inventory and advanced analytics.</p>
+            <div class="portfolio-tags">
+              <span class="portfolio-tag">Next.js</span><span class="portfolio-tag">Django</span><span class="portfolio-tag">PostgreSQL</span>
+            </div>
           </div>
         </div>
-      </div>
-      <div class="portfolio-card animate-up delay-3">
-        <img class="portfolio-img" src="{% static 'assets/images/Rjwq6SPWHl5dLNnlsMTBgNGsewe8c1.jpg' %}" alt="Custom CRM System" loading="lazy">
-        <div class="portfolio-overlay"></div>
-        <div class="portfolio-info">
-          <span class="portfolio-cat">Software</span>
-          <h3>Custom CRM System</h3>
-          <p>Sales pipeline management system built for a 200-person team.</p>
-          <div class="portfolio-tags">
-            <span class="portfolio-tag">MERN Stack</span><span class="portfolio-tag">AWS</span>
+        <div class="portfolio-card animate-up delay-2">
+          <img class="portfolio-img" src="{% static 'assets/images/HGUyRo3Ko6fOp6Ks3LrpzaNBBVkfef8.jpg' %}" alt="AI Business Dashboard" loading="lazy">
+          <div class="portfolio-overlay"></div>
+          <div class="portfolio-info">
+            <span class="portfolio-cat">SaaS / AI</span>
+            <h3>AI Business Dashboard</h3>
+            <p>Intelligent analytics platform with predictive insights and automated reporting.</p>
+            <div class="portfolio-tags">
+              <span class="portfolio-tag">React</span><span class="portfolio-tag">Python</span><span class="portfolio-tag">AI/ML</span>
+            </div>
           </div>
         </div>
-      </div>
-      <div class="portfolio-card animate-up delay-4">
-        <img class="portfolio-img" src="{% static 'assets/images/tPqHwKj0H2QZxoHvnhGA5OvON893c4.jpg' %}" alt="Marketing Automation" loading="lazy">
-        <div class="portfolio-overlay"></div>
-        <div class="portfolio-info">
-          <span class="portfolio-cat">Automation</span>
-          <h3>Marketing Automation Platform</h3>
-          <p>End-to-end campaign management with AI-powered audience segmentation.</p>
-          <div class="portfolio-tags">
-            <span class="portfolio-tag">React</span><span class="portfolio-tag">Django</span><span class="portfolio-tag">Redis</span>
+        <div class="portfolio-card animate-up delay-3">
+          <img class="portfolio-img" src="{% static 'assets/images/Rjwq6SPWHl5dLNnlsMTBgNGsewe8c1.jpg' %}" alt="Custom CRM System" loading="lazy">
+          <div class="portfolio-overlay"></div>
+          <div class="portfolio-info">
+            <span class="portfolio-cat">Software</span>
+            <h3>Custom CRM System</h3>
+            <p>Sales pipeline management system built for a 200-person team.</p>
+            <div class="portfolio-tags">
+              <span class="portfolio-tag">MERN Stack</span><span class="portfolio-tag">AWS</span>
+            </div>
           </div>
         </div>
-      </div>
+        <div class="portfolio-card animate-up delay-4">
+          <img class="portfolio-img" src="{% static 'assets/images/tPqHwKj0H2QZxoHvnhGA5OvON893c4.jpg' %}" alt="Marketing Automation" loading="lazy">
+          <div class="portfolio-overlay"></div>
+          <div class="portfolio-info">
+            <span class="portfolio-cat">Automation</span>
+            <h3>Marketing Automation Platform</h3>
+            <p>End-to-end campaign management with AI-powered audience segmentation.</p>
+            <div class="portfolio-tags">
+              <span class="portfolio-tag">React</span><span class="portfolio-tag">Django</span><span class="portfolio-tag">Redis</span>
+            </div>
+          </div>
+        </div>
+      {% endif %}
     </div>
     <div style="text-align:center;margin-top:44px" class="animate-up">
       <a href="{% url 'pages:portfolio' %}" class="btn btn-ghost">View All Projects <svg class="btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>

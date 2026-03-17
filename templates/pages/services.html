@@ -146,6 +146,10 @@
       .service-feature{padding:10px 0;gap:9px}
       .service-detail-visual img{aspect-ratio:16/9}
     }
+
+    .service-section {
+      scroll-margin-top: 96px;
+    }
 </style>
 {% endblock %}
 
@@ -163,6 +167,7 @@
 <section style="padding-top: 0;">
   <div class="container">
 
+    <div id="ecommerce" class="service-section">
     <div class="service-detail-grid">
       <div class="service-detail-visual animate-up">
         <img src="{% static 'assets/images/CN6LevoxCwc2wM9z513MTNApD4Uc8d8.jpg' %}" alt="E-commerce Development" loading="lazy">
@@ -202,7 +207,9 @@
         </div>
       </div>
     </div>
+    </div>
 
+    <div id="saas" class="service-section">
     <div class="service-detail-grid reverse">
       <div class="service-detail-visual animate-up">
         <img src="{% static 'assets/images/HGUyRo3Ko6fOp6Ks3LrpzaNBBVkfef8.jpg' %}" alt="SaaS Development" loading="lazy">
@@ -238,7 +245,9 @@
         </div>
       </div>
     </div>
+    </div>
 
+    <div id="custom-software" class="service-section">
     <div class="service-detail-grid">
       <div class="service-detail-visual animate-up">
         <img src="{% static 'assets/images/Rjwq6SPWHl5dLNnlsMTBgNGsewe8c1.jpg' %}" alt="Custom Software" loading="lazy">
@@ -274,7 +283,9 @@
         </div>
       </div>
     </div>
+    </div>
 
+    <div id="ai-automation" class="service-section">
     <div class="service-detail-grid reverse">
       <div class="service-detail-visual animate-up">
         <img src="{% static 'assets/images/ai_Business_Automation.png' %}" alt="AI &amp; Automation" loading="lazy">
@@ -310,7 +321,9 @@
         </div>
       </div>
     </div>
+    </div>
 
+    <div id="digital-marketing" class="service-section">
     <div class="service-detail-grid">
       <div class="service-detail-visual animate-up">
         <img src="{% static 'assets/images/tPqHwKj0H2QZxoHvnhGA5OvON893c4.jpg' %}" alt="Digital Marketing Infrastructure" loading="lazy">
@@ -346,7 +359,9 @@
         </div>
       </div>
     </div>
+    </div>
 
+    <div id="performance-optimization" class="service-section">
     <div class="service-detail-grid reverse">
       <div class="service-detail-visual animate-up">
         <img src="{% static 'assets/images/8CYomO3dZZ1U75cCJgRI2DgBoM9245.png' %}" alt="Performance Optimization" loading="lazy">
@@ -381,6 +396,7 @@
           <a href="{% url 'pages:contact' %}" class="btn btn-primary">Optimize Your App</a>
         </div>
       </div>
+    </div>
     </div>
 
   </div>
