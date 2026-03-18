@@ -4,6 +4,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <script>
+  (function(){try{var t=localStorage.getItem('theme');if(t==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}})();
+  </script>
   <meta name="theme-color" content="#09090b">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -144,6 +147,13 @@
         <a href="{% url 'pages:contact' %}">Contact</a>
       </div>
     </div>
+    <div class="pill-theme-row">
+      <span class="pill-nav-label" id="themeLabelDesktop">Appearance</span>
+      <button type="button" class="theme-toggle-btn" data-theme-toggle aria-checked="false" role="switch" aria-labelledby="themeLabelDesktop" aria-label="Switch to light mode">
+        <span class="theme-toggle-track" aria-hidden="true"><span class="theme-toggle-thumb"></span></span>
+        <span class="visually-hidden" data-theme-toggle-status>Dark mode</span>
+      </button>
+    </div>
     <div class="pill-dropdown-footer">
       <div class="pill-socials">
         <a href="https://www.linkedin.com/showcase/bthinkx-dev/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z"/><circle cx="4" cy="4" r="2"/></svg></a>
@@ -177,6 +187,13 @@
         <a href="{% url 'pages:careers' %}">Careers</a>
         <a href="{% url 'pages:contact' %}">Contact</a>
       </div>
+    </div>
+    <div class="pill-theme-row">
+      <span class="pill-nav-label" id="themeLabelMobile">Appearance</span>
+      <button type="button" class="theme-toggle-btn" data-theme-toggle aria-checked="false" role="switch" aria-labelledby="themeLabelMobile" aria-label="Switch to light mode">
+        <span class="theme-toggle-track" aria-hidden="true"><span class="theme-toggle-thumb"></span></span>
+        <span class="visually-hidden" data-theme-toggle-status>Dark mode</span>
+      </button>
     </div>
     <div class="pill-dropdown-footer">
       <div class="pill-socials">

@@ -3,6 +3,48 @@
 (function () {
   'use strict';
 
+  /* ── Theme (light / dark) — persisted; inline script in <head> prevents flash ── */
+  function themeIsLight() {
+    return document.documentElement.getAttribute('data-theme') === 'light';
+  }
+  function themeSyncUI() {
+    var light = themeIsLight();
+    document.querySelectorAll('[data-theme-toggle]').forEach(function (btn) {
+      btn.setAttribute('aria-checked', light ? 'true' : 'false');
+      btn.setAttribute('aria-label', light ? 'Switch to dark mode' : 'Switch to light mode');
+      btn.classList.toggle('theme-toggle-btn--light', light);
+    });
+    document.querySelectorAll('[data-theme-toggle-status]').forEach(function (el) {
+      el.textContent = light ? 'Light mode on' : 'Dark mode on';
+    });
+    var m = document.querySelector('meta[name="theme-color"]');
+    if (m) m.setAttribute('content', light ? '#f3f3f8' : '#09090b');
+  }
+  function themeApply(light) {
+    try {
+      if (light) {
+        document.documentElement.setAttribute('data-theme', 'light');
+        localStorage.setItem('theme', 'light');
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+        localStorage.setItem('theme', 'dark');
+      }
+    } catch (e) {}
+    themeSyncUI();
+  }
+  document.querySelectorAll('[data-theme-toggle]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      themeApply(!themeIsLight());
+    });
+    btn.addEventListener('keydown', function (e) {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        themeApply(!themeIsLight());
+      }
+    });
+  });
+  themeSyncUI();
+
   /* ── Ambient graphics: remove after intro fade (saves GPU; reload = replay) ── */
   const ambientGfx = document.querySelector('.ambient-gfx');
   if (ambientGfx && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
