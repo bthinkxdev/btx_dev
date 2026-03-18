@@ -1482,9 +1482,56 @@ select.form-control{cursor:pointer}
   /* Portfolio */
   .portfolio-grid{grid-template-columns:1fr}
 
-  /* Process */
-  .process-steps{grid-template-columns:repeat(2,1fr);gap:18px}
-  .process-step{padding:0}
+  /* Process — mobile-first cards: number + title, then full-width description */
+  .process-steps{
+    grid-template-columns:1fr;
+    gap:14px;
+    max-width:min(100%,520px);
+    margin-left:auto;
+    margin-right:auto;
+  }
+  .process-step{
+    display:grid;
+    grid-template-columns:48px 1fr;
+    grid-template-rows:auto auto;
+    column-gap:16px;
+    row-gap:10px;
+    align-items:start;
+    text-align:left;
+    padding:20px 18px 22px;
+    background:linear-gradient(165deg,rgba(22,22,28,.95) 0%,rgba(14,14,18,.98) 100%);
+    border:1px solid var(--border);
+    border-radius:var(--radius-lg);
+    box-shadow:0 4px 24px rgba(0,0,0,.2);
+  }
+  .process-step:hover .process-num{
+    box-shadow:0 0 20px rgba(165,164,250,.2);
+  }
+  .process-num{
+    grid-row:1 / 3;
+    align-self:start;
+    margin:0;
+    width:48px;
+    height:48px;
+    font-size:.95rem;
+  }
+  .process-step h3{
+    grid-column:2;
+    grid-row:1;
+    margin:0;
+    padding-top:2px;
+    font-size:clamp(1rem,3.2vw,1.12rem);
+    line-height:1.25;
+    letter-spacing:-.02em;
+  }
+  .process-step p{
+    grid-column:2;
+    grid-row:2;
+    margin:0;
+    font-size:.9rem;
+    line-height:1.6;
+    color:var(--text-muted);
+  }
 
   /* CTA */
   .cta-inner{padding:44px 24px}
@@ -1569,10 +1616,10 @@ select.form-control{cursor:pointer}
   .hero-actions{flex-direction:column;align-items:stretch}
   .hero-actions .btn{justify-content:center;text-align:center;max-width:none}
 
-  /* Process single col */
-  .process-steps{grid-template-columns:1fr;gap:14px}
-  .process-step{display:flex;align-items:flex-start;gap:18px;text-align:left}
-  .process-num{margin:0;flex-shrink:0}
+  /* Process — tighter cards */
+  .process-steps{gap:12px;max-width:100%}
+  .process-step{padding:18px 16px 20px;border-radius:var(--radius-md)}
+  .process-step h3{font-size:1rem}
 
   /* Footer single col */
   .footer-grid{grid-template-columns:1fr}
@@ -1647,7 +1694,12 @@ select.form-control{cursor:pointer}
   .metric-card{padding:18px}
 
   /* Process */
-  .process-num{width:44px;height:44px;font-size:.9rem}
+  .process-step{
+    grid-template-columns:44px 1fr;
+    column-gap:14px;
+    padding:16px 14px 18px;
+  }
+  .process-num{width:44px;height:44px;font-size:.88rem}
 
   /* Footer */
   .footer{padding:44px 0 22px}
@@ -1749,7 +1801,9 @@ select.form-control{cursor:pointer}
   .btn-lg{padding:11px 16px;font-size:.82rem}
   .service-card h3{font-size:.9rem}
   .metric-num{font-size:1.4rem}
-  .process-num{width:40px;height:40px;font-size:.82rem}
+  .process-step{grid-template-columns:40px 1fr;column-gap:12px;padding:14px 12px 16px}
+  .process-num{width:40px;height:40px;font-size:.8rem}
+  .process-step p{font-size:.86rem}
   .cta-inner{padding:28px 12px}
   .hero-actions .btn{padding:11px 14px}
 }
