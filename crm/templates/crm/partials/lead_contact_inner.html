@@ -1,0 +1,30 @@
+<div class="panel-h">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;color:var(--primary-500);">
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+  </svg>
+  Contact Details
+</div>
+{% if contact_save_error %}
+<p class="exec-err" style="margin-bottom:10px;">{{ contact_save_error }}</p>
+{% endif %}
+{% if contact_saved_ok %}
+<p class="notes-saved" style="margin-bottom:10px;">Saved</p>
+{% endif %}
+<form class="lead-contact-form" hx-post="{% url 'crm:lead_contact_save' lead.pk %}" hx-swap="none">
+  {% csrf_token %}
+  <div class="lead-contact-grid">
+    <label class="lead-contact-lbl">Name <span class="text-danger">*</span></label>
+    <input type="text" name="name" required maxlength="200" class="lead-contact-in"
+      value="{% if contact_fv %}{{ contact_fv.name }}{% else %}{{ lead.name }}{% endif %}" autocomplete="name">
+    <label class="lead-contact-lbl">Phone</label>
+    <input type="text" name="phone" maxlength="40" class="lead-contact-in"
+      value="{% if contact_fv %}{{ contact_fv.phone }}{% else %}{{ lead.phone }}{% endif %}" autocomplete="tel">
+    <label class="lead-contact-lbl">Email</label>
+    <input type="email" name="email" maxlength="254" class="lead-contact-in"
+      value="{% if contact_fv %}{{ contact_fv.email }}{% else %}{{ lead.email }}{% endif %}" autocomplete="email">
+    <label class="lead-contact-lbl">Source</label>
+    <input type="text" name="source" maxlength="120" class="lead-contact-in"
+      value="{% if contact_fv %}{{ contact_fv.source }}{% else %}{{ lead.source }}{% endif %}">
+  </div>
+  <button type="submit" class="btn btn-primary btn-sm" style="margin-top:12px;">Save contact</button>
+</form>

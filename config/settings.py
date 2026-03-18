@@ -24,6 +24,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'pages',
+    'crm',
 ]
 
 MIDDLEWARE = [
@@ -49,6 +50,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'crm.context_processors.crm_header',
             ],
         },
     },
@@ -71,7 +73,8 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
+# Indian Standard Time (IST) — CRM “today” / follow-ups use this
+TIME_ZONE = 'Asia/Kolkata'
 USE_I18N = True
 USE_TZ = True
 
@@ -85,6 +88,11 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# CRM (separate app; does not affect public site)
+LOGIN_URL = '/crm/login/'
+LOGIN_REDIRECT_URL = '/crm/'
+LOGOUT_REDIRECT_URL = '/crm/login/'
+
 # Email: contact form notifications (Gmail SMTP)
 # For production, set EMAIL_HOST_PASSWORD (and optionally others) via environment variables.
 EMAIL_BACKEND = os.environ.get(
@@ -94,8 +102,9 @@ EMAIL_BACKEND = os.environ.get(
 EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'achujozefsl0709@gmail.com')
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'mtbsaphoieurdqqe')
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+# Never commit real passwords — set EMAIL_HOST_PASSWORD in environment / .env
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
 
 # Address to receive contact form submissions
@@ -108,3 +117,8 @@ SITE_BASE_URL = os.environ.get('SITE_BASE_URL', 'http://127.0.0.1:8000').rstrip(
 NEWSLETTER_EMAIL_INTERVAL_SECONDS = float(
     os.environ.get('NEWSLETTER_EMAIL_INTERVAL_SECONDS', '2.0')
 )
+
+# CRM: if phone is 10 digits (local), prepend this country code for wa.me links (no +). Example: 91 (India), 1 (US).
+CRM_WHATSAPP_DEFAULT_COUNTRY_CODE = os.environ.get(
+    'CRM_WHATSAPP_DEFAULT_COUNTRY_CODE', '91'
+).lstrip('+')

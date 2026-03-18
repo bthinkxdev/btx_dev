@@ -1,0 +1,297 @@
+{% extends "crm/base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<!-- Page header -->
+<div class="page-header">
+  <div>
+    <h1>Good day, {{ request.user.first_name|default:request.user.username }} 👋</h1>
+    <p>Here's your sales overview for today.</p>
+  </div>
+  <a href="{% url 'crm:leads' %}" class="btn btn-primary">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+    View All Leads
+  </a>
+</div>
+
+<!-- Stat Cards -->
+<div class="stat-grid">
+  <div class="stat-card">
+    <div class="stat-icon indigo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">{{ total_leads }}</div>
+      <div class="stat-label">Total Leads</div>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon amber">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">{{ interested }}</div>
+      <div class="stat-label">Interested + Negotiation</div>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon green">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">{{ closed_won }}</div>
+      <div class="stat-label">Closed Won</div>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon purple">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">{{ revenue|default:"0" }}</div>
+      <div class="stat-label">Revenue (Won)</div>
+    </div>
+  </div>
+</div>
+
+<!-- Today's Work: Overdue + Today -->
+<div style="margin-bottom:8px;">
+  <h2 style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:var(--neutral-600);">Today’s work</h2>
+  <p style="font-size:12px;color:var(--text-muted);margin-top:2px;">Clear overdue first, then today’s calls.</p>
+</div>
+<div class="action-panel">
+  <!-- Overdue -->
+  <div class="action-panel__col action-panel__col--overdue">
+    <div class="action-panel__head">
+      <svg style="width:12px;height:12px;display:inline;vertical-align:middle;margin-right:4px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      Overdue Follow-ups
+    </div>
+    {% if overdue_followups %}
+      {% for fu in overdue_followups|slice:":10" %}
+      <div class="action-panel__item" id="dash-fu-{{ fu.pk }}">
+        <span>
+          <a href="{% url 'crm:lead_detail' fu.lead_id %}">{{ fu.lead.name }}</a>
+          {% if fu.lead.phone %} · <a href="tel:{{ fu.lead.phone }}" style="color:var(--neutral-500);">Call</a>{% endif %}
+        </span>
+        <span style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+          <span class="action-panel__time">{{ fu.datetime|date:"M j, H:i" }}</span>
+          <button type="button" class="btn btn-sm btn-success"
+            hx-post="{% url 'crm:followup_done' fu.pk %}"
+            hx-swap="none"
+            hx-include="[name='csrfmiddlewaretoken']"
+            title="Mark follow-up done">Done</button>
+        </span>
+      </div>
+      {% endfor %}
+      {% if overdue_followups|length > 10 %}
+      <div style="margin-top:8px;">
+        <a href="{% url 'crm:followups' %}" style="font-size:12px;font-weight:600;color:var(--danger-600);">View all overdue →</a>
+      </div>
+      {% endif %}
+    {% else %}
+      <p style="color:var(--success-600);font-size:13px;font-weight:600;margin-top:8px;">
+        ✓ No overdue items — great job!
+      </p>
+    {% endif %}
+  </div>
+
+  <!-- Today -->
+  <div class="action-panel__col action-panel__col--today">
+    <div class="action-panel__head">
+      <svg style="width:12px;height:12px;display:inline;vertical-align:middle;margin-right:4px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+      </svg>
+      Today's Follow-ups
+    </div>
+    {% if today_followups %}
+      {% for fu in today_followups %}
+      <div class="action-panel__item" id="dash-fu-{{ fu.pk }}">
+        <span>
+          <a href="{% url 'crm:lead_detail' fu.lead_id %}">{{ fu.lead.name }}</a>
+          {% if fu.lead.phone %} · <a href="tel:{{ fu.lead.phone }}" style="color:var(--neutral-500);">Call</a>{% endif %}
+        </span>
+        <span style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+          <span class="action-panel__time">{{ fu.datetime|date:"H:i" }}</span>
+          <button type="button" class="btn btn-sm btn-success"
+            hx-post="{% url 'crm:followup_done' fu.pk %}"
+            hx-swap="none"
+            hx-include="[name='csrfmiddlewaretoken']"
+            title="Mark done">Done</button>
+        </span>
+      </div>
+      {% endfor %}
+    {% else %}
+      <p style="color:var(--text-muted);font-size:13px;margin-top:8px;">No calls scheduled today.</p>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Charts -->
+<div class="charts-grid">
+  {% if leads_chart_labels != '[]' %}
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Leads Over Time</div>
+        <div class="card-subtitle">Last 30 days</div>
+      </div>
+    </div>
+    <div class="chart-wrap"><canvas id="chLeads"></canvas></div>
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Conversion Rate</div>
+        <div class="card-subtitle">Won vs pipeline</div>
+      </div>
+      <span class="crm-badge crm-badge--green">{{ conversion_pct }}% win rate</span>
+    </div>
+    <div class="chart-wrap" style="height:200px;"><canvas id="chConv"></canvas></div>
+  </div>
+
+  {% if rev_chart_labels != '[]' %}
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Monthly Revenue</div>
+        <div class="card-subtitle">Won deals by month</div>
+      </div>
+    </div>
+    <div class="chart-wrap"><canvas id="chRev"></canvas></div>
+  </div>
+  {% endif %}
+
+  <!-- Quick stats card -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Quick Stats</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">
+        <span style="font-size:13px;color:var(--text-muted);font-weight:500;">Revenue Target</span>
+        <span style="font-weight:700;color:var(--neutral-900);">{{ target|default:"—" }}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">
+        <span style="font-size:13px;color:var(--text-muted);font-weight:500;">Overdue Follow-ups</span>
+        <span style="font-weight:700;{% if overdue_followups %}color:var(--danger-600){% else %}color:var(--success-600){% endif %}">
+          {{ overdue_followups|length }}
+        </span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">
+        <span style="font-size:13px;color:var(--text-muted);font-weight:500;">Today's Calls</span>
+        <span style="font-weight:700;color:var(--neutral-900);">{{ today_followups|length }}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;">
+        <span style="font-size:13px;color:var(--text-muted);font-weight:500;">Win Rate</span>
+        <span style="font-weight:700;color:var(--primary-600);">{{ conversion_pct }}%</span>
+      </div>
+    </div>
+    <div style="margin-top:16px;">
+      <a href="{% url 'crm:followups' %}" class="btn btn-primary" style="width:100%;justify-content:center;">
+        Open Follow-up Queue →
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+  var chartDefaults = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { color: '#64748b', font: { size: 11 } }, grid: { color: '#f1f5f9' } },
+      y: { ticks: { color: '#64748b', font: { size: 11 } }, grid: { color: '#f1f5f9' }, beginAtZero: true }
+    }
+  };
+
+  var labels = {{ leads_chart_labels|safe }};
+  var data = {{ leads_chart_data|safe }};
+  if (labels.length && document.getElementById('chLeads')) {
+    new Chart(document.getElementById('chLeads'), {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Leads',
+          data: data,
+          borderColor: '#4f46e5',
+          borderWidth: 2,
+          tension: 0.35,
+          fill: true,
+          backgroundColor: 'rgba(99,102,241,0.08)',
+          pointBackgroundColor: '#4f46e5',
+          pointRadius: 3,
+          pointHoverRadius: 5
+        }]
+      },
+      options: chartDefaults
+    });
+  }
+
+  var conv = {{ conversion_pct|default:0 }};
+  if (document.getElementById('chConv')) {
+    new Chart(document.getElementById('chConv'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Won', 'Pipeline'],
+        datasets: [{
+          data: [conv, Math.max(0, 100 - conv)],
+          backgroundColor: ['#4f46e5', '#e2e8f0'],
+          borderWidth: 0,
+          hoverOffset: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '72%',
+        plugins: {
+          legend: { position: 'bottom', labels: { color: '#64748b', font: { size: 12 } } }
+        }
+      }
+    });
+  }
+
+  var rl = {{ rev_chart_labels|safe }};
+  var rv = {{ rev_chart_values|safe }};
+  if (rl.length && document.getElementById('chRev')) {
+    new Chart(document.getElementById('chRev'), {
+      type: 'bar',
+      data: {
+        labels: rl,
+        datasets: [{
+          label: 'Revenue',
+          data: rv,
+          backgroundColor: 'rgba(79,70,229,0.85)',
+          borderRadius: 6,
+          borderSkipped: false
+        }]
+      },
+      options: chartDefaults
+    });
+  }
+})();
+</script>
+{% endblock %}

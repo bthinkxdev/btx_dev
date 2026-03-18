@@ -1,0 +1,18 @@
+<tr id="task-row-{{ task.pk }}">
+  <td style="display:flex;align-items:center;gap:8px;">
+    <button type="button" class="btn btn-sm {% if task.is_completed %}btn-outline{% else %}btn-success{% endif %}"
+      hx-post="{% url 'crm:task_toggle' task.pk %}"
+      hx-target="#task-row-{{ task.pk }}"
+      hx-swap="outerHTML">
+      {% if task.is_completed %}
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;"><polyline points="9 14 4 9 9 4"/><line x1="4" y1="9" x2="20" y2="9"/></svg>
+      Undo
+      {% else %}
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;"><polyline points="20 6 9 17 4 12"/></svg>
+      Done
+      {% endif %}
+    </button>
+    <span style="{% if task.is_completed %}text-decoration:line-through;color:var(--text-light);{% endif %}font-size:13px;">{{ task.title }}</span>
+  </td>
+  <td style="color:var(--text-muted);font-size:12px;white-space:nowrap;">{% if task.due_date %}{{ task.due_date }}{% else %}—{% endif %}</td>
+</tr>

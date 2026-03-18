@@ -1,0 +1,49 @@
+<div class="exec-tasks-panel">
+  {% if task_error %}
+  <div class="exec-err" style="margin-bottom:10px;">{{ task_error }}</div>
+  {% endif %}
+  <div class="exec-task-panel-add">
+    <button type="button" class="btn btn-sm btn-primary crm-open-task-modal" data-lead-pk="{{ lead.pk }}" data-lead-name="{{ lead.name }}">+ Add task</button>
+  </div>
+  <ul class="exec-task-list">
+    {% for t in tasks %}
+    <li class="exec-task-item {% if t.is_completed %}exec-task-item--done{% endif %}{% if not t.is_completed and t.due_date and t.due_date < crm_local_date %} exec-task-item--late{% endif %}">
+      {% if not t.is_completed %}
+      <div class="exec-task-item__row">
+        <button type="button" class="btn btn-sm btn-success exec-task-done"
+          hx-post="{% url 'crm:task_toggle' t.pk %}"
+          hx-vals='{"_from":"exec"}'
+          hx-target="#lead-tasks-inner-{{ lead.pk }}"
+          hx-swap="innerHTML"
+          aria-label="Mark complete">Done</button>
+        <div class="exec-task-item__body">
+          <span class="exec-task-item__title">{{ t.title }}</span>
+          <span class="exec-task-item__due">{% if t.due_date %}Due {{ t.due_date|date:"M j" }}{% else %}No date{% endif %}</span>
+        </div>
+        <details class="exec-task-edit">
+          <summary class="exec-task-edit-sum">Edit</summary>
+          <form class="exec-task-edit-form" hx-post="{% url 'crm:task_update' t.pk %}" hx-target="#lead-tasks-inner-{{ lead.pk }}" hx-swap="innerHTML">
+            {% csrf_token %}
+            <input type="hidden" name="_from" value="exec">
+            <input type="text" name="title" value="{{ t.title }}" maxlength="300" class="exec-task-edit-in">
+            <input type="date" name="due_date" value="{% if t.due_date %}{{ t.due_date|date:'Y-m-d' }}{% endif %}" class="exec-task-edit-in">
+            <button type="submit" class="btn btn-sm btn-outline">Save</button>
+          </form>
+        </details>
+      </div>
+      {% else %}
+      <div class="exec-task-item__row exec-task-item__row--completed">
+        <span class="exec-task-item__title">{{ t.title }}</span>
+        <button type="button" class="btn btn-sm btn-outline"
+          hx-post="{% url 'crm:task_toggle' t.pk %}"
+          hx-vals='{"_from":"exec"}'
+          hx-target="#lead-tasks-inner-{{ lead.pk }}"
+          hx-swap="innerHTML">Undo</button>
+      </div>
+      {% endif %}
+    </li>
+    {% empty %}
+    <li class="exec-task-empty">No tasks yet — use <strong>+ Add task</strong>.</li>
+    {% endfor %}
+  </ul>
+</div>

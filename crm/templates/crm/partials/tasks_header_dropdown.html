@@ -1,0 +1,50 @@
+<div class="crm-task-dd-inner">
+  {% if tasks_overdue %}
+  <div class="crm-task-dd-section">
+    <div class="crm-task-dd-head crm-task-dd-head--overdue">Overdue <span class="crm-task-dd-count">{{ tasks_overdue|length }}</span></div>
+    <ul class="crm-task-dd-list">
+      {% for t in tasks_overdue %}
+      <li class="crm-task-dd-item" id="crm-hdr-task-{{ t.pk }}">
+        <div class="crm-task-dd-main">
+          <strong class="crm-task-dd-title">{{ t.title }}</strong>
+          <span class="crm-task-dd-lead">{{ t.lead.name }}</span>
+          <span class="crm-task-dd-time">Due {{ t.due_date|date:"M j" }}</span>
+        </div>
+        <div class="crm-task-dd-btns">
+          <button type="button" class="btn btn-sm btn-success"
+            hx-post="{% url 'crm:task_toggle' t.pk %}"
+            hx-vals='{"_from":"header"}'
+            hx-swap="none">Done</button>
+          <a href="{% url 'crm:lead_detail' t.lead_id %}" class="btn btn-sm btn-outline">Open</a>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+  {% if tasks_today %}
+  <div class="crm-task-dd-section">
+    <div class="crm-task-dd-head crm-task-dd-head--today">Due today <span class="crm-task-dd-count">{{ tasks_today|length }}</span></div>
+    <ul class="crm-task-dd-list">
+      {% for t in tasks_today %}
+      <li class="crm-task-dd-item">
+        <div class="crm-task-dd-main">
+          <strong class="crm-task-dd-title">{{ t.title }}</strong>
+          <span class="crm-task-dd-lead">{{ t.lead.name }}</span>
+        </div>
+        <div class="crm-task-dd-btns">
+          <button type="button" class="btn btn-sm btn-success"
+            hx-post="{% url 'crm:task_toggle' t.pk %}"
+            hx-vals='{"_from":"header"}'
+            hx-swap="none">Done</button>
+          <a href="{% url 'crm:lead_detail' t.lead_id %}" class="btn btn-sm btn-outline">Open</a>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+  {% if not tasks_overdue and not tasks_today %}
+  <div class="crm-task-dd-empty">No overdue or due-today tasks.</div>
+  {% endif %}
+</div>

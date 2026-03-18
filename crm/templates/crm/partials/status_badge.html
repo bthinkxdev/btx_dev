@@ -1,0 +1,23 @@
+{% if s == 'new' %}
+<span class="crm-badge crm-badge--gray">New</span>
+{% elif s == 'contacted' %}
+<span class="crm-badge crm-badge--blue">Contacted</span>
+{% elif s == 'follow_up' %}
+<span class="crm-badge crm-badge--teal">Follow up</span>
+{% elif s == 'interested' %}
+<span class="crm-badge crm-badge--orange">Interested</span>
+{% elif s == 'qualified' %}
+<span class="crm-badge crm-badge--cyan">Qualified</span>
+{% elif s == 'proposal' %}
+<span class="crm-badge crm-badge--violet">Proposal</span>
+{% elif s == 'negotiation' %}
+<span class="crm-badge crm-badge--purple">Negotiation</span>
+{% elif s == 'on_hold' %}
+<span class="crm-badge crm-badge--slate">On hold</span>
+{% elif s == 'won' %}
+<span class="crm-badge crm-badge--green">Won</span>
+{% elif s == 'lost' %}
+<span class="crm-badge crm-badge--red">Lost</span>
+{% else %}
+<span class="crm-badge crm-badge--gray">{{ s }}</span>
+{% endif %}

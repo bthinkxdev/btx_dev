@@ -1,0 +1,266 @@
+{% extends "crm/base.html" %}
+{% block title %}Performance{% endblock %}
+{% block page_title %}Performance{% endblock %}
+
+{% block content %}
+<!-- Page header -->
+<div class="page-header">
+  <div>
+    <h1>Your Performance</h1>
+    <p>Sales metrics and conversion analytics.</p>
+  </div>
+</div>
+
+<!-- KPI Stat Cards -->
+<div class="stat-grid" style="margin-bottom:24px;">
+  <div class="stat-card">
+    <div class="stat-icon indigo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">{{ total_leads }}</div>
+      <div class="stat-label">Total Leads</div>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon green">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">{{ conversions }}</div>
+      <div class="stat-label">Conversions (Won)</div>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon amber">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">{{ conv_pct }}%</div>
+      <div class="stat-label">Win Rate</div>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon purple">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">{{ revenue }}</div>
+      <div class="stat-label">Total Revenue</div>
+    </div>
+  </div>
+</div>
+
+<!-- Sales Report Card -->
+<div class="card" style="margin-bottom:24px;">
+  <div class="card-header" style="flex-wrap:wrap;gap:12px;">
+    <div>
+      <div class="card-title">Sales Report Card</div>
+      <div class="card-subtitle">Performance summary for your pipeline — copy and share</div>
+    </div>
+  </div>
+  <div>
+    <div class="report-tab-group" style="display:flex;gap:6px;margin-bottom:20px;border-bottom:1px solid var(--neutral-200);padding-bottom:0;">
+      <button type="button"
+        class="report-tab report-tab--active"
+        style="padding:10px 16px;font-size:13px;font-weight:600;border:none;background:transparent;color:var(--primary-600);cursor:pointer;border-bottom:2px solid var(--primary-600);margin-bottom:-1px;border-radius:8px 8px 0 0;"
+        hx-get="{% url 'crm:performance_report_card' %}?period=daily"
+        hx-target="#sales-report-inner"
+        hx-swap="innerHTML"
+        onclick="var g=this.closest('.report-tab-group');g.querySelectorAll('.report-tab').forEach(function(b){b.classList.remove('report-tab--active');b.style.color='var(--text-muted)';b.style.borderBottomColor='transparent';});this.classList.add('report-tab--active');this.style.color='var(--primary-600)';this.style.borderBottomColor='var(--primary-600)';">
+        Daily
+      </button>
+      <button type="button"
+        class="report-tab"
+        style="padding:10px 16px;font-size:13px;font-weight:600;border:none;background:transparent;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;border-radius:8px 8px 0 0;"
+        hx-get="{% url 'crm:performance_report_card' %}?period=weekly"
+        hx-target="#sales-report-inner"
+        hx-swap="innerHTML"
+        onclick="var g=this.closest('.report-tab-group');g.querySelectorAll('.report-tab').forEach(function(b){b.classList.remove('report-tab--active');b.style.color='var(--text-muted)';b.style.borderBottomColor='transparent';});this.classList.add('report-tab--active');this.style.color='var(--primary-600)';this.style.borderBottomColor='var(--primary-600)';">
+        Weekly
+      </button>
+      <button type="button"
+        class="report-tab"
+        style="padding:10px 16px;font-size:13px;font-weight:600;border:none;background:transparent;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;border-radius:8px 8px 0 0;"
+        hx-get="{% url 'crm:performance_report_card' %}?period=monthly"
+        hx-target="#sales-report-inner"
+        hx-swap="innerHTML"
+        onclick="var g=this.closest('.report-tab-group');g.querySelectorAll('.report-tab').forEach(function(b){b.classList.remove('report-tab--active');b.style.color='var(--text-muted)';b.style.borderBottomColor='transparent';});this.classList.add('report-tab--active');this.style.color='var(--primary-600)';this.style.borderBottomColor='var(--primary-600)';">
+        Monthly
+      </button>
+    </div>
+    <div id="sales-report-inner">
+      {% include "crm/partials/sales_report_card_inner.html" with r=sales_report %}
+    </div>
+  </div>
+</div>
+
+<!-- Charts grid -->
+<p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Tip: click a bar or point to open <strong>Leads</strong> with that day or month filtered.</p>
+<div class="charts-grid" style="margin-bottom:20px;">
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Daily Activity (60 days)</div>
+        <div class="card-subtitle">Created (purple) vs won (green) per day — click to filter</div>
+      </div>
+    </div>
+    <div class="chart-wrap" style="height:240px;"><canvas id="chDaily"></canvas></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Monthly Leads</div>
+        <div class="card-subtitle">Created vs won per month</div>
+      </div>
+    </div>
+    <div class="chart-wrap" style="height:240px;"><canvas id="chMonthly"></canvas></div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:20px;">
+  <div class="card-header">
+    <div>
+      <div class="card-title">Monthly Revenue</div>
+      <div class="card-subtitle">Won deal revenue by close month</div>
+    </div>
+  </div>
+  <div class="chart-wrap" style="height:240px;"><canvas id="chMRev"></canvas></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+  document.body.addEventListener('click', function(e) {
+    var btn = e.target.closest('.js-copy-sales-report');
+    if (!btn) return;
+    var ta = document.getElementById('sales-report-text');
+    var fb = document.getElementById('sales-report-copy-feedback');
+    if (!ta) return;
+    ta.select();
+    ta.setSelectionRange(0, 99999);
+    var text = ta.value;
+    function ok() {
+      if (fb) { fb.textContent = 'Copied!'; setTimeout(function() { fb.textContent = ''; }, 2500); }
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(ok).catch(function() {
+        try { document.execCommand('copy'); ok(); } catch (x) {}
+      });
+    } else {
+      try { document.execCommand('copy'); ok(); } catch (x) {}
+    }
+  });
+})();
+(function(){
+  var leadsUrl = "{% url 'crm:leads' %}";
+  var baseOpts = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { labels: { color: '#64748b', font: { size: 12 } } }
+    },
+    scales: {
+      x: { ticks: { color: '#64748b', font: { size: 11 }, maxRotation: 45 }, grid: { color: '#f1f5f9' } },
+      y: { ticks: { color: '#64748b', font: { size: 11 } }, grid: { color: '#f1f5f9' }, beginAtZero: true }
+    }
+  };
+
+  var pl = {{ perf_labels|safe }}, pc = {{ perf_created|safe }}, pw = {{ perf_won|safe }};
+  if (!pl.length) { pl = ['—']; pc = [0]; pw = [0]; }
+  var dailyClick = function(evt, els) {
+    if (!els.length) return;
+    var i = els[0].index;
+    var ds = els[0].datasetIndex;
+    var day = pl[i];
+    if (!day || day === '—') return;
+    if (ds === 0) window.location.href = leadsUrl + '?created_day=' + encodeURIComponent(day);
+    else window.location.href = leadsUrl + '?closed_day=' + encodeURIComponent(day);
+  };
+  new Chart(document.getElementById('chDaily'), {
+    type: 'bar',
+    data: {
+      labels: pl,
+      datasets: [
+        { label: 'Created', data: pc, backgroundColor: 'rgba(99,102,241,0.7)', borderRadius: 4, borderSkipped: false },
+        { label: 'Won',     data: pw, backgroundColor: 'rgba(16,185,129,0.8)', borderRadius: 4, borderSkipped: false }
+      ]
+    },
+    options: Object.assign({}, baseOpts, { onClick: dailyClick })
+  });
+  document.getElementById('chDaily').style.cursor = 'pointer';
+
+  var ml = {{ m_labels|safe }}, mc = {{ m_created|safe }}, mw = {{ m_won|safe }}, mr = {{ m_rev|safe }};
+  if (!ml.length) { ml = ['—']; mc = [0]; mw = [0]; mr = [0]; }
+  var monthClick = function(evt, els) {
+    if (!els.length) return;
+    var i = els[0].index;
+    var ds = els[0].datasetIndex;
+    var m = ml[i];
+    if (!m || m === '—') return;
+    if (ds === 0) window.location.href = leadsUrl + '?created_month=' + encodeURIComponent(m);
+    else window.location.href = leadsUrl + '?closed_month=' + encodeURIComponent(m);
+  };
+  new Chart(document.getElementById('chMonthly'), {
+    type: 'line',
+    data: {
+      labels: ml,
+      datasets: [
+        { label: 'Created', data: mc, borderColor: '#4f46e5', backgroundColor: 'rgba(79,70,229,0.06)', fill: true, tension: 0.3, borderWidth: 2, pointRadius: 4, pointHoverRadius: 6 },
+        { label: 'Won',     data: mw, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.05)', fill: true, tension: 0.3, borderWidth: 2, pointRadius: 4, pointHoverRadius: 6 }
+      ]
+    },
+    options: Object.assign({}, baseOpts, { onClick: monthClick })
+  });
+  document.getElementById('chMonthly').style.cursor = 'pointer';
+
+  var mRevClick = function(evt, els) {
+    if (!els.length) return;
+    var i = els[0].index;
+    var m = ml[i];
+    if (!m || m === '—') return;
+    window.location.href = leadsUrl + '?closed_month=' + encodeURIComponent(m);
+  };
+  new Chart(document.getElementById('chMRev'), {
+    type: 'bar',
+    data: {
+      labels: ml,
+      datasets: [{
+        label: 'Revenue',
+        data: mr,
+        backgroundColor: 'rgba(79,70,229,0.8)',
+        borderRadius: 6,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      onClick: mRevClick,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        x: { ticks: { color: '#64748b', font: { size: 11 } }, grid: { color: '#f1f5f9' } },
+        y: { ticks: { color: '#64748b', font: { size: 11 } }, grid: { color: '#f1f5f9' }, beginAtZero: true }
+      }
+    }
+  });
+  document.getElementById('chMRev').style.cursor = 'pointer';
+})();
+</script>
+{% endblock %}

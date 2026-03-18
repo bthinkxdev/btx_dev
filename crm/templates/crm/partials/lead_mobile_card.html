@@ -1,0 +1,61 @@
+{% load crm_extras %}
+<article id="lead-mcard-{{ lead.pk }}" class="lead-mcard {% if lead.status == 'won' or lead.status == 'lost' %}lead-mcard--closed{% elif not lead.next_followup or lead.next_followup < fu_start %}lead-mcard--od{% elif lead.next_followup < fu_end %}lead-mcard--td{% elif lead.status == 'interested' or lead.status == 'negotiation' or lead.status == 'qualified' or lead.status == 'proposal' %}{% if lead.deal_value %}lead-mcard--hot{% else %}lead-mcard--norm{% endif %}{% else %}lead-mcard--norm{% endif %}{% if lead.task_open_count %} lead-mcard--pending-tasks{% endif %}">
+  <div class="lead-mcard__top">
+    <span class="lead-mcard__name">{{ lead.name }}</span>
+    <div class="lead-mcard__tags">
+      {% with s=lead.status %}{% include "crm/partials/status_badge.html" %}{% endwith %}
+      {% if lead.deal_value %}{% if lead.status == 'interested' or lead.status == 'negotiation' or lead.status == 'qualified' or lead.status == 'proposal' %}<span class="lead-mcard__hot" title="Hot">★</span>{% endif %}{% endif %}
+      <span id="exec-task-badge-mob-{{ lead.pk }}">{% if lead.task_open_count %}<span class="lead-mcard__tsk lead-mcard__tsk--open" title="Open tasks">{% include "crm/partials/lead_task_ind_text.html" %}</span>{% elif lead.task_done_count %}<span class="lead-mcard__tsk">{% include "crm/partials/lead_task_ind_text.html" %}</span>{% endif %}</span>
+    </div>
+  </div>
+  <div class="lead-mcard__contact">
+    {% if lead.phone %}<a href="tel:{{ lead.phone }}" class="lead-mcard__tel">{{ lead.phone }}</a>{% else %}<span class="lead-mcard__tel lead-mcard__tel--empty">No phone</span>{% endif %}
+    <span class="lead-mcard__sep" aria-hidden="true"></span>
+    <span class="lead-mcard__pkg" title="{{ lead.package.name|default:'' }}">{{ lead.package.name|default:"—" }}</span>
+  </div>
+  <div class="lead-mcard__meta">
+    <span class="lead-mcard__deal"><span class="lead-mcard__meta-lbl">Deal</span> {{ lead.deal_value }}</span>
+    <span class="lead-mcard__fu-chip {% if not lead.next_followup or lead.next_followup < fu_start %}lead-mcard__fu-chip--od{% elif lead.next_followup < fu_end %}lead-mcard__fu-chip--td{% else %}lead-mcard__fu-chip--ok{% endif %}">
+      <span class="lead-mcard__meta-lbl">Next follow-up</span>
+      {% if lead.next_followup %}{{ lead.next_followup|date:"M j · g:i A" }}{% else %}Not set{% endif %}
+    </span>
+  </div>
+  <nav class="lead-mcard__acts" aria-label="Actions for {{ lead.name }}">
+    {% if lead.phone %}
+    <button type="button" class="lead-mcard__act lead-mcard__act--call exec-call-btn" data-tel="tel:{{ lead.phone }}" data-log-url="{% url 'crm:lead_log_call' lead.pk %}" aria-label="Call" title="Call">
+      <svg class="lead-mcard__phone-ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.99 12 19.79 19.79 0 0 1 1.93 3.28 2 2 0 0 1 3.91 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 15.92z"/></svg>
+    </button>
+    {% else %}
+    <span class="lead-mcard__act lead-mcard__act--na lead-mcard__act--call-na" aria-disabled="true" aria-label="No phone" title="No phone">
+      <svg class="lead-mcard__phone-ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.99 12 19.79 19.79 0 0 1 1.93 3.28 2 2 0 0 1 3.91 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 15.92z"/></svg>
+    </span>
+    {% endif %}
+    {% if lead.phone %}{% with wa=lead.phone|whatsapp_wa_url %}{% if wa %}
+    <button type="button" class="lead-mcard__act lead-mcard__act--wa exec-wa-btn" data-wa-url="{{ wa }}" data-log-url="{% url 'crm:lead_log_whatsapp' lead.pk %}" aria-label="WhatsApp" title="WhatsApp">
+      <svg class="lead-mcard__wa-ico" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.883 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+    </button>
+    {% else %}
+    <span class="lead-mcard__act lead-mcard__act--na lead-mcard__act--wa-na" title="Need 10+ digit number for WhatsApp" aria-label="WhatsApp unavailable">
+      <svg class="lead-mcard__wa-ico" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.883 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+    </span>
+    {% endif %}{% endwith %}{% else %}
+    <span class="lead-mcard__act lead-mcard__act--na lead-mcard__act--wa-na" aria-label="WhatsApp unavailable" title="No phone number">
+      <svg class="lead-mcard__wa-ico" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.883 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+    </span>
+    {% endif %}
+    <button type="button" class="lead-mcard__act crm-open-task-modal" data-lead-pk="{{ lead.pk }}" data-lead-name="{{ lead.name }}" aria-label="Add task">Task</button>
+    <details class="lead-mcard__fu-pop">
+      <summary class="lead-mcard__act lead-mcard__act--fu">Followup</summary>
+      <div class="lead-mcard__fu-popbody">
+        <form class="lead-mcard__fu-form" hx-post="{% url 'crm:lead_quick_fu' lead.pk %}" hx-target="#lead-mcard-{{ lead.pk }}" hx-swap="outerHTML">
+          {% csrf_token %}
+          <input type="hidden" name="_tpl" value="mobile_card">
+          <input type="datetime-local" name="fu_datetime" required class="lead-mcard__fu-input" aria-label="Follow-up date and time">
+          <button type="submit" class="btn btn-primary btn-sm">Save</button>
+        </form>
+        {% if quick_fu_error %}<p class="exec-err">{{ quick_fu_error }}</p>{% endif %}
+      </div>
+    </details>
+    <a href="{% url 'crm:lead_detail' lead.pk %}" class="lead-mcard__act lead-mcard__act--link">View</a>
+  </nav>
+</article>

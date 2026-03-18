@@ -1,0 +1,82 @@
+{% if fu_error %}<p class="exec-err" style="margin-bottom:10px;">{{ fu_error }}</p>{% endif %}
+{% if task_error %}<p class="exec-err" style="margin-bottom:10px;">{{ task_error }}</p>{% endif %}
+
+<!-- Follow-ups Panel -->
+<div class="panel-block" id="fu-jump">
+  <div class="panel-h">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;color:var(--primary-500);">
+      <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+    </svg>
+    Follow-ups
+    <span style="font-size:11px;font-weight:500;color:var(--text-muted);margin-left:auto;">{{ followups|length }} total</span>
+  </div>
+
+  <ul class="fu-mini-list">
+    {% for fu in followups %}
+    <li style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+      <span style="{% if fu.is_done %}text-decoration:line-through;color:var(--text-light);{% endif %}">
+        {{ fu.datetime|date:"M j, H:i" }}
+        {% if fu.note %}<span class="muted"> — {{ fu.note|truncatewords:10 }}</span>{% endif %}
+      </span>
+      {% if fu.is_done %}
+      <span class="crm-badge crm-badge--green" style="flex-shrink:0;">Done</span>
+      {% else %}
+      <span class="crm-badge crm-badge--blue" style="flex-shrink:0;">Scheduled</span>
+      {% endif %}
+    </li>
+    {% empty %}
+    <li style="color:var(--text-muted);">No follow-ups scheduled yet</li>
+    {% endfor %}
+  </ul>
+
+  <form class="stack-form" hx-post="{% url 'crm:followup_add' lead.pk %}" hx-target="#fu-tasks-block" hx-swap="outerHTML">
+    {% csrf_token %}
+    <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end;">
+      <div class="form-row" style="margin-bottom:0;">
+        {{ fu_form.datetime.label_tag }}{{ fu_form.datetime }}
+      </div>
+    </div>
+    <div class="form-row" style="margin-top:8px;">{{ fu_form.note.label_tag }}{{ fu_form.note }}</div>
+    <button type="submit" class="btn btn-primary btn-sm" style="margin-top:8px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      Schedule Follow-up
+    </button>
+  </form>
+</div>
+
+<!-- Tasks Panel -->
+<div class="panel-block">
+  <div class="panel-h">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;color:var(--primary-500);">
+      <polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+    </svg>
+    Tasks
+    <span style="font-size:11px;font-weight:500;color:var(--text-muted);margin-left:auto;">{{ tasks|length }} total</span>
+  </div>
+
+  <table class="mini-table" style="margin-bottom:14px;">
+    <tbody>
+      {% for task in tasks %}
+      {% include "crm/partials/task_exec_row.html" %}
+      {% empty %}
+      <tr><td style="color:var(--text-muted);padding:10px 0;">No tasks added yet</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <form class="stack-form" hx-post="{% url 'crm:task_add' lead.pk %}" hx-target="#fu-tasks-block" hx-swap="outerHTML">
+    {% csrf_token %}
+    <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end;">
+      <div class="form-row" style="margin-bottom:0;">{{ task_form.title.label_tag }}{{ task_form.title }}</div>
+      <div class="form-row" style="margin-bottom:0;">{{ task_form.due_date.label_tag }}{{ task_form.due_date }}</div>
+    </div>
+    <button type="submit" class="btn btn-outline btn-sm" style="margin-top:8px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      Add Task
+    </button>
+  </form>
+</div>

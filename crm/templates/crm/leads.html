@@ -1,0 +1,1050 @@
+{% extends "crm/base.html" %}
+{% block title %}Leads{% endblock %}
+{% block page_title %}Leads{% endblock %}
+
+{% block content %}
+
+<div class="page-header exec-page-head exec-page-head--leads">
+  <div class="exec-page-head__intro">
+    <h1>Daily execution</h1>
+    <p><strong>{{ leads|length }}</strong> leads · {{ sort_label }}</p>
+  </div>
+  <div class="exec-page-head__cta">
+    <button type="button" class="leads-add-cta" id="leads-open-add-modal" aria-haspopup="dialog" aria-controls="add-lead-modal">
+      <span class="leads-add-cta__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </span>
+      <span class="leads-add-cta__text">
+        <span class="leads-add-cta__title">Add new lead</span>
+        <span class="leads-add-cta__sub">Name, contact, status, package &amp; more</span>
+      </span>
+    </button>
+    <button type="button" onclick="document.getElementById('import-modal').showModal()" class="btn btn-outline btn-sm leads-add-secondary">Import Excel</button>
+  </div>
+</div>
+
+{# ── COMMAND STRIP — click to filter, shows live counts ───── #}
+{# Each card = one filter. Click to show those leads. Active card = filled color. #}
+<div class="cmd-strip">
+  <a href="{{ leads_base }}?{{ lqs.fu_overdue }}"
+     class="cmd-strip__card cmd-strip__card--danger{% if filters.fu == 'overdue' %} cmd-strip__card--on{% endif %}"
+     title="Click to see leads whose follow-up date has already passed">
+    <span class="cmd-strip__icon">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    </span>
+    <span class="cmd-strip__num">{{ overdue_count }}</span>
+    <span class="cmd-strip__lbl">Overdue</span>
+    <span class="cmd-strip__hint">Follow-up missed</span>
+  </a>
+  <a href="{{ leads_base }}?{{ lqs.fu_today }}"
+     class="cmd-strip__card cmd-strip__card--warning{% if filters.fu == 'today' %} cmd-strip__card--on{% endif %}"
+     title="Click to see leads with a follow-up scheduled for today">
+    <span class="cmd-strip__icon">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    </span>
+    <span class="cmd-strip__num">{{ today_fu_count }}</span>
+    <span class="cmd-strip__lbl">Today</span>
+    <span class="cmd-strip__hint">Follow-ups due today</span>
+  </a>
+  <a href="{{ leads_base }}?{{ lqs.has_tasks_on }}"
+     class="cmd-strip__card cmd-strip__card--tasks{% if filters.has_tasks == '1' %} cmd-strip__card--on{% endif %}"
+     title="Click to see leads that have at least one task not yet completed">
+    <span class="cmd-strip__icon">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
+    </span>
+    <span class="cmd-strip__num">{{ pending_tasks_count }}</span>
+    <span class="cmd-strip__lbl">Tasks</span>
+    <span class="cmd-strip__hint">Pending tasks</span>
+  </a>
+  <a href="{{ leads_base }}?{{ lqs.fu_hot }}"
+     class="cmd-strip__card cmd-strip__card--hot{% if filters.fu == 'hot' %} cmd-strip__card--on{% endif %}"
+     title="Interested, Negotiation, Qualified, or Proposal leads with a deal value">
+    <span class="cmd-strip__icon">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M13.5 0.67s.74 2.65.74 4.8c0 2.06-1.35 3.73-3.41 3.73-2.07 0-3.63-1.67-3.63-3.73l.03-.36C5.21 7.51 4 10.62 4 14c0 4.42 3.58 8 8 8s8-3.58 8-8C20 8.61 17.41 3.8 13.5.67zM11.71 19c-1.78 0-3.22-1.4-3.22-3.14 0-1.62 1.05-2.76 2.81-3.12 1.77-.36 3.6-1.21 4.62-2.58.39 1.29.59 2.65.59 4.04 0 2.65-2.15 4.8-4.8 4.8z"/></svg>
+    </span>
+    <span class="cmd-strip__num">{{ hot_leads_count }}</span>
+    <span class="cmd-strip__lbl">Hot Leads</span>
+    <span class="cmd-strip__hint">Pipeline + deal value</span>
+  </a>
+  <a href="{{ leads_base }}?{{ lqs.fu_all }}"
+     class="cmd-strip__card cmd-strip__card--all{% if not filters.fu and not filters.has_tasks %} cmd-strip__card--on{% endif %}"
+     title="Click to see all leads with no filter">
+    <span class="cmd-strip__icon">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+    </span>
+    <span class="cmd-strip__num">{{ leads|length }}</span>
+    <span class="cmd-strip__lbl">All Leads</span>
+    <span class="cmd-strip__hint">No filter active</span>
+  </a>
+</div>
+
+{# ── STICKY FILTER PANEL ─────────────────────────────────── #}
+<div class="leads-filter-sticky">
+
+  {# Mobile toggle #}
+  <button type="button" class="leads-filter-mob-btn btn btn-outline" id="leads-filter-toggle"
+    aria-expanded="false" aria-controls="leads-filter-panel">
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="14" y2="12"/><line x1="4" y1="18" x2="9" y2="18"/></svg>
+    Filters{% if has_active_filters %} <span class="leads-filter-mob-btn__dot" aria-hidden="true">●</span>{% endif %}
+  </button>
+
+  <div class="leads-filter-panel leads-filter-inner" id="leads-filter-panel">
+
+    {# ── DATE RANGE FILTER ────────────────────────────────── #}
+    <div class="cmd-l2">
+      <div class="cmd-l2__inner">
+        <div class="cmd-l2__group">
+          <div class="cmd-l2__group-header">
+            <span class="cmd-l2__lbl">Show leads from</span>
+            <span class="cmd-l2__hint">Narrow down by time period</span>
+          </div>
+          <div class="leads-pill-row leads-pill-row--wrap">
+            <a class="pill {% if not filters.date_scope %}on{% endif %}" href="{{ leads_base }}?{{ lqs.date_all }}">All time</a>
+            <a class="pill {% if filters.date_scope == 'today' %}on{% endif %}" href="{{ leads_base }}?{{ lqs.date_today }}">Today</a>
+            <a class="pill {% if filters.date_scope == 'yesterday' %}on{% endif %}" href="{{ leads_base }}?{{ lqs.date_yesterday }}">Yesterday</a>
+            <a class="pill {% if filters.date_scope == 'this_week' %}on{% endif %}" href="{{ leads_base }}?{{ lqs.date_week }}">This week</a>
+            <a class="pill {% if filters.date_scope == 'this_month' %}on{% endif %}" href="{{ leads_base }}?{{ lqs.date_month }}">This month</a>
+          </div>
+        </div>
+        <div class="cmd-l2__sep" aria-hidden="true"></div>
+        <div class="cmd-l2__group">
+          <div class="cmd-l2__group-header">
+            <span class="cmd-l2__lbl">Date field</span>
+            <span class="cmd-l2__hint">Which date to apply the period to</span>
+          </div>
+          <div class="leads-pill-row">
+            <a class="pill {% if filters.date_basis == 'fu' or not filters.date_basis %}on{% endif %}" href="{{ leads_base }}?{{ lqs.basis_fu }}" title="Filter using the Next Follow-up date">Follow-up date</a>
+            <a class="pill {% if filters.date_basis == 'created' %}on{% endif %}" href="{{ leads_base }}?{{ lqs.basis_created }}" title="Filter using the date the lead was created">Lead created date</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# ── STATUS FILTER (second bar) ───────────────────────── #}
+    <div class="cmd-l2 cmd-l2--status">
+      <div class="cmd-l2__group cmd-l2__group--status">
+        <div class="cmd-l2__group-header">
+          <span class="cmd-l2__lbl">Status</span>
+          <span class="cmd-l2__hint">Filter by pipeline stage</span>
+        </div>
+        <div class="leads-pill-row leads-pill-row--wrap leads-pill-row--status">
+          {% for pill in status_pills %}
+          <a class="pill {% if pill.val == '' %}{% if not filters.status %}on{% endif %}{% elif filters.status == pill.val %}on{% endif %}"
+             href="{{ leads_base }}?{{ pill.qs }}">{{ pill.label }}</a>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    {# ── ADVANCED FILTERS — collapsible ───────────────────── #}
+    <div class="cmd-l3">
+      <button type="button" class="cmd-l3__toggle" id="cmd-more-btn" aria-expanded="false" aria-controls="cmd-more-panel">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="9" y2="18"/></svg>
+        More filters{% if filters.q or package_filter or filters.min_deal %}<span class="cmd-l3__dot">●</span>{% endif %}
+        <svg class="cmd-l3__arrow" id="cmd-more-arrow" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="cmd-l3__panel" id="cmd-more-panel" hidden>
+        <p class="cmd-l3__note">Use these filters to narrow down leads further. Click <strong>Apply filters</strong> when done.</p>
+        <form method="get" action="" id="leads-filter-form">
+          <div class="cmd-l3__grid">
+            <div class="cmd-l3__field">
+              <label for="lf-q">
+                Search by name or phone
+              </label>
+              <input id="lf-q" type="search" name="q" placeholder="Type name or phone number…" value="{{ filters.q }}">
+            </div>
+            <div class="cmd-l3__field">
+              <label for="lf-pkg">
+                Package
+              </label>
+              <select id="lf-pkg" name="package">
+                <option value="">All packages</option>
+                {% for p in packages %}
+                <option value="{{ p.pk }}" {% if package_filter == p.pk %}selected{% endif %}>{{ p.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="cmd-l3__field">
+              <label for="lf-sort">
+                Sort order
+              </label>
+              <select id="lf-sort" name="sort">
+                {% for k, label in sort_choices %}
+                <option value="{{ k }}" {% if filters.sort == k %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="cmd-l3__field">
+              <label for="lf-min-deal">
+                Min deal value
+                <span class="cmd-l3__field-hint">Only show leads with deal ≥ this amount</span>
+              </label>
+              <input id="lf-min-deal" type="number" step="0.01" name="min_deal" placeholder="e.g. 1000" value="{{ filters.min_deal }}" min="0">
+            </div>
+          </div>
+          <div class="cmd-l3__daterange">
+            <span class="cmd-l3__dr-lbl">Custom date range <span class="cmd-l3__field-hint">Pick exact start and end dates</span></span>
+            <div class="cmd-l3__dr-row">
+              <input type="date" name="date_start" value="{{ filters.date_start }}" aria-label="Start date">
+              <span class="cmd-l3__dr-sep">→</span>
+              <input type="date" name="date_end" value="{{ filters.date_end }}" aria-label="End date">
+              <button type="button" class="btn btn-outline btn-sm" id="leads-apply-custom-range">Apply range</button>
+            </div>
+          </div>
+          {# Preserve strip / date / status (status = status bar pills) #}
+          <input type="hidden" name="status" value="{{ filters.status }}">
+          <input type="hidden" name="fu" value="{{ filters.fu }}">
+          <input type="hidden" name="has_tasks" value="{{ filters.has_tasks }}">
+          <input type="hidden" name="date_scope" id="leads-h-date-scope" value="{{ filters.date_scope }}">
+          <input type="hidden" name="date_basis" value="{{ filters.date_basis }}">
+          <input type="hidden" name="created_day" value="{{ filters.created_day }}">
+          <input type="hidden" name="closed_day" value="{{ filters.closed_day }}">
+          <input type="hidden" name="created_month" value="{{ filters.created_month }}">
+          <input type="hidden" name="closed_month" value="{{ filters.closed_month }}">
+          <div class="cmd-l3__actions">
+            <button type="submit" class="btn btn-primary btn-sm">Apply filters</button>
+            {% if has_active_filters %}
+            <a href="{% url 'crm:leads' %}" class="btn btn-outline btn-sm leads-filter-clear">Clear all filters</a>
+            {% endif %}
+          </div>
+        </form>
+      </div>
+    </div>
+
+  </div>{# end .leads-filter-panel #}
+</div>
+
+{# ── LEADS LIST ────────────────────────────────────────── #}
+{% if leads %}
+<div class="exec-board-list exec-board-list--desktop">
+  {% for lead in leads %}
+  {% include "crm/partials/lead_exec_board.html" %}
+  {% endfor %}
+</div>
+<div class="lead-mcard-list lead-mcard-list--mob" role="list">
+  {% for lead in leads %}
+  {% include "crm/partials/lead_mobile_card.html" %}
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state" style="padding:40px 24px;">
+  {% if has_active_filters %}
+  <strong>No leads match your filters</strong>
+  Try clearing filters or broadening your search.
+  <div style="margin-top:16px;">
+    <a href="{% url 'crm:leads' %}" class="btn btn-outline">Clear filters</a>
+  </div>
+  {% else %}
+  <strong>No leads yet</strong>
+  Add your first lead to start your pipeline.
+  <div style="margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;">
+    <button type="button" class="leads-add-cta leads-add-cta--solo" id="leads-open-add-modal-empty" aria-haspopup="dialog" aria-controls="add-lead-modal">
+      <span class="leads-add-cta__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+      <span class="leads-add-cta__text"><span class="leads-add-cta__title">Add your first lead</span><span class="leads-add-cta__sub">Opens full form — all fields</span></span>
+    </button>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+{# ── Dialogs ─────────────────────────────────────────────── #}
+<dialog id="add-lead-modal" class="crm-dialog crm-dialog--add-lead" aria-labelledby="add-lead-modal-title">
+  <div class="crm-dialog__inner crm-dialog__inner--scroll">
+    <div class="crm-dialog__head crm-dialog__head--add-lead">
+      <div>
+        <h2 id="add-lead-modal-title">New lead</h2>
+        <p class="crm-dialog__sub">Enter every detail now — you can edit later on the lead page.</p>
+      </div>
+      <button type="button" onclick="this.closest('dialog').close()" class="crm-dialog__x" aria-label="Close">&times;</button>
+    </div>
+    <form method="post" action="{% url 'crm:lead_create' %}" id="add-lead-form" class="add-lead-form">
+      {% csrf_token %}
+      <fieldset class="add-lead-fieldset">
+        <legend class="add-lead-legend">Contact</legend>
+        <div class="add-lead-grid">
+          <div class="form-field">{{ form.name.label_tag }}{{ form.name }}</div>
+          <div class="form-field">{{ form.phone.label_tag }}{{ form.phone }}</div>
+          <div class="form-field">{{ form.email.label_tag }}{{ form.email }}</div>
+          <div class="form-field">{{ form.source.label_tag }}{{ form.source }}</div>
+        </div>
+      </fieldset>
+      <fieldset class="add-lead-fieldset">
+        <legend class="add-lead-legend">Pipeline &amp; value</legend>
+        <div class="add-lead-grid add-lead-grid--3">
+          <div class="form-field">{{ form.status.label_tag }}{{ form.status }}</div>
+          <div class="form-field">{{ form.package.label_tag }}{{ form.package }}</div>
+          <div class="form-field">{{ form.deal_value.label_tag }}{{ form.deal_value }}</div>
+        </div>
+      </fieldset>
+      <fieldset class="add-lead-fieldset">
+        <legend class="add-lead-legend">Notes</legend>
+        <div class="form-field form-field--full">{{ form.notes.label_tag }}{{ form.notes }}</div>
+      </fieldset>
+      <div class="crm-dialog__foot crm-dialog__foot--sticky">
+        <button type="button" onclick="document.getElementById('add-lead-modal').close()" class="btn btn-outline">Cancel</button>
+        <button type="submit" class="btn btn-primary add-lead-submit">Create lead</button>
+      </div>
+    </form>
+  </div>
+</dialog>
+
+<dialog id="import-modal" class="crm-dialog">
+  <div class="crm-dialog__inner">
+    <div class="crm-dialog__head">
+      <h2>Import from Excel</h2>
+      <button type="button" onclick="this.closest('dialog').close()" class="crm-dialog__x" aria-label="Close">&times;</button>
+    </div>
+    <form method="post" action="{% url 'crm:leads_import' %}" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div class="form-row">
+        <label>Select .xlsx file</label>
+        {{ import_form.file }}
+      </div>
+      <div class="crm-dialog__foot">
+        <button type="button" onclick="this.closest('dialog').close()" class="btn btn-outline">Cancel</button>
+        <button type="submit" class="btn btn-primary">Import</button>
+      </div>
+    </form>
+  </div>
+</dialog>
+
+{% endblock %}
+
+{% block extra_css %}
+dialog::backdrop { background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); }
+.crm-dialog { border: none; border-radius: var(--radius-lg); padding: 0; box-shadow: var(--shadow-lg); max-width: 560px; width: 100%; }
+.crm-dialog__inner { padding: 24px; }
+.crm-dialog__head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+.crm-dialog__head h2 { font-size: 18px; font-weight: 800; }
+.crm-dialog__x { background: none; border: none; font-size: 22px; color: var(--text-muted); cursor: pointer; line-height: 1; }
+.crm-dialog__foot { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+
+/* ── Leads page: focused Add CTA + add-lead modal ─────── */
+.exec-page-head--leads {
+  flex-wrap: wrap; align-items: flex-start; gap: 16px 20px;
+}
+.exec-page-head--leads .exec-page-head__intro { flex: 1 1 200px; min-width: 0; }
+.exec-page-head--leads .exec-page-head__cta {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  flex: 1 1 280px; justify-content: flex-end;
+}
+@media (max-width: 640px) {
+  .exec-page-head--leads .exec-page-head__cta { flex-basis: 100%; justify-content: stretch; flex-direction: column; }
+  .leads-add-secondary { width: 100%; justify-content: center; min-height: 42px; }
+}
+
+.leads-add-cta {
+  display: inline-flex; align-items: center; gap: 14px;
+  padding: 14px 22px 14px 18px;
+  border: none; border-radius: 14px; cursor: pointer; text-align: left;
+  font-family: inherit;
+  background: linear-gradient(145deg, #6366f1 0%, #4f46e5 45%, #4338ca 100%);
+  color: #fff !important;
+  box-shadow:
+    0 4px 6px -1px rgba(79, 70, 229, 0.35),
+    0 10px 28px -4px rgba(79, 70, 229, 0.55),
+    inset 0 1px 0 rgba(255,255,255,0.15);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  width: 100%; max-width: 420px;
+}
+@media (min-width: 641px) { .leads-add-cta { width: auto; min-width: 300px; } }
+.leads-add-cta:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 8px 16px -4px rgba(79, 70, 229, 0.45),
+    0 18px 36px -8px rgba(79, 70, 229, 0.5),
+    inset 0 1px 0 rgba(255,255,255,0.2);
+}
+.leads-add-cta:active { transform: translateY(0); }
+.leads-add-cta:focus-visible { outline: none; box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--primary-500); }
+.leads-add-cta__icon {
+  flex-shrink: 0; width: 44px; height: 44px; border-radius: 12px;
+  background: rgba(255,255,255,0.18); display: flex; align-items: center; justify-content: center;
+}
+.leads-add-cta__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.leads-add-cta__title { font-size: 16px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; }
+.leads-add-cta__sub { font-size: 12px; font-weight: 600; opacity: 0.92; line-height: 1.3; }
+.leads-add-cta--solo { max-width: 100%; justify-content: center; text-align: center; }
+.leads-add-cta--solo .leads-add-cta__text { align-items: center; }
+
+.crm-dialog--add-lead {
+  max-width: min(640px, calc(100vw - 24px));
+  max-height: min(92vh, 900px);
+  width: 100%;
+  margin: auto;
+}
+.crm-dialog--add-lead .crm-dialog__inner--scroll {
+  padding: 0; display: flex; flex-direction: column; max-height: min(92vh, 900px);
+}
+.crm-dialog__head--add-lead {
+  padding: 20px 22px 16px; margin-bottom: 0; align-items: flex-start; gap: 12px;
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.crm-dialog__head--add-lead h2 { font-size: 20px; font-weight: 800; margin: 0; }
+.crm-dialog__sub { font-size: 13px; color: var(--text-muted); font-weight: 500; margin: 6px 0 0; line-height: 1.45; max-width: 42em; }
+.add-lead-form { overflow-y: auto; padding: 0 22px 20px; flex: 1; min-height: 0; -webkit-overflow-scrolling: touch; }
+.add-lead-fieldset {
+  border: none; margin: 0 0 18px; padding: 0;
+}
+.add-lead-legend {
+  font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.07em;
+  color: var(--primary-600); margin-bottom: 10px; padding: 0;
+}
+.add-lead-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px 14px;
+}
+.add-lead-grid--3 { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 560px) {
+  .add-lead-grid, .add-lead-grid--3 { grid-template-columns: 1fr; }
+}
+.add-lead-form .form-field label { font-size: 12px; font-weight: 700; color: var(--neutral-600); }
+.add-lead-form .form-field input,
+.add-lead-form .form-field select,
+.add-lead-form .form-field textarea {
+  width: 100%; margin-top: 4px; padding: 10px 12px; font-size: 14px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+}
+.add-lead-form .form-field--full { grid-column: 1 / -1; }
+.crm-dialog__foot--sticky {
+  position: sticky; bottom: 0; margin: 0 -22px -20px; padding: 16px 22px;
+  background: linear-gradient(180deg, rgba(255,255,255,0) 0%, var(--surface) 12%);
+  border-top: 1px solid var(--border); margin-top: 8px;
+  justify-content: flex-end; flex-wrap: wrap; gap: 10px;
+}
+.add-lead-submit {
+  padding: 12px 28px !important; font-size: 15px !important; font-weight: 800 !important;
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
+}
+
+/* ── Command Strip — 5 filter shortcuts ──────────────── */
+.cmd-strip {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.cmd-strip__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 8px 8px;
+  border-radius: var(--radius);
+  border: 2px solid var(--border);
+  background: var(--surface);
+  text-decoration: none !important;
+  gap: 2px;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  min-height: 72px;
+  transition: transform 0.12s, box-shadow 0.15s, border-color 0.15s, background 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+.cmd-strip__card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); text-decoration: none !important; }
+.cmd-strip__icon { color: var(--text-muted); margin-bottom: 1px; }
+.cmd-strip__num  { font-size: 22px; font-weight: 900; line-height: 1; letter-spacing: -0.03em; color: var(--neutral-800); }
+.cmd-strip__lbl  { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; color: var(--neutral-700); }
+.cmd-strip__hint { font-size: 9px; font-weight: 600; color: var(--text-muted); white-space: nowrap; letter-spacing: 0.02em; }
+
+/* color variants */
+.cmd-strip__card--danger  { border-color: var(--danger-200); }
+.cmd-strip__card--danger  .cmd-strip__num  { color: var(--danger-600); }
+.cmd-strip__card--danger  .cmd-strip__icon { color: var(--danger-400); }
+.cmd-strip__card--danger:hover             { border-color: var(--danger-400); background: var(--danger-50); }
+.cmd-strip__card--danger.cmd-strip__card--on  { background: var(--danger-600); border-color: var(--danger-600); box-shadow: 0 2px 8px rgba(220,38,38,0.25); }
+.cmd-strip__card--danger.cmd-strip__card--on  .cmd-strip__num,
+.cmd-strip__card--danger.cmd-strip__card--on  .cmd-strip__lbl,
+.cmd-strip__card--danger.cmd-strip__card--on  .cmd-strip__hint,
+.cmd-strip__card--danger.cmd-strip__card--on  .cmd-strip__icon { color: #fff; }
+
+.cmd-strip__card--warning  { border-color: var(--warning-100); }
+.cmd-strip__card--warning  .cmd-strip__num  { color: var(--warning-600); }
+.cmd-strip__card--warning  .cmd-strip__icon { color: var(--warning-500); }
+.cmd-strip__card--warning:hover             { border-color: var(--warning-400); background: var(--warning-50); }
+.cmd-strip__card--warning.cmd-strip__card--on { background: var(--warning-500); border-color: var(--warning-500); box-shadow: 0 2px 8px rgba(245,158,11,0.25); }
+.cmd-strip__card--warning.cmd-strip__card--on .cmd-strip__num,
+.cmd-strip__card--warning.cmd-strip__card--on .cmd-strip__lbl,
+.cmd-strip__card--warning.cmd-strip__card--on .cmd-strip__hint,
+.cmd-strip__card--warning.cmd-strip__card--on .cmd-strip__icon { color: #fff; }
+
+.cmd-strip__card--tasks  { border-color: var(--primary-200); }
+.cmd-strip__card--tasks  .cmd-strip__num  { color: var(--primary-600); }
+.cmd-strip__card--tasks  .cmd-strip__icon { color: var(--primary-400); }
+.cmd-strip__card--tasks:hover             { border-color: var(--primary-400); background: var(--primary-50); }
+.cmd-strip__card--tasks.cmd-strip__card--on  { background: var(--primary-600); border-color: var(--primary-600); box-shadow: 0 2px 8px rgba(79,70,229,0.2); }
+.cmd-strip__card--tasks.cmd-strip__card--on  .cmd-strip__num,
+.cmd-strip__card--tasks.cmd-strip__card--on  .cmd-strip__lbl,
+.cmd-strip__card--tasks.cmd-strip__card--on  .cmd-strip__hint,
+.cmd-strip__card--tasks.cmd-strip__card--on  .cmd-strip__icon { color: #fff; }
+
+.cmd-strip__card--hot  { border-color: #fde68a; }
+.cmd-strip__card--hot  .cmd-strip__num  { color: #b45309; }
+.cmd-strip__card--hot  .cmd-strip__icon { color: #d97706; }
+.cmd-strip__card--hot:hover             { border-color: #f59e0b; background: #fffbeb; }
+.cmd-strip__card--hot.cmd-strip__card--on { background: #d97706; border-color: #d97706; box-shadow: 0 2px 8px rgba(217,119,6,0.25); }
+.cmd-strip__card--hot.cmd-strip__card--on .cmd-strip__num,
+.cmd-strip__card--hot.cmd-strip__card--on .cmd-strip__lbl,
+.cmd-strip__card--hot.cmd-strip__card--on .cmd-strip__hint,
+.cmd-strip__card--hot.cmd-strip__card--on .cmd-strip__icon { color: #fff; }
+
+.cmd-strip__card--all  { border-color: var(--neutral-200); }
+.cmd-strip__card--all  .cmd-strip__num  { color: var(--neutral-700); }
+.cmd-strip__card--all  .cmd-strip__icon { color: var(--neutral-400); }
+.cmd-strip__card--all:hover             { border-color: var(--neutral-400); background: var(--neutral-50); }
+.cmd-strip__card--all.cmd-strip__card--on { background: var(--primary-600); border-color: var(--primary-600); box-shadow: 0 2px 8px rgba(79,70,229,0.15); }
+.cmd-strip__card--all.cmd-strip__card--on .cmd-strip__num,
+.cmd-strip__card--all.cmd-strip__card--on .cmd-strip__lbl,
+.cmd-strip__card--all.cmd-strip__card--on .cmd-strip__hint,
+.cmd-strip__card--all.cmd-strip__card--on .cmd-strip__icon { color: #fff; }
+
+@media (max-width: 860px) {
+  .cmd-strip { grid-template-columns: repeat(3, 1fr); }
+  .cmd-strip__card:nth-child(4),
+  .cmd-strip__card:nth-child(5) { grid-column: span 1; }
+}
+@media (max-width: 560px) {
+  .cmd-strip { grid-template-columns: repeat(2, 1fr); gap: 6px; margin-bottom: 12px; }
+  .cmd-strip__card { padding: 9px 6px 7px; min-height: 62px; }
+  .cmd-strip__num  { font-size: 20px; }
+  .cmd-strip__hint { display: none; }
+}
+
+/* ── Sticky Filter Bar ────────────────────────────────── */
+.leads-filter-sticky {
+  position: sticky;
+  top: var(--header-h);
+  z-index: 80;
+  margin-bottom: 20px;
+  margin-top: -8px;
+  padding-top: 8px;
+  background: linear-gradient(180deg, var(--bg) 0%, var(--bg) 75%, transparent 100%);
+}
+.leads-filter-mob-btn {
+  display: none;
+  width: 100%;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 12px;
+  font-weight: 700;
+  min-height: 44px;
+}
+.leads-filter-mob-btn__dot { color: var(--primary-600); font-size: 10px; }
+.leads-filter-inner {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+@media (max-width: 768px) {
+  .leads-filter-mob-btn { display: inline-flex; }
+  .leads-filter-panel { display: none; }
+  .leads-filter-panel.is-open { display: flex; flex-direction: column; }
+}
+@media (min-width: 769px) {
+  .leads-filter-mob-btn { display: none !important; }
+  .leads-filter-panel { display: flex !important; flex-direction: column; }
+}
+
+/* ── Level 2 Date Filters ─────────────────────────────── */
+.cmd-l2 { padding-top: 12px; border-top: 1px solid var(--border); }
+.cmd-l2--status {
+  padding-top: 14px; margin-top: 2px; border-top: 1px solid var(--border);
+}
+.cmd-l2__group--status { width: 100%; min-width: 0; }
+.leads-pill-row--status { gap: 5px 6px; }
+.leads-pill-row--status .pill { font-size: 11px; font-weight: 600; padding: 5px 10px; }
+.cmd-l2__inner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 28px;
+  align-items: flex-start;
+}
+.cmd-l2__group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cmd-l2__group-header { display: flex; align-items: baseline; gap: 8px; }
+.cmd-l2__lbl {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--neutral-700);
+  white-space: nowrap;
+}
+.cmd-l2__hint {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.cmd-l2__sep {
+  width: 1px;
+  align-self: stretch;
+  background: var(--border);
+  flex-shrink: 0;
+}
+.leads-pill-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+
+/* ── Level 3 Advanced Collapsible ────────────────────── */
+.cmd-l3 { padding-top: 10px; border-top: 1px dashed var(--border); }
+.cmd-l3__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  background: var(--neutral-50);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--neutral-600);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.cmd-l3__toggle:hover { background: var(--neutral-100); border-color: var(--neutral-300); }
+.cmd-l3__dot { color: var(--primary-500); font-size: 9px; margin-left: 2px; }
+.cmd-l3__arrow { transition: transform 0.2s ease; flex-shrink: 0; color: var(--text-muted); }
+
+.cmd-l3__panel {
+  margin-top: 12px;
+  padding: 16px;
+  background: var(--neutral-50);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.cmd-l3__panel[hidden] { display: none !important; }
+.cmd-l3__note {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+  padding: 8px 12px;
+  background: var(--primary-50);
+  border-left: 3px solid var(--primary-500);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.cmd-l3__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+  gap: 12px 14px;
+  margin-bottom: 14px;
+}
+.cmd-l3__field { display: flex; flex-direction: column; gap: 4px; }
+.cmd-l3__field label {
+  font-size: 11px; font-weight: 700; color: var(--neutral-700);
+  display: flex; flex-direction: column; gap: 1px;
+}
+.cmd-l3__field-hint {
+  font-size: 10px; font-weight: 500; color: var(--text-muted);
+  text-transform: none; letter-spacing: 0; display: block;
+}
+
+.cmd-l3__daterange { padding-top: 12px; border-top: 1px solid var(--border); margin-bottom: 14px; }
+.cmd-l3__dr-lbl { font-size: 11px; font-weight: 700; color: var(--neutral-700); display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+.cmd-l3__dr-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.cmd-l3__dr-row input[type="date"] { flex: 1 1 130px; min-width: 0; }
+.cmd-l3__dr-sep { color: var(--text-muted); font-size: 16px; font-weight: 600; }
+
+.cmd-l3__actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding-top: 12px; border-top: 1px solid var(--border); }
+.leads-filter-clear { color: var(--danger-600) !important; }
+
+/* ── Hot Lead Badge ───────────────────────────────────── */
+.hot-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* ── Exec board list ──────────────────────────────────── */
+.exec-board--has-pending-tasks {
+  background: linear-gradient(90deg, rgba(245,158,11,0.06) 0%, var(--surface) 18%);
+  box-shadow: inset 0 0 0 1px rgba(245,158,11,0.12);
+}
+.exec-board__task-line { align-items: center; flex-wrap: wrap; gap: 8px !important; }
+.exec-task-ind-wrap { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; max-width: 100%; min-height: 28px; }
+.exec-task-ind__txt  { font-size: 12px; font-weight: 600; color: var(--neutral-600); line-height: 1.3; }
+.exec-task-ind__pend { color: #b45309; }
+.exec-task-ind__done { color: var(--success-600); }
+.exec-task-ind__sep  { color: var(--neutral-400); margin: 0 2px; }
+.exec-board__pending-ico { color: var(--warning-600); display: flex; align-items: center; flex-shrink: 0; }
+
+.exec-board-list--desktop { display: flex; }
+.lead-mcard-list--mob { display: none; flex-direction: column; gap: 8px; width: 100%; max-width: 100%; overflow-x: hidden; }
+@media (max-width: 768px) {
+  .exec-board-list--desktop { display: none !important; }
+  .lead-mcard-list--mob { display: flex !important; }
+}
+
+/* ── Mobile lead cards — compact professional ───────────── */
+.lead-mcard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 10px 8px 8px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.lead-mcard--pending-tasks { box-shadow: inset 3px 0 0 var(--warning-500); }
+.lead-mcard--closed { opacity: 0.88; }
+.lead-mcard--od   { border-left: 3px solid var(--danger-500); }
+.lead-mcard--td   { border-left: 3px solid var(--warning-500); }
+.lead-mcard--hot  { border-left: 3px solid var(--success-500); }
+.lead-mcard--norm { border-left: 3px solid var(--neutral-200); }
+
+.lead-mcard__top {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px;
+  margin-bottom: 4px;
+}
+.lead-mcard__name {
+  font-size: 14px; font-weight: 800; color: var(--neutral-900);
+  line-height: 1.2; word-break: break-word; flex: 1 1 auto; min-width: 0;
+}
+.lead-mcard__tags {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px;
+}
+.lead-mcard .crm-badge {
+  font-size: 9px !important; padding: 2px 6px !important; font-weight: 700 !important;
+  border-radius: 4px !important; line-height: 1.2 !important;
+}
+.lead-mcard__hot {
+  font-size: 10px; color: #b45309; background: #fef3c7; border: 1px solid #fde68a;
+  width: 18px; height: 18px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 800; line-height: 1;
+}
+.lead-mcard__tsk { font-size: 10px; font-weight: 700; color: var(--text-muted); max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lead-mcard__tsk--open { color: #b45309; }
+
+.lead-mcard__contact {
+  display: flex; align-items: center; gap: 6px; min-width: 0;
+  font-size: 12px; margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px solid var(--neutral-100);
+}
+.lead-mcard__tel {
+  color: var(--primary-600); font-weight: 600; text-decoration: none; flex-shrink: 0; max-width: 42%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.lead-mcard__tel:hover { text-decoration: underline; }
+.lead-mcard__tel--empty { color: var(--text-muted); font-weight: 500; }
+.lead-mcard__sep { width: 3px; height: 3px; border-radius: 50%; background: var(--neutral-300); flex-shrink: 0; }
+.lead-mcard__pkg {
+  font-size: 11px; font-weight: 500; color: var(--neutral-500);
+  min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.lead-mcard__meta {
+  display: flex; align-items: stretch; gap: 8px; margin-bottom: 8px;
+}
+.lead-mcard__meta-lbl {
+  display: block; font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-muted); margin-bottom: 1px;
+}
+.lead-mcard__deal {
+  flex: 0 0 auto; min-width: 0; padding: 4px 8px; background: var(--neutral-50);
+  border-radius: 6px; border: 1px solid var(--border); font-size: 12px; font-weight: 700; color: var(--neutral-800);
+}
+.lead-mcard__fu-chip {
+  flex: 1; min-width: 0; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border);
+  font-size: 11px; font-weight: 700; line-height: 1.25; word-break: break-word;
+}
+.lead-mcard__fu-chip--od { background: var(--danger-50); border-color: var(--danger-100); color: var(--danger-700); }
+.lead-mcard__fu-chip--td { background: var(--warning-50); border-color: var(--warning-100); color: #92400e; }
+.lead-mcard__fu-chip--ok { background: var(--neutral-50); color: var(--neutral-700); }
+
+.lead-mcard__acts {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 5px;
+  width: 100%;
+}
+.lead-mcard__act {
+  display: flex !important; align-items: center; justify-content: center;
+  min-height: 38px; padding: 0 2px !important;
+  font-size: 10px !important; font-weight: 800 !important;
+  letter-spacing: 0.02em;
+  border-radius: 6px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--neutral-700) !important;
+  text-decoration: none !important; text-align: center; box-sizing: border-box;
+  width: 100%; cursor: pointer; font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+.lead-mcard__act:hover, .lead-mcard__act:focus-visible {
+  background: var(--neutral-50); border-color: var(--neutral-300);
+}
+.lead-mcard__act--wa {
+  background: #25d366 !important; border-color: #128c7e !important; color: #fff !important;
+  padding: 0 !important;
+}
+.lead-mcard__act--wa:hover, .lead-mcard__act--wa:focus-visible { filter: brightness(0.95); color: #fff !important; }
+.lead-mcard__wa-ico, .lead-mcard__phone-ico { display: block; flex-shrink: 0; }
+.lead-mcard__act--call { padding: 0 !important; color: var(--primary-600) !important; border-color: var(--primary-200) !important; background: var(--primary-50) !important; }
+.lead-mcard__act--call:hover, .lead-mcard__act--call:focus-visible { background: var(--primary-100) !important; border-color: var(--primary-400) !important; }
+.lead-mcard__act--call-na { padding: 0 !important; }
+.lead-mcard__act--call-na .lead-mcard__phone-ico { opacity: 0.28; color: var(--neutral-500); }
+.lead-mcard__act--wa-na { padding: 0 !important; }
+.lead-mcard__act--wa-na .lead-mcard__wa-ico { opacity: 0.28; color: var(--neutral-500); }
+.lead-mcard__act--fu {
+  background: var(--primary-600) !important; border-color: var(--primary-600) !important; color: #fff !important; list-style: none;
+  font-size: 9px !important; line-height: 1.2 !important; padding: 0 2px !important; text-align: center;
+}
+.lead-mcard__act--fu::-webkit-details-marker { display: none; }
+.lead-mcard__act--link { color: var(--primary-600) !important; border-color: var(--primary-200); background: var(--primary-50); }
+.lead-mcard__act--na {
+  background: var(--neutral-100) !important; color: var(--neutral-400) !important; border-color: var(--neutral-200);
+  cursor: default; pointer-events: none; font-weight: 700 !important;
+}
+
+.lead-mcard__fu-pop { position: relative; min-width: 0; }
+.lead-mcard__fu-pop[open] .lead-mcard__act--fu { filter: brightness(0.92); }
+.lead-mcard__fu-popbody {
+  position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(100% + 6px); z-index: 70;
+  width: min(280px, 88vw); background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; box-shadow: var(--shadow-lg); padding: 10px;
+}
+.lead-mcard__fu-form { display: flex; flex-direction: column; gap: 6px; }
+.lead-mcard__fu-input { width: 100%; font-size: 13px !important; padding: 8px !important; }
+
+/* ── Exec board (desktop) ─────────────────────────────── */
+.exec-board-list { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+.exec-board {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); position: relative;
+}
+.exec-board--closed      { opacity: 0.85; }
+.exec-board--prio-overdue { border-left: 4px solid var(--danger-500); }
+.exec-board--prio-today   { border-left: 4px solid var(--warning-500); }
+.exec-board--prio-hot     { border-left: 4px solid var(--success-500); }
+.exec-board--prio-normal  { border-left: 4px solid var(--neutral-200); }
+
+.exec-board__inner { padding: 0; }
+.exec-board__top {
+  display: grid;
+  grid-template-columns: 1fr 188px auto;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.exec-board__main {
+  grid-column: 1; padding: 9px 12px;
+  display: flex; flex-direction: column; justify-content: center; gap: 6px;
+  min-width: 0; border-right: 1px solid var(--border);
+}
+.exec-board__line1 { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.exec-board__line2 { display: flex; align-items: center; gap: 6px; min-width: 0; flex-wrap: nowrap; }
+
+.exec-board__in {
+  border: 1px solid transparent; background: transparent; font: inherit;
+  padding: 3px 6px; border-radius: var(--radius-sm); min-width: 0;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+.exec-board__in:hover  { border-color: var(--border); background: var(--neutral-50); }
+.exec-board__in:focus  { outline: none; border-color: var(--primary-500); background: var(--surface); box-shadow: 0 0 0 2px rgba(99,102,241,0.12); }
+.exec-board__in-name  { font-size: 14px; font-weight: 800; color: var(--neutral-900); flex: 1 1 0; min-width: 0; max-width: 100%; }
+.exec-board__in-phone { font-size: 12px; font-weight: 600; color: var(--neutral-600); flex: 0 0 100px; width: 100px; }
+.exec-board__detail-link {
+  font-size: 11px; font-weight: 700; color: var(--primary-600); text-decoration: none;
+  padding: 2px 7px; border-radius: var(--radius-sm); border: 1px solid var(--primary-200); white-space: nowrap; flex-shrink: 0;
+}
+.exec-board__detail-link:hover { background: var(--primary-50); text-decoration: none; }
+
+.exec-board__select { font-size: 11px !important; padding: 3px 6px !important; width: auto; min-width: 0; flex-shrink: 1; }
+.exec-board__select--st  { width: 108px; flex: 0 0 108px; }
+.exec-board__select--pkg { flex: 1 1 0; min-width: 70px; max-width: 160px; }
+.exec-board__deal { font-size: 12px !important; padding: 3px 6px !important; font-weight: 600; flex: 0 0 70px; width: 70px; }
+.exec-board__activity { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1 1 0; min-width: 0; }
+
+.exec-board__fu {
+  grid-column: 2; width: 188px; padding: 8px 12px;
+  display: flex; flex-direction: column; justify-content: center; gap: 3px;
+  border-right: 1px solid var(--border);
+}
+.exec-board__fu--overdue { background: var(--danger-50); }
+.exec-board__fu--today   { background: var(--warning-50); }
+.exec-board__fu--future  { background: var(--neutral-50); }
+.exec-board__fu-label { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.07em; line-height: 1; }
+.exec-board__fu--overdue .exec-board__fu-label { color: var(--danger-600); }
+.exec-board__fu--today   .exec-board__fu-label { color: #92400e; }
+.exec-board__fu--future  .exec-board__fu-label { color: var(--text-muted); }
+.exec-board__fu-body { display: flex; flex-direction: column; gap: 1px; line-height: 1.2; }
+.exec-board__fu-main { font-size: 13px; font-weight: 800; letter-spacing: -0.02em; white-space: nowrap; }
+.exec-board__fu-main--empty { font-weight: 600; color: var(--text-muted) !important; }
+.exec-board__fu--overdue .exec-board__fu-main { color: var(--danger-600); }
+.exec-board__fu--today   .exec-board__fu-main { color: #92400e; }
+.exec-board__fu--future  .exec-board__fu-main { color: var(--neutral-700); }
+.exec-board__fu-date { font-size: 11px; font-weight: 600; opacity: 0.8; }
+.exec-board__fu-sub  { font-size: 10px; font-weight: 600; color: var(--text-muted); }
+.exec-board__fu--overdue .exec-board__fu-sub { color: var(--danger-500); }
+
+.exec-board__toolbar {
+  grid-column: 3; padding: 8px 10px;
+  display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 5px; min-width: 0;
+}
+.exec-board__toolbar-row { display: flex; align-items: center; gap: 5px; flex-wrap: nowrap; }
+.exec-board__hub { white-space: nowrap; }
+
+.exec-wa-btn {
+  background: #25d366 !important; color: #fff !important;
+  border: 1px solid #128c7e !important; padding: 5px 9px !important;
+}
+.exec-wa-btn:hover { filter: brightness(0.92); color: #fff !important; }
+.exec-wa-btn svg  { display: block; }
+
+.exec-task-details { position: relative; }
+.exec-tasks-expand {
+  grid-column: 1 / -1; grid-row: 2; border-top: 1px dashed var(--border);
+  padding: 10px 14px; display: none;
+}
+.exec-task-details[open] ~ .exec-tasks-expand { display: block; }
+.exec-tasks-inner { margin-top: 6px; padding-top: 8px; border-top: 1px dashed var(--border); }
+
+.exec-task-summary {
+  list-style: none; display: inline-flex; align-items: center; gap: 5px;
+  cursor: pointer; padding: 5px 9px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--neutral-50);
+  font-size: 12px; font-weight: 600; white-space: nowrap;
+}
+.exec-task-summary::-webkit-details-marker { display: none; }
+.exec-task-summary:hover { background: var(--neutral-100); }
+.exec-task-badge--late { color: var(--danger-600); font-style: normal; font-weight: 800; }
+
+.exec-tasks-panel { font-size: 13px; max-height: min(220px,36vh); overflow-y: auto; padding-bottom: 4px; }
+.exec-task-empty { padding: 6px 4px; font-size: 12px; color: var(--text-muted); list-style: none; }
+.exec-task-panel-add { margin-bottom: 10px; }
+.exec-add-task-btn { padding: 5px 10px !important; font-weight: 700; }
+.exec-task-add { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
+.exec-task-add-title { flex: 1; min-width: 140px; font-size: 13px !important; padding: 6px 10px !important; }
+.exec-task-add-date  { width: auto; font-size: 13px !important; padding: 6px 10px !important; }
+.exec-task-list  { list-style: none; margin: 0; padding: 0; }
+.exec-task-item  { padding: 8px 0; border-bottom: 1px solid var(--border); }
+.exec-task-item--late .exec-task-item__title { color: var(--danger-600); }
+.exec-task-item__row   { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; }
+.exec-task-item__body  { flex: 1; min-width: 0; }
+.exec-task-item__title { font-weight: 600; display: block; }
+.exec-task-item__due   { font-size: 11px; color: var(--text-muted); }
+.exec-task-edit { font-size: 12px; }
+.exec-task-edit-sum  { cursor: pointer; color: var(--primary-600); font-weight: 600; }
+.exec-task-edit-form { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.exec-task-edit-in   { font-size: 12px !important; padding: 4px 8px !important; width: auto; min-width: 100px; }
+
+.exec-actions-menu { position: relative; }
+.exec-actions-sum::-webkit-details-marker { display: none; }
+.exec-actions-body {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 50;
+  width: min(340px, calc(100vw - 48px)); background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-lg); padding: 14px;
+}
+.exec-actions-block  { margin-bottom: 14px; }
+.exec-actions-block:last-child { margin-bottom: 0; }
+.exec-actions-label  { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); display: block; margin-bottom: 8px; }
+.exec-actions-form   { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.exec-actions-dt     { font-size: 12px !important; padding: 6px 8px !important; flex: 1; min-width: 160px; }
+.exec-actions-note   { font-size: 12px !important; padding: 6px 8px !important; flex: 1; min-width: 120px; }
+.exec-actions-hint   { font-size: 12px; color: var(--text-muted); margin: 0; }
+
+.exec-page-head__actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.quick-add-lead { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.quick-add-lead input { width: 120px; min-width: 0; padding: 7px 10px; font-size: 13px; }
+
+@keyframes dialogIn {
+  from { opacity: 0; transform: scale(0.96) translateY(-8px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+dialog[open] { animation: dialogIn 0.2s ease; }
+
+/* ── Compact on narrow desktops ────────────────────────── */
+@media (max-width: 900px) {
+  .exec-board__top { grid-template-columns: 1fr 160px auto; }
+  .exec-board__fu  { width: 160px; }
+}
+/* ── Stack on mobile ────────────────────────────────────── */
+@media (max-width: 640px) {
+  .exec-board__top { display: flex !important; flex-direction: column; gap: 0; }
+  .exec-board__main    { border-right: none; border-bottom: 1px solid var(--border); }
+  .exec-board__fu      { width: 100%; border-right: none; border-bottom: 1px solid var(--border); flex-direction: row; align-items: center; gap: 10px; }
+  .exec-board__fu-body { flex-direction: row; gap: 6px; }
+  .exec-board__toolbar { padding: 8px 12px; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .exec-board__toolbar-row { flex-wrap: wrap; }
+  .exec-board__line2   { flex-wrap: wrap; }
+}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  function openAddLeadModal() {
+    var d = document.getElementById('add-lead-modal');
+    if (!d || !d.showModal) return;
+    d.showModal();
+    setTimeout(function () {
+      var el = d.querySelector('#id_name') || d.querySelector('input[name="name"]');
+      if (el) { el.focus(); try { el.select(); } catch (e) {} }
+    }, 100);
+  }
+  var b1 = document.getElementById('leads-open-add-modal');
+  var b2 = document.getElementById('leads-open-add-modal-empty');
+  if (b1) b1.addEventListener('click', openAddLeadModal);
+  if (b2) b2.addEventListener('click', openAddLeadModal);
+
+  /* ── Mobile filter panel toggle ─────────────────────── */
+  var panel = document.getElementById('leads-filter-panel');
+  var btn   = document.getElementById('leads-filter-toggle');
+  if (btn && panel) {
+    btn.addEventListener('click', function () {
+      panel.classList.toggle('is-open');
+      btn.setAttribute('aria-expanded', panel.classList.contains('is-open') ? 'true' : 'false');
+    });
+  }
+
+  /* ── Custom date range apply ────────────────────────── */
+  var cap        = document.getElementById('leads-apply-custom-range');
+  var scopeInput = document.getElementById('leads-h-date-scope');
+  if (cap && scopeInput) {
+    cap.addEventListener('click', function () {
+      scopeInput.value = 'custom';
+      var f = document.getElementById('leads-filter-form');
+      if (f) f.submit();
+    });
+  }
+
+  /* ── More filters toggle ────────────────────────────── */
+  var moreBtn   = document.getElementById('cmd-more-btn');
+  var morePanel = document.getElementById('cmd-more-panel');
+  var moreArrow = document.getElementById('cmd-more-arrow');
+
+  function setMoreOpen(open) {
+    if (!morePanel) return;
+    morePanel.hidden = !open;
+    if (moreBtn)   moreBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (moreArrow) moreArrow.style.transform = open ? 'rotate(180deg)' : '';
+  }
+
+  if (moreBtn && morePanel) {
+    moreBtn.addEventListener('click', function () {
+      setMoreOpen(morePanel.hidden);
+    });
+    /* Auto-open if advanced filters are active */
+    {% if filters.q or package_filter or filters.min_deal %}
+    setMoreOpen(true);
+    {% endif %}
+  }
+})();
+</script>
+{% endblock %}

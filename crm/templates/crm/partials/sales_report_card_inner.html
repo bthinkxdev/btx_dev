@@ -1,0 +1,50 @@
+{# Expects context: r = get_report_data(...) #}
+<div class="sales-report-inner" data-period="{{ r.period }}">
+  <p class="sales-report-range" style="margin:0 0 16px;font-size:13px;color:var(--text-muted);">
+    <strong>{{ r.period_title }}</strong> · {{ r.date_line }}
+  </p>
+
+  <div class="sales-report-metrics" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;margin-bottom:20px;">
+    <div class="sales-metric" style="background:var(--neutral-50);border:1px solid var(--neutral-200);border-radius:10px;padding:12px 14px;">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin-bottom:4px;">Total Leads</div>
+      <div style="font-size:1.35rem;font-weight:700;color:var(--text);">{{ r.total_leads }}</div>
+    </div>
+    <div class="sales-metric" style="background:var(--neutral-50);border:1px solid var(--neutral-200);border-radius:10px;padding:12px 14px;">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin-bottom:4px;">Contacted</div>
+      <div style="font-size:1.35rem;font-weight:700;color:var(--text);">{{ r.contacted_leads }}</div>
+    </div>
+    <div class="sales-metric" style="background:var(--neutral-50);border:1px solid var(--neutral-200);border-radius:10px;padding:12px 14px;">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin-bottom:4px;">Follow-ups Done</div>
+      <div style="font-size:1.35rem;font-weight:700;color:var(--text);">{{ r.followups_done }}</div>
+    </div>
+    <div class="sales-metric" style="background:var(--neutral-50);border:1px solid var(--neutral-200);border-radius:10px;padding:12px 14px;">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin-bottom:4px;">Interested</div>
+      <div style="font-size:1.35rem;font-weight:700;color:var(--text);">{{ r.interested_leads }}</div>
+    </div>
+    <div class="sales-metric" style="background:var(--success-50);border:1px solid var(--success-100);border-radius:10px;padding:12px 14px;">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--success-600);margin-bottom:4px;">Closed Deals</div>
+      <div style="font-size:1.35rem;font-weight:700;color:var(--success-700);">{{ r.closed_deals }}</div>
+    </div>
+    <div class="sales-metric" style="background:var(--primary-50);border:1px solid var(--primary-100);border-radius:10px;padding:12px 14px;">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--primary-700);margin-bottom:4px;">Revenue</div>
+      <div style="font-size:1.35rem;font-weight:700;color:var(--primary-700);">₹{{ r.revenue_display }}</div>
+    </div>
+    <div class="sales-metric" style="background:var(--neutral-50);border:1px solid var(--neutral-200);border-radius:10px;padding:12px 14px;">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin-bottom:4px;">Conversion</div>
+      <div style="font-size:1.35rem;font-weight:700;color:var(--text);">{{ r.conversion_rate }}%</div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:20px;padding:14px;background:var(--neutral-100);border-radius:10px;border:1px solid var(--neutral-200);">
+    <div style="font-size:13px;"><span style="color:var(--text-muted);">Overdue FU:</span> <strong style="color:var(--danger-600);">{{ r.overdue_followups }}</strong></div>
+    <div style="font-size:13px;"><span style="color:var(--text-muted);">Pending Tasks:</span> <strong>{{ r.pending_tasks }}</strong></div>
+    <div style="font-size:13px;"><span style="color:var(--text-muted);">Hot Leads:</span> <strong style="color:var(--warning-600);">{{ r.hot_leads }}</strong></div>
+  </div>
+
+  <label for="sales-report-text" style="display:block;font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px;">Shareable report</label>
+  <textarea id="sales-report-text" readonly rows="14" style="width:100%;box-sizing:border-box;font-family:ui-monospace,monospace;font-size:12px;line-height:1.5;padding:12px;border:1px solid var(--neutral-200);border-radius:8px;background:var(--neutral-50);color:var(--text);resize:vertical;">{{ r.report_text }}</textarea>
+  <div style="display:flex;align-items:center;gap:12px;margin-top:12px;flex-wrap:wrap;">
+    <button type="button" class="btn btn-primary js-copy-sales-report" style="margin:0;">Copy Report</button>
+    <span id="sales-report-copy-feedback" class="sales-copy-feedback" style="font-size:13px;font-weight:600;color:var(--success-600);min-height:1.2em;" aria-live="polite"></span>
+  </div>
+</div>

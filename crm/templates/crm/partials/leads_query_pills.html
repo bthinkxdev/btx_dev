@@ -1,0 +1,3 @@
+<a class="pill {% if not filters.fu %}on{% endif %}" href="{{ leads_base }}?{{ lqs.fu_all }}">All FU</a>
+<a class="pill {% if filters.fu == 'overdue' %}on{% endif %}" href="{{ leads_base }}?{{ lqs.fu_overdue }}">Overdue</a>
+<a class="pill {% if filters.fu == 'today' %}on{% endif %}" href="{{ leads_base }}?{{ lqs.fu_today }}">Today</a>

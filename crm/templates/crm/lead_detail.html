@@ -1,0 +1,87 @@
+{% extends "crm/base.html" %}
+{% block title %}{{ lead.name }}{% endblock %}
+{% block page_title %}Lead Detail{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;font-size:13px;color:var(--text-muted);">
+  <a href="{% url 'crm:leads' %}" style="color:var(--text-muted);">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;display:inline;vertical-align:middle;">
+      <polyline points="15 18 9 12 15 6"/>
+    </svg>
+    Leads
+  </a>
+  <span>/</span>
+  <span id="lead-crumb-name" style="color:var(--neutral-800);font-weight:600;">{{ lead.name }}</span>
+</div>
+
+<!-- Lead Info Card (HTMX target for sticky updates) -->
+{% include "crm/partials/lead_detail_sticky.html" %}
+
+<!-- 2-Column Detail Grid -->
+<div class="detail-grid">
+  <!-- Left: Notes -->
+  <div>
+    <div class="panel-block">
+      <div class="panel-h">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;color:var(--primary-500);">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+        </svg>
+        Notes
+        <span id="notes-status" style="margin-left:4px;"></span>
+      </div>
+      <textarea name="notes" rows="10" style="width:100%;font-size:13px;line-height:1.6;"
+        hx-post="{% url 'crm:lead_notes_save' lead.pk %}"
+        hx-trigger="blur, change delay:800ms"
+        hx-target="#notes-status"
+        hx-swap="innerHTML">{{ lead.notes }}</textarea>
+      <p style="font-size:11px;color:var(--text-light);margin-top:6px;">Auto-saves on blur or after 800ms of no typing</p>
+    </div>
+
+    <!-- Contact Info (editable) -->
+    <div class="panel-block" id="lead-contact-panel">
+      <div id="lead-contact-host">
+        {% include "crm/partials/lead_contact_inner.html" with contact_save_error=None contact_saved_ok=False contact_fv=None %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Follow-ups + Tasks -->
+  <div id="fu-tasks-block">
+    {% include "crm/partials/fu_tasks_panel.html" with fu_error=None task_error=None %}
+  </div>
+</div>
+
+<!-- Activity Timeline -->
+<div class="panel-block">
+  <div class="panel-h">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;color:var(--primary-500);">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+    </svg>
+    Activity Timeline
+    <span style="font-size:12px;color:var(--text-muted);font-weight:500;">(last 100 events)</span>
+  </div>
+  <ul class="activity-list">
+    {% for a in activities %}
+    <li class="activity-item">
+      <div class="activity-dot"></div>
+      <div style="flex:1;">
+        <span class="activity-action">{{ a.action }}</span>
+        <span style="color:var(--text-muted);margin-left:8px;font-size:12px;">{{ a.created_at|date:"M j, H:i" }}</span>
+        {% if a.note %}
+        <div class="activity-meta">{{ a.note|truncatewords:25 }}</div>
+        {% endif %}
+      </div>
+    </li>
+    {% empty %}
+    <li style="color:var(--text-muted);font-size:13px;padding:12px 0;">No activity recorded yet.</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+.lead-contact-grid { display: grid; grid-template-columns: 90px 1fr; gap: 8px 14px; align-items: center; }
+.lead-contact-lbl { font-size: 12px; font-weight: 600; color: var(--text-muted); margin: 0 !important; }
+.lead-contact-in { width: 100%; font-size: 13px; padding: 8px 10px; }
+{% endblock %}

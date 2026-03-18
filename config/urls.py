@@ -7,6 +7,7 @@ from pages.views import page_404
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('crm/', include('crm.urls')),
     path('', include('pages.urls')),
 ]
 
