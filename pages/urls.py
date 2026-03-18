@@ -18,4 +18,6 @@ urlpatterns = [
     ),
     path('contact/', views.contact, name='contact'),
     path('contact/submit/', views.contact_submit, name='contact_submit'),
+    path('careers/', views.careers, name='careers'),
+    path('careers/apply/', views.career_apply, name='career_apply'),
 ]

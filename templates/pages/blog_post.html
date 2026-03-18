@@ -1,10 +1,10 @@
 {% extends 'pages/base.html' %}
 {% load static %}
 
-{% block title %}{{ post.title }} — BThinkX Dev{% endblock %}
+{% block title %}{{ post.title }} | BThinkX Dev{% endblock %}
 {% block meta_description %}{{ post.get_meta_description }}{% endblock %}
 {% block og_type %}article{% endblock %}
-{% block og_title %}{{ post.title }} — BThinkX Dev{% endblock %}
+{% block og_title %}{{ post.title }} | BThinkX Dev{% endblock %}
 {% block og_description %}{{ post.get_meta_description }}{% endblock %}
 {% block og_image %}{% if post.featured_image %}{{ request.scheme }}://{{ request.get_host }}{{ post.featured_image.url }}{% else %}{{ block.super }}{% endif %}{% endblock %}
 {% block og_image_alt %}{{ post.title }}{% endblock %}

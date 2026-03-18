@@ -7,10 +7,12 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import ensure_csrf_cookie
 
-from .forms import ContactForm, NewsletterSubscribeForm
+from .forms import ContactForm, JobApplicationForm, NewsletterSubscribeForm
 from .models import (
     BlogPageSettings,
     BlogPost,
+    JobApplication,
+    JobPosting,
     NewsletterSubscriber,
     Project,
     TeamMember,
@@ -147,6 +149,64 @@ def contact(request):
     return render(request, 'pages/contact.html')
 
 
+@ensure_csrf_cookie
+def careers(request):
+    jobs = JobPosting.objects.filter(is_published=True).order_by('sort_order', '-created_at')
+    return render(request, 'pages/careers.html', {'jobs': jobs})
+
+
+@require_http_methods(['POST'])
+def career_apply(request):
+    """Multipart application + resume; returns JSON for AJAX."""
+    form = JobApplicationForm(request.POST, request.FILES)
+    if form.is_valid():
+        app = form.save()
+        _send_career_notification(app, request)
+        return JsonResponse(
+            {
+                'success': True,
+                'message': 'Thanks! We received your application and will review it soon.',
+            }
+        )
+    errors = {}
+    for key, msgs in form.errors.items():
+        errors[key] = msgs[0] if msgs else 'Invalid'
+    logger.warning('Career application validation failed: %s', errors)
+    return JsonResponse({'success': False, 'errors': errors}, status=400)
+
+
+def _send_career_notification(app: JobApplication, request):
+    to_email = getattr(settings, 'CONTACT_EMAIL_TO', 'hr@bthinkx.com')
+    role = app.job.title if app.job else 'General / speculative'
+    try:
+        resume_url = request.build_absolute_uri(app.resume.url) if app.resume else ''
+    except Exception:
+        resume_url = app.resume.name if app.resume else ''
+    subject = f'[BThinkX Careers] Application: {app.full_name} | {role}'
+    body = (
+        f"New job application from the Careers page.\n\n"
+        f"Role: {role}\n"
+        f"Name: {app.full_name}\n"
+        f"Email: {app.email}\n"
+        f"Phone: {app.phone}\n"
+        f"LinkedIn: {app.linkedin_url or '(not provided)'}\n"
+        f"Submitted: {app.created_at.strftime('%Y-%m-%d %H:%M')} UTC\n\n"
+        f"Cover note:\n{app.cover_message or '(none)'}\n\n"
+        f"Resume (download): {resume_url}\n"
+        f"Admin: review in Django Admin → Job applications."
+    )
+    try:
+        send_mail(
+            subject=subject,
+            message=body,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[to_email],
+            fail_silently=False,
+        )
+    except Exception as e:
+        logger.exception('Career notification email failed: %s', e)
+
+
 @require_http_methods(['POST'])
 def contact_submit(request):
     """Accept contact form POST; validate, save, email notification, return JSON for AJAX."""
@@ -162,8 +222,8 @@ def contact_submit(request):
 
 def _send_contact_notification(submission):
     """Email contact form data to CONTACT_EMAIL_TO."""
-    to_email = getattr(settings, 'CONTACT_EMAIL_TO', 'achujosephsl@gmail.com')
-    subject = f'[BThinkX] New contact: {submission.name} — {submission.project_type}'
+    to_email = getattr(settings, 'CONTACT_EMAIL_TO', 'hr@bthinkx.com')
+    subject = f'[BThinkX] New contact: {submission.name} | {submission.project_type}'
     body = (
         f"New contact form submission from BThinkX Dev website.\n\n"
         f"Name: {submission.name}\n"

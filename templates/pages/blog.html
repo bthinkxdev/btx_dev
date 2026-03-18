@@ -1,9 +1,9 @@
 {% extends 'pages/base.html' %}
 {% load static %}
 
-{% block title %}Blog — BThinkX Dev{% endblock %}
+{% block title %}Blog | BThinkX Dev{% endblock %}
 {% block meta_description %}Insights on scaling e-commerce platforms, AI in business automation, modern web development, and digital growth systems.{% endblock %}
-{% block og_title %}Blog — BThinkX Dev{% endblock %}
+{% block og_title %}Blog | BThinkX Dev{% endblock %}
 {% block og_description %}Insights on scaling e-commerce platforms, AI in business automation, modern web development, and digital growth systems.{% endblock %}
 
 {% block extra_head %}
@@ -223,7 +223,7 @@
       <div class="animate-up">
         <div class="badge" style="margin-bottom:16px;">{% if blog_settings %}{{ blog_settings.newsletter_badge }}{% else %}Stay Updated{% endif %}</div>
         <h2>{% if blog_settings %}{{ blog_settings.newsletter_heading }}{% else %}Get Weekly Engineering Insights{% endif %}</h2>
-        <p>{% if blog_settings %}{{ blog_settings.newsletter_text }}{% else %}No fluff. Just practical deep dives on building scalable digital products — straight to your inbox every week.{% endif %}</p>
+        <p>{% if blog_settings %}{{ blog_settings.newsletter_text }}{% else %}No fluff. Just practical deep dives on building scalable digital products, straight to your inbox every week.{% endif %}</p>
         {% if blog_settings.newsletter_subtext %}
         <p style="font-size:0.82rem;margin-top:12px;color:var(--text-muted);">{{ blog_settings.newsletter_subtext }}</p>
         {% endif %}

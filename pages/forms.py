@@ -1,6 +1,9 @@
 from django import forms
+from django.core.exceptions import ValidationError
 
-from .models import ContactSubmission, NewsletterSubscriber
+from .models import ContactSubmission, JobApplication, JobPosting, NewsletterSubscriber
+
+MAX_RESUME_BYTES = 5 * 1024 * 1024
 
 
 class ContactForm(forms.ModelForm):
@@ -24,6 +27,39 @@ class ContactForm(forms.ModelForm):
         self.fields['budget'].required = False
         self.fields['company'].required = False
         self.fields['timeline'].required = False
+
+
+class JobApplicationForm(forms.ModelForm):
+    """Careers page: apply with resume (multipart)."""
+
+    class Meta:
+        model = JobApplication
+        fields = ['job', 'full_name', 'email', 'phone', 'linkedin_url', 'cover_message', 'resume']
+        widgets = {
+            'job': forms.Select(attrs={'class': 'form-control', 'id': 'careerJob'}),
+            'full_name': forms.TextInput(attrs={'class': 'form-control', 'id': 'careerName', 'placeholder': 'Your full name'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control', 'id': 'careerEmail', 'placeholder': 'you@email.com'}),
+            'phone': forms.TextInput(attrs={'class': 'form-control', 'id': 'careerPhone', 'placeholder': '+91 …'}),
+            'linkedin_url': forms.URLInput(attrs={'class': 'form-control', 'id': 'careerLinkedin', 'placeholder': 'https://linkedin.com/in/…'}),
+            'cover_message': forms.Textarea(attrs={'class': 'form-control', 'id': 'careerCover', 'rows': 4, 'placeholder': 'Why BThinkX? What draws you to this role?'}),
+            'resume': forms.ClearableFileInput(attrs={'class': 'form-control career-file-input', 'id': 'careerResume', 'accept': '.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['job'].queryset = JobPosting.objects.filter(is_published=True).order_by(
+            'sort_order', '-created_at'
+        )
+        self.fields['job'].required = False
+        self.fields['job'].empty_label = 'General application (no specific role)'
+        self.fields['linkedin_url'].required = False
+        self.fields['cover_message'].required = False
+
+    def clean_resume(self):
+        f = self.cleaned_data['resume']
+        if f.size > MAX_RESUME_BYTES:
+            raise ValidationError('Resume must be 5MB or smaller.')
+        return f
 
 
 class NewsletterSubscribeForm(forms.ModelForm):

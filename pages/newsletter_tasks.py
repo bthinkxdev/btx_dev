@@ -5,7 +5,7 @@ Sends one email per subscriber with a configurable delay between messages to
 respect SMTP rate limits. Runs in a daemon thread after the HTTP request commits.
 
 For higher volume or crash recovery, prefer a task queue (Celery, RQ, Dramatiq)
-instead of threads — same sending logic can be moved to a shared task function.
+instead of threads; same sending logic can be moved to a shared task function.
 """
 from __future__ import annotations
 
@@ -117,7 +117,7 @@ def _run_blog_notification_batch(post_id: int) -> None:
             f'{post.title}\n\n'
             f'{post.excerpt[:500]}{"…" if len(post.excerpt) > 500 else ""}\n\n'
             f'Read it here:\n{article_url}\n\n'
-            f'— BThinkX Dev\n\n'
+            f'BThinkX Dev\n\n'
             f'Unsubscribe: {unsub_url}\n'
         )
 

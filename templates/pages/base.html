@@ -19,7 +19,7 @@
   <meta property="og:title" content="{% block og_title %}BThinkX Dev{% endblock %}">
   <meta property="og:description" content="{% block og_description %}Building Scalable Digital Products & Growth Systems{% endblock %}">
   <meta property="og:image" content="{% block og_image %}{{ request.scheme }}://{{ request.get_host }}{% static 'assets/images/DiXxGZkzHIAgH7qrHyIAOf2yXJIefe1.jpg' %}{% endblock %}">
-  <meta property="og:image:alt" content="{% block og_image_alt %}BThinkX Dev — digital products & growth systems{% endblock %}">
+  <meta property="og:image:alt" content="{% block og_image_alt %}BThinkX Dev: digital products & growth systems{% endblock %}">
   <!-- Twitter/X uses og:title, og:description, og:image when these are omitted -->
   <meta name="twitter:card" content="summary_large_image">
   {% block og_extra %}{% endblock %}
@@ -106,6 +106,7 @@
       <a href="{% url 'pages:index' %}" class="{% if request.resolver_match.url_name == 'index' %}active{% endif %}">Home</a>
       <a href="{% url 'pages:services' %}" class="{% if request.resolver_match.url_name == 'services' %}active{% endif %}">Services</a>
       <a href="{% url 'pages:portfolio' %}" class="{% if request.resolver_match.url_name == 'portfolio' %}active{% endif %}">Work</a>
+      <a href="{% url 'pages:careers' %}" class="{% if request.resolver_match.url_name == 'careers' %}active{% endif %}">Careers</a>
     </div>
     <div class="pill-sep"></div>
     <button class="pill-menu-btn" id="pillMenuBtn" aria-expanded="false">
@@ -139,6 +140,7 @@
         <a href="{% url 'pages:about' %}">About Us</a>
         <a href="{% url 'pages:portfolio' %}">Our Work</a>
         <a href="{% url 'pages:blog' %}">Blog &amp; Insights</a>
+        <a href="{% url 'pages:careers' %}">Careers</a>
         <a href="{% url 'pages:contact' %}">Contact</a>
       </div>
     </div>
@@ -172,6 +174,7 @@
         <a href="{% url 'pages:about' %}">About Us</a>
         <a href="{% url 'pages:portfolio' %}">Our Work</a>
         <a href="{% url 'pages:blog' %}">Blog &amp; Insights</a>
+        <a href="{% url 'pages:careers' %}">Careers</a>
         <a href="{% url 'pages:contact' %}">Contact</a>
       </div>
     </div>
@@ -218,11 +221,14 @@
         <a href="{% url 'pages:about' %}">About Us</a>
         <a href="{% url 'pages:portfolio' %}">Our Work</a>
         <a href="{% url 'pages:blog' %}">Blog</a>
+        <a href="{% url 'pages:careers' %}">Careers</a>
         <a href="{% url 'pages:contact' %}">Contact</a>
       </div>
-      <div class="footer-col">
+      <div class="footer-col footer-col-contact">
         <h5>Contact</h5>
-        <a href="mailto:hello@bthinkxdev.com">hello@bthinkxdev.com</a>
+        <a href="mailto:hr@bthinkx.com">hr@bthinkx.com</a>
+        <a href="https://wa.me/917736094292" target="_blank" rel="noopener noreferrer">WhatsApp +91 77360 94292</a>
+        <span class="footer-address">2nd Floor, Suffis Arcade<br>Pattom, Trivandrum</span>
         <a href="{% url 'pages:contact' %}">Start a Project</a>
         <a href="{% url 'pages:contact' %}">Get a Quote</a>
       </div>

@@ -99,7 +99,7 @@ EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'mtbsaphoieurdqqe')
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
 
 # Address to receive contact form submissions
-CONTACT_EMAIL_TO = os.environ.get('CONTACT_EMAIL_TO', 'achujosephsl@gmail.com')
+CONTACT_EMAIL_TO = os.environ.get('CONTACT_EMAIL_TO', 'hr@bthinkx.com')
 
 # Public site URL (used in blog notification emails and unsubscribe links)
 SITE_BASE_URL = os.environ.get('SITE_BASE_URL', 'http://127.0.0.1:8000').rstrip('/')

@@ -12,7 +12,7 @@
     ambientGfx.addEventListener('animationend', function (e) {
       if (e.target === ambientGfx && e.animationName === 'ambientGfxIntro') finish();
     });
-    setTimeout(finish, 5000);
+    setTimeout(finish, 2000);
   } else if (ambientGfx && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     ambientGfx.classList.add('ambient-gfx--done');
   }

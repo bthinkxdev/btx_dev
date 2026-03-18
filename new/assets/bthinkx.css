@@ -207,7 +207,7 @@ section{padding:var(--section-py) 0}
 /* ═══════════════════════════════════════════════════════════════
    AMBIENT GRAPHICS — rings, aurora, circuit mesh, sparkles
 ═══════════════════════════════════════════════════════════════ */
-/* Full effect ~2s, then fades out (~2s); layer removed via JS after animation */
+/* ~1s total: brief full-opacity glitter, then quick fade; layer removed via JS */
 .ambient-gfx{
   position:fixed;
   inset:0;
@@ -215,13 +215,13 @@ section{padding:var(--section-py) 0}
   z-index:1;
   overflow:hidden;
   opacity:1;
-  animation:ambientGfxIntro 4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  animation:ambientGfxIntro 1s ease-out forwards;
 }
 .ambient-gfx.ambient-gfx--done{
   display:none !important;
 }
 @keyframes ambientGfxIntro{
-  0%,50%{opacity:1}
+  0%,35%{opacity:1}
   100%{opacity:0;visibility:hidden}
 }
 .ambient-gfx__rings{
@@ -333,8 +333,8 @@ section{padding:var(--section-py) 0}
   transform:translateX(-50%);
   z-index:200;
   width:auto;
-  min-width:600px;
-  max-width:860px;
+  min-width:680px;
+  max-width:920px;
   transition:all var(--t-slow);
   /* iOS safe-area notch support */
   top:max(20px, env(safe-area-inset-top, 20px));
@@ -1138,6 +1138,7 @@ section{padding:var(--section-py) 0}
 .footer-col h5{font-size:.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:16px}
 .footer-col a{display:block;font-size:.88rem;color:var(--text-secondary);margin-bottom:11px;transition:color var(--t)}
 .footer-col a:hover{color:var(--text-primary)}
+.footer-address{display:block;font-size:.82rem;color:var(--text-muted);line-height:1.55;margin-bottom:11px;max-width:220px}
 .footer-bottom{
   display:flex;justify-content:space-between;align-items:center;
   padding-top:28px;border-top:1px solid var(--border);

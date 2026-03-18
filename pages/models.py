@@ -1,6 +1,8 @@
 import uuid
 
+from django.core.validators import FileExtensionValidator
 from django.db import models
+from django.utils import timezone
 from django.utils.text import slugify
 
 
@@ -23,7 +25,7 @@ class ContactSubmission(models.Model):
         verbose_name_plural = 'Contact submissions'
 
     def __str__(self):
-        return f"{self.name} ({self.email}) — {self.created_at:%Y-%m-%d %H:%M}"
+        return f"{self.name} ({self.email}) @ {self.created_at:%Y-%m-%d %H:%M}"
 
 
 class TechTag(models.Model):
@@ -111,8 +113,8 @@ class TeamSection(models.Model):
     )
 
     class Meta:
-        verbose_name = 'About — team section'
-        verbose_name_plural = 'About — team section'
+        verbose_name = 'About team section'
+        verbose_name_plural = 'About team section'
 
     def __str__(self) -> str:
         return 'Team section (About page)'
@@ -171,7 +173,7 @@ class BlogPageSettings(models.Model):
     newsletter_badge = models.CharField(max_length=100, default='Stay Updated')
     newsletter_heading = models.CharField(max_length=200, default='Get Weekly Engineering Insights')
     newsletter_text = models.TextField(
-        default='No fluff. Just practical deep dives on building scalable digital products — straight to your inbox every week.',
+        default='No fluff. Just practical deep dives on building scalable digital products, straight to your inbox every week.',
     )
     newsletter_subtext = models.CharField(
         max_length=300,
@@ -194,7 +196,7 @@ class BlogPost(models.Model):
     slug = models.SlugField(max_length=320, unique=True)
     category = models.CharField(
         max_length=100,
-        help_text='e.g. E-commerce, AI / Automation, Web Dev — used for filters.',
+        help_text='e.g. E-commerce, AI / Automation, Web Dev, used for filters.',
     )
     category_slug = models.SlugField(max_length=120, editable=False, db_index=True)
     excerpt = models.TextField(help_text='Short summary for cards and SEO.')
@@ -268,3 +270,79 @@ class NewsletterSubscriber(models.Model):
 
     def __str__(self) -> str:
         return self.email
+
+
+def _career_resume_upload_to(instance, filename):
+    ext = (filename.rsplit('.', 1)[-1] if '.' in filename else 'pdf').lower()[:5]
+    if ext not in ('pdf', 'doc', 'docx'):
+        ext = 'pdf'
+    return f'careers/resumes/{timezone.now():%Y/%m}/{uuid.uuid4().hex}.{ext}'
+
+
+class JobPosting(models.Model):
+    """Open roles listed on the Careers page (managed in admin)."""
+
+    TYPE_FULL = 'full_time'
+    TYPE_PART = 'part_time'
+    TYPE_CONTRACT = 'contract'
+    TYPE_INTERN = 'internship'
+
+    EMPLOYMENT_CHOICES = [
+        (TYPE_FULL, 'Full-time'),
+        (TYPE_PART, 'Part-time'),
+        (TYPE_CONTRACT, 'Contract'),
+        (TYPE_INTERN, 'Internship'),
+    ]
+
+    title = models.CharField(max_length=200)
+    slug = models.SlugField(max_length=220, unique=True)
+    department = models.CharField(max_length=100, blank=True, help_text='e.g. Engineering, Design')
+    location = models.CharField(max_length=120, default='Remote / Trivandrum')
+    employment_type = models.CharField(max_length=20, choices=EMPLOYMENT_CHOICES, default=TYPE_FULL)
+    summary = models.CharField(max_length=320, help_text='Short line shown on job cards')
+    description = models.TextField(help_text='Full role description (line breaks are kept)')
+    is_published = models.BooleanField(default=True, db_index=True)
+    sort_order = models.PositiveIntegerField(default=0, help_text='Lower = listed first')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['sort_order', '-created_at']
+        verbose_name = 'Job posting'
+        verbose_name_plural = 'Job postings'
+
+    def __str__(self) -> str:
+        return self.title
+
+
+class JobApplication(models.Model):
+    """Candidate application + resume (submitted from Careers page)."""
+
+    job = models.ForeignKey(
+        JobPosting,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='applications',
+        help_text='Empty = general / speculative application',
+    )
+    full_name = models.CharField(max_length=200)
+    email = models.EmailField()
+    phone = models.CharField(max_length=40)
+    linkedin_url = models.URLField(blank=True)
+    cover_message = models.TextField(blank=True, max_length=2500)
+    resume = models.FileField(
+        upload_to=_career_resume_upload_to,
+        validators=[FileExtensionValidator(['pdf', 'doc', 'docx'])],
+        help_text='PDF, DOC, or DOCX, max 5MB',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Job application'
+        verbose_name_plural = 'Job applications'
+
+    def __str__(self) -> str:
+        role = self.job.title if self.job else 'General'
+        return f'{self.full_name} → {role} ({self.created_at:%Y-%m-%d})'

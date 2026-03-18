@@ -5,6 +5,8 @@ from .models import (
     BlogPageSettings,
     BlogPost,
     ContactSubmission,
+    JobApplication,
+    JobPosting,
     NewsletterSubscriber,
     Project,
     TeamMember,
@@ -52,7 +54,7 @@ class ProjectAdmin(admin.ModelAdmin):
                 '<img src="{}" alt="" style="max-height:48px;border-radius:6px"/>',
                 obj.image.url,
             )
-        return '—'
+        return '-'
 
     @admin.display(description='Current image')
     def image_preview(self, obj):
@@ -90,7 +92,7 @@ class TeamMemberAdmin(admin.ModelAdmin):
                 '<img src="{}" alt="" style="max-height:40px;border-radius:6px"/>',
                 obj.photo.url,
             )
-        return '—'
+        return '-'
 
     @admin.display(description='Current photo')
     def photo_preview(self, obj):
@@ -167,14 +169,14 @@ class BlogPostAdmin(admin.ModelAdmin):
     @admin.display(description='Newsletter')
     def newsletter_status(self, obj):
         if not obj.pk:
-            return '—'
+            return '-'
         if obj.subscriber_notification_completed_at:
             return format_html('<span style="color:green">Sent</span>')
         if obj.notification_job_started_at:
             return format_html('<span style="color:orange">Sending…</span>')
         if obj.is_published:
             return 'Pending'
-        return '—'
+        return '-'
 
     @admin.display(description='Image')
     def image_thumb(self, obj):
@@ -183,7 +185,7 @@ class BlogPostAdmin(admin.ModelAdmin):
                 '<img src="{}" alt="" style="max-height:40px;border-radius:6px"/>',
                 obj.featured_image.url,
             )
-        return '—'
+        return '-'
 
     @admin.display(description='Featured image preview')
     def image_preview(self, obj):
@@ -193,6 +195,40 @@ class BlogPostAdmin(admin.ModelAdmin):
                 obj.featured_image.url,
             )
         return 'Upload below.'
+
+
+@admin.register(JobPosting)
+class JobPostingAdmin(admin.ModelAdmin):
+    list_display = ('title', 'department', 'employment_type', 'location', 'is_published', 'sort_order', 'created_at')
+    list_filter = ('is_published', 'employment_type')
+    list_editable = ('is_published', 'sort_order')
+    search_fields = ('title', 'summary', 'description')
+    prepopulated_fields = {'slug': ('title',)}
+    ordering = ('sort_order', '-created_at')
+
+
+@admin.register(JobApplication)
+class JobApplicationAdmin(admin.ModelAdmin):
+    list_display = ('full_name', 'email', 'job_title', 'phone', 'created_at', 'resume_link')
+    list_filter = ('created_at',)
+    search_fields = ('full_name', 'email', 'phone', 'cover_message')
+    readonly_fields = ('created_at', 'resume_preview')
+
+    @admin.display(description='Role')
+    def job_title(self, obj):
+        return obj.job.title if obj.job else 'General'
+
+    @admin.display(description='Resume')
+    def resume_link(self, obj):
+        if obj.resume:
+            return format_html('<a href="{}" target="_blank" rel="noopener">Download</a>', obj.resume.url)
+        return '-'
+
+    @admin.display(description='Resume file')
+    def resume_preview(self, obj):
+        if obj.pk and obj.resume:
+            return format_html('<a href="{}" target="_blank" rel="noopener">{}</a>', obj.resume.url, obj.resume.name)
+        return '-'
 
 
 @admin.register(NewsletterSubscriber)
