@@ -9,23 +9,10 @@
     <h1>Daily execution</h1>
     <p><strong>{{ leads|length }}</strong> leads · {{ sort_label }}</p>
   </div>
-  <div class="exec-page-head__cta">
-    <button type="button" class="leads-add-cta" id="leads-open-add-modal" aria-haspopup="dialog" aria-controls="add-lead-modal">
-      <span class="leads-add-cta__icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      </span>
-      <span class="leads-add-cta__text">
-        <span class="leads-add-cta__title">Add new lead</span>
-        <span class="leads-add-cta__sub">Name, contact, status, package &amp; more</span>
-      </span>
-    </button>
-    <button type="button" onclick="document.getElementById('import-modal').showModal()" class="btn btn-outline btn-sm leads-add-secondary">Import Excel</button>
-  </div>
-</div>
 
-{# ── COMMAND STRIP — click to filter, shows live counts ───── #}
-{# Each card = one filter. Click to show those leads. Active card = filled color. #}
-<div class="cmd-strip">
+  {# ── COMMAND STRIP — click to filter, shows live counts ───── #}
+  {# Each card = one filter. Click to show those leads. Active card = filled color. #}
+  <div class="cmd-strip cmd-strip--inline">
   <a href="{{ leads_base }}?{{ lqs.fu_overdue }}"
      class="cmd-strip__card cmd-strip__card--danger{% if filters.fu == 'overdue' %} cmd-strip__card--on{% endif %}"
      title="Click to see leads whose follow-up date has already passed">
@@ -76,6 +63,21 @@
     <span class="cmd-strip__lbl">All Leads</span>
     <span class="cmd-strip__hint">No filter active</span>
   </a>
+
+  </div>
+
+  <div class="exec-page-head__cta">
+    <button type="button" class="leads-add-cta" id="leads-open-add-modal" aria-haspopup="dialog" aria-controls="add-lead-modal">
+      <span class="leads-add-cta__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </span>
+      <span class="leads-add-cta__text">
+        <span class="leads-add-cta__title">Add new lead</span>
+        <span class="leads-add-cta__sub">Name, contact, status, package &amp; more</span>
+      </span>
+    </button>
+    <button type="button" onclick="document.getElementById('import-modal').showModal()" class="btn btn-outline btn-sm leads-add-secondary">Import Excel</button>
+  </div>
 </div>
 
 {# ── STICKY FILTER PANEL ─────────────────────────────────── #}
@@ -321,16 +323,22 @@ dialog::backdrop { background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); }
 
 /* ── Leads page: focused Add CTA + add-lead modal ─────── */
 .exec-page-head--leads {
-  flex-wrap: wrap; align-items: flex-start; gap: 16px 20px;
+  /* Desktop: intro + command strip + CTA on a single row */
+  display: grid;
+  grid-template-columns: 260px 1fr 320px;
+  align-items: center;
+  gap: 10px 14px;
 }
 .exec-page-head--leads .exec-page-head__intro { flex: 1 1 200px; min-width: 0; }
 .exec-page-head--leads .exec-page-head__cta {
   display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
-  flex: 1 1 280px; justify-content: flex-end;
+  justify-content: flex-end;
 }
 @media (max-width: 640px) {
   .exec-page-head--leads .exec-page-head__cta { flex-basis: 100%; justify-content: stretch; flex-direction: column; }
   .leads-add-secondary { width: 100%; justify-content: center; min-height: 42px; }
+  .exec-page-head--leads { flex-wrap: wrap; align-items: flex-start; }
+  .exec-page-head--leads { display: block; }
 }
 
 .leads-add-cta {
@@ -420,31 +428,33 @@ dialog::backdrop { background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); }
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 8px;
-  margin-bottom: 16px;
+  margin-bottom: 0px;
 }
+.cmd-strip--inline { gap: 6px; min-width: 0; }
+.cmd-strip--inline .cmd-strip__card { min-height: 52px; padding: 7px 6px 6px; }
 .cmd-strip__card {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 10px 8px 8px;
+  padding: 8px 6px 6px;
   border-radius: var(--radius);
   border: 2px solid var(--border);
   background: var(--surface);
   text-decoration: none !important;
-  gap: 2px;
+  gap: 0px;
   box-shadow: var(--shadow-sm);
   cursor: pointer;
-  min-height: 72px;
+  min-height: 56px;
   transition: transform 0.12s, box-shadow 0.15s, border-color 0.15s, background 0.15s;
   position: relative;
   overflow: hidden;
 }
 .cmd-strip__card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); text-decoration: none !important; }
 .cmd-strip__icon { color: var(--text-muted); margin-bottom: 1px; }
-.cmd-strip__num  { font-size: 22px; font-weight: 900; line-height: 1; letter-spacing: -0.03em; color: var(--neutral-800); }
-.cmd-strip__lbl  { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; color: var(--neutral-700); }
-.cmd-strip__hint { font-size: 9px; font-weight: 600; color: var(--text-muted); white-space: nowrap; letter-spacing: 0.02em; }
+.cmd-strip__num  { font-size: 19px; font-weight: 900; line-height: 1; letter-spacing: -0.03em; color: var(--neutral-800); }
+.cmd-strip__lbl  { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; color: var(--neutral-700); }
+.cmd-strip__hint { font-size: 8px; font-weight: 600; color: var(--text-muted); white-space: nowrap; letter-spacing: 0.02em; }
 
 /* color variants */
 .cmd-strip__card--danger  { border-color: var(--danger-200); }
@@ -511,13 +521,14 @@ dialog::backdrop { background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); }
 
 /* ── Sticky Filter Bar ────────────────────────────────── */
 .leads-filter-sticky {
-  position: sticky;
-  top: var(--header-h);
-  z-index: 80;
+  /* Scroll normally (no sticky bar while scrolling). */
+  position: relative;
+  top: auto;
+  z-index: auto;
   margin-bottom: 20px;
-  margin-top: -8px;
-  padding-top: 8px;
-  background: linear-gradient(180deg, var(--bg) 0%, var(--bg) 75%, transparent 100%);
+  margin-top: 0;
+  padding-top: 0;
+  background: transparent;
 }
 .leads-filter-mob-btn {
   display: none;
