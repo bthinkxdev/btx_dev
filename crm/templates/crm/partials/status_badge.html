@@ -1,23 +1,31 @@
 {% if s == 'new' %}
 <span class="crm-badge crm-badge--gray">New</span>
-{% elif s == 'contacted' %}
-<span class="crm-badge crm-badge--blue">Contacted</span>
-{% elif s == 'follow_up' %}
-<span class="crm-badge crm-badge--teal">Follow up</span>
-{% elif s == 'interested' %}
-<span class="crm-badge crm-badge--orange">Interested</span>
-{% elif s == 'qualified' %}
-<span class="crm-badge crm-badge--cyan">Qualified</span>
-{% elif s == 'proposal' %}
-<span class="crm-badge crm-badge--violet">Proposal</span>
-{% elif s == 'negotiation' %}
+{% elif s == 'whatsapp_connected' %}
+<span class="crm-badge crm-badge--blue">WhatsApp Connected</span>
+{% elif s == 'call_connected' %}
+<span class="crm-badge crm-badge--teal">Call Connected</span>
+{% elif s == 'proposal_sent' %}
+<span class="crm-badge crm-badge--violet">Proposal Sent</span>
+{% elif s == 'negotiation_after_proposal' %}
 <span class="crm-badge crm-badge--purple">Negotiation</span>
-{% elif s == 'on_hold' %}
-<span class="crm-badge crm-badge--slate">On hold</span>
-{% elif s == 'won' %}
-<span class="crm-badge crm-badge--green">Won</span>
-{% elif s == 'lost' %}
+{% elif s == 'closing_ongoing' %}
+<span class="crm-badge crm-badge--orange">Closing Ongoing</span>
+{% elif s == 'failed_retry' %}
+<span class="crm-badge crm-badge--orange">Failed & Retry</span>
+{% elif s == 'closed' %}
+<span class="crm-badge crm-badge--green">Closed</span>
+{% elif s == 'lost' or s == 'lost_after_proposal' %}
 <span class="crm-badge crm-badge--red">Lost</span>
+{% elif s == 'advance_received_project_started' %}
+<span class="crm-badge crm-badge--cyan">Advance + Project Started</span>
+{% elif s == 'project_handed' %}
+<span class="crm-badge crm-badge--cyan">Project Handed</span>
+{% elif s == 'training_completed' %}
+<span class="crm-badge crm-badge--slate">Training Completed</span>
+{% elif s == 'balance_paid_project_completed' %}
+<span class="crm-badge crm-badge--green">Completed</span>
+{% elif s == 'issue_payment_collection' %}
+<span class="crm-badge crm-badge--slate">Payment Collection Issue</span>
 {% else %}
 <span class="crm-badge crm-badge--gray">{{ s }}</span>
 {% endif %}

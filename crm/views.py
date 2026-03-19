@@ -108,11 +108,36 @@ def _hx_toast(response, message):
     return response
 
 
+# Lead status values (match crm.models.Lead.Status enum values).
+# We use explicit strings in conditions so we don't depend on enum member names.
+STATUS_NEW = 'new'
+STATUS_CLOSED = 'closed'
+STATUS_LOST = 'lost'
+STATUS_LOST_AFTER_PROPOSAL = 'lost_after_proposal'
+
+STATUS_WHATSAPP_CONNECTED = 'whatsapp_connected'
+STATUS_CALL_CONNECTED = 'call_connected'
+STATUS_CLOSING_ONGOING = 'closing_ongoing'
+
+STATUS_PROPOSAL_SENT = 'proposal_sent'
+STATUS_NEGOTIATION_AFTER_PROPOSAL = 'negotiation_after_proposal'
+STATUS_FAILED_RETRY = 'failed_retry'
+
+TERMINAL_STATUSES = (STATUS_CLOSED, STATUS_LOST, STATUS_LOST_AFTER_PROPOSAL)
+INTERESTED_SORT_STATUSES = (
+    STATUS_CLOSING_ONGOING,
+    STATUS_PROPOSAL_SENT,
+    STATUS_NEGOTIATION_AFTER_PROPOSAL,
+    STATUS_FAILED_RETRY,
+)
+HOT_ACTIVE_FILTER_EXCLUDE_STATUSES = (STATUS_NEW,) + TERMINAL_STATUSES
+
+
 def _sales_sort_leads(leads, fu_start, fu_end):
     """Overdue FU → today FU → interested → others; closed at end."""
 
     def key(lead):
-        closed = lead.status in (Lead.Status.WON, Lead.Status.LOST)
+        closed = lead.status in TERMINAL_STATUSES
         if closed:
             return (5, 0, -lead.updated_at.timestamp())
         overdue = not lead.next_followup or lead.next_followup < fu_start
@@ -125,12 +150,7 @@ def _sales_sort_leads(leads, fu_start, fu_end):
             return (0, t, 0)
         if in_today:
             return (1, lead.next_followup.timestamp(), 0)
-        if lead.status in (
-            Lead.Status.INTERESTED,
-            Lead.Status.NEGOTIATION,
-            Lead.Status.QUALIFIED,
-            Lead.Status.PROPOSAL,
-        ):
+        if lead.status in INTERESTED_SORT_STATUSES:
             return (2, -lead.updated_at.timestamp(), 0)
         return (3, -lead.updated_at.timestamp(), 0)
 
@@ -280,11 +300,11 @@ def dashboard(request):
 
     total_leads = leads.count()
     interested = leads.filter(
-        status__in=(Lead.Status.INTERESTED, Lead.Status.NEGOTIATION)
+        status__in=INTERESTED_SORT_STATUSES
     ).count()
-    closed_won = leads.filter(status=Lead.Status.WON).count()
+    closed_won = leads.filter(status=STATUS_CLOSED).count()
     revenue = (
-        leads.filter(status=Lead.Status.WON).aggregate(s=Sum('deal_value'))['s']
+        leads.filter(status=STATUS_CLOSED).aggregate(s=Sum('deal_value'))['s']
         or Decimal('0')
     )
     profile = _profile(user)
@@ -301,12 +321,12 @@ def dashboard(request):
     leads_chart_labels = [x['d'].isoformat() if x['d'] else '' for x in per_day]
     leads_chart_data = [x['c'] for x in per_day]
 
-    won_count = leads.filter(status=Lead.Status.WON).count()
+    won_count = leads.filter(status=STATUS_CLOSED).count()
     conv_pct = round((won_count / total_leads * 100), 1) if total_leads else 0
 
     six_mo = timezone.now() - timedelta(days=185)
     rev_monthly = list(
-        leads.filter(status=Lead.Status.WON, updated_at__gte=six_mo)
+        leads.filter(status=STATUS_CLOSED, updated_at__gte=six_mo)
         .annotate(m=TruncMonth('updated_at'))
         .values('m')
         .annotate(total=Sum('deal_value'))
@@ -337,7 +357,7 @@ def leads_list(request):
     user = request.user
     start, end, _ = _local_today_bounds()
     active_q = ~Q(
-        status__in=(Lead.Status.WON, Lead.Status.LOST),
+        status__in=TERMINAL_STATUSES,
     )
 
     start_ann, end_ann, local_date = _local_today_bounds()
@@ -383,16 +403,8 @@ def leads_list(request):
             next_followup__lt=end,
         )
     elif fu_filter == 'hot':
-        qs = qs.filter(
-            active_q,
-            status__in=(
-                Lead.Status.INTERESTED,
-                Lead.Status.NEGOTIATION,
-                Lead.Status.QUALIFIED,
-                Lead.Status.PROPOSAL,
-            ),
-            deal_value__gt=0,
-        )
+        # "Hot" = active pipeline (not closed/lost) + not brand new + has deal value.
+        qs = qs.filter(active_q).exclude(status=STATUS_NEW).filter(deal_value__gt=0)
 
     pkg = request.GET.get('package')
     package_filter = int(pkg) if pkg and pkg.isdigit() else None
@@ -424,7 +436,7 @@ def leads_list(request):
     if closed_day:
         try:
             d = datetime.strptime(closed_day, '%Y-%m-%d').date()
-            qs = qs.filter(status=Lead.Status.WON, updated_at__date=d)
+            qs = qs.filter(status=STATUS_CLOSED, updated_at__date=d)
         except ValueError:
             pass
 
@@ -441,7 +453,7 @@ def leads_list(request):
         try:
             y, m = int(closed_month[:4]), int(closed_month[5:7])
             qs = qs.filter(
-                status=Lead.Status.WON, updated_at__year=y, updated_at__month=m
+                status=STATUS_CLOSED, updated_at__year=y, updated_at__month=m
             )
         except ValueError:
             pass
@@ -550,7 +562,7 @@ def leads_list(request):
 
     # Global summary strip counts (always reflect full pipeline, not current filters)
     _all_leads = Lead.objects.filter(employee=user)
-    _active_q = ~Q(status__in=(Lead.Status.WON, Lead.Status.LOST))
+    _active_q = ~Q(status__in=TERMINAL_STATUSES)
     overdue_count = _all_leads.filter(
         _active_q & (Q(next_followup__lt=start) | Q(next_followup__isnull=True))
     ).count()
@@ -560,12 +572,8 @@ def leads_list(request):
     pending_tasks_count = Task.objects.filter(employee=user, is_completed=False).count()
     hot_leads_count = _all_leads.filter(
         _active_q,
-        status__in=(
-            Lead.Status.INTERESTED,
-            Lead.Status.NEGOTIATION,
-            Lead.Status.QUALIFIED,
-            Lead.Status.PROPOSAL,
-        ),
+        # Exclude brand-new leads, keep active pipeline + deal value.
+        ~Q(status=STATUS_NEW),
         deal_value__gt=0,
     ).count()
 
@@ -1391,9 +1399,9 @@ def performance(request):
     user = request.user
     leads = Lead.objects.filter(employee=user)
     total = leads.count()
-    won = leads.filter(status=Lead.Status.WON).count()
+    won = leads.filter(status=STATUS_CLOSED).count()
     revenue = (
-        leads.filter(status=Lead.Status.WON).aggregate(s=Sum('deal_value'))['s']
+        leads.filter(status=STATUS_CLOSED).aggregate(s=Sum('deal_value'))['s']
         or Decimal('0')
     )
     conv = round((won / total * 100), 1) if total else 0
@@ -1407,7 +1415,7 @@ def performance(request):
         .order_by('d')
     )
     daily_won = list(
-        leads.filter(status=Lead.Status.WON, updated_at__gte=since)
+        leads.filter(status=STATUS_CLOSED, updated_at__gte=since)
         .annotate(d=TruncDate('updated_at'))
         .values('d')
         .annotate(c=Count('id'))
@@ -1434,7 +1442,7 @@ def performance(request):
         mm = x['m']
         if mm:
             won_q = leads.filter(
-                status=Lead.Status.WON,
+                status=STATUS_CLOSED,
                 updated_at__year=mm.year,
                 updated_at__month=mm.month,
             )

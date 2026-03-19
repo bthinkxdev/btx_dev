@@ -1,10 +1,10 @@
 {% load crm_extras %}
-<article id="lead-mcard-{{ lead.pk }}" class="lead-mcard {% if lead.status == 'won' or lead.status == 'lost' %}lead-mcard--closed{% elif not lead.next_followup or lead.next_followup < fu_start %}lead-mcard--od{% elif lead.next_followup < fu_end %}lead-mcard--td{% elif lead.status == 'interested' or lead.status == 'negotiation' or lead.status == 'qualified' or lead.status == 'proposal' %}{% if lead.deal_value %}lead-mcard--hot{% else %}lead-mcard--norm{% endif %}{% else %}lead-mcard--norm{% endif %}{% if lead.task_open_count %} lead-mcard--pending-tasks{% endif %}">
+<article id="lead-mcard-{{ lead.pk }}" class="lead-mcard {% if lead.status == 'closed' or lead.status == 'lost' or lead.status == 'lost_after_proposal' %}lead-mcard--closed{% elif not lead.next_followup or lead.next_followup < fu_start %}lead-mcard--od{% elif lead.next_followup < fu_end %}lead-mcard--td{% elif lead.status == 'proposal_sent' or lead.status == 'negotiation_after_proposal' or lead.status == 'closing_ongoing' or lead.status == 'failed_retry' %}{% if lead.deal_value %}lead-mcard--hot{% else %}lead-mcard--norm{% endif %}{% else %}lead-mcard--norm{% endif %}{% if lead.task_open_count %} lead-mcard--pending-tasks{% endif %}">
   <div class="lead-mcard__top">
     <span class="lead-mcard__name">{{ lead.name }}</span>
     <div class="lead-mcard__tags">
       {% with s=lead.status %}{% include "crm/partials/status_badge.html" %}{% endwith %}
-      {% if lead.deal_value %}{% if lead.status == 'interested' or lead.status == 'negotiation' or lead.status == 'qualified' or lead.status == 'proposal' %}<span class="lead-mcard__hot" title="Hot">★</span>{% endif %}{% endif %}
+      {% if lead.deal_value %}{% if lead.status == 'proposal_sent' or lead.status == 'negotiation_after_proposal' or lead.status == 'closing_ongoing' or lead.status == 'failed_retry' %}<span class="lead-mcard__hot" title="Hot">★</span>{% endif %}{% endif %}
       <span id="exec-task-badge-mob-{{ lead.pk }}">{% if lead.task_open_count %}<span class="lead-mcard__tsk lead-mcard__tsk--open" title="Open tasks">{% include "crm/partials/lead_task_ind_text.html" %}</span>{% elif lead.task_done_count %}<span class="lead-mcard__tsk">{% include "crm/partials/lead_task_ind_text.html" %}</span>{% endif %}</span>
     </div>
   </div>

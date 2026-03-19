@@ -79,7 +79,10 @@ class Lead(models.Model):
     email = models.EmailField(blank=True)
     source = models.CharField(max_length=120, blank=True)
     status = models.CharField(
-        max_length=20,
+        # Must fit the longest Status value string (e.g.:
+        # advance_received_project_started = 32 chars).
+        # Keep generous headroom for future status value additions.
+        max_length=64,
         choices=Status.choices,
         default=Status.NEW,
         db_index=True,

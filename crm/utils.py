@@ -159,7 +159,7 @@ def import_leads_from_excel(file, employee: User):
                     phone=phone[:40],
                     email=email,
                     source=source,
-                    status=Lead.Status.NEW,
+                    status='new',
                     package=pkg,
                     deal_value=deal_value,
                     notes=notes,
@@ -220,17 +220,31 @@ def get_report_data(user, period):
         period_title = 'Monthly'
         date_line = f'{first.strftime("%Y-%m-%d")} → {local.isoformat()}'
 
+    # Status logic uses explicit values to avoid depending on enum members.
+    STATUS_NEW = 'new'
+    STATUS_CLOSED = 'closed'
+    STATUS_LOST = 'lost'
+    STATUS_LOST_AFTER_PROPOSAL = 'lost_after_proposal'
+
+    # "Interested" = proposal/negotiation/closing intent window.
+    INTERESTED_STATUSES = (
+        'proposal_sent',
+        'negotiation_after_proposal',
+        'closing_ongoing',
+        'failed_retry',
+    )
+
+    # Terminal states for pipeline health.
+    TERMINAL_STATUSES = (STATUS_CLOSED, STATUS_LOST, STATUS_LOST_AFTER_PROPOSAL)
+
     leads = Lead.objects.filter(employee=user)
-    not_new = [s for s, _ in Lead.Status.choices if s != Lead.Status.NEW]
 
     total_leads = leads.filter(
         created_at__gte=start, created_at__lt=today_end
     ).count()
     contacted_leads = leads.filter(
-        created_at__gte=start,
-        created_at__lt=today_end,
-        status__in=not_new,
-    ).count()
+        created_at__gte=start, created_at__lt=today_end
+    ).exclude(status=STATUS_NEW).count()
     followups_done = ActivityLog.objects.filter(
         lead__employee=user,
         action='follow_up_done',
@@ -240,10 +254,11 @@ def get_report_data(user, period):
     interested_leads = leads.filter(
         updated_at__gte=start,
         updated_at__lt=today_end,
-        status__in=(Lead.Status.INTERESTED, Lead.Status.NEGOTIATION),
+        status__in=INTERESTED_STATUSES,
     ).count()
+
     closed_qs = leads.filter(
-        status=Lead.Status.WON,
+        status=STATUS_CLOSED,
         updated_at__gte=start,
         updated_at__lt=today_end,
     )
@@ -260,15 +275,10 @@ def get_report_data(user, period):
     pending_tasks = Task.objects.filter(
         employee=user, is_completed=False
     ).count()
-    active_q = ~Q(status__in=(Lead.Status.WON, Lead.Status.LOST))
+    active_q = ~Q(status__in=TERMINAL_STATUSES)
     hot_leads = leads.filter(
         active_q,
-        status__in=(
-            Lead.Status.INTERESTED,
-            Lead.Status.NEGOTIATION,
-            Lead.Status.QUALIFIED,
-            Lead.Status.PROPOSAL,
-        ),
+        exclude(status=STATUS_NEW),
         deal_value__gt=0,
     ).count()
 
