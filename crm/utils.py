@@ -278,7 +278,9 @@ def get_report_data(user, period):
     active_q = ~Q(status__in=TERMINAL_STATUSES)
     hot_leads = leads.filter(
         active_q,
-        exclude(status=STATUS_NEW),
+    ).exclude(
+        status=STATUS_NEW,
+    ).filter(
         deal_value__gt=0,
     ).count()
 
