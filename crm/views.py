@@ -391,6 +391,10 @@ def leads_list(request):
     if st in dict(Lead.Status.choices):
         qs = qs.filter(status=st)
 
+    high_hope_filter = request.GET.get('high_hope', '').strip()
+    if high_hope_filter == '1':
+        qs = qs.filter(high_hope=True)
+
     fu_filter = request.GET.get('fu', '')
     if fu_filter == 'overdue':
         qs = qs.filter(
@@ -507,6 +511,7 @@ def leads_list(request):
     has_active_filters = bool(
         q
         or st
+        or high_hope_filter
         or fu_filter
         or package_filter
         or created_day
@@ -525,6 +530,7 @@ def leads_list(request):
     filters_ctx = {
         'q': q,
         'status': st or '',
+        'high_hope': high_hope_filter,
         'fu': fu_filter,
         'package': pkg or '',
         'created_day': created_day,
@@ -555,6 +561,8 @@ def leads_list(request):
         'fu_hot': _lq(fu='hot', has_tasks=''),
         'has_tasks_on': _lq(fu='', has_tasks='1'),
         'has_tasks_off': _lq(has_tasks=''),
+        'high_hope_all': _lq(high_hope=''),
+        'high_hope_on': _lq(high_hope='1'),
     }
     status_pills = [{'val': '', 'label': 'All statuses', 'qs': _lq(status='')}]
     for _sv, _sl in Lead.Status.choices:
@@ -697,6 +705,34 @@ def lead_patch(request, pk):
     if request.headers.get('HX-Request'):
         _hx_toast(resp, 'Updated')
     return resp
+
+
+@login_required
+@require_POST
+def lead_high_hope_toggle(request, pk):
+    """
+    Toggle lead.high_hope and return the matching partial for HTMX targets.
+    """
+    user = request.user
+    lead = get_object_or_404(Lead, pk=pk, employee=user)
+    lead.high_hope = not lead.high_hope
+    lead.save(update_fields=['high_hope'])
+
+    # HTMX: re-render only the affected UI fragment.
+    if request.headers.get('HX-Request'):
+        tpl = request.POST.get('_tpl', 'exec_row')
+        lead_ann = _lead_for_exec(user, pk)
+        ctx = _exec_board_ctx(lead_ann, user)
+        if tpl == 'sticky':
+            resp = render(request, 'crm/partials/lead_detail_sticky.html', ctx)
+        elif tpl == 'mobile_card':
+            resp = render(request, 'crm/partials/lead_mobile_card.html', ctx)
+        else:
+            resp = render(request, 'crm/partials/lead_exec_board.html', ctx)
+        _hx_toast(resp, 'Updated')
+        return resp
+
+    return redirect('crm:lead_detail', pk=pk)
 
 
 @login_required

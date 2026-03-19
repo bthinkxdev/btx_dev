@@ -71,4 +71,9 @@ urlpatterns = [
         views.performance_report_card,
         name='performance_report_card',
     ),
+    path(
+        'leads/<int:pk>/high-hope-toggle/',
+        views.lead_high_hope_toggle,
+        name='lead_high_hope_toggle',
+    ),
 ]

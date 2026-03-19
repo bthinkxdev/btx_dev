@@ -1,5 +1,5 @@
 {% load crm_extras %}
-<article id="lead-mcard-{{ lead.pk }}" class="lead-mcard {% if lead.status == 'closed' or lead.status == 'lost' or lead.status == 'lost_after_proposal' %}lead-mcard--closed{% elif not lead.next_followup or lead.next_followup < fu_start %}lead-mcard--od{% elif lead.next_followup < fu_end %}lead-mcard--td{% elif lead.status == 'proposal_sent' or lead.status == 'negotiation_after_proposal' or lead.status == 'closing_ongoing' or lead.status == 'failed_retry' %}{% if lead.deal_value %}lead-mcard--hot{% else %}lead-mcard--norm{% endif %}{% else %}lead-mcard--norm{% endif %}{% if lead.task_open_count %} lead-mcard--pending-tasks{% endif %}">
+<article id="lead-mcard-{{ lead.pk }}" class="lead-mcard {% if lead.status == 'closed' or lead.status == 'lost' or lead.status == 'lost_after_proposal' %}lead-mcard--closed{% elif not lead.next_followup or lead.next_followup < fu_start %}lead-mcard--od{% elif lead.next_followup < fu_end %}lead-mcard--td{% elif lead.status == 'proposal_sent' or lead.status == 'negotiation_after_proposal' or lead.status == 'closing_ongoing' or lead.status == 'failed_retry' %}{% if lead.deal_value %}lead-mcard--hot{% else %}lead-mcard--norm{% endif %}{% else %}lead-mcard--norm{% endif %}{% if lead.task_open_count %} lead-mcard--pending-tasks{% endif %}{% if lead.high_hope %} lead-mcard--high-hope{% endif %}">
   <div class="lead-mcard__top">
     <span class="lead-mcard__name">{{ lead.name }}</span>
     <div class="lead-mcard__tags">
@@ -44,6 +44,16 @@
     </span>
     {% endif %}
     <button type="button" class="lead-mcard__act crm-open-task-modal" data-lead-pk="{{ lead.pk }}" data-lead-name="{{ lead.name }}" aria-label="Add task">Task</button>
+    <button type="button"
+      class="lead-mcard__act high-hope-toggle btn btn-sm {% if lead.high_hope %}high-hope-toggle--on{% else %}high-hope-toggle--off{% endif %}"
+      hx-post="{% url 'crm:lead_high_hope_toggle' lead.pk %}"
+      hx-vals='{"_tpl":"mobile_card"}'
+      hx-target="#lead-mcard-{{ lead.pk }}"
+      hx-swap="outerHTML"
+      title="Toggle High Hope"
+      aria-label="Toggle High Hope">
+      High Hope
+    </button>
     <details class="lead-mcard__fu-pop">
       <summary class="lead-mcard__act lead-mcard__act--fu">Followup</summary>
       <div class="lead-mcard__fu-popbody">

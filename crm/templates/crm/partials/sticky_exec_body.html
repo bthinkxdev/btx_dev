@@ -79,6 +79,20 @@
       style="width:120px;">
   </div>
 
+  <div class="lead-ctrl-group">
+    <label>High Hope</label>
+    <button type="button"
+      class="btn btn-sm high-hope-toggle {% if lead.high_hope %}high-hope-toggle--on{% else %}high-hope-toggle--off{% endif %}"
+      hx-post="{% url 'crm:lead_high_hope_toggle' lead.pk %}"
+      hx-vals='{"_tpl":"sticky"}'
+      hx-target="#lead-sticky"
+      hx-swap="outerHTML"
+      title="Toggle High Hope"
+      aria-label="Toggle High Hope">
+      High Hope
+    </button>
+  </div>
+
   <button type="button" class="btn btn-primary btn-sm" style="margin-top:20px;"
     onclick="document.getElementById('fu-jump').scrollIntoView({behavior:'smooth'})">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

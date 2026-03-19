@@ -87,6 +87,8 @@ class Lead(models.Model):
         default=Status.NEW,
         db_index=True,
     )
+    # Simple flag for “priority / strong probability” leads.
+    high_hope = models.BooleanField(default=False, db_index=True)
     package = models.ForeignKey(
         Package,
         on_delete=models.SET_NULL,

@@ -138,6 +138,20 @@
       </div>
     </div>
 
+    {# ── HIGH HOPE FILTER (third bar) ──────────────────────── #}
+    <div class="cmd-l2 cmd-l2--high-hope">
+      <div class="cmd-l2__group cmd-l2__group--high-hope">
+        <div class="cmd-l2__group-header">
+          <span class="cmd-l2__lbl">High Hope</span>
+          <span class="cmd-l2__hint">Priority leads</span>
+        </div>
+        <div class="leads-pill-row leads-pill-row--wrap">
+          <a class="pill {% if not filters.high_hope %}on{% endif %}" href="{{ leads_base }}?{{ lqs.high_hope_all }}">All</a>
+          <a class="pill {% if filters.high_hope == '1' %}on{% endif %}" href="{{ leads_base }}?{{ lqs.high_hope_on }}">High Hope</a>
+        </div>
+      </div>
+    </div>
+
     {# ── ADVANCED FILTERS — collapsible ───────────────────── #}
     <div class="cmd-l3">
       <button type="button" class="cmd-l3__toggle" id="cmd-more-btn" aria-expanded="false" aria-controls="cmd-more-panel">
@@ -195,6 +209,7 @@
           </div>
           {# Preserve strip / date / status (status = status bar pills) #}
           <input type="hidden" name="status" value="{{ filters.status }}">
+          <input type="hidden" name="high_hope" value="{{ filters.high_hope }}">
           <input type="hidden" name="fu" value="{{ filters.fu }}">
           <input type="hidden" name="has_tasks" value="{{ filters.has_tasks }}">
           <input type="hidden" name="date_scope" id="leads-h-date-scope" value="{{ filters.date_scope }}">
@@ -720,6 +735,10 @@ dialog::backdrop { background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); }
 .lead-mcard--td   { border-left: 3px solid var(--warning-500); }
 .lead-mcard--hot  { border-left: 3px solid var(--success-500); }
 .lead-mcard--norm { border-left: 3px solid var(--neutral-200); }
+.lead-mcard--high-hope {
+  background: rgba(16,185,129,0.05) !important;
+  border-color: rgba(16,185,129,0.35) !important;
+}
 
 .lead-mcard__top {
   display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px;
@@ -843,6 +862,30 @@ dialog::backdrop { background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); }
 .exec-board--prio-today   { border-left: 4px solid var(--warning-500); }
 .exec-board--prio-hot     { border-left: 4px solid var(--success-500); }
 .exec-board--prio-normal  { border-left: 4px solid var(--neutral-200); }
+.exec-board--high-hope {
+  /* Very mild highlight for “High Hope” priority leads */
+  background: rgba(16,185,129,0.06) !important;
+  border-color: rgba(16,185,129,0.35) !important;
+  box-shadow: 0 1px 2px rgba(16,185,129,0.08);
+}
+
+/* High Hope toggle styles (green) */
+.high-hope-toggle {
+  padding: 0 10px !important;
+  min-height: 34px;
+  font-weight: 800 !important;
+  letter-spacing: 0.01em;
+}
+.high-hope-toggle--on {
+  background: var(--success-600) !important;
+  border-color: var(--success-500) !important;
+  color: #fff !important;
+}
+.high-hope-toggle--off {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--neutral-700) !important;
+}
 
 .exec-board__inner { padding: 0; }
 .exec-board__top {

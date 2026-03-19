@@ -84,4 +84,22 @@
 .lead-contact-grid { display: grid; grid-template-columns: 90px 1fr; gap: 8px 14px; align-items: center; }
 .lead-contact-lbl { font-size: 12px; font-weight: 600; color: var(--text-muted); margin: 0 !important; }
 .lead-contact-in { width: 100%; font-size: 13px; padding: 8px 10px; }
+
+/* High Hope toggle (used in sticky controls) */
+.high-hope-toggle {
+  padding: 0 10px !important;
+  min-height: 34px;
+  font-weight: 800 !important;
+  letter-spacing: 0.01em;
+}
+.high-hope-toggle--on {
+  background: var(--success-600) !important;
+  border-color: var(--success-500) !important;
+  color: #fff !important;
+}
+.high-hope-toggle--off {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--neutral-700) !important;
+}
 {% endblock %}

@@ -1,5 +1,5 @@
 {% load crm_extras %}
-<article id="lead-exec-{{ lead.pk }}" class="exec-board {% if lead.status == 'closed' or lead.status == 'lost' or lead.status == 'lost_after_proposal' %}exec-board--closed{% elif not lead.next_followup or lead.next_followup < fu_start %}exec-board--prio-overdue{% elif lead.next_followup < fu_end %}exec-board--prio-today{% elif lead.status == 'proposal_sent' or lead.status == 'negotiation_after_proposal' or lead.status == 'closing_ongoing' or lead.status == 'failed_retry' %}{% if lead.deal_value %}exec-board--prio-hot{% else %}exec-board--prio-normal{% endif %}{% else %}exec-board--prio-normal{% endif %}{% if lead.task_open_count %} exec-board--has-pending-tasks{% endif %}">
+<article id="lead-exec-{{ lead.pk }}" class="exec-board {% if lead.status == 'closed' or lead.status == 'lost' or lead.status == 'lost_after_proposal' %}exec-board--closed{% elif not lead.next_followup or lead.next_followup < fu_start %}exec-board--prio-overdue{% elif lead.next_followup < fu_end %}exec-board--prio-today{% elif lead.status == 'proposal_sent' or lead.status == 'negotiation_after_proposal' or lead.status == 'closing_ongoing' or lead.status == 'failed_retry' %}{% if lead.deal_value %}exec-board--prio-hot{% else %}exec-board--prio-normal{% endif %}{% else %}exec-board--prio-normal{% endif %}{% if lead.task_open_count %} exec-board--has-pending-tasks{% endif %}{% if lead.high_hope %} exec-board--high-hope{% endif %}">
   <div class="exec-board__inner">
     <div class="exec-board__top">
 
@@ -81,6 +81,17 @@
             <option value="{{ val }}" {% if lead.status == val %}selected{% endif %}>{{ label }}</option>
             {% endfor %}
           </select>
+
+          <button type="button"
+            class="btn btn-sm high-hope-toggle {% if lead.high_hope %}high-hope-toggle--on{% else %}high-hope-toggle--off{% endif %}"
+            title="Toggle High Hope"
+            aria-label="Toggle High Hope"
+            hx-post="{% url 'crm:lead_high_hope_toggle' lead.pk %}"
+            hx-vals='{"_tpl":"exec_row"}'
+            hx-target="#lead-exec-{{ lead.pk }}"
+            hx-swap="outerHTML">
+            High Hope
+          </button>
 
           {% if lead.phone %}
           <button type="button" class="btn btn-sm btn-outline exec-call-btn"
