@@ -1687,7 +1687,7 @@
       <details class="header-dd header-dd--tasks" id="crm-header-task-dd">
         <summary class="header-task-sum" aria-label="Task notifications" title="Tasks due today or overdue">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-          <span id="crm-header-task-badges-host" class="header-task-badges">{% include "crm/partials/tasks_header_badges.html" with tasks_overdue_n=crm_tasks_overdue_n tasks_today_n=crm_tasks_today_n %}</span>
+          <span id="crm-header-task-badges-host" class="header-task-badges">{% include "crm/partials/tasks_header_badges.html" with tasks_overdue_n=crm_tasks_overdue_n tasks_today_n=crm_tasks_today_n tasks_open_n=crm_tasks_open_n %}</span>
         </summary>
         <div id="crm-task-dd-inner" class="header-dd-panel"></div>
       </details>

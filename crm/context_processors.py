@@ -12,6 +12,8 @@ def crm_header(request):
         'crm_overdue_fu_count': 0,
         'crm_tasks_overdue_n': 0,
         'crm_tasks_today_n': 0,
+        'crm_tasks_open_n': 0,
+        'crm_tasks_undated_n': 0,
     }
     user = getattr(request, 'user', None)
     if not user or not user.is_authenticated:
@@ -40,5 +42,14 @@ def crm_header(request):
         employee=user,
         is_completed=False,
         due_date=local,
+    ).count()
+    out['crm_tasks_open_n'] = Task.objects.filter(
+        employee=user,
+        is_completed=False,
+    ).count()
+    out['crm_tasks_undated_n'] = Task.objects.filter(
+        employee=user,
+        is_completed=False,
+        due_date__isnull=True,
     ).count()
     return out

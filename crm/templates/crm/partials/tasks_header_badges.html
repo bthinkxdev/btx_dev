@@ -1,1 +1,8 @@
-{% if tasks_overdue_n %}<span class="header-bell-count" title="Overdue tasks">{{ tasks_overdue_n }}</span>{% elif tasks_today_n %}<span class="header-bell-count header-bell-count--today" title="Due today">{{ tasks_today_n }}</span>{% endif %}<span class="header-task-badges__sub">{{ tasks_overdue_n }} overdue · {{ tasks_today_n }} today</span>
+{% if tasks_overdue_n %}
+<span class="header-bell-count" title="Overdue tasks">{{ tasks_overdue_n }}</span>
+{% elif tasks_today_n %}
+<span class="header-bell-count header-bell-count--today" title="Due today">{{ tasks_today_n }}</span>
+{% elif tasks_open_n %}
+<span class="header-bell-count header-bell-count--today" title="Open tasks">{{ tasks_open_n }}</span>
+{% endif %}
+<span class="header-task-badges__sub">{{ tasks_open_n|default:0 }} open · {{ tasks_overdue_n|default:0 }} overdue · {{ tasks_today_n|default:0 }} today</span>

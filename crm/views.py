@@ -463,9 +463,14 @@ def leads_list(request):
             pass
 
     date_scope = request.GET.get('date_scope', '').strip()
-    date_basis = request.GET.get('date_basis', 'fu').strip()
+    # Default “Date field” = Lead created date (per UX request).
+    date_basis = request.GET.get('date_basis', 'created').strip()
     if date_basis not in ('fu', 'created'):
-        date_basis = 'fu'
+        date_basis = 'created'
+    # If user hasn't selected a date range (All time), keep UX consistent:
+    # force Lead created date even if older URLs still carry date_basis=fu.
+    if not date_scope and date_basis == 'fu':
+        date_basis = 'created'
     date_start_s = request.GET.get('date_start', '').strip()
     date_end_s = request.GET.get('date_end', '').strip()
     if date_scope in (
@@ -1227,12 +1232,22 @@ def tasks_header_dropdown(request):
         .select_related('lead')
         .order_by('due_date', 'id')[:30]
     )
+    tasks_undated = list(
+        Task.objects.filter(
+            employee=user,
+            is_completed=False,
+            due_date__isnull=True,
+        )
+        .select_related('lead')
+        .order_by('id')[:30]
+    )
     return render(
         request,
         'crm/partials/tasks_header_dropdown.html',
         {
             'tasks_overdue': tasks_overdue,
             'tasks_today': tasks_today,
+            'tasks_undated': tasks_undated,
         },
     )
 
@@ -1252,12 +1267,17 @@ def tasks_header_badges(request):
         is_completed=False,
         due_date=local_date,
     ).count()
+    open_n = Task.objects.filter(
+        employee=user,
+        is_completed=False,
+    ).count()
     return render(
         request,
         'crm/partials/tasks_header_badges.html',
         {
             'tasks_overdue_n': overdue_n,
             'tasks_today_n': today_n,
+            'tasks_open_n': open_n,
         },
     )
 
