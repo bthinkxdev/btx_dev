@@ -48,28 +48,26 @@ class Lead(models.Model):
     class Status(models.TextChoices):
         # Early stages
         NEW = 'new', 'New'
-        CONTACTED = 'contacted', 'Contacted'
-        FOLLOW_UP = 'follow_up', 'Follow up'
+        WHATSAPP_CONNECTED = 'whatsapp_connected', 'WhatsApp Connected'
+        CALL_CONNECTED = 'call_connected', 'Call Connected'
 
-        # Interest stages
-        INTERESTED = 'interested', 'Interested'
-        QUALIFIED = 'qualified', 'Qualified'
-
-        # Deal stages
-        PROPOSAL = 'proposal', 'Proposal sent'
-        NEGOTIATION = 'negotiation', 'Negotiation'
-
-        # Closing stages
-        WON = 'won', 'Won'
-
-        # 🔥 Payment stages (NEW)
-        ADVANCE_PAID = 'advance_paid', 'Advance Paid'
-        PARTIALLY_PAID = 'partially_paid', 'Partially Paid'
-        FULLY_PAID = 'fully_paid', 'Fully Paid'
-
-        # Other states
-        ON_HOLD = 'on_hold', 'On hold'
+        # Conversion stages
+        CLOSING_ONGOING = 'closing_ongoing', 'Closing Ongoing'
+        CLOSED = 'closed', 'Closed'
+        FAILED_RETRY = 'failed_retry', 'Failed to Close & Retry'
         LOST = 'lost', 'Lost'
+
+        # Proposal stages
+        PROPOSAL_SENT = 'proposal_sent', 'Proposal Sent'
+        NEGOTIATION_AFTER_PROPOSAL = 'negotiation_after_proposal', 'Negotiation After Proposal'
+        LOST_AFTER_PROPOSAL = 'lost_after_proposal', 'Lost After Proposal'
+
+        # Payment & delivery stages
+        ADVANCE_RECEIVED_PROJECT_STARTED = 'advance_received_project_started', 'Advance Received & Project Started'
+        PROJECT_HANDED = 'project_handed', 'Project Handed'
+        TRAINING_COMPLETED = 'training_completed', 'Training Completed'
+        BALANCE_PAID_PROJECT_COMPLETED = 'balance_paid_project_completed', 'Balance Paid & Project Completed'
+        ISSUE_PAYMENT_COLLECTION = 'issue_payment_collection', 'Issue in Payment Collection'
 
     employee = models.ForeignKey(
         settings.AUTH_USER_MODEL,
