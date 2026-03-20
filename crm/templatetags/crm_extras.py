@@ -125,7 +125,9 @@ def whatsapp_wa_url(phone):
     if not phone:
         return ''
     d = re.sub(r'\D', '', str(phone))
-    if len(d) < 10:
+    # Allow shorter local/contact numbers too; some teams store 7-9 digit
+    # extensions/local formats and still want quick WhatsApp launch.
+    if len(d) < 6:
         return ''
     cc = (getattr(settings, 'CRM_WHATSAPP_DEFAULT_COUNTRY_CODE', None) or '91').strip().lstrip(
         '+'
@@ -134,4 +136,5 @@ def whatsapp_wa_url(phone):
         d = f'{cc}{d[1:]}'
     elif len(d) == 10:
         d = f'{cc}{d}'
+    # For all other lengths (6-9, 12+), use digits as entered.
     return f'https://wa.me/{d}'
