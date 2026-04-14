@@ -1,20 +1,25 @@
 import json
+import logging
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from urllib.parse import urlencode
 
 from django.contrib import messages
+from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count, F, OuterRef, Q, Subquery, Sum
+from django.db.models import Case, Count, F, IntegerField, OuterRef, Q, Subquery, Sum, Value, When
 from django.db.models.functions import TruncDate, TruncMonth
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods, require_POST
 
+from .services.whatsapp import handle_message, is_duplicate_event, mask_phone
 from .forms import (
     ExcelImportForm,
     FollowUpForm,
@@ -32,6 +37,8 @@ from .utils import (
     log_activity,
     recalc_lead_next_followup,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _profile(user):
@@ -98,6 +105,12 @@ def _date_scope_bounds(scope, date_start_str, date_end_str):
 def _leads_url_query(base_filters, **overrides):
     """Merge filter dict + overrides; omit empty values for clean query strings."""
     d = {**base_filters, **overrides}
+    p = d.get('page')
+    try:
+        if p is None or str(p).strip() == '' or int(p) <= 1:
+            d.pop('page', None)
+    except (TypeError, ValueError):
+        pass
     return urlencode({k: str(v) for k, v in d.items() if v not in (None, '')})
 
 
@@ -106,6 +119,27 @@ def _hx_toast(response, message):
     if isinstance(response, HttpResponse):
         response['HX-Trigger'] = json.dumps({'crmToast': message})
     return response
+
+
+def _followups_queue_context(user):
+    start, end, _ = _local_today_bounds()
+    base = FollowUp.objects.filter(employee=user).select_related('lead')
+    today = list(
+        base.filter(is_done=False, datetime__gte=start, datetime__lt=end).order_by(
+            'datetime'
+        )
+    )
+    upcoming = list(
+        base.filter(is_done=False, datetime__gte=end).order_by('datetime')[:80]
+    )
+    overdue = list(
+        base.filter(is_done=False, datetime__lt=start).order_by('datetime')[:80]
+    )
+    return {
+        'today': today,
+        'upcoming': upcoming,
+        'overdue': overdue,
+    }
 
 
 # Lead status values (match crm.models.Lead.Status enum values).
@@ -133,28 +167,105 @@ INTERESTED_SORT_STATUSES = (
 HOT_ACTIVE_FILTER_EXCLUDE_STATUSES = (STATUS_NEW,) + TERMINAL_STATUSES
 
 
-def _sales_sort_leads(leads, fu_start, fu_end):
-    """Overdue FU → today FU → interested → others; closed at end."""
+@csrf_exempt
+@require_http_methods(['GET', 'POST'])
+def whatsapp_webhook(request):
+    """
+    WhatsApp Cloud API webhook endpoint:
+    - GET: verification handshake (hub.mode / hub.verify_token / hub.challenge)
+    - POST: incoming message events
+    """
+    if request.method == 'GET':
+        mode = request.GET.get('hub.mode')
+        token = request.GET.get('hub.verify_token')
+        challenge = request.GET.get('hub.challenge', '')
+        verify_token = getattr(settings, 'WHATSAPP_VERIFY_TOKEN', '')
 
-    def key(lead):
-        closed = lead.status in TERMINAL_STATUSES
-        if closed:
-            return (5, 0, -lead.updated_at.timestamp())
-        overdue = not lead.next_followup or lead.next_followup < fu_start
-        in_today = (
-            lead.next_followup
-            and fu_start <= lead.next_followup < fu_end
-        )
-        if overdue:
-            t = lead.next_followup.timestamp() if lead.next_followup else 0
-            return (0, t, 0)
-        if in_today:
-            return (1, lead.next_followup.timestamp(), 0)
-        if lead.status in INTERESTED_SORT_STATUSES:
-            return (2, -lead.updated_at.timestamp(), 0)
-        return (3, -lead.updated_at.timestamp(), 0)
+        if mode == 'subscribe' and verify_token and token == verify_token:
+            return HttpResponse(challenge, content_type='text/plain')
+        return JsonResponse({'error': 'Invalid verify token'}, status=403)
 
-    return sorted(leads, key=key)
+    try:
+        payload = json.loads(request.body.decode('utf-8'))
+    except (TypeError, ValueError, UnicodeDecodeError):
+        logger.exception('Invalid WhatsApp webhook payload')
+        return JsonResponse({'error': 'Invalid JSON payload'}, status=400)
+    logger.info('WhatsApp webhook received: entries=%s', len(payload.get('entry', [])))
+
+    try:
+        entries = payload.get('entry')
+        if not isinstance(entries, list) or not entries:
+            return JsonResponse({'status': 'ignored', 'reason': 'missing_entry'})
+        processed = 0
+        duplicates = 0
+        ignored = 0
+        for entry in entries:
+            changes = (entry or {}).get('changes') or []
+            if not isinstance(changes, list):
+                continue
+            for change in changes:
+                value = (change or {}).get('value', {})
+                messages = value.get('messages', [])
+                if not isinstance(messages, list):
+                    continue
+                for message in messages:
+                    message = message or {}
+                    message_type = message.get('type')
+                    phone = message.get('from')
+                    message_id = message.get('id')
+                    text = ''
+
+                    if message_type == 'text':
+                        text = ((message.get('text') or {}).get('body') or '').strip()
+                    elif message_type == 'interactive':
+                        interactive = message.get('interactive') or {}
+                        button_reply = interactive.get('button_reply') or {}
+                        list_reply = interactive.get('list_reply') or {}
+                        text = (
+                            button_reply.get('id')
+                            or list_reply.get('id')
+                            or button_reply.get('title')
+                            or list_reply.get('title')
+                            or ''
+                        ).strip()
+                    else:
+                        ignored += 1
+                        continue
+
+                    if not phone or not text:
+                        ignored += 1
+                        continue
+                    if is_duplicate_event(message_id):
+                        duplicates += 1
+                        logger.info(
+                            'Ignored duplicate WhatsApp message id=%s phone=%s',
+                            message_id,
+                            mask_phone(phone),
+                        )
+                        continue
+
+                    logger.info(
+                        'Processing WhatsApp message id=%s phone=%s type=%s',
+                        message_id,
+                        mask_phone(phone),
+                        message_type,
+                    )
+                    handle_message(phone, text)
+                    processed += 1
+    except Exception:
+        logger.exception('Failed to process WhatsApp webhook event')
+        return JsonResponse({'status': 'error'}, status=500)
+
+    if processed == 0 and duplicates == 0:
+        return JsonResponse({'status': 'ignored', 'reason': 'no_messages'})
+    return JsonResponse(
+        {
+            'status': 'ok',
+            'processed': processed,
+            'duplicates': duplicates,
+            'ignored': ignored,
+        }
+    )
 
 
 # GET ?sort=… for leads list (validated keys)
@@ -187,6 +298,31 @@ _LEAD_SORT_DB = {
     'name_az': ('name', 'id'),
     'name_za': ('-name', 'id'),
 }
+
+LEADS_PER_PAGE = 20
+
+
+def _exec_bucket_expression(fu_start, fu_end):
+    """
+    Execution-priority bucket for ordering (mirrors _sales_sort_leads tiers).
+    Tie-break: next_followup (nulls first), then updated_at desc.
+    """
+    return Case(
+        When(status__in=TERMINAL_STATUSES, then=Value(5)),
+        When(
+            ~Q(status__in=TERMINAL_STATUSES)
+            & (Q(next_followup__lt=fu_start) | Q(next_followup__isnull=True)),
+            then=Value(0),
+        ),
+        When(
+            ~Q(status__in=TERMINAL_STATUSES)
+            & Q(next_followup__gte=fu_start, next_followup__lt=fu_end),
+            then=Value(1),
+        ),
+        When(status__in=INTERESTED_SORT_STATUSES, then=Value(2)),
+        default=Value(3),
+        output_field=IntegerField(),
+    )
 
 
 def _lead_for_exec(user, pk):
@@ -352,15 +488,13 @@ def dashboard(request):
     return render(request, 'crm/dashboard.html', ctx)
 
 
-@login_required
-def leads_list(request):
-    user = request.user
-    start, end, _ = _local_today_bounds()
-    active_q = ~Q(
-        status__in=TERMINAL_STATUSES,
-    )
+def _leads_list_qs_and_meta(request, user):
+    """
+    Build filtered + ordered Lead queryset and filter state for leads_list / infinite scroll.
+    """
+    start, end, local_date = _local_today_bounds()
+    active_q = ~Q(status__in=TERMINAL_STATUSES)
 
-    start_ann, end_ann, local_date = _local_today_bounds()
     latest = ActivityLog.objects.filter(lead_id=OuterRef('pk')).order_by('-created_at')
     qs = (
         Lead.objects.filter(employee=user)
@@ -407,7 +541,6 @@ def leads_list(request):
             next_followup__lt=end,
         )
     elif fu_filter == 'hot':
-        # "Hot" = active pipeline (not closed/lost) + not brand new + has deal value.
         qs = qs.filter(active_q).exclude(status=STATUS_NEW).filter(deal_value__gt=0)
 
     pkg = request.GET.get('package')
@@ -463,12 +596,9 @@ def leads_list(request):
             pass
 
     date_scope = request.GET.get('date_scope', '').strip()
-    # Default “Date field” = Lead created date (per UX request).
     date_basis = request.GET.get('date_basis', 'created').strip()
     if date_basis not in ('fu', 'created'):
         date_basis = 'created'
-    # If user hasn't selected a date range (All time), keep UX consistent:
-    # force Lead created date even if older URLs still carry date_basis=fu.
     if not date_scope and date_basis == 'fu':
         date_basis = 'created'
     date_start_s = request.GET.get('date_start', '').strip()
@@ -492,45 +622,25 @@ def leads_list(request):
                     next_followup__lt=de,
                 )
 
-    packages = Package.objects.filter(employee=user)
-
     sort_key = request.GET.get('sort', LEAD_SORT_DEFAULT).strip()
     valid_sorts = {k for k, _ in LEAD_SORT_CHOICES}
     if sort_key not in valid_sorts:
         sort_key = LEAD_SORT_DEFAULT
 
     if sort_key == LEAD_SORT_EXEC:
-        leads_sorted = list(qs[:800])
-        leads_sorted = _sales_sort_leads(leads_sorted, start, end)[:500]
+        qs = qs.annotate(_exec_b=_exec_bucket_expression(start, end))
+        qs = qs.order_by(
+            '_exec_b',
+            F('next_followup').asc(nulls_first=True),
+            '-updated_at',
+            '-id',
+        )
     elif sort_key == 'fu_soon':
-        leads_sorted = list(
-            qs.order_by(F('next_followup').asc(nulls_last=True), '-updated_at')[:500]
-        )
+        qs = qs.order_by(F('next_followup').asc(nulls_last=True), '-updated_at', '-id')
     elif sort_key == 'fu_late':
-        leads_sorted = list(
-            qs.order_by(F('next_followup').desc(nulls_last=True), '-updated_at')[:500]
-        )
+        qs = qs.order_by(F('next_followup').desc(nulls_last=True), '-updated_at', '-id')
     else:
-        leads_sorted = list(qs.order_by(*_LEAD_SORT_DB[sort_key])[:500])
-
-    has_active_filters = bool(
-        q
-        or st
-        or high_hope_filter
-        or fu_filter
-        or package_filter
-        or created_day
-        or closed_day
-        or created_month
-        or closed_month
-        or date_scope
-        or sort_key != LEAD_SORT_DEFAULT
-        or has_tasks_filter
-        or min_deal_s,
-    )
-
-    form = LeadForm(employee=user)
-    import_form = ExcelImportForm()
+        qs = qs.order_by(*_LEAD_SORT_DB[sort_key])
 
     filters_ctx = {
         'q': q,
@@ -550,6 +660,65 @@ def leads_list(request):
         'has_tasks': has_tasks_filter,
         'min_deal': min_deal_s,
     }
+
+    has_active_filters = bool(
+        q
+        or st
+        or high_hope_filter
+        or fu_filter
+        or package_filter
+        or created_day
+        or closed_day
+        or created_month
+        or closed_month
+        or date_scope
+        or sort_key != LEAD_SORT_DEFAULT
+        or has_tasks_filter
+        or min_deal_s,
+    )
+
+    return {
+        'qs': qs,
+        'start': start,
+        'end': end,
+        'local_date': local_date,
+        'sort_key': sort_key,
+        'filters_ctx': filters_ctx,
+        'package_filter': package_filter,
+        'has_active_filters': has_active_filters,
+        'pkg': pkg,
+    }
+
+
+@login_required
+def leads_list(request):
+    user = request.user
+    meta = _leads_list_qs_and_meta(request, user)
+    qs = meta['qs']
+    start, end = meta['start'], meta['end']
+    sort_key = meta['sort_key']
+    filters_ctx = meta['filters_ctx']
+    package_filter = meta['package_filter']
+    has_active_filters = meta['has_active_filters']
+
+    packages = Package.objects.filter(employee=user)
+
+    # Full document always starts at batch 1 (ignore ?page=). Infinite scroll uses /leads/more/?page=…
+    page_raw = '1'
+    paginator = Paginator(qs, LEADS_PER_PAGE)
+    try:
+        page_obj = paginator.page(page_raw)
+    except PageNotAnInteger:
+        page_obj = paginator.page(1)
+    except EmptyPage:
+        last = paginator.num_pages or 1
+        page_obj = paginator.page(last)
+
+    leads_page = list(page_obj.object_list)
+
+    form = LeadForm(employee=user)
+    import_form = ExcelImportForm()
+
     _lq = lambda **kw: _leads_url_query(filters_ctx, **kw)
     leads_base = reverse('crm:leads')
     lqs = {
@@ -575,6 +744,7 @@ def leads_list(request):
 
     # Global summary strip counts (always reflect full pipeline, not current filters)
     _all_leads = Lead.objects.filter(employee=user)
+    all_leads_total = _all_leads.count()
     _active_q = ~Q(status__in=TERMINAL_STATUSES)
     overdue_count = _all_leads.filter(
         _active_q & (Q(next_followup__lt=start) | Q(next_followup__isnull=True))
@@ -590,11 +760,23 @@ def leads_list(request):
         deal_value__gt=0,
     ).count()
 
+    leads_more_url = reverse('crm:leads_more')
+    pagination_next_qs = (
+        _leads_url_query(filters_ctx, page=page_obj.next_page_number())
+        if page_obj.has_next()
+        else ''
+    )
+
     return render(
         request,
         'crm/leads.html',
         {
-            'leads': leads_sorted,
+            'leads': leads_page,
+            'paginator': paginator,
+            'page_obj': page_obj,
+            'all_leads_total': all_leads_total,
+            'leads_more_url': leads_more_url,
+            'pagination_next_qs': pagination_next_qs,
             'packages': packages,
             'status_choices': Lead.Status.choices,
             'form': form,
@@ -619,6 +801,68 @@ def leads_list(request):
             'hot_leads_count': hot_leads_count,
         },
     )
+
+
+@login_required
+def leads_more_json(request):
+    """JSON chunk for infinite scroll (next page of lead rows)."""
+    user = request.user
+    meta = _leads_list_qs_and_meta(request, user)
+    qs = meta['qs']
+    start, end = meta['start'], meta['end']
+    filters_ctx = meta['filters_ctx']
+
+    page_raw = (request.GET.get('page') or '1').strip()
+    paginator = Paginator(qs, LEADS_PER_PAGE)
+    try:
+        page_obj = paginator.page(page_raw)
+    except PageNotAnInteger:
+        page_obj = paginator.page(1)
+    except EmptyPage:
+        return JsonResponse(
+            {
+                'desktop_html': '',
+                'mobile_html': '',
+                'has_more': False,
+                'next_querystring': '',
+            }
+        )
+
+    leads_page = list(page_obj.object_list)
+    packages = Package.objects.filter(employee=user)
+    base_ctx = {
+        'fu_start': start,
+        'fu_end': end,
+        'fu_bounds': (start, end),
+        'status_choices': Lead.Status.choices,
+        'packages': packages,
+    }
+    desk_parts = []
+    mob_parts = []
+    for lead in leads_page:
+        ctx = {**base_ctx, 'lead': lead}
+        desk_parts.append(
+            render_to_string('crm/partials/lead_exec_board.html', ctx, request=request)
+        )
+        mob_parts.append(
+            render_to_string('crm/partials/lead_mobile_card.html', ctx, request=request)
+        )
+
+    next_qs = ''
+    if page_obj.has_next():
+        next_qs = _leads_url_query(filters_ctx, page=page_obj.next_page_number())
+
+    resp = JsonResponse(
+        {
+            'desktop_html': ''.join(desk_parts),
+            'mobile_html': ''.join(mob_parts),
+            'has_more': page_obj.has_next(),
+            'next_querystring': next_qs,
+        }
+    )
+    resp['Cache-Control'] = 'no-store, no-cache, must-revalidate'
+    resp['Pragma'] = 'no-cache'
+    return resp
 
 
 @login_required
@@ -648,16 +892,23 @@ def lead_quick_add(request):
     name = (request.POST.get('name') or '').strip()
     phone = (request.POST.get('phone') or '').strip()
     if not name:
-        messages.error(request, 'Name is required.')
-        return redirect('crm:leads')
+        return HttpResponse(status=204)
     lead = Lead.objects.create(
         employee=user,
         name=name[:200],
         phone=phone[:40],
     )
     log_activity(lead, 'created', 'Quick add')
-    messages.success(request, 'Lead added.')
-    return redirect('crm:leads')
+    if request.headers.get('HX-Request'):
+        r = HttpResponse()
+        r['HX-Location'] = json.dumps({
+            'path': reverse('crm:leads'),
+            'target': '#crm-main-content',
+            'select': '#crm-main-content',
+            'swap': 'outerHTML',
+        })
+        return r
+    return HttpResponse(status=204)
 
 
 @login_required
@@ -676,15 +927,25 @@ def lead_create(request):
         messages.success(request, 'Lead created.')
         if request.headers.get('HX-Request'):
             r = HttpResponse()
-            r['HX-Redirect'] = reverse('crm:leads')
+            r['HX-Location'] = json.dumps({
+                'path': reverse('crm:leads'),
+                'target': '#crm-main-content',
+                'select': '#crm-main-content',
+                'swap': 'outerHTML',
+            })
             return r
-        return redirect('crm:leads')
+        return HttpResponse(status=204)
     messages.error(request, form.errors.as_text())
     if request.headers.get('HX-Request'):
         r = HttpResponse()
-        r['HX-Redirect'] = reverse('crm:leads')
+        r['HX-Location'] = json.dumps({
+            'path': reverse('crm:leads'),
+            'target': '#crm-main-content',
+            'select': '#crm-main-content',
+            'swap': 'outerHTML',
+        })
         return r
-    return redirect('crm:leads')
+    return HttpResponse(status=204)
 
 
 @login_required
@@ -696,7 +957,7 @@ def lead_patch(request, pk):
     lead.refresh_from_db()
 
     if not request.headers.get('HX-Request'):
-        return redirect('crm:leads')
+        return HttpResponse(status=204)
 
     tpl = request.POST.get('_tpl', 'exec_row')
     lead = _lead_for_exec(user, pk)
@@ -737,7 +998,7 @@ def lead_high_hope_toggle(request, pk):
         _hx_toast(resp, 'Updated')
         return resp
 
-    return redirect('crm:lead_detail', pk=pk)
+    return HttpResponse(status=204)
 
 
 @login_required
@@ -751,7 +1012,7 @@ def lead_quick_followup(request, pk):
         dt = form.cleaned_data['fu_datetime']
         if timezone.is_naive(dt):
             dt = timezone.make_aware(dt)
-        FollowUp.objects.create(
+        fu = FollowUp.objects.create(
             lead=lead,
             employee=user,
             datetime=dt,
@@ -776,7 +1037,7 @@ def lead_quick_followup(request, pk):
         if not err:
             _hx_toast(resp, 'Scheduled')
         return resp
-    return redirect('crm:leads')
+    return HttpResponse(status=204)
 
 
 @login_required
@@ -810,7 +1071,7 @@ def lead_quick_note(request, pk):
         if not err:
             _hx_toast(resp, 'Updated')
         return resp
-    return redirect('crm:leads')
+    return HttpResponse(status=204)
 
 
 @login_required
@@ -827,7 +1088,7 @@ def lead_notes_save(request, pk):
             'crm/partials/lead_notes_status.html',
             {'ok': True},
         )
-    return redirect('crm:lead_detail', pk=pk)
+    return HttpResponse(status=204)
 
 
 @login_required
@@ -877,11 +1138,7 @@ def lead_contact_save(request, pk):
         if not err:
             _hx_toast(resp, 'Contact saved')
         return resp
-    if err:
-        messages.error(request, err)
-    else:
-        messages.success(request, 'Contact saved.')
-    return redirect('crm:lead_detail', pk=pk)
+    return HttpResponse(status=204)
 
 
 @login_required
@@ -940,7 +1197,7 @@ def lead_status_detail(request, pk):
         )
         _hx_toast(resp, 'Updated')
         return resp
-    return redirect('crm:lead_detail', pk=pk)
+    return HttpResponse(status=204)
 
 
 @login_required
@@ -982,7 +1239,7 @@ def followup_add(request, lead_pk):
         if not fu_error:
             _hx_toast(resp, 'Scheduled')
         return resp
-    return redirect('crm:lead_detail', pk=lead_pk)
+    return HttpResponse(status=204)
 
 
 def _tasks_panel_ctx(user, lead_pk):
@@ -1090,7 +1347,7 @@ def task_add(request, lead_pk):
                 'packages': Package.objects.filter(employee=user),
             },
         )
-    return redirect('crm:lead_detail', pk=lead_pk)
+    return HttpResponse(status=204)
 
 
 @login_required
@@ -1129,7 +1386,7 @@ def task_update(request, pk):
             {'crmToast': 'Saved', 'crmRefreshTaskHeader': True}
         )
         return resp
-    return redirect('crm:lead_detail', pk=task.lead_id)
+    return HttpResponse(status=204)
 
 
 @login_required
@@ -1180,7 +1437,7 @@ def task_toggle(request, pk):
         else:
             _hx_toast(resp, 'Updated')
         return resp
-    return redirect('crm:lead_detail', pk=task.lead_id)
+    return HttpResponse(status=204)
 
 
 @login_required
@@ -1193,7 +1450,7 @@ def lead_log_call(request, pk):
         r = HttpResponse(status=204)
         _hx_toast(r, 'Call logged')
         return r
-    return redirect('crm:leads')
+    return HttpResponse(status=204)
 
 
 @login_required
@@ -1206,7 +1463,7 @@ def lead_log_whatsapp(request, pk):
         r = HttpResponse(status=204)
         _hx_toast(r, 'WhatsApp')
         return r
-    return redirect('crm:leads')
+    return HttpResponse(status=204)
 
 
 @login_required
@@ -1285,29 +1542,8 @@ def tasks_header_badges(request):
 @login_required
 def followups_page(request):
     user = request.user
-    start, end, _ = _local_today_bounds()
-
-    base = FollowUp.objects.filter(employee=user).select_related('lead')
-    today = list(
-        base.filter(is_done=False, datetime__gte=start, datetime__lt=end).order_by(
-            'datetime'
-        )
-    )
-    upcoming = list(
-        base.filter(is_done=False, datetime__gte=end).order_by('datetime')[:80]
-    )
-    overdue = list(
-        base.filter(is_done=False, datetime__lt=start).order_by('datetime')[:80]
-    )
-    return render(
-        request,
-        'crm/followups.html',
-        {
-            'today': today,
-            'upcoming': upcoming,
-            'overdue': overdue,
-        },
-    )
+    ctx = _followups_queue_context(user)
+    return render(request, 'crm/followups.html', ctx)
 
 
 @login_required
@@ -1319,10 +1555,18 @@ def followup_done(request, pk):
     fu.save(update_fields=['is_done'])
     recalc_lead_next_followup(fu.lead)
     log_activity(fu.lead, 'follow_up_done', fu.note[:200])
-    r = HttpResponse(status=200)
     if request.headers.get('HX-Request'):
+        from_queue = request.POST.get('_from') == 'followups_queue'
+        if from_queue:
+            ctx = _followups_queue_context(user)
+            ctx['hx_oob'] = True
+            resp = render(request, 'crm/partials/followups_list.html', ctx)
+            _hx_toast(resp, 'Done')
+            return resp
+        r = HttpResponse(status=200)
         r['HX-Trigger'] = json.dumps({'crmToast': 'Done', 'crmFuDone': fu.pk})
-    return r
+        return r
+    return HttpResponse(status=204)
 
 
 @login_required
@@ -1338,14 +1582,17 @@ def followup_reschedule(request, pk):
         if timezone.is_naive(ndt):
             ndt = timezone.make_aware(ndt)
         fu.datetime = ndt
-        fu.save(update_fields=['datetime'])
+        fu.reminder_sent_at = None
+        fu.save(update_fields=['datetime', 'reminder_sent_at'])
         recalc_lead_next_followup(fu.lead)
         log_activity(fu.lead, 'follow_up_rescheduled', str(ndt))
         if request.headers.get('HX-Request'):
-            r = HttpResponse()
-            r['HX-Redirect'] = reverse('crm:followups')
-            return r
-        return redirect('crm:followups')
+            ctx = _followups_queue_context(user)
+            ctx['hx_oob'] = True
+            resp = render(request, 'crm/partials/followups_list.html', ctx)
+            _hx_toast(resp, 'Rescheduled')
+            return resp
+        return HttpResponse(status=204)
 
     start, end, _ = _local_today_bounds()
     if fu.datetime < start:
@@ -1365,9 +1612,10 @@ def followup_reschedule(request, pk):
                 'fu': fu,
                 'bucket': bucket,
                 'reschedule_error': reschedule_error,
+                'hx_oob': True,
             },
         )
-    return redirect('crm:followups')
+    return HttpResponse(status=204)
 
 
 @login_required
@@ -1402,11 +1650,17 @@ def package_create(request):
             p = form.save(commit=False)
             p.employee = user
             p.save()
-            messages.success(request, 'Package added.')
-        else:
-            messages.error(request, form.errors.as_text())
-        return redirect('crm:packages')
-    return redirect('crm:packages')
+        if request.headers.get('HX-Request'):
+            r = HttpResponse()
+            r['HX-Location'] = json.dumps({
+                'path': reverse('crm:packages'),
+                'target': '#crm-main-content',
+                'select': '#crm-main-content',
+                'swap': 'outerHTML',
+            })
+            return r
+        return HttpResponse(status=204)
+    return HttpResponse(status=204)
 
 
 @login_required
@@ -1417,10 +1671,16 @@ def package_update(request, pk):
     form = PackageForm(request.POST, instance=pkg)
     if form.is_valid():
         form.save()
-        messages.success(request, 'Package updated.')
-    else:
-        messages.error(request, form.errors.as_text())
-    return redirect('crm:packages')
+    if request.headers.get('HX-Request'):
+        r = HttpResponse()
+        r['HX-Location'] = json.dumps({
+            'path': reverse('crm:packages'),
+            'target': '#crm-main-content',
+            'select': '#crm-main-content',
+            'swap': 'outerHTML',
+        })
+        return r
+    return HttpResponse(status=204)
 
 
 @login_required
@@ -1428,7 +1688,16 @@ def package_update(request, pk):
 def package_delete(request, pk):
     user = request.user
     Package.objects.filter(pk=pk, employee=user).delete()
-    return redirect('crm:packages')
+    if request.headers.get('HX-Request'):
+        r = HttpResponse()
+        r['HX-Location'] = json.dumps({
+            'path': reverse('crm:packages'),
+            'target': '#crm-main-content',
+            'select': '#crm-main-content',
+            'swap': 'outerHTML',
+        })
+        return r
+    return HttpResponse(status=204)
 
 
 @login_required
@@ -1437,17 +1706,27 @@ def leads_import_excel(request):
     user = request.user
     form = ExcelImportForm(request.POST, request.FILES)
     if not form.is_valid():
-        messages.warning(request, 'Invalid file.')
-        return redirect('crm:leads')
+        if request.headers.get('HX-Request'):
+            r = HttpResponse()
+            r['HX-Location'] = json.dumps({
+                'path': reverse('crm:leads'),
+                'target': '#crm-main-content',
+                'select': '#crm-main-content',
+                'swap': 'outerHTML',
+            })
+            return r
+        return HttpResponse(status=204)
     result = import_leads_from_excel(form.cleaned_data['file'], user)
-    parts = [
-        f"Imported {result['created']} leads.",
-        f"Skipped empty rows: {result['skipped']}.",
-    ]
-    if result['errors']:
-        parts.append('Errors: ' + '; '.join(result['errors'][:10]))
-    messages.success(request, ' '.join(parts))
-    return redirect('crm:leads')
+    if request.headers.get('HX-Request'):
+        r = HttpResponse()
+        r['HX-Location'] = json.dumps({
+            'path': reverse('crm:leads'),
+            'target': '#crm-main-content',
+            'select': '#crm-main-content',
+            'swap': 'outerHTML',
+        })
+        return r
+    return HttpResponse(status=204)
 
 
 @login_required

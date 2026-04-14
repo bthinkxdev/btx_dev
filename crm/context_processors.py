@@ -4,7 +4,7 @@ from datetime import datetime
 
 from django.utils import timezone
 
-from .models import FollowUp, Task
+from .models import EmployeeProfile, FollowUp, Task
 
 
 def crm_header(request):
@@ -14,6 +14,7 @@ def crm_header(request):
         'crm_tasks_today_n': 0,
         'crm_tasks_open_n': 0,
         'crm_tasks_undated_n': 0,
+        'crm_employee_profile': None,
     }
     user = getattr(request, 'user', None)
     if not user or not user.is_authenticated:
@@ -52,4 +53,5 @@ def crm_header(request):
         is_completed=False,
         due_date__isnull=True,
     ).count()
+    out['crm_employee_profile'] = EmployeeProfile.objects.filter(user=user).first()
     return out

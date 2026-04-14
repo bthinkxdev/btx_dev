@@ -10,86 +10,15 @@
     <p>Mark done or reschedule — no page reloads.</p>
   </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-    <span style="font-size:13px;color:var(--text-muted);">
-      {% if overdue %}<span style="color:var(--danger-600);font-weight:700;">{{ overdue|length }} overdue</span>{% endif %}
-      {% if today %} · <span style="color:var(--warning-600);font-weight:700;">{{ today|length }} today</span>{% endif %}
-      {% if upcoming %} · <span style="font-weight:700;">{{ upcoming|length }} upcoming</span>{% endif %}
-    </span>
-    <a href="{% url 'crm:leads' %}" class="btn btn-outline btn-sm">View All Leads</a>
+    <a href="{% url 'crm:leads' %}"
+       hx-get="{% url 'crm:leads' %}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true"
+       class="btn btn-outline btn-sm">View All Leads</a>
   </div>
 </div>
 
-<div class="fu-board" role="region" aria-label="Follow-up columns">
-<!-- OVERDUE -->
-<div class="fu-zone fu-zone--overdue">
-  <div class="fu-zone-header">
-    <div style="width:10px;height:10px;border-radius:50%;background:var(--danger-500);flex-shrink:0;"></div>
-    <span class="fu-zone-title" style="color:var(--danger-600);">Overdue — Call Now</span>
-    <span class="fu-zone-badge" style="background:var(--danger-100);color:var(--danger-700);">{{ overdue|length }}</span>
-  </div>
-  {% if overdue %}
-  <div class="fu-exec-grid">
-    {% for fu in overdue %}
-    {% with bucket="overdue" %}
-    {% include "crm/partials/followup_exec_card.html" %}
-    {% endwith %}
-    {% endfor %}
-  </div>
-  {% else %}
-  <div class="empty-state">
-    <strong>No overdue items</strong>
-    You're on top of everything — great work!
-  </div>
-  {% endif %}
-</div>
-
-<!-- TODAY -->
-<div class="fu-zone fu-zone--today">
-  <div class="fu-zone-header">
-    <div style="width:10px;height:10px;border-radius:50%;background:var(--warning-500);flex-shrink:0;"></div>
-    <span class="fu-zone-title" style="color:var(--warning-600);">Today's Follow-ups</span>
-    <span class="fu-zone-badge" style="background:var(--warning-100);color:var(--warning-700);">{{ today|length }}</span>
-  </div>
-  {% if today %}
-  <div class="fu-exec-grid">
-    {% for fu in today %}
-    {% with bucket="today" %}
-    {% include "crm/partials/followup_exec_card.html" %}
-    {% endwith %}
-    {% endfor %}
-  </div>
-  {% else %}
-  <div class="empty-state">
-    <strong>Nothing scheduled for today</strong>
-    Check the Upcoming column for what’s next.
-  </div>
-  {% endif %}
-</div>
-
-<!-- UPCOMING -->
-<div class="fu-zone fu-zone--up">
-  <div class="fu-zone-header">
-    <div style="width:10px;height:10px;border-radius:50%;background:var(--primary-400);flex-shrink:0;"></div>
-    <span class="fu-zone-title">Upcoming</span>
-    <span class="fu-zone-badge" style="background:var(--primary-100);color:var(--primary-700);">{{ upcoming|length }}</span>
-  </div>
-  {% if upcoming %}
-  <div class="fu-exec-grid">
-    {% for fu in upcoming %}
-    {% with bucket="upcoming" %}
-    {% include "crm/partials/followup_exec_card.html" %}
-    {% endwith %}
-    {% endfor %}
-  </div>
-  {% else %}
-  <div class="empty-state">
-    <strong>No upcoming follow-ups</strong>
-    Schedule follow-ups from the leads list or lead detail.
-    <div style="margin-top:14px;">
-      <a href="{% url 'crm:leads' %}" class="btn btn-primary btn-sm">Go to Leads</a>
-    </div>
-  </div>
-  {% endif %}
-</div>
-</div><!-- .fu-board -->
+{% include "crm/partials/followups_list.html" %}
 {% endblock %}

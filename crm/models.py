@@ -19,6 +19,12 @@ class EmployeeProfile(models.Model):
         default=Decimal('0'),
         help_text='Monthly or period revenue target',
     )
+    photo = models.ImageField(
+        upload_to='crm_profiles/',
+        blank=True,
+        null=True,
+        help_text='Shown in the CRM header next to your name',
+    )
 
     class Meta:
         verbose_name = 'Employee profile'
@@ -127,6 +133,8 @@ class FollowUp(models.Model):
     datetime = models.DateTimeField(db_index=True)
     note = models.TextField(blank=True)
     is_done = models.BooleanField(default=False, db_index=True)
+    # Set when the 5-minute reminder was pushed (one per follow-up).
+    reminder_sent_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
     class Meta:
         ordering = ['datetime']

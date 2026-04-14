@@ -5,8 +5,13 @@ from .models import ActivityLog, EmployeeProfile, FollowUp, Lead, Package, Task
 
 @admin.register(EmployeeProfile)
 class EmployeeProfileAdmin(admin.ModelAdmin):
-    list_display = ('user', 'target_amount')
+    list_display = ('user', 'target_amount', 'has_profile_photo')
     search_fields = ('user__username', 'user__email')
+    fields = ('user', 'target_amount', 'photo')
+
+    @admin.display(description='Photo', boolean=True)
+    def has_profile_photo(self, obj):
+        return bool(obj.photo)
 
 
 @admin.register(Package)

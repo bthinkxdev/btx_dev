@@ -1,5 +1,5 @@
 {% load crm_extras %}
-<div class="fu-exec-card fu-exec--{{ bucket }}" id="fu-exec-{{ fu.pk }}">
+<div class="fu-exec-card fu-exec--{{ bucket }}" id="fu-exec-{{ fu.pk }}"{% if hx_oob %} hx-swap-oob="outerHTML"{% endif %}>
   <div class="fu-exec-card__main">
     <a href="{% url 'crm:lead_detail' fu.lead_id %}" class="fu-exec-name">{{ fu.lead.name }}</a>
     {% if fu.lead.phone %}
@@ -43,15 +43,15 @@
 
     <button type="button" class="fu-btn fu-btn--done"
       hx-post="{% url 'crm:followup_done' fu.pk %}"
-      hx-target="closest .fu-exec-card"
-      hx-swap="delete">
+      hx-swap="none"
+      hx-vals='{"_from": "followups_queue"}'>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;">
         <polyline points="20 6 9 17 4 12"/>
       </svg>
       Done
     </button>
 
-    <form class="fu-resched" hx-post="{% url 'crm:followup_reschedule' fu.pk %}" hx-target="#fu-exec-{{ fu.pk }}" hx-swap="outerHTML">
+    <form class="fu-resched" hx-post="{% url 'crm:followup_reschedule' fu.pk %}" hx-swap="none">
       {% csrf_token %}
       <input type="datetime-local" name="new_datetime" required class="fu-resched-input"
         {% if fu.datetime %}value="{{ fu.datetime|date:'Y-m-d' }}T{{ fu.datetime|time:'H:i' }}"{% endif %}>

@@ -7,7 +7,17 @@
 <div class="page-header exec-page-head exec-page-head--leads">
   <div class="exec-page-head__intro">
     <h1>Daily execution</h1>
-    <p><strong>{{ leads|length }}</strong> leads · {{ sort_label }}</p>
+    <p class="exec-page-head__meta">
+      {% if paginator.count %}
+      <strong>{{ paginator.count }}</strong> matching lead{{ paginator.count|pluralize }}
+      {% if page_obj.start_index %}
+      <span class="exec-page-head__range">({{ page_obj.start_index }}–{{ page_obj.end_index }})</span>
+      {% endif %}
+      {% else %}
+      <strong>0</strong> matching leads
+      {% endif %}
+      · {{ sort_label }}
+    </p>
   </div>
 
   {# ── COMMAND STRIP — click to filter, shows live counts ───── #}
@@ -59,7 +69,7 @@
     <span class="cmd-strip__icon">
       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
     </span>
-    <span class="cmd-strip__num">{{ leads|length }}</span>
+    <span class="cmd-strip__num">{{ all_leads_total }}</span>
     <span class="cmd-strip__lbl">All Leads</span>
     <span class="cmd-strip__hint">No filter active</span>
   </a>
@@ -233,16 +243,30 @@
 
 {# ── LEADS LIST ────────────────────────────────────────── #}
 {% if leads %}
-<div class="exec-board-list exec-board-list--desktop">
+<div id="leads-desktop-list" class="exec-board-list exec-board-list--desktop">
   {% for lead in leads %}
   {% include "crm/partials/lead_exec_board.html" %}
   {% endfor %}
 </div>
-<div class="lead-mcard-list lead-mcard-list--mob" role="list">
+<div id="leads-mobile-list" class="lead-mcard-list lead-mcard-list--mob" role="list">
   {% for lead in leads %}
   {% include "crm/partials/lead_mobile_card.html" %}
   {% endfor %}
 </div>
+<div id="leads-scroll-anchor" class="leads-scroll-anchor" aria-hidden="true"></div>
+{% if pagination_next_qs %}
+<div id="leads-infinite-sentinel"
+     class="leads-infinite-sentinel"
+     data-more-base="{{ leads_more_url }}"
+     data-fetch="{{ leads_more_url }}?{{ pagination_next_qs }}"
+     role="status"
+     aria-live="polite"
+     aria-busy="false">
+  <span class="leads-infinite-sentinel__idle">Scroll to load more leads</span>
+  <span class="leads-infinite-sentinel__busy">Loading more…</span>
+</div>
+{% endif %}
+<p id="leads-infinite-end" class="leads-infinite-end"{% if pagination_next_qs %} hidden{% endif %}>End of leads</p>
 {% else %}
 <div class="empty-state" style="padding:40px 24px;">
   {% if has_active_filters %}
@@ -274,7 +298,8 @@
       </div>
       <button type="button" onclick="this.closest('dialog').close()" class="crm-dialog__x" aria-label="Close">&times;</button>
     </div>
-    <form method="post" action="{% url 'crm:lead_create' %}" id="add-lead-form" class="add-lead-form">
+    <form method="post" action="{% url 'crm:lead_create' %}" id="add-lead-form" class="add-lead-form"
+          hx-post="{% url 'crm:lead_create' %}">
       {% csrf_token %}
       <fieldset class="add-lead-fieldset">
         <legend class="add-lead-legend">Contact</legend>
@@ -311,7 +336,8 @@
       <h2>Import from Excel</h2>
       <button type="button" onclick="this.closest('dialog').close()" class="crm-dialog__x" aria-label="Close">&times;</button>
     </div>
-    <form method="post" action="{% url 'crm:leads_import' %}" enctype="multipart/form-data">
+    <form method="post" action="{% url 'crm:leads_import' %}" enctype="multipart/form-data"
+          hx-post="{% url 'crm:leads_import' %}" hx-encoding="multipart/form-data">
       {% csrf_token %}
       <div class="form-row">
         <label>Select .xlsx file</label>
@@ -697,6 +723,43 @@ dialog::backdrop { background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); }
   flex-shrink: 0;
   white-space: nowrap;
 }
+
+/* ── Leads infinite scroll ─────────────────────────────── */
+.leads-scroll-anchor { height: 1px; pointer-events: none; }
+.leads-infinite-sentinel {
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 12px 0 4px;
+  padding: 10px;
+  border-radius: var(--radius);
+  border: 1px dashed var(--border);
+  background: var(--neutral-50);
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+.leads-infinite-sentinel.is-loading { opacity: 0.85; }
+.leads-infinite-sentinel__busy { display: none; }
+.leads-infinite-sentinel.is-loading .leads-infinite-sentinel__idle { display: none; }
+.leads-infinite-sentinel.is-loading .leads-infinite-sentinel__busy { display: inline; }
+.leads-infinite-end {
+  text-align: center;
+  padding: 20px 16px 32px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+.leads-infinite-error {
+  text-align: center;
+  color: var(--danger-600);
+  font-size: 13px;
+  font-weight: 600;
+  margin: 8px 0;
+}
+.exec-page-head__range { font-weight: 600; color: var(--text-muted); }
 
 /* ── Exec board list ──────────────────────────────────── */
 .exec-board--has-pending-tasks {
@@ -1166,6 +1229,186 @@ dialog[open] { animation: dialogIn 0.2s ease; }
     if (menu.open) card.classList.add('exec-board--menu-open');
     else card.classList.remove('exec-board--menu-open');
   }, true);
+
+  /* ── Infinite scroll: next page of leads ───────────────
+     Uses the nearest scrollable ancestor as IO root (viewport alone misses nested scroll).
+     Unobserves while fetching to avoid duplicate requests; scroll listener as fallback. */
+  var infSentinel = document.getElementById('leads-infinite-sentinel');
+  var infDesk = document.getElementById('leads-desktop-list');
+  var infMob = document.getElementById('leads-mobile-list');
+  var infEnd = document.getElementById('leads-infinite-end');
+  if (infSentinel && infDesk && infMob) {
+    var infLoading = false;
+    var infMoreBase = infSentinel.getAttribute('data-more-base') || '';
+    var infIo = null;
+    var infScrollRaf = null;
+
+    function findScrollableAncestor(el) {
+      var n = el ? el.parentElement : null;
+      while (n && n !== document.body) {
+        var st = window.getComputedStyle(n);
+        var oy = st.overflowY;
+        if (
+          (oy === 'auto' || oy === 'scroll' || oy === 'overlay') &&
+          n.scrollHeight > n.clientHeight + 2
+        ) {
+          return n;
+        }
+        n = n.parentElement;
+      }
+      return null;
+    }
+
+    function resolveScrollRoot(el) {
+      var inner = findScrollableAncestor(el);
+      if (inner) return inner;
+      var html = document.documentElement;
+      if (html && html.scrollHeight > (window.innerHeight || html.clientHeight) + 8) {
+        return html;
+      }
+      return null;
+    }
+
+    var infScrollRoot = resolveScrollRoot(infSentinel);
+    var infIoRoot =
+      infScrollRoot === document.documentElement ? null : infScrollRoot;
+
+    function infDetach() {
+      if (infIo && infSentinel) {
+        try {
+          infIo.unobserve(infSentinel);
+        } catch (e0) {}
+      }
+    }
+
+    function infAttach() {
+      if (infIo && infSentinel && infSentinel.parentNode && infSentinel.getAttribute('data-fetch')) {
+        try {
+          infIo.observe(infSentinel);
+        } catch (e0b) {}
+      }
+    }
+
+    function infNearEnd() {
+      if (!infSentinel || !infSentinel.parentNode || infLoading) return false;
+      var pad = 320;
+      var tr = infSentinel.getBoundingClientRect();
+      if (!infScrollRoot || infScrollRoot === document.documentElement) {
+        var vh = window.innerHeight || document.documentElement.clientHeight || 0;
+        return tr.top < vh + pad;
+      }
+      var sr = infScrollRoot.getBoundingClientRect();
+      return tr.top < sr.bottom + pad;
+    }
+
+    function infFinishNoMore() {
+      infSentinel.removeAttribute('data-fetch');
+      if (infEnd) infEnd.removeAttribute('hidden');
+      try {
+        if (infIo) infIo.disconnect();
+      } catch (e1) {}
+      infIo = null;
+      if (infSentinel.parentNode) infSentinel.parentNode.removeChild(infSentinel);
+    }
+
+    function infTryLoad() {
+      var url = infSentinel.getAttribute('data-fetch');
+      if (!url || infLoading || !infSentinel.parentNode) return;
+      infLoading = true;
+      infDetach();
+      infSentinel.setAttribute('aria-busy', 'true');
+      infSentinel.classList.add('is-loading');
+
+      var ctrl = new AbortController();
+      var to = setTimeout(function () {
+        ctrl.abort();
+      }, 30000);
+
+      fetch(url, {
+        credentials: 'same-origin',
+        signal: ctrl.signal,
+        headers: {
+          Accept: 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      })
+        .then(function (r) {
+          if (!r.ok) throw new Error('load failed');
+          return r.json();
+        })
+        .then(function (data) {
+          if (data.desktop_html) infDesk.insertAdjacentHTML('beforeend', data.desktop_html);
+          if (data.mobile_html) infMob.insertAdjacentHTML('beforeend', data.mobile_html);
+          if (window.htmx && typeof htmx.process === 'function') {
+            htmx.process(infDesk);
+            htmx.process(infMob);
+          }
+          if (data.has_more && data.next_querystring) {
+            infSentinel.setAttribute('data-fetch', infMoreBase + '?' + data.next_querystring);
+          } else {
+            infFinishNoMore();
+          }
+        })
+        .catch(function () {
+          infSentinel.removeAttribute('data-fetch');
+          var err = document.createElement('p');
+          err.className = 'leads-infinite-error';
+          err.textContent = 'Could not load more leads. Reload the page or try again.';
+          infSentinel.parentNode.insertBefore(err, infSentinel);
+          if (infEnd) infEnd.removeAttribute('hidden');
+          try {
+            if (infIo) infIo.disconnect();
+          } catch (e3) {}
+          infIo = null;
+          if (infSentinel.parentNode) infSentinel.parentNode.removeChild(infSentinel);
+        })
+        .finally(function () {
+          clearTimeout(to);
+          infLoading = false;
+          if (infSentinel.parentNode) {
+            infSentinel.setAttribute('aria-busy', 'false');
+            infSentinel.classList.remove('is-loading');
+            if (infSentinel.getAttribute('data-fetch')) {
+              requestAnimationFrame(function () {
+                requestAnimationFrame(infAttach);
+              });
+            }
+          }
+        });
+    }
+
+    infIo = new IntersectionObserver(
+      function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) infTryLoad();
+        });
+      },
+      {
+        root: infIoRoot,
+        rootMargin: '0px 0px 400px 0px',
+        threshold: 0,
+      }
+    );
+    infAttach();
+
+    function infOnScroll() {
+      if (infScrollRaf) cancelAnimationFrame(infScrollRaf);
+      infScrollRaf = requestAnimationFrame(function () {
+        infScrollRaf = null;
+        if (infNearEnd()) infTryLoad();
+      });
+    }
+    window.addEventListener('scroll', infOnScroll, { passive: true });
+    if (infScrollRoot && infScrollRoot !== document.documentElement) {
+      infScrollRoot.addEventListener('scroll', infOnScroll, { passive: true });
+    }
+
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        if (infNearEnd()) infTryLoad();
+      });
+    });
+  }
 })();
 </script>
 {% endblock %}

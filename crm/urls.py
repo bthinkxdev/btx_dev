@@ -18,6 +18,7 @@ urlpatterns = [
     ),
     path('', views.dashboard, name='dashboard'),
     path('leads/', views.leads_list, name='leads'),
+    path('leads/more/', views.leads_more_json, name='leads_more'),
     path('leads/search/', views.lead_search, name='lead_search'),
     path('leads/quick-add/', views.lead_quick_add, name='lead_quick_add'),
     path('leads/create/', views.lead_create, name='lead_create'),

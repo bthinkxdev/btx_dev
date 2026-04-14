@@ -119,6 +119,9 @@ NEWSLETTER_EMAIL_INTERVAL_SECONDS = float(
 )
 
 # CRM: if phone is 10 digits (local), prepend this country code for wa.me links (no +). Example: 91 (India), 1 (US).
-CRM_WHATSAPP_DEFAULT_COUNTRY_CODE = os.environ.get(
-    'CRM_WHATSAPP_DEFAULT_COUNTRY_CODE', '91'
-).lstrip('+')
+CRM_WHATSAPP_DEFAULT_COUNTRY_CODE = '91'
+
+# WhatsApp Cloud API webhook verification token.
+WHATSAPP_VERIFY_TOKEN = "bthinkx123"
+WHATSAPP_ACCESS_TOKEN = 'EAAe8YaGfcZBEBRKGFjhaa6jtuwjtvhpC2AjkUPsHbZBMrZCCTWV0q4aENgcXtdYCuQdjZAe3PjUid6HVE702YfsNXdjNHBBVhLd6ZCKJXoe20e5KGgvUnlZC1F4EIjIGtqb9oHJk8gYNvhy4gkAba9yZBvz0a1ZAUpTv1bOr9VV7KsA6QK4dUXZBvHs7fYrtnmX60K4ujhqKaCipGagXp6eccNGCbL7XghqB9iOD5VCsRHOSlCbLxyMik2W6BuFanRTdQjMNIgVTu1M36K9VQvkFNhNY6'
+WHATSAPP_PHONE_NUMBER_ID = "984411908097951"
