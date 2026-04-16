@@ -1,0 +1,43 @@
+{% extends "crm/base.html" %}
+{% block title %}Edit Achievement{% endblock %}
+{% block page_title %}Edit Achievement{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Edit Achievement</h1>
+    <p>Update the details of this achievement entry.</p>
+  </div>
+</div>
+
+<div class="card card-sm">
+  <form method="post">
+    {% csrf_token %}
+    <div class="form-grid" style="margin-bottom:12px;">
+      <div class="form-field">
+        <label for="id_lead">Lead (optional)</label>
+        {{ form.lead }}
+      </div>
+      <div class="form-field">
+        <label for="id_package">Package (optional)</label>
+        {{ form.package }}
+      </div>
+      <div class="form-field">
+        <label for="id_amount">Amount</label>
+        {{ form.amount }}
+      </div>
+      <div class="form-field">
+        <label for="id_achieved_date">Achieved date</label>
+        {{ form.achieved_date }}
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:12px;">
+      <label for="id_notes">Notes (optional)</label>
+      {{ form.notes }}
+    </div>
+    <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
+    <a href="{% url 'crm:achievements_dashboard' %}" class="btn btn-outline btn-sm">Cancel</a>
+  </form>
+</div>
+{% endblock %}
+

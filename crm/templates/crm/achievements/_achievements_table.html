@@ -1,0 +1,62 @@
+<div class="card card-sm">
+  <div class="card-header">
+    <div>
+      <div class="card-title">Achievements for {{ current_month|date:"F Y" }}</div>
+      <div class="card-subtitle">
+        {% if package_filter %}Package: {{ package_filter.name }} · {% endif %}
+        {{ achievements|length }} records
+      </div>
+    </div>
+  </div>
+
+  {% if achievements %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Lead</th>
+          <th>Package</th>
+          <th>Amount</th>
+          <th>Notes</th>
+          <th>Created by</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in achievements %}
+        <tr>
+          <td>{{ a.achieved_date|date:"Y-m-d" }}</td>
+          <td>
+            {% if a.lead %}
+              <a href="{% url 'crm:lead_detail' a.lead_id %}">{{ a.lead.name }}</a>
+            {% else %}
+              —
+            {% endif %}
+          </td>
+          <td>{% if a.package %}{{ a.package.name }}{% else %}—{% endif %}</td>
+          <td>{{ a.amount }}</td>
+          <td style="max-width:260px;">{{ a.notes|default:""|truncatechars:80 }}</td>
+          <td>{{ a.created_by.get_full_name|default:a.created_by.username }}</td>
+          <td style="white-space:nowrap;text-align:right;">
+            <a href="{% url 'crm:achievement_update' a.pk %}" class="btn btn-outline btn-sm">Edit</a>
+            {% if is_admin %}
+            <form method="post" action="{% url 'crm:achievement_delete' a.pk %}" style="display:inline;">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete this achievement?');">Delete</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <strong>No achievements logged.</strong>
+    Start by adding your first closed deal or revenue entry for this month.
+  </div>
+  {% endif %}
+</div>
+

@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import FollowUp, Lead, Package, Task
+from .models import Achievement, FollowUp, Lead, Package, Task
 
 
 class LeadForm(forms.ModelForm):
@@ -92,3 +92,19 @@ class QuickNoteForm(forms.Form):
         max_length=500,
         widget=forms.TextInput(attrs={'placeholder': 'Quick note…'}),
     )
+
+
+class AchievementForm(forms.ModelForm):
+    class Meta:
+        model = Achievement
+        fields = ('lead', 'package', 'amount', 'achieved_date', 'notes')
+        widgets = {
+            'achieved_date': forms.DateInput(attrs={'type': 'date'}),
+            'notes': forms.Textarea(attrs={'rows': 2}),
+        }
+
+    def __init__(self, *args, employee=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if employee is not None:
+            self.fields['lead'].queryset = Lead.objects.filter(employee=employee)
+            self.fields['package'].queryset = Package.objects.filter(employee=employee)

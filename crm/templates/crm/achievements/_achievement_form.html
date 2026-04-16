@@ -1,0 +1,43 @@
+<form
+  hx-post="{% url 'crm:achievement_create' %}"
+  hx-target="#ach-modal-body"
+  hx-swap="innerHTML"
+  method="post"
+>
+  {% csrf_token %}
+  {% if is_admin %}
+    <input type="hidden" name="employee" value="{{ scope_employee.id }}">
+  {% endif %}
+  <div class="form-grid" style="margin-bottom:12px;">
+    <div class="form-field">
+      <label for="id_lead">Lead (optional)</label>
+      {{ form.lead }}
+    </div>
+    <div class="form-field">
+      <label for="id_package">Package (optional)</label>
+      {{ form.package }}
+    </div>
+    <div class="form-field">
+      <label for="id_amount">Amount</label>
+      {{ form.amount }}
+    </div>
+    <div class="form-field">
+      <label for="id_achieved_date">Achieved date</label>
+      {{ form.achieved_date }}
+    </div>
+  </div>
+  <div class="form-row" style="margin-bottom:12px;">
+    <label for="id_notes">Notes (optional)</label>
+    {{ form.notes }}
+  </div>
+  {% if form.errors %}
+  <div class="crm-flash crm-flash--err" style="margin-bottom:10px;">
+    {{ form.errors.as_text }}
+  </div>
+  {% endif %}
+  <div style="display:flex;gap:8px;justify-content:flex-end;">
+    <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('crm-achievement-modal').close()">Cancel</button>
+    <button type="submit" class="btn btn-primary btn-sm">Save Achievement</button>
+  </div>
+</form>
+

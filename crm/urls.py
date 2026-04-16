@@ -77,4 +77,8 @@ urlpatterns = [
         views.lead_high_hope_toggle,
         name='lead_high_hope_toggle',
     ),
+    path('achievements/', views.achievements_dashboard, name='achievements_dashboard'),
+    path('achievements/create/', views.achievement_create, name='achievement_create'),
+    path('achievements/<int:pk>/edit/', views.achievement_update, name='achievement_update'),
+    path('achievements/<int:pk>/delete/', views.achievement_delete, name='achievement_delete'),
 ]

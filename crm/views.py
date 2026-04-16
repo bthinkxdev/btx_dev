@@ -20,7 +20,9 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods, require_POST
 
 from .services.whatsapp import handle_message, is_duplicate_event, mask_phone
+from .services.achievements import get_monthly_performance
 from .forms import (
+    AchievementForm,
     ExcelImportForm,
     FollowUpForm,
     LeadForm,
@@ -30,7 +32,16 @@ from .forms import (
     RescheduleFollowUpForm,
     TaskForm,
 )
-from .models import ActivityLog, EmployeeProfile, FollowUp, Lead, Package, Task
+from .models import (
+    Achievement,
+    ActivityLog,
+    EmployeeProfile,
+    FollowUp,
+    Lead,
+    MonthlyTarget,
+    Package,
+    Task,
+)
 from .utils import (
     get_report_data,
     import_leads_from_excel,
@@ -1804,6 +1815,188 @@ def performance(request):
         'sales_report': get_report_data(user, 'daily'),
     }
     return render(request, 'crm/performance.html', ctx)
+
+
+@login_required
+def achievements_dashboard(request):
+    user = request.user
+    # Month filter: ?month=YYYY-MM (defaults to current month)
+    month_param = (request.GET.get('month') or '').strip()
+    today = timezone.localdate()
+    if month_param and len(month_param) >= 7:
+        try:
+            y, m = int(month_param[:4]), int(month_param[5:7])
+            month_date = date(y, m, 1)
+        except ValueError:
+            month_date = today.replace(day=1)
+    else:
+        month_date = today.replace(day=1)
+
+    # Employee scope
+    if user.is_superuser:
+        emp_id_s = (request.GET.get('employee') or '').strip()
+        from django.contrib.auth import get_user_model
+
+        UserModel = get_user_model()
+        if emp_id_s.isdigit():
+            employee = UserModel.objects.filter(pk=int(emp_id_s), is_active=True).first()
+        else:
+            employee = user
+        if not employee:
+            employee = user
+        available_employees = UserModel.objects.filter(is_active=True).order_by('username')
+    else:
+        employee = user
+        available_employees = None
+
+    # Package filter
+    pkg_id_s = (request.GET.get('package') or '').strip()
+    package_obj = None
+    if pkg_id_s.isdigit():
+        package_obj = Package.objects.filter(pk=int(pkg_id_s), employee=employee).first()
+
+    perf = get_monthly_performance(employee, month_date, package=package_obj)
+    month_start, month_end = month_date.replace(day=1), (
+        month_date.replace(year=month_date.year + 1, month=1, day=1)
+        if month_date.month == 12
+        else month_date.replace(month=month_date.month + 1, day=1)
+    )
+
+    achievements = (
+        Achievement.objects.filter(
+            employee=employee,
+            achieved_date__gte=month_start,
+            achieved_date__lt=month_end,
+        )
+        .select_related('employee', 'lead', 'package', 'created_by')
+        .order_by('-achieved_date', '-id')
+    )
+    if package_obj:
+        achievements = achievements.filter(package=package_obj)
+
+    packages = Package.objects.filter(employee=employee).order_by('name')
+    # Latest / upcoming monthly target for info
+    mt = (
+        MonthlyTarget.objects.filter(employee=employee, month=month_start)
+        .order_by('-month')
+        .first()
+    )
+
+    form_employee = employee if user.is_superuser else user
+    form = AchievementForm(employee=form_employee, initial={'achieved_date': today})
+
+    ctx = {
+        'scope_employee': employee,
+        'is_admin': user.is_superuser,
+        'employees': available_employees,
+        'current_month': month_date,
+        'package_filter': package_obj,
+        'packages': packages,
+        'achievements': achievements,
+        'monthly_target': mt,
+        'perf': perf,
+        'form': form,
+    }
+    return render(request, 'crm/achievements/dashboard.html', ctx)
+
+
+@login_required
+@require_http_methods(['POST'])
+def achievement_create(request):
+    user = request.user
+    target_employee = user
+    if user.is_superuser:
+        emp_id = (request.POST.get('employee') or '').strip()
+        if emp_id.isdigit():
+            from django.contrib.auth import get_user_model
+
+            UserModel = get_user_model()
+            target_employee = (
+                UserModel.objects.filter(pk=int(emp_id), is_active=True).first() or user
+            )
+
+    form = AchievementForm(request.POST or None, employee=target_employee)
+    if form.is_valid():
+        ach = form.save(commit=False)
+        ach.employee = target_employee
+        ach.created_by = user
+        ach.save()
+        if request.headers.get('HX-Request'):
+            r = HttpResponse()
+            r['HX-Location'] = json.dumps({
+                'path': reverse('crm:achievements_dashboard'),
+                'target': '#crm-main-content',
+                'select': '#crm-main-content',
+                'swap': 'outerHTML',
+            })
+            return r
+        return redirect('crm:achievements_dashboard')
+    if request.headers.get('HX-Request'):
+        # On error, re-render the small form area.
+        month_date = timezone.localdate().replace(day=1)
+        packages = Package.objects.filter(employee=target_employee).order_by('name')
+        ctx = {
+            'form': form,
+            'scope_employee': target_employee,
+            'is_admin': user.is_superuser,
+            'current_month': month_date,
+            'package_filter': None,
+            'packages': packages,
+        }
+        return render(request, 'crm/achievements/_achievement_form.html', ctx)
+    return redirect('crm:achievements_dashboard')
+
+
+@login_required
+@require_http_methods(['GET', 'POST'])
+def achievement_update(request, pk):
+    user = request.user
+    ach = get_object_or_404(Achievement, pk=pk)
+    if not (user.is_superuser or ach.employee_id == user.id):
+        return HttpResponse(status=403)
+
+    if request.method == 'POST':
+        form = AchievementForm(request.POST, instance=ach, employee=ach.employee)
+        if form.is_valid():
+            form.save()
+            if request.headers.get('HX-Request'):
+                r = HttpResponse()
+                r['HX-Location'] = json.dumps({
+                    'path': reverse('crm:achievements_dashboard'),
+                    'target': '#crm-main-content',
+                    'select': '#crm-main-content',
+                    'swap': 'outerHTML',
+                })
+                return r
+            return redirect('crm:achievements_dashboard')
+    else:
+        form = AchievementForm(instance=ach, employee=ach.employee)
+
+    return render(
+        request,
+        'crm/achievements/edit.html',
+        {'form': form, 'achievement': ach},
+    )
+
+
+@login_required
+@require_POST
+def achievement_delete(request, pk):
+    user = request.user
+    ach = get_object_or_404(Achievement, pk=pk)
+    if not user.is_superuser:
+        return HttpResponse(status=403)
+    ach.delete()
+    if request.headers.get('HX-Request'):
+        r = HttpResponse()
+        r['HX-Location'] = json.dumps({
+            'path': reverse('crm:achievements_dashboard'),
+            'target': '#crm-main-content',
+            'select': '#crm-main-content',
+            'swap': 'outerHTML',
+        })
+        return r
+    return redirect('crm:achievements_dashboard')
 
 
 @login_required

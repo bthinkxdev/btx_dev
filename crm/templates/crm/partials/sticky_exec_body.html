@@ -119,4 +119,27 @@
   </button>
   {% endif %}{% endwith %}
   {% endif %}
+  <form
+    method="post"
+    action="{% url 'crm:achievement_create' %}"
+    hx-post="{% url 'crm:achievement_create' %}"
+    hx-target="#crm-main-content"
+    hx-select="#crm-main-content"
+    hx-swap="outerHTML"
+    style="margin-top:20px;"
+  >
+    {% csrf_token %}
+    <input type="hidden" name="lead" value="{{ lead.id }}">
+    {% if lead.package_id %}
+    <input type="hidden" name="package" value="{{ lead.package_id }}">
+    {% endif %}
+    <input type="hidden" name="amount" value="{{ lead.deal_value }}">
+    <input type="hidden" name="achieved_date" value="{{ fu_end|date:'Y-m-d' }}">
+    <button type="submit" class="btn btn-success btn-sm">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="20 6 9 17 4 12"/><path d="M20 11v9H4v-4"/>
+      </svg>
+      Mark as Achieved
+    </button>
+  </form>
 </div>

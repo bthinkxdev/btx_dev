@@ -180,3 +180,84 @@ class ActivityLog(models.Model):
 
     def __str__(self):
         return f'{self.action} — {self.lead.name}'
+
+
+class Achievement(models.Model):
+    employee = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='crm_achievements',
+    )
+    lead = models.ForeignKey(
+        Lead,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='achievements',
+    )
+    package = models.ForeignKey(
+        Package,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='achievements',
+    )
+    amount = models.DecimalField(max_digits=14, decimal_places=2)
+    achieved_date = models.DateField(db_index=True)
+    notes = models.TextField(blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='created_achievements',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-achieved_date', '-id']
+        indexes = [
+            models.Index(fields=['employee', 'achieved_date']),
+            models.Index(fields=['employee', 'package', 'achieved_date']),
+        ]
+
+    def __str__(self):
+        return f'{self.employee} — {self.amount} on {self.achieved_date}'
+
+
+class MonthlyTarget(models.Model):
+    employee = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='crm_monthly_targets',
+    )
+    month = models.DateField(
+        help_text='First day of the month this target applies to.',
+    )
+    target_amount = models.DecimalField(max_digits=14, decimal_places=2)
+
+    class Meta:
+        verbose_name = 'Monthly target'
+        verbose_name_plural = 'Monthly targets'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['employee', 'month'],
+                name='uniq_employee_month_target',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['employee', 'month']),
+        ]
+
+    def __str__(self):
+        return f'{self.employee} — {self.month.strftime("%Y-%m")} target {self.target_amount}'
+
+    def clean(self):
+        super().clean()
+        if self.month and self.month.day != 1:
+            # Normalize to first day so month-based lookups remain consistent.
+            self.month = self.month.replace(day=1)
+
+    def save(self, *args, **kwargs):
+        if self.month and self.month.day != 1:
+            self.month = self.month.replace(day=1)
+        return super().save(*args, **kwargs)

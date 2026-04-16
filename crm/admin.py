@@ -1,6 +1,15 @@
 from django.contrib import admin
 
-from .models import ActivityLog, EmployeeProfile, FollowUp, Lead, Package, Task
+from .models import (
+    Achievement,
+    ActivityLog,
+    EmployeeProfile,
+    FollowUp,
+    Lead,
+    MonthlyTarget,
+    Package,
+    Task,
+)
 
 
 @admin.register(EmployeeProfile)
@@ -44,3 +53,24 @@ class FollowUpAdmin(admin.ModelAdmin):
 @admin.register(Task)
 class TaskAdmin(admin.ModelAdmin):
     list_display = ('title', 'lead', 'employee', 'due_date', 'is_completed')
+
+
+@admin.register(Achievement)
+class AchievementAdmin(admin.ModelAdmin):
+    list_display = (
+        'employee',
+        'amount',
+        'achieved_date',
+        'package',
+        'lead',
+        'created_by',
+        'created_at',
+    )
+    list_filter = ('employee', 'package', 'achieved_date')
+    search_fields = ('lead__name', 'employee__username', 'employee__email')
+
+
+@admin.register(MonthlyTarget)
+class MonthlyTargetAdmin(admin.ModelAdmin):
+    list_display = ('employee', 'month', 'target_amount')
+    list_filter = ('employee', 'month')
