@@ -144,6 +144,14 @@ def blog_post(request, slug):
     return render(request, 'pages/blog_post.html', {'post': post})
 
 
+def privacy_policy(request):
+    return render(request, 'pages/privacy_policy.html')
+
+
+def terms(request):
+    return render(request, 'pages/terms.html')
+
+
 @ensure_csrf_cookie
 def contact(request):
     return render(request, 'pages/contact.html')

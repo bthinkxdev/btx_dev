@@ -10,6 +10,8 @@ urlpatterns = [
     path('about/', views.about, name='about'),
     path('blog/', views.blog, name='blog'),
     path('blog/<slug:slug>/', views.blog_post, name='blog_post'),
+    path('privacy-policy/', views.privacy_policy, name='privacy_policy'),
+    path('terms/', views.terms, name='terms'),
     path('newsletter/subscribe/', views.newsletter_subscribe, name='newsletter_subscribe'),
     path(
         'newsletter/unsubscribe/<uuid:token>/',
