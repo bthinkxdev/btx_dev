@@ -354,6 +354,7 @@
 {% endblock %}
 
 {% block extra_css %}
+<style>
 dialog::backdrop { background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); }
 .crm-dialog { border: none; border-radius: var(--radius-lg); padding: 0; box-shadow: var(--shadow-lg); max-width: 560px; width: 100%; }
 .crm-dialog__inner { padding: 24px; }
@@ -1157,6 +1158,7 @@ dialog[open] { animation: dialogIn 0.2s ease; }
   .exec-board__toolbar-row { grid-template-columns: repeat(4, 1fr); }
   .exec-board__line2   { flex-wrap: wrap; }
 }
+</style>
 
 {% endblock %}
 

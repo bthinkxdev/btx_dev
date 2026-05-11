@@ -1609,7 +1609,6 @@
       .stat-grid { grid-template-columns: 1fr; }
     }
 
-    {% block extra_css %}{% endblock %}
   </style>
 </head>
 <body>
@@ -1783,6 +1782,7 @@
 
   <!-- ─── Main Content ──────────────────────────────────── -->
   <main class="crm-main" id="crm-main-content">
+    {% block extra_css %}{% endblock %}
     {% if messages %}
     <div class="crm-flash-messages" role="alert">
       {% for m in messages %}
