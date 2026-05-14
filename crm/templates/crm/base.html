@@ -1,4 +1,5 @@
 {% load static %}
+{% load crm_extras %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -670,6 +671,15 @@
     }
     .htmx-request .htmx-indicator { opacity: 1; }
     .htmx-request.htmx-indicator { opacity: 1; }
+    .crm-inline-hx-ind {
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+    .htmx-request.crm-inline-hx-ind { opacity: 1; }
 
     /* ─── Main Content ────────────────────────────────────────────── */
     .crm-main {
@@ -1655,19 +1665,49 @@
         <span>Dashboard</span>
       </a>
 
+      {% if crm_can_access_sales_pipeline %}
       <a href="{% url 'crm:leads' %}"
          hx-get="{% url 'crm:leads' %}"
          hx-target="#crm-main-content"
          hx-select="#crm-main-content"
          hx-swap="outerHTML"
          hx-push-url="true"
-         class="nav-item {% if request.resolver_match.url_name == 'leads' or request.resolver_match.url_name == 'lead_detail' %}active{% endif %}">
+         class="nav-item {% if request.resolver_match.url_name == 'leads' or request.resolver_match.url_name == 'lead_detail' or request.resolver_match.url_name == 'lead_convert' %}active{% endif %}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
         </svg>
         <span>Leads</span>
       </a>
+      {% endif %}
 
+      <a href="{% url 'crm:projects' %}"
+         hx-get="{% url 'crm:projects' %}"
+         hx-target="#crm-main-content"
+         hx-select="#crm-main-content"
+         hx-swap="outerHTML"
+         hx-push-url="true"
+         class="nav-item {% if request.resolver_match.url_name == 'projects' or request.resolver_match.url_name == 'project_create' or request.resolver_match.url_name == 'project_detail' or request.resolver_match.url_name == 'project_onboarding_detail' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+        </svg>
+        <span>Projects</span>
+      </a>
+
+      <a href="{% url 'crm:operations_dashboard' %}"
+         hx-get="{% url 'crm:operations_dashboard' %}"
+         hx-target="#crm-main-content"
+         hx-select="#crm-main-content"
+         hx-swap="outerHTML"
+         hx-push-url="true"
+         class="nav-item {% if request.resolver_match.url_name == 'operations_dashboard' or request.resolver_match.url_name == 'project_operations' or request.resolver_match.url_name == 'project_provisioning_step' or request.resolver_match.url_name == 'project_credential_save' or request.resolver_match.url_name == 'credential_reveal' or request.resolver_match.url_name == 'credential_copy_logged' or request.resolver_match.url_name == 'project_handover_save' or request.resolver_match.url_name == 'project_renewal_add' or request.resolver_match.url_name == 'change_request_staff_create' or request.resolver_match.url_name == 'project_audit_trail' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+        <span>Operations</span>
+      </a>
+
+      {% if crm_can_access_sales_pipeline %}
       <a href="{% url 'crm:followups' %}"
          hx-get="{% url 'crm:followups' %}"
          hx-target="#crm-main-content"
@@ -1707,6 +1747,51 @@
         <span>Performance</span>
       </a>
 
+      <a href="{% url 'crm:renewals_dashboard' %}"
+         hx-get="{% url 'crm:renewals_dashboard' %}"
+         hx-target="#crm-main-content"
+         hx-select="#crm-main-content"
+         hx-swap="outerHTML"
+         hx-push-url="true"
+         class="nav-item {% if request.resolver_match.url_name == 'renewals_dashboard' or request.resolver_match.url_name == 'renewal_detail' or request.resolver_match.url_name == 'renewal_send_reminder_manual' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4"/><path d="M12 16h.01"/>
+        </svg>
+        <span>Renewals</span>
+      </a>
+      {% endif %}
+
+      {% if request.user|crm_can_change_requests %}
+      <a href="{% url 'crm:change_requests_list' %}"
+         hx-get="{% url 'crm:change_requests_list' %}"
+         hx-target="#crm-main-content"
+         hx-select="#crm-main-content"
+         hx-swap="outerHTML"
+         hx-push-url="true"
+         class="nav-item {% if request.resolver_match.url_name == 'change_requests_list' or request.resolver_match.url_name == 'change_request_detail' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+        </svg>
+        <span>Change Requests</span>
+      </a>
+      {% endif %}
+
+      {% if request.user|crm_can_audit %}
+      <a href="{% url 'crm:audit_trail' %}"
+         hx-get="{% url 'crm:audit_trail' %}"
+         hx-target="#crm-main-content"
+         hx-select="#crm-main-content"
+         hx-swap="outerHTML"
+         hx-push-url="true"
+         class="nav-item {% if request.resolver_match.url_name == 'audit_trail' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+        </svg>
+        <span>Audit Trail</span>
+      </a>
+      {% endif %}
+
+      {% if crm_can_access_sales_pipeline %}
       <a href="{% url 'crm:achievements_dashboard' %}"
          hx-get="{% url 'crm:achievements_dashboard' %}"
          hx-target="#crm-main-content"
@@ -1719,9 +1804,14 @@
         </svg>
         <span>Achievements</span>
       </a>
+      {% endif %}
 
       <span class="nav-section-label nav-section-label--hint">Mobile</span>
+      {% if crm_can_access_sales_pipeline %}
       <p class="sidebar-mobile-hint">Search by name or phone: open <strong>Leads</strong>, tap <strong>Filters</strong>, then Search.</p>
+      {% else %}
+      <p class="sidebar-mobile-hint">Use <strong>Projects</strong> and <strong>Operations</strong> from the menu.</p>
+      {% endif %}
     </nav>
 
   </aside>
@@ -1737,7 +1827,7 @@
       </svg>
     </button>
     <h1 class="header-title">{% block page_title %}CRM{% endblock %}</h1>
-    {% if request.user.is_authenticated %}
+    {% if request.user.is_authenticated and crm_can_access_sales_pipeline %}
     <div class="header-search-wrap" id="header-search-root">
       <svg class="header-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <input type="search" id="global-lead-search" placeholder="Search leads…" autocomplete="off" aria-label="Search leads by name or phone" aria-autocomplete="list" aria-controls="global-search-results">
@@ -1753,12 +1843,14 @@
         </summary>
         <div id="crm-task-dd-inner" class="header-dd-panel"></div>
       </details>
+      {% if crm_can_access_sales_pipeline %}
       <a href="{% url 'crm:followups' %}" class="header-bell" id="crm-followups-bell" title="Follow-ups{% if crm_overdue_fu_count %} — {{ crm_overdue_fu_count }} overdue{% endif %}" aria-label="Follow-ups queue">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
         </svg>
         {% if crm_overdue_fu_count %}<span class="header-bell-count">{{ crm_overdue_fu_count }}</span>{% endif %}
       </a>
+      {% endif %}
       {% endif %}
       <div class="header-user">
         {% if crm_employee_profile and crm_employee_profile.photo %}
@@ -1986,6 +2078,253 @@
           }
         }
       });
+
+      (function() {
+        function crmOpenAddLeadModal() {
+          var d = document.getElementById('add-lead-modal');
+          if (!d || !d.showModal) return;
+          d.showModal();
+          setTimeout(function() {
+            var el = d.querySelector('#id_name') || d.querySelector('input[name="name"]');
+            if (el) { el.focus(); try { el.select(); } catch (ex) {} }
+          }, 100);
+        }
+        function crmLeadsSetMoreOpen(open) {
+          var morePanel = document.getElementById('cmd-more-panel');
+          var moreBtn = document.getElementById('cmd-more-btn');
+          var moreArrow = document.getElementById('cmd-more-arrow');
+          if (!morePanel) return;
+          morePanel.hidden = !open;
+          if (moreBtn) moreBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+          if (moreArrow) moreArrow.style.transform = open ? 'rotate(180deg)' : '';
+        }
+        function crmLeadsCleanupInfScroll() {
+          if (typeof window.__crmLeadsInfCleanup === 'function') {
+            try { window.__crmLeadsInfCleanup(); } catch (er) {}
+            window.__crmLeadsInfCleanup = null;
+          }
+        }
+        function crmLeadsMountInfScroll() {
+          var infSentinel = document.getElementById('leads-infinite-sentinel');
+          var infDesk = document.getElementById('leads-desktop-list');
+          var infMob = document.getElementById('leads-mobile-list');
+          var infEnd = document.getElementById('leads-infinite-end');
+          if (!infSentinel || !infDesk || !infMob) return;
+          crmLeadsCleanupInfScroll();
+          var infLoading = false;
+          var infMoreBase = infSentinel.getAttribute('data-more-base') || '';
+          var infIo = null;
+          var infScrollRaf = null;
+          function findScrollableAncestor(el) {
+            var n = el ? el.parentElement : null;
+            while (n && n !== document.body) {
+              var st = window.getComputedStyle(n);
+              var oy = st.overflowY;
+              if ((oy === 'auto' || oy === 'scroll' || oy === 'overlay') &&
+                  n.scrollHeight > n.clientHeight + 2) {
+                return n;
+              }
+              n = n.parentElement;
+            }
+            return null;
+          }
+          function resolveScrollRoot(el) {
+            var inner = findScrollableAncestor(el);
+            if (inner) return inner;
+            var html = document.documentElement;
+            if (html && html.scrollHeight > (window.innerHeight || html.clientHeight) + 8) {
+              return html;
+            }
+            return null;
+          }
+          var infScrollRoot = resolveScrollRoot(infSentinel);
+          var infIoRoot = infScrollRoot === document.documentElement ? null : infScrollRoot;
+          function infDetach() {
+            if (infIo && infSentinel) {
+              try { infIo.unobserve(infSentinel); } catch (e0) {}
+            }
+          }
+          function infAttach() {
+            if (infIo && infSentinel && infSentinel.parentNode && infSentinel.getAttribute('data-fetch')) {
+              try { infIo.observe(infSentinel); } catch (e0b) {}
+            }
+          }
+          function infNearEnd() {
+            if (!infSentinel || !infSentinel.parentNode || infLoading) return false;
+            var pad = 320;
+            var tr = infSentinel.getBoundingClientRect();
+            if (!infScrollRoot || infScrollRoot === document.documentElement) {
+              var vh = window.innerHeight || document.documentElement.clientHeight || 0;
+              return tr.top < vh + pad;
+            }
+            var sr = infScrollRoot.getBoundingClientRect();
+            return tr.top < sr.bottom + pad;
+          }
+          function infFinishNoMore() {
+            infSentinel.removeAttribute('data-fetch');
+            if (infEnd) infEnd.removeAttribute('hidden');
+            try { if (infIo) infIo.disconnect(); } catch (e1) {}
+            infIo = null;
+            if (infSentinel.parentNode) infSentinel.parentNode.removeChild(infSentinel);
+          }
+          function infTryLoad() {
+            var url = infSentinel.getAttribute('data-fetch');
+            if (!url || infLoading || !infSentinel.parentNode) return;
+            infLoading = true;
+            infDetach();
+            infSentinel.setAttribute('aria-busy', 'true');
+            infSentinel.classList.add('is-loading');
+            var ctrl = new AbortController();
+            var to = setTimeout(function() { ctrl.abort(); }, 30000);
+            fetch(url, {
+              credentials: 'same-origin',
+              signal: ctrl.signal,
+              headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+              },
+            })
+              .then(function(r) {
+                if (!r.ok) throw new Error('load failed');
+                return r.json();
+              })
+              .then(function(data) {
+                if (data.desktop_html) infDesk.insertAdjacentHTML('beforeend', data.desktop_html);
+                if (data.mobile_html) infMob.insertAdjacentHTML('beforeend', data.mobile_html);
+                if (window.htmx && typeof htmx.process === 'function') {
+                  htmx.process(infDesk);
+                  htmx.process(infMob);
+                }
+                if (data.has_more && data.next_querystring) {
+                  infSentinel.setAttribute('data-fetch', infMoreBase + '?' + data.next_querystring);
+                } else {
+                  infFinishNoMore();
+                }
+              })
+              .catch(function() {
+                infSentinel.removeAttribute('data-fetch');
+                var err = document.createElement('p');
+                err.className = 'leads-infinite-error';
+                err.textContent = 'Could not load more leads. Reload the page or try again.';
+                if (infSentinel.parentNode) infSentinel.parentNode.insertBefore(err, infSentinel);
+                if (infEnd) infEnd.removeAttribute('hidden');
+                try { if (infIo) infIo.disconnect(); } catch (e3) {}
+                infIo = null;
+                if (infSentinel.parentNode) infSentinel.parentNode.removeChild(infSentinel);
+              })
+              .finally(function() {
+                clearTimeout(to);
+                infLoading = false;
+                if (infSentinel.parentNode) {
+                  infSentinel.setAttribute('aria-busy', 'false');
+                  infSentinel.classList.remove('is-loading');
+                  if (infSentinel.getAttribute('data-fetch')) {
+                    requestAnimationFrame(function() {
+                      requestAnimationFrame(infAttach);
+                    });
+                  }
+                }
+              });
+          }
+          infIo = new IntersectionObserver(
+            function(entries) {
+              entries.forEach(function(entry) {
+                if (entry.isIntersecting) infTryLoad();
+              });
+            },
+            { root: infIoRoot, rootMargin: '0px 0px 400px 0px', threshold: 0 }
+          );
+          infAttach();
+          var infOnScroll = function() {
+            if (infScrollRaf) cancelAnimationFrame(infScrollRaf);
+            infScrollRaf = requestAnimationFrame(function() {
+              infScrollRaf = null;
+              if (infNearEnd()) infTryLoad();
+            });
+          };
+          var scrollOpts = { passive: true };
+          window.addEventListener('scroll', infOnScroll, scrollOpts);
+          if (infScrollRoot && infScrollRoot !== document.documentElement) {
+            infScrollRoot.addEventListener('scroll', infOnScroll, scrollOpts);
+          }
+          window.__crmLeadsInfCleanup = function() {
+            window.removeEventListener('scroll', infOnScroll, scrollOpts);
+            if (infScrollRoot && infScrollRoot !== document.documentElement) {
+              infScrollRoot.removeEventListener('scroll', infOnScroll, scrollOpts);
+            }
+            try { if (infIo) infIo.disconnect(); } catch (e4) {}
+            infIo = null;
+          };
+          requestAnimationFrame(function() {
+            requestAnimationFrame(function() {
+              if (infNearEnd()) infTryLoad();
+            });
+          });
+        }
+        function crmInitLeadsPage() {
+          if (!document.getElementById('leads-desktop-list')) return;
+          var flags = document.getElementById('leads-page-flags');
+          if (flags && flags.getAttribute('data-auto-more') === '1') {
+            crmLeadsSetMoreOpen(true);
+          }
+          crmLeadsMountInfScroll();
+        }
+        if (!window.__crmLeadsDelegated) {
+          window.__crmLeadsDelegated = true;
+          document.body.addEventListener('click', function(e) {
+            var t = e.target;
+            if (t.closest && (t.closest('#leads-open-add-modal') || t.closest('#leads-open-add-modal-empty'))) {
+              crmOpenAddLeadModal();
+              return;
+            }
+            if (t.closest && t.closest('#leads-filter-toggle')) {
+              var ft = t.closest('#leads-filter-toggle');
+              var panel = document.getElementById('leads-filter-panel');
+              if (panel && ft) {
+                panel.classList.toggle('is-open');
+                ft.setAttribute('aria-expanded', panel.classList.contains('is-open') ? 'true' : 'false');
+              }
+              return;
+            }
+            if (t.closest && t.closest('#leads-apply-custom-range')) {
+              var scopeInput = document.getElementById('leads-h-date-scope');
+              var f = document.getElementById('leads-filter-form');
+              if (scopeInput) scopeInput.value = 'custom';
+              if (f) f.submit();
+              return;
+            }
+            if (t.closest && t.closest('#cmd-more-btn')) {
+              var morePanel = document.getElementById('cmd-more-panel');
+              if (morePanel) crmLeadsSetMoreOpen(morePanel.hidden);
+            }
+          }, true);
+        }
+        if (!window.__crmExecBoardToggle) {
+          window.__crmExecBoardToggle = true;
+          document.body.addEventListener('toggle', function(e) {
+            var menu = e.target;
+            if (!menu || !menu.classList || !menu.classList.contains('exec-actions-menu')) return;
+            var card = menu.closest('.exec-board');
+            if (!card) return;
+            if (menu.open) card.classList.add('exec-board--menu-open');
+            else card.classList.remove('exec-board--menu-open');
+          }, true);
+        }
+        document.body.addEventListener('htmx:beforeSwap', function(evt) {
+          if (evt.detail.target && evt.detail.target.id === 'crm-main-content') {
+            crmLeadsCleanupInfScroll();
+          }
+        });
+        document.body.addEventListener('htmx:afterSwap', function(evt) {
+          if (!evt.detail.target || evt.detail.target.id !== 'crm-main-content') return;
+          crmInitLeadsPage();
+        });
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', crmInitLeadsPage);
+        } else {
+          crmInitLeadsPage();
+        }
+      })();
 
       var searchInput = document.getElementById('global-lead-search');
       var searchDrop = document.getElementById('global-search-results');

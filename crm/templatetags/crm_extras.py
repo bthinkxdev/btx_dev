@@ -138,3 +138,31 @@ def whatsapp_wa_url(phone):
         d = f'{cc}{d}'
     # For all other lengths (6-9, 12+), use digits as entered.
     return f'https://wa.me/{d}'
+
+
+@register.filter
+def crm_can_audit(user):
+    from ..rbac import can_access_audit_trail
+
+    return bool(user and user.is_authenticated and can_access_audit_trail(user))
+
+
+@register.filter
+def crm_can_change_requests(user):
+    from ..rbac import can_access_change_requests
+
+    return bool(user and user.is_authenticated and can_access_change_requests(user))
+
+
+@register.filter
+def crm_can_access_renewals(user):
+    from ..rbac import can_access_renewals_dashboard
+
+    return bool(user and user.is_authenticated and can_access_renewals_dashboard(user))
+
+
+@register.filter
+def dict_get(mapping, key):
+    if not mapping or key is None:
+        return key
+    return mapping.get(key, key)

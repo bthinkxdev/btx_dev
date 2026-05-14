@@ -1,0 +1,18 @@
+<section style="margin-top:12px;">
+  <h2 style="font-size:0.85rem;text-transform:uppercase;letter-spacing:0.06em;color:#64748b;margin-bottom:10px;">Your requests</h2>
+  {% if rows %}
+  <ul style="list-style:none;padding:0;margin:0;font-size:0.92rem;">
+    {% for r in rows %}
+    <li style="padding:10px 0;border-top:1px solid #f1f5f9;">
+      <strong>{{ r.title }}</strong>
+      <div style="color:#64748b;font-size:0.85rem;margin-top:4px;">{{ r.request_type }} · {{ r.status }}</div>
+      {% if r.resolution_note %}
+      <p style="margin-top:6px;white-space:pre-wrap;color:#334155;">{{ r.resolution_note }}</p>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p style="color:#64748b;font-size:0.9rem;">No change requests yet.</p>
+  {% endif %}
+</section>

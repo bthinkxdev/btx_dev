@@ -1,0 +1,53 @@
+<div id="portal-status-panel" class="panel-block">
+  <div class="panel-h">Tenant handover portal</div>
+  {% if portal_error %}
+  <p style="color:var(--danger-600);font-size:13px;margin-bottom:10px;">{{ portal_error }}</p>
+  {% endif %}
+  {% if portal_access %}
+  <p style="font-size:13px;margin-bottom:8px;">
+    Status:
+    {% if portal_access.is_active %}
+    <span class="crm-badge crm-badge--green">Active</span>
+    {% else %}
+    <span class="crm-badge crm-badge--gray">Inactive</span>
+    {% endif %}
+    · Access count: {{ portal_access.access_count }}
+    {% if portal_access.last_accessed_at %}
+    · Last opened: {{ portal_access.last_accessed_at|date:"M j, Y H:i" }}
+    {% endif %}
+  </p>
+  {% if portal_access.activated_at %}
+  <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">
+    Activated {{ portal_access.activated_at|date:"M j, Y H:i" }}
+    {% if portal_access.activated_by %} by {{ portal_access.activated_by.get_username }}{% endif %}
+  </p>
+  {% endif %}
+  {% if portal_url %}
+  <p style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">Portal URL (copy and send to client — do not publish as a clickable link here):</p>
+  <input type="text" readonly value="{{ portal_url }}"
+         style="width:100%;max-width:100%;font-size:12px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--neutral-50);"
+         aria-label="Tenant portal URL">
+  {% endif %}
+  {% else %}
+  <p style="font-size:13px;color:var(--text-muted);">No portal record yet. Activate after handover is complete.</p>
+  {% endif %}
+
+  {% if can_manage_portal %}
+  <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:14px;">
+    <form method="post" action="{% url 'crm:portal_activate' project.pk %}"
+          hx-post="{% url 'crm:portal_activate' project.pk %}"
+          hx-target="#portal-status-panel"
+          hx-swap="outerHTML">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-primary btn-sm">Activate portal</button>
+    </form>
+    <form method="post" action="{% url 'crm:portal_deactivate' project.pk %}"
+          hx-post="{% url 'crm:portal_deactivate' project.pk %}"
+          hx-target="#portal-status-panel"
+          hx-swap="outerHTML">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-outline btn-sm">Deactivate portal</button>
+    </form>
+  </div>
+  {% endif %}
+</div>

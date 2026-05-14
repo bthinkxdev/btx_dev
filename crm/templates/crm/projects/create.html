@@ -1,0 +1,50 @@
+{% extends "crm/base.html" %}
+{% block title %}New project{% endblock %}
+{% block page_title %}New project{% endblock %}
+
+{% block content %}
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;font-size:13px;color:var(--text-muted);">
+  <a href="{% url 'crm:projects' %}"
+     hx-get="{% url 'crm:projects' %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true"
+     style="color:var(--text-muted);">Projects</a>
+  <span>/</span>
+  <span style="color:var(--neutral-800);font-weight:600;">New</span>
+</div>
+
+<div class="page-header">
+  <div>
+    <h1>Create project</h1>
+    <p>Choose a lead (Closed or advance received). A client record is created from the lead when needed, then the project is opened.</p>
+  </div>
+</div>
+
+<div class="card" style="max-width:640px;">
+  <form method="post" action="{% url 'crm:project_create' %}">
+    {% csrf_token %}
+    {% for field in form %}
+    <div class="form-row">
+      {{ field.label_tag }}
+      {{ field }}
+      {% if field.errors %}<p class="text-danger" style="font-size:12px;margin-top:4px;">{{ field.errors.0 }}</p>{% endif %}
+    </div>
+    {% endfor %}
+    {% if form.non_field_errors %}
+    <div class="crm-flash crm-flash--err" style="margin-top:8px;">{{ form.non_field_errors }}</div>
+    {% endif %}
+    <div style="display:flex;gap:10px;margin-top:18px;">
+      <button type="submit" class="btn btn-primary">Create project</button>
+      <a href="{% url 'crm:projects' %}"
+         class="btn btn-outline"
+         hx-get="{% url 'crm:projects' %}"
+         hx-target="#crm-main-content"
+         hx-select="#crm-main-content"
+         hx-swap="outerHTML"
+         hx-push-url="true">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

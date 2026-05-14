@@ -1,0 +1,79 @@
+{% extends "crm/base.html" %}
+{% block title %}Operations{% endblock %}
+{% block page_title %}Operations{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Provisioning dashboard</h1>
+    <p>Onboarding progress, provisioning, credentials gaps, and renewals at a glance.</p>
+  </div>
+</div>
+
+<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px;">
+  <a href="{% url 'crm:operations_dashboard' %}" class="btn btn-sm {% if not active_filter %}btn-primary{% else %}btn-outline{% endif %}"
+     hx-get="{% url 'crm:operations_dashboard' %}" hx-target="#crm-main-content" hx-select="#crm-main-content" hx-swap="outerHTML" hx-push-url="true">All</a>
+  <a href="{% url 'crm:operations_dashboard' %}?filter=onboarding_pending" class="btn btn-sm {% if active_filter == 'onboarding_pending' %}btn-primary{% else %}btn-outline{% endif %}"
+     hx-get="{% url 'crm:operations_dashboard' %}?filter=onboarding_pending" hx-target="#crm-main-content" hx-select="#crm-main-content" hx-swap="outerHTML" hx-push-url="true">Onboarding pending</a>
+  <a href="{% url 'crm:operations_dashboard' %}?filter=provisioning_pending" class="btn btn-sm {% if active_filter == 'provisioning_pending' %}btn-primary{% else %}btn-outline{% endif %}"
+     hx-get="{% url 'crm:operations_dashboard' %}?filter=provisioning_pending" hx-target="#crm-main-content" hx-select="#crm-main-content" hx-swap="outerHTML" hx-push-url="true">Provisioning pending</a>
+  <a href="{% url 'crm:operations_dashboard' %}?filter=handover_pending" class="btn btn-sm {% if active_filter == 'handover_pending' %}btn-primary{% else %}btn-outline{% endif %}"
+     hx-get="{% url 'crm:operations_dashboard' %}?filter=handover_pending" hx-target="#crm-main-content" hx-select="#crm-main-content" hx-swap="outerHTML" hx-push-url="true">Handover pending</a>
+  <a href="{% url 'crm:operations_dashboard' %}?filter=expired" class="btn btn-sm {% if active_filter == 'expired' %}btn-primary{% else %}btn-outline{% endif %}"
+     hx-get="{% url 'crm:operations_dashboard' %}?filter=expired" hx-target="#crm-main-content" hx-select="#crm-main-content" hx-swap="outerHTML" hx-push-url="true">Expired / overdue</a>
+</div>
+
+<div class="panel-block" style="margin-bottom:20px;">
+  <div class="panel-h">Renewals snapshot</div>
+  <p style="font-size:14px;margin-bottom:10px;">
+    <strong>{{ renewals_expiring_7d }}</strong> renewals expiring in the next 7 days ·
+    <strong>{{ renewals_expired_or_overdue }}</strong> expired or overdue
+  </p>
+  <a href="{% url 'crm:renewals_dashboard' %}"
+     class="btn btn-outline btn-sm"
+     hx-get="{% url 'crm:renewals_dashboard' %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">Open renewals</a>
+</div>
+
+<div class="panel-block">
+  <div class="panel-h">Projects</div>
+  <div style="overflow-x:auto;">
+    <table class="mini-table" style="width:100%;min-width:720px;">
+      <thead>
+        <tr>
+          <th>Client</th>
+          <th>Readiness</th>
+          <th>Onboarding</th>
+          <th>Provisioning</th>
+          <th>Blocked</th>
+          <th>Missing portal logins</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td><strong>{{ row.project.client.business_name }}</strong></td>
+          <td>{{ row.readiness.readiness_percent }}%</td>
+          <td>{% if row.readiness.onboarding_complete %}<span class="crm-badge crm-badge--green">Done</span>{% else %}<span class="crm-badge crm-badge--gray">Pending</span>{% endif %}</td>
+          <td>{% if row.prov.exists %}{{ row.prov.percent }}%{% else %}—{% endif %}</td>
+          <td>{% if row.blocked %}<span class="crm-badge crm-badge--red">{{ row.blocked }}</span>{% else %}0{% endif %}</td>
+          <td>{% if row.missing_cred %}<span class="crm-badge crm-badge--orange">Yes</span>{% else %}—{% endif %}</td>
+          <td>
+            <a href="{% url 'crm:project_operations' row.project.pk %}"
+               hx-get="{% url 'crm:project_operations' row.project.pk %}"
+               hx-target="#crm-main-content" hx-select="#crm-main-content" hx-swap="outerHTML" hx-push-url="true"
+               class="btn btn-outline btn-sm">Open</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" style="color:var(--text-muted);">No projects match this filter.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,25 @@
+<div class="panel-block">
+  <div class="panel-h">Provisioning</div>
+  {% if not prov_summary.exists %}
+  <p style="font-size:13px;color:var(--text-muted);">Provisioning appears here after the client fully submits onboarding.</p>
+  {% else %}
+  <p style="font-size:13px;margin-bottom:10px;color:var(--text-muted);">Progress: <strong>{{ prov_summary.percent }}%</strong> · {{ prov_summary.completed }}/{{ prov_summary.total_steps }} steps completed{% if prov_summary.blocked or prov_summary.failed %} · <span class="crm-badge crm-badge--red">{{ prov_summary.blocked }} blocked</span>{% endif %}</p>
+  <div style="overflow-x:auto;">
+    <table class="mini-table" style="width:100%;min-width:640px;">
+      <thead>
+        <tr>
+          <th style="width:18%;">Domain</th>
+          <th style="width:28%;">Step</th>
+          <th style="width:14%;">Status</th>
+          <th>Notes / actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for step in prov_summary.steps %}
+        {% include "crm/projects/partials/provisioning_step_row.html" %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>

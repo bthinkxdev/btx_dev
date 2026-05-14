@@ -1,0 +1,317 @@
+{% extends "crm/onboarding/base_public.html" %}
+{% load crm_extras %}
+{% block title %}Onboarding · {{ project.client.business_name }}{% endblock %}
+{% block body %}
+<div class="ob-wrap">
+  <header class="ob-brand">
+    <div class="ob-brand-mark">BX</div>
+    <div>
+      <h1>BThinkX — Client onboarding</h1>
+      <p>{{ project.client.business_name }}{% if project.package %} · {{ project.package.name }}{% endif %}</p>
+    </div>
+  </header>
+
+  {% if readonly_done %}
+  <div class="ob-card">
+    <h2>Submission complete</h2>
+    <p style="color:var(--muted);font-size:0.92rem;">Thank you. Our team has received your onboarding details and will review them shortly.</p>
+  </div>
+  {% else %}
+
+  <div class="ob-card ob-seq-intro" style="margin-bottom:16px;">
+    <p style="margin:0;font-size:0.88rem;line-height:1.55;color:var(--text);">
+      Work through each step <strong>in order</strong>. Save a step to unlock the next. Only <strong>one section</strong> stays open at a time so you can focus. Use the status pill to see <em>Locked</em>, <em>In progress</em>, or <em>Saved</em>.
+    </p>
+  </div>
+
+  <div class="ob-card" style="margin-bottom:16px;" id="onboarding-progress-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+      <strong style="font-size:0.9rem;">Overall progress</strong>
+      <span class="ob-progress-label"><span id="onboarding-pct-label">{{ overall_pct }}</span>% complete</span>
+    </div>
+    <div class="ob-progress" id="onboarding-progress-host">
+      <i style="width:{{ overall_pct }}%;min-width:{% if overall_pct %}2px{% else %}0{% endif %};"></i>
+    </div>
+  </div>
+
+  <script type="application/json" id="ob-onboarding-flow-slugs">{{ onboarding_flow_slugs_json|safe }}</script>
+  <div id="ob-onboarding-steps">
+
+  <details id="ob-sec-business_info" class="ob-acc {% if not onboarding_step_meta.business_info.unlocked %}ob-acc--locked{% endif %}" data-ob-section="business_info" {% if onboarding_first_open == 'business_info' %}open{% endif %}>
+    {% include "crm/onboarding/partials/step_summary.html" with step=onboarding_step_meta.business_info only %}
+    <div class="ob-acc-body">
+      <div id="onboarding-section-feedback-business_info"></div>
+      <form method="post" action="{% url 'crm:onboarding_section_save' token %}"
+            hx-post="{% url 'crm:onboarding_section_save' token %}"
+            hx-target="#onboarding-section-feedback-business_info"
+            hx-swap="innerHTML">
+        {% csrf_token %}
+        <input type="hidden" name="section" value="business_info">
+        {% for field in business_form %}
+        <div>{{ field.label_tag }}{{ field }}</div>
+        {% endfor %}
+        <button type="submit" class="ob-btn" style="margin-top:8px;">Save section</button>
+      </form>
+    </div>
+  </details>
+
+  <details id="ob-sec-contact" class="ob-acc {% if not onboarding_step_meta.contact.unlocked %}ob-acc--locked{% endif %}" data-ob-section="contact" {% if onboarding_first_open == 'contact' %}open{% endif %}>
+    {% include "crm/onboarding/partials/step_summary.html" with step=onboarding_step_meta.contact only %}
+    <div class="ob-acc-body">
+      <div id="onboarding-section-feedback-contact"></div>
+      <form method="post" action="{% url 'crm:onboarding_section_save' token %}"
+            hx-post="{% url 'crm:onboarding_section_save' token %}"
+            hx-target="#onboarding-section-feedback-contact"
+            hx-swap="innerHTML">
+        {% csrf_token %}
+        <input type="hidden" name="section" value="contact">
+        {% for field in contact_form %}
+        <div>{{ field.label_tag }}{{ field }}</div>
+        {% endfor %}
+        <button type="submit" class="ob-btn" style="margin-top:8px;">Save section</button>
+      </form>
+    </div>
+  </details>
+
+  <details id="ob-sec-branding" class="ob-acc {% if not onboarding_step_meta.branding.unlocked %}ob-acc--locked{% endif %}" data-ob-section="branding" {% if onboarding_first_open == 'branding' %}open{% endif %}>
+    {% include "crm/onboarding/partials/step_summary.html" with step=onboarding_step_meta.branding only %}
+    <div class="ob-acc-body">
+      <div id="onboarding-section-feedback-branding"></div>
+      <form method="post" action="{% url 'crm:onboarding_section_save' token %}"
+            hx-post="{% url 'crm:onboarding_section_save' token %}"
+            hx-target="#onboarding-section-feedback-branding"
+            hx-swap="innerHTML">
+        {% csrf_token %}
+        <input type="hidden" name="section" value="branding">
+        {% for field in branding_form %}
+        <div>{{ field.label_tag }}{{ field }}</div>
+        {% endfor %}
+        <button type="submit" class="ob-btn" style="margin-top:8px;">Save section</button>
+      </form>
+    </div>
+  </details>
+
+  <details id="ob-sec-requirements" class="ob-acc {% if not onboarding_step_meta.requirements.unlocked %}ob-acc--locked{% endif %}" data-ob-section="requirements" {% if onboarding_first_open == 'requirements' %}open{% endif %}>
+    {% include "crm/onboarding/partials/step_summary.html" with step=onboarding_step_meta.requirements only %}
+    <div class="ob-acc-body">
+      {% if scope_violations %}
+      <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:12px;margin-bottom:14px;font-size:0.88rem;">
+        <strong style="color:#b45309;">Package scope notice</strong>
+        <p style="margin:8px 0 0;color:#92400e;">Some features you selected are not included in your package. You can still save — our team will review.</p>
+        <ul style="margin:8px 0 0 18px;">
+          {% for v in scope_violations %}
+          <li>{{ scope_feature_labels|dict_get:v }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+      <div id="onboarding-section-feedback-requirements"></div>
+      <form method="post" action="{% url 'crm:onboarding_section_save' token %}"
+            hx-post="{% url 'crm:onboarding_section_save' token %}"
+            hx-target="#onboarding-section-feedback-requirements"
+            hx-swap="innerHTML">
+        {% csrf_token %}
+        <input type="hidden" name="section" value="requirements">
+        {{ requirements_form.reference_websites.label_tag }}{{ requirements_form.reference_websites }}
+        {% if submission.requirements_status == 'pending' %}
+        <div class="ob-gate-banner ob-check" style="margin-top:12px;">
+          <input type="checkbox" id="ob-req-ack" autocomplete="off">
+          <label for="ob-req-ack" style="margin:0;text-transform:none;font-size:0.86rem;font-weight:500;line-height:1.45;">
+            I am ready to select website features for my package (tick to enable the checklist below).
+          </label>
+        </div>
+        {% endif %}
+        <p style="font-size:0.78rem;color:var(--muted);margin:12px 0 6px;font-weight:700;text-transform:uppercase;">Features</p>
+        <div id="ob-req-grid-wrap" class="ob-req-grid-wrap{% if submission.requirements_status != 'pending' %} ob-req-grid-wrap--unlocked{% else %} ob-req-grid-wrap--gated{% endif %}">
+          <div class="ob-req-feature-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;">
+            {% for field in requirements_form.visible_fields %}
+              {% if field.name != 'reference_websites' %}
+              <div class="ob-check">{{ field }}<label for="{{ field.id_for_label }}" style="margin:0;text-transform:none;font-size:0.88rem;">{{ field.label }}</label></div>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+        <button type="submit" class="ob-btn" style="margin-top:12px;">Save section</button>
+      </form>
+    </div>
+  </details>
+
+  <details id="ob-sec-content" class="ob-acc {% if not onboarding_step_meta.content.unlocked %}ob-acc--locked{% endif %}" data-ob-section="content" {% if onboarding_first_open == 'content' %}open{% endif %}>
+    {% include "crm/onboarding/partials/step_summary.html" with step=onboarding_step_meta.content only %}
+    <div class="ob-acc-body">
+      <div id="onboarding-section-feedback-content"></div>
+      <form method="post" action="{% url 'crm:onboarding_section_save' token %}"
+            hx-post="{% url 'crm:onboarding_section_save' token %}"
+            hx-target="#onboarding-section-feedback-content"
+            hx-swap="innerHTML">
+        {% csrf_token %}
+        <input type="hidden" name="section" value="content">
+        {% for field in content_form %}
+        <div>{{ field.label_tag }}{{ field }}</div>
+        {% endfor %}
+        <button type="submit" class="ob-btn" style="margin-top:8px;">Save section</button>
+      </form>
+    </div>
+  </details>
+
+  <details id="ob-sec-documents" class="ob-acc {% if not onboarding_step_meta.documents.unlocked %}ob-acc--locked{% endif %}" data-ob-section="documents" {% if onboarding_first_open == 'documents' %}open{% endif %}>
+    {% include "crm/onboarding/partials/step_summary.html" with step=onboarding_step_meta.documents only %}
+    <div class="ob-acc-body">
+      <div id="onboarding-section-feedback-documents"></div>
+      <form method="post" enctype="multipart/form-data" action="{% url 'crm:onboarding_section_save' token %}"
+            hx-post="{% url 'crm:onboarding_section_save' token %}"
+            hx-encoding="multipart/form-data"
+            hx-target="#onboarding-section-feedback-documents"
+            hx-swap="innerHTML">
+        {% csrf_token %}
+        <input type="hidden" name="section" value="documents">
+      <p class="ob-doc-intro">Optional uploads — use PDF or clear scans where applicable. Logo: PNG, JPG, SVG, or WebP. Other documents: PDF or common office formats.</p>
+      <div class="ob-doc-stack">
+        {% for field in document_form %}
+        <div class="ob-file-field">
+          {{ field.label_tag }}
+          {{ field }}
+          <p class="ob-file-chosen-name" hidden aria-live="polite"></p>
+          {% if field.field.widget.input_type == 'file' and field.value %}
+          <p class="ob-file-hint">A file is already on record. Upload a new one to replace it, or clear it using the checkbox above if available.</p>
+          {% endif %}
+          {% if field.errors %}
+          <ul class="errorlist">{% for e in field.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+        <button type="submit" class="ob-btn" style="margin-top:8px;">Save section</button>
+      </form>
+    </div>
+  </details>
+
+  <details id="ob-sec-payment_kyc" class="ob-acc {% if not onboarding_step_meta.payment_kyc.unlocked %}ob-acc--locked{% endif %}" data-ob-section="payment_kyc" {% if onboarding_first_open == 'payment_kyc' %}open{% endif %}>
+    {% include "crm/onboarding/partials/step_summary.html" with step=onboarding_step_meta.payment_kyc only %}
+    <div class="ob-acc-body">
+      <div id="onboarding-section-feedback-payment_kyc"></div>
+
+      <div class="ob-kyc-callout">
+        <strong>Why we collect these details</strong>
+        <p>Payment providers (for example Razorpay, Stripe, or your bank’s merchant onboarding) require <strong>business KYC</strong> to activate card, UPI, or net-banking payouts in your name. We use the information below only to complete that <strong>payment gateway registration</strong> and related compliance checks.</p>
+      </div>
+
+      <div class="ob-kyc-promise">
+        <strong>BThinkX undertaking (promissory note)</strong>
+        <p>BThinkX will use your Aadhaar images, bank account details, and registered phone numbers <strong>solely</strong> for payment gateway / merchant verification and lawful accounting tied to your project. We will <strong>not</strong> sell or reuse this data for unrelated marketing, and we will not disclose it to unrelated third parties except as required by the payment provider or applicable law.</p>
+        <p>We keep access restricted to authorised staff on a need-to-know basis. If the gateway rejects or expires verification, we will only ask you to resubmit what their process requires.</p>
+      </div>
+
+      <form id="ob-payment-kyc-form" method="post" enctype="multipart/form-data" action="{% url 'crm:onboarding_section_save' token %}"
+            hx-post="{% url 'crm:onboarding_section_save' token %}"
+            hx-encoding="multipart/form-data"
+            hx-target="#onboarding-section-feedback-payment_kyc"
+            hx-swap="innerHTML">
+        {% csrf_token %}
+        <input type="hidden" name="section" value="payment_kyc">
+
+        <div class="ob-kyc-confirm ob-check" style="margin-top:0;padding-bottom:14px;border-bottom:1px solid var(--border);">
+          {{ payment_kyc_form.kyc_privacy_acknowledged }}
+          <label for="{{ payment_kyc_form.kyc_privacy_acknowledged.id_for_label }}" style="margin:0;text-transform:none;font-size:0.86rem;font-weight:500;line-height:1.45;">
+            {{ payment_kyc_form.kyc_privacy_acknowledged.label }}
+          </label>
+        </div>
+        {% if payment_kyc_form.kyc_privacy_acknowledged.help_text %}
+        <p class="ob-field-hint">{{ payment_kyc_form.kyc_privacy_acknowledged.help_text }}</p>
+        {% endif %}
+
+        <div id="ob-pg-data-wrap" class="ob-pg-fieldset" role="group" aria-label="Payment KYC details" {% if not submission.kyc_privacy_acknowledged %}inert{% endif %}>
+
+        <p class="ob-kyc-h3" style="margin-top:0;">Owner Aadhaar (masked uploads accepted if gateway allows; prefer clear scans)</p>
+        <div class="ob-doc-stack ob-pg-fields">
+          <div class="ob-file-field">
+            {{ payment_kyc_form.owner_aadhaar_front.label_tag }}
+            {{ payment_kyc_form.owner_aadhaar_front }}
+            <p class="ob-file-chosen-name" hidden aria-live="polite"></p>
+            {% if payment_kyc_form.owner_aadhaar_front.errors %}
+            <ul class="errorlist">{% for e in payment_kyc_form.owner_aadhaar_front.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+            {% endif %}
+          </div>
+          <div class="ob-file-field">
+            {{ payment_kyc_form.owner_aadhaar_back.label_tag }}
+            {{ payment_kyc_form.owner_aadhaar_back }}
+            <p class="ob-file-chosen-name" hidden aria-live="polite"></p>
+            {% if payment_kyc_form.owner_aadhaar_back.errors %}
+            <ul class="errorlist">{% for e in payment_kyc_form.owner_aadhaar_back.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+            {% endif %}
+          </div>
+        </div>
+
+        <p class="ob-kyc-h3">Bank account (for settlements / verification)</p>
+        <div class="ob-pg-fields">
+        <div>{{ payment_kyc_form.bank_name.label_tag }}{{ payment_kyc_form.bank_name }}</div>
+        <div class="ob-row2">
+          <div>{{ payment_kyc_form.bank_account_number.label_tag }}{{ payment_kyc_form.bank_account_number }}</div>
+          <div>{{ payment_kyc_form.bank_ifsc.label_tag }}{{ payment_kyc_form.bank_ifsc }}</div>
+        </div>
+        {% if payment_kyc_form.bank_ifsc.help_text %}<p class="ob-field-hint">{{ payment_kyc_form.bank_ifsc.help_text }}</p>{% endif %}
+        <div>{{ payment_kyc_form.bank_branch_name.label_tag }}{{ payment_kyc_form.bank_branch_name }}</div>
+        {% if payment_kyc_form.bank_name.errors or payment_kyc_form.bank_account_number.errors or payment_kyc_form.bank_ifsc.errors or payment_kyc_form.bank_branch_name.errors %}
+        <ul class="errorlist">
+          {% for e in payment_kyc_form.bank_name.errors %}<li>{{ e }}</li>{% endfor %}
+          {% for e in payment_kyc_form.bank_account_number.errors %}<li>{{ e }}</li>{% endfor %}
+          {% for e in payment_kyc_form.bank_ifsc.errors %}<li>{{ e }}</li>{% endfor %}
+          {% for e in payment_kyc_form.bank_branch_name.errors %}<li>{{ e }}</li>{% endfor %}
+        </ul>
+        {% endif %}
+
+        <p class="ob-kyc-h3">Phone numbers registered with bank, Aadhaar, and PAN</p>
+        <p class="ob-field-hint">Use the same numbers you gave to the bank / UIDAI / Income Tax where applicable. This helps the gateway match your KYC.</p>
+        <div>{{ payment_kyc_form.phone_registered_bank.label_tag }}{{ payment_kyc_form.phone_registered_bank }}</div>
+        <div>{{ payment_kyc_form.phone_registered_aadhaar.label_tag }}{{ payment_kyc_form.phone_registered_aadhaar }}</div>
+        <div>{{ payment_kyc_form.phone_registered_pan.label_tag }}{{ payment_kyc_form.phone_registered_pan }}</div>
+        {% if payment_kyc_form.phone_registered_bank.errors or payment_kyc_form.phone_registered_aadhaar.errors or payment_kyc_form.phone_registered_pan.errors %}
+        <ul class="errorlist">
+          {% for e in payment_kyc_form.phone_registered_bank.errors %}<li>{{ e }}</li>{% endfor %}
+          {% for e in payment_kyc_form.phone_registered_aadhaar.errors %}<li>{{ e }}</li>{% endfor %}
+          {% for e in payment_kyc_form.phone_registered_pan.errors %}<li>{{ e }}</li>{% endfor %}
+        </ul>
+        {% endif %}
+        </div>
+
+        </div>
+
+        {% if payment_kyc_form.non_field_errors %}
+        <ul class="errorlist">{% for e in payment_kyc_form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>
+        {% endif %}
+
+        <button type="submit" id="ob-pg-save-btn" class="ob-btn" style="margin-top:14px;" {% if not submission.kyc_privacy_acknowledged %}disabled{% endif %}>Save section</button>
+      </form>
+    </div>
+  </details>
+
+  </div>
+
+  <div id="onboarding-agreement-wrap" class="ob-card ob-agreement-card{% if not onboarding_step_meta.payment_kyc.saved %} ob-agreement-card--locked{% endif %}" style="margin-top:18px;">
+    <h2>Terms &amp; final submission</h2>
+    {% if not onboarding_step_meta.payment_kyc.saved %}
+    <p class="ob-agreement-lock-msg">Save the <strong>Payment gateway &amp; owner KYC</strong> section first to enable final submission.</p>
+    {% else %}
+    <p style="font-size:0.86rem;color:var(--muted);">Complete every section above, then accept the terms and submit.</p>
+    {% endif %}
+    <form method="post" action="{% url 'crm:onboarding_final_submit' token %}"
+          hx-post="{% url 'crm:onboarding_final_submit' token %}"
+          hx-target="#onboarding-agreement-wrap"
+          hx-swap="outerHTML">
+      {% csrf_token %}
+      <div class="ob-check">
+        {{ agreement_form.terms_accepted }}
+        <label for="{{ agreement_form.terms_accepted.id_for_label }}" style="margin:0;text-transform:none;font-size:0.88rem;font-weight:500;">
+          I agree to BThinkX onboarding terms (version {{ agreement_form.terms_version.value|default:'1.0' }}).
+        </label>
+      </div>
+      {{ agreement_form.terms_version }}
+      {% if agreement_form.terms_accepted.errors %}
+      <ul class="errorlist">{% for e in agreement_form.terms_accepted.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+      {% endif %}
+      <button type="submit" class="ob-btn" style="margin-top:12px;">Submit onboarding</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

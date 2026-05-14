@@ -1,0 +1,37 @@
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+    <span class="crm-badge crm-badge--orange">{{ cr.get_status_display }}</span>
+    {% if cr.scope_verdict %}
+    <span class="crm-badge crm-badge--muted">Scope: {{ cr.scope_verdict }}</span>
+    {% endif %}
+    {% if cr.quoted_amount %}
+    <span class="crm-badge crm-badge--muted">Quoted {{ cr.quoted_amount }}</span>
+    {% endif %}
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;">
+    {% if cr.status == 'in_triage' and cr.scope_verdict == 'in_scope' %}
+    <form method="post" action="{% url 'crm:change_request_approve' cr.pk %}" hx-post="{% url 'crm:change_request_approve' cr.pk %}" hx-target="#cr-status-wrap" hx-swap="outerHTML">{% csrf_token %}<button type="submit" class="btn btn-primary btn-sm">Approve</button></form>
+    {% endif %}
+    {% if cr.status == 'quoted' %}
+    <form method="post" action="{% url 'crm:change_request_approve' cr.pk %}" hx-post="{% url 'crm:change_request_approve' cr.pk %}" hx-target="#cr-status-wrap" hx-swap="outerHTML">{% csrf_token %}<button type="submit" class="btn btn-primary btn-sm">Approve quote</button></form>
+    {% endif %}
+    {% if cr.status == 'approved' %}
+    <form method="post" action="{% url 'crm:change_request_start' cr.pk %}" hx-post="{% url 'crm:change_request_start' cr.pk %}" hx-target="#cr-status-wrap" hx-swap="outerHTML">{% csrf_token %}<button type="submit" class="btn btn-primary btn-sm">Begin work</button></form>
+    {% endif %}
+    {% if cr.status == 'in_progress' %}
+    <form method="post" action="{% url 'crm:change_request_complete' cr.pk %}" hx-post="{% url 'crm:change_request_complete' cr.pk %}" hx-target="#cr-status-wrap" hx-swap="outerHTML" style="display:flex;flex-direction:column;gap:6px;align-items:flex-start;">
+      {% csrf_token %}
+      <textarea name="resolution_note" rows="2" required placeholder="Client-visible resolution" style="width:min(100%,420px);padding:8px;border-radius:8px;border:1px solid var(--border);"></textarea>
+      <button type="submit" class="btn btn-primary btn-sm">Mark completed</button>
+    </form>
+    {% endif %}
+    {% if cr.status != 'completed' and cr.status != 'cancelled' and cr.status != 'rejected' and cr.status != 'in_progress' %}
+    <details style="font-size:13px;">
+      <summary style="cursor:pointer;color:var(--danger-600);font-weight:600;">Reject</summary>
+      <form method="post" action="{% url 'crm:change_request_reject' cr.pk %}" hx-post="{% url 'crm:change_request_reject' cr.pk %}" hx-target="#cr-status-wrap" hx-swap="outerHTML" style="margin-top:8px;">
+        {% csrf_token %}
+        <textarea name="reason" rows="2" required placeholder="Reason" style="width:min(100%,420px);padding:8px;border-radius:8px;border:1px solid var(--border);"></textarea>
+        <button type="submit" class="btn btn-danger btn-sm" style="margin-top:6px;">Confirm reject</button>
+      </form>
+    </details>
+    {% endif %}
+  </div>

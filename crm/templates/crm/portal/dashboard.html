@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Your handover · {{ payload.client.business_name }} · BThinkX</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: #f8fafc; color: #0f172a; line-height: 1.5; min-height: 100vh; padding: 20px 16px 48px; }
+    .wrap { max-width: 640px; margin: 0 auto; }
+    header { text-align: center; margin-bottom: 28px; padding-top: 8px; }
+    .logo { font-weight: 800; font-size: 1.35rem; color: #4f46e5; letter-spacing: -0.02em; }
+    .sub { font-size: 0.9rem; color: #64748b; margin-top: 6px; }
+    section { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    h2 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em; color: #64748b; margin-bottom: 12px; }
+    dl { display: grid; grid-template-columns: 38% 1fr; gap: 8px 12px; font-size: 0.95rem; }
+    dt { color: #64748b; font-weight: 500; }
+    dd { word-break: break-word; }
+    a { color: #4f46e5; }
+    .cred { border-top: 1px solid #f1f5f9; padding-top: 14px; margin-top: 14px; }
+    .cred:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+    .cred h3 { font-size: 1rem; margin-bottom: 8px; }
+    .reveal { margin-top: 8px; font-size: 0.9rem; }
+    .reveal-toggle { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+    .reveal-lbl { cursor: pointer; color: #4f46e5; font-weight: 600; font-size: 0.85rem; display: inline-block; margin-bottom: 6px; }
+    .reveal-lbl:hover { text-decoration: underline; }
+    .masked { letter-spacing: 2px; color: #64748b; font-family: ui-monospace, monospace; }
+    .revealed { display: none; word-break: break-all; background: #f1f5f9; padding: 8px 10px; border-radius: 8px; font-size: 0.85rem; margin-top: 4px; }
+    .reveal-toggle:checked ~ .masked { display: none; }
+    .reveal-toggle:checked ~ .revealed { display: block; }
+    .pill { display: inline-block; padding: 4px 10px; border-radius: 99px; font-size: 0.75rem; font-weight: 600; }
+    .pill-ok { background: #d1fae5; color: #047857; }
+    .pill-warn { background: #fef3c7; color: #b45309; }
+    .pill-bad { background: #fee2e2; color: #b91c1c; }
+    footer { text-align: center; margin-top: 32px; font-size: 0.8rem; color: #94a3b8; }
+    input[type="text"], select, textarea { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #e2e8f0; font: inherit; }
+    textarea { min-height: 100px; resize: vertical; }
+    .ob-btn { display: inline-flex; align-items: center; justify-content: center; padding: 10px 16px; border-radius: 10px; border: none; background: #4f46e5; color: #fff; font-weight: 600; cursor: pointer; font-size: 0.9rem; }
+    .ob-btn:hover { background: #4338ca; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="logo">BThinkX</div>
+      <p class="sub">Tenant handover portal</p>
+    </header>
+
+    <section>
+      <h2>Your business</h2>
+      <dl>
+        <dt>Name</dt><dd>{{ payload.client.business_name }}</dd>
+        <dt>Contact</dt><dd>{{ payload.client.contact_person }}</dd>
+        <dt>Phone</dt><dd>{{ payload.client.phone }}</dd>
+        <dt>Email</dt><dd>{{ payload.client.email|default:"—" }}</dd>
+        <dt>Project status</dt><dd>{{ payload.project.status }}</dd>
+        {% if payload.project.package_name %}<dt>Package</dt><dd>{{ payload.project.package_name }}</dd>{% endif %}
+      </dl>
+    </section>
+
+    {% if payload.handover.live_site_url or payload.handover.admin_site_url %}
+    <section>
+      <h2>Website</h2>
+      <dl>
+        {% if payload.handover.live_site_url %}<dt>Live site</dt><dd><a href="{{ payload.handover.live_site_url }}" target="_blank" rel="noopener noreferrer">{{ payload.handover.live_site_url }}</a></dd>{% endif %}
+        {% if payload.handover.admin_site_url %}<dt>Admin URL</dt><dd><a href="{{ payload.handover.admin_site_url }}" target="_blank" rel="noopener noreferrer">{{ payload.handover.admin_site_url }}</a></dd>{% endif %}
+      </dl>
+    </section>
+    {% endif %}
+
+    {% if payload.subscription.title %}
+    <section>
+      <h2>Subscription &amp; renewal</h2>
+      <dl>
+        <dt>Plan</dt><dd>{{ payload.subscription.title }}</dd>
+        <dt>Renewal date</dt><dd>{{ payload.subscription.expires_at|date:"M j, Y" }}</dd>
+        <dt>Status</dt><dd>{{ payload.subscription.status_display }}</dd>
+        {% if payload.subscription.renewal_url %}<dt>Renew</dt><dd><a href="{{ payload.subscription.renewal_url }}" target="_blank" rel="noopener noreferrer">Open renewal page</a></dd>{% endif %}
+      </dl>
+    </section>
+    {% endif %}
+
+    {% if payload.handover.support_contact or payload.handover.sla_summary %}
+    <section>
+      <h2>Support</h2>
+      <dl>
+        {% if payload.handover.support_contact %}<dt>Contact</dt><dd>{{ payload.handover.support_contact }}</dd>{% endif %}
+        {% if payload.handover.sla_summary %}<dt>SLA</dt><dd>{{ payload.handover.sla_summary }}</dd>{% endif %}
+      </dl>
+    </section>
+    {% endif %}
+
+    {% if portal_credentials %}
+    <section>
+      <h2>Your logins</h2>
+      {% for c in portal_credentials %}
+      <div class="cred">
+        <h3>{{ c.label }}</h3>
+        {% if c.login_url %}<p style="font-size:0.88rem;margin-bottom:8px;"><a href="{{ c.login_url }}" target="_blank" rel="noopener noreferrer">Open login page</a></p>{% endif %}
+        <dl>
+          <dt>Username</dt><dd>{{ c.username|default:"—" }}</dd>
+        </dl>
+        {% if c.has_password %}
+        <div class="reveal">
+          <input type="checkbox" id="pw-{{ forloop.counter }}" class="reveal-toggle">
+          <label for="pw-{{ forloop.counter }}" class="reveal-lbl">Reveal password</label>
+          <div class="masked">••••••••</div>
+          <div class="revealed">{{ c.password_value }}</div>
+        </div>
+        {% endif %}
+        {% if c.has_secret %}
+        <div class="reveal">
+          <input type="checkbox" id="sk-{{ forloop.counter }}" class="reveal-toggle">
+          <label for="sk-{{ forloop.counter }}" class="reveal-lbl">Reveal secret</label>
+          <div class="masked">••••••••</div>
+          <div class="revealed">{{ c.secret_value }}</div>
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </section>
+    {% endif %}
+
+    {% if payload.handover.handover_notes %}
+    <section>
+      <h2>Notes from your team</h2>
+      <p style="font-size:0.95rem;white-space:pre-wrap;">{{ payload.handover.handover_notes }}</p>
+    </section>
+    {% endif %}
+
+    <section>
+      <h2>Request a change</h2>
+      <p style="font-size:0.88rem;color:#64748b;margin-bottom:12px;">Describe what you need. Our team will check it against your package scope and follow up.</p>
+      <form method="post"
+            action="{% url 'crm:portal_submit_change_request' portal_token %}"
+            hx-post="{% url 'crm:portal_submit_change_request' portal_token %}"
+            hx-target="#portal-cr-feedback"
+            hx-swap="innerHTML">
+        {% csrf_token %}
+        <div style="margin-bottom:10px;">
+          <label style="display:block;font-size:0.8rem;color:#64748b;margin-bottom:4px;">Title</label>
+          {{ portal_cr_form.title }}
+        </div>
+        <div style="margin-bottom:10px;">
+          <label style="display:block;font-size:0.8rem;color:#64748b;margin-bottom:4px;">Type</label>
+          {{ portal_cr_form.request_type }}
+        </div>
+        <div style="margin-bottom:10px;">
+          <label style="display:block;font-size:0.8rem;color:#64748b;margin-bottom:4px;">Description</label>
+          {{ portal_cr_form.description }}
+        </div>
+        <button type="submit" class="ob-btn" style="margin-top:4px;">Submit request</button>
+      </form>
+      <div id="portal-cr-feedback" style="margin-top:12px;"></div>
+      <div id="portal-cr-list"
+           hx-get="{% url 'crm:portal_change_requests' portal_token %}"
+           hx-trigger="load"
+           hx-swap="innerHTML"
+           style="margin-top:16px;"></div>
+    </section>
+
+    <footer>Powered by BThinkX</footer>
+  </div>
+</body>
+</html>

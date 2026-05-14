@@ -1,17 +1,18 @@
 import json
 import logging
-from datetime import date, datetime, timedelta
+from functools import wraps
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 from django.contrib import messages
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.contrib.auth.decorators import login_required
-from django.db.models import Case, Count, F, IntegerField, OuterRef, Q, Subquery, Sum, Value, When
+from django.db.models import Case, Count, F, IntegerField, OuterRef, Prefetch, Q, Subquery, Sum, Value, When
 from django.db.models.functions import TruncDate, TruncMonth
-from django.http import HttpResponse, JsonResponse
+from django.http import Http404, HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -23,25 +24,96 @@ from .services.whatsapp import handle_message, is_duplicate_event, mask_phone
 from .services.achievements import get_monthly_performance
 from .forms import (
     AchievementForm,
+    AuditFilterForm,
+    ChangeRequestFilterForm,
+    ChangeRequestPortalForm,
+    ChangeRequestStaffForm,
+    CompleteForm,
     ExcelImportForm,
     FollowUpForm,
+    LeadConvertForm,
     LeadForm,
+    OnboardingAgreementForm,
+    OnboardingBrandingForm,
+    OnboardingBusinessInfoForm,
+    OnboardingContactForm,
+    OnboardingContentForm,
+    OnboardingDocumentForm,
+    OnboardingPaymentKycForm,
+    OnboardingRequirementsForm,
     PackageForm,
+    PackageScopeForm,
+    PortalActivateForm,
+    ProjectCredentialForm,
+    ProjectForm,
+    ProjectHandoverForm,
+    ProvisioningStepStatusForm,
     QuickFollowUpForm,
     QuickNoteForm,
+    QuoteForm,
+    RejectForm,
+    RenewalFilterForm,
+    RenewalTrackerForm,
     RescheduleFollowUpForm,
     TaskForm,
+    TriageForm,
 )
 from .models import (
     Achievement,
     ActivityLog,
+    AuditEntry,
+    ChangeRequest,
+    Client,
+    CredentialAuditLog,
     EmployeeProfile,
     FollowUp,
+    HandoverPortalAccess,
     Lead,
     MonthlyTarget,
+    OnboardingSubmission,
     Package,
+    Project,
+    ProjectCredential,
+    ProjectHandover,
+    ProjectProvisioning,
+    ProvisioningStep,
+    RenewalReminderLog,
+    RenewalTracker,
     Task,
 )
+from .services import change_requests as change_request_service
+from .services import onboarding as onboarding_service
+from .services import credentials as credential_service
+from .services import portal as portal_service
+from .services import provisioning as provisioning_service
+from .services import readiness as readiness_service
+from .services import renewals as renewals_service
+from .services import scope as scope_service
+from .services import audit as audit_service
+from .rbac import (
+    can_access_audit_trail,
+    can_access_change_requests,
+    can_access_operations_dashboard,
+    can_access_renewals_dashboard,
+    can_access_sales_pipeline,
+    can_complete_handover,
+    can_edit_credentials,
+    can_edit_package_scope,
+    can_manage_portal,
+    can_manage_provisioning,
+    can_send_renewal_reminder_manual,
+    can_view_credential_audit,
+    credential_allowed_for_role,
+    get_crm_role,
+)
+from .services.project import (
+    convert_lead_to_project,
+    create_project,
+    get_or_create_client_for_lead,
+    get_projects_for_user,
+    update_project_status,
+)
+from .crypto import decrypt_ciphertext
 from .utils import (
     get_report_data,
     import_leads_from_excel,
@@ -50,6 +122,20 @@ from .utils import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def sales_pipeline_required(view_fn):
+    """Block CRM *dev* role from sales, pipeline, packages, and financial summary screens."""
+
+    @wraps(view_fn)
+    def _wrapped(request, *args, **kwargs):
+        if not can_access_sales_pipeline(request.user):
+            return HttpResponseForbidden(
+                'This area is not available for your account role.'
+            )
+        return view_fn(request, *args, **kwargs)
+
+    return _wrapped
 
 
 def _profile(user):
@@ -430,6 +516,8 @@ def _patch_lead_from_post(lead, user, request):
 @login_required
 def dashboard(request):
     user = request.user
+    if not can_access_sales_pipeline(user):
+        return render(request, 'crm/dashboard.html', {'show_sales_dashboard': False})
     leads = Lead.objects.filter(employee=user)
     followups = FollowUp.objects.filter(employee=user)
     start, end, today = _local_today_bounds()
@@ -483,6 +571,7 @@ def dashboard(request):
     rev_values = [float(x['total'] or 0) for x in rev_monthly]
 
     ctx = {
+        'show_sales_dashboard': True,
         'today_followups': today_fu,
         'overdue_followups': overdue_fu,
         'total_leads': total_leads,
@@ -702,6 +791,7 @@ def _leads_list_qs_and_meta(request, user):
 
 
 @login_required
+@sales_pipeline_required
 def leads_list(request):
     user = request.user
     meta = _leads_list_qs_and_meta(request, user)
@@ -815,6 +905,7 @@ def leads_list(request):
 
 
 @login_required
+@sales_pipeline_required
 def leads_more_json(request):
     """JSON chunk for infinite scroll (next page of lead rows)."""
     user = request.user
@@ -877,6 +968,7 @@ def leads_more_json(request):
 
 
 @login_required
+@sales_pipeline_required
 def lead_search(request):
     q = request.GET.get('q', '').strip()
     if len(q) < 1:
@@ -896,6 +988,7 @@ def lead_search(request):
 
 
 @login_required
+@sales_pipeline_required
 @require_POST
 def lead_quick_add(request):
     """Minimal create: name + phone only."""
@@ -923,6 +1016,7 @@ def lead_quick_add(request):
 
 
 @login_required
+@sales_pipeline_required
 @require_POST
 def lead_create(request):
     user = request.user
@@ -960,6 +1054,7 @@ def lead_create(request):
 
 
 @login_required
+@sales_pipeline_required
 @require_POST
 def lead_patch(request, pk):
     user = request.user
@@ -985,6 +1080,7 @@ def lead_patch(request, pk):
 
 
 @login_required
+@sales_pipeline_required
 @require_POST
 def lead_high_hope_toggle(request, pk):
     """
@@ -1013,6 +1109,7 @@ def lead_high_hope_toggle(request, pk):
 
 
 @login_required
+@sales_pipeline_required
 @require_POST
 def lead_quick_followup(request, pk):
     user = request.user
@@ -1052,6 +1149,7 @@ def lead_quick_followup(request, pk):
 
 
 @login_required
+@sales_pipeline_required
 @require_POST
 def lead_quick_note(request, pk):
     user = request.user
@@ -1086,6 +1184,7 @@ def lead_quick_note(request, pk):
 
 
 @login_required
+@sales_pipeline_required
 @require_POST
 def lead_notes_save(request, pk):
     user = request.user
@@ -1103,6 +1202,7 @@ def lead_notes_save(request, pk):
 
 
 @login_required
+@sales_pipeline_required
 @require_POST
 def lead_contact_save(request, pk):
     user = request.user
@@ -1153,6 +1253,7 @@ def lead_contact_save(request, pk):
 
 
 @login_required
+@sales_pipeline_required
 def lead_detail(request, pk):
     user = request.user
     lead = get_object_or_404(
@@ -1164,6 +1265,19 @@ def lead_detail(request, pk):
     fu_form = FollowUpForm()
     task_form = TaskForm()
     start, end, _ = _local_today_bounds()
+    client_for_lead = Client.objects.filter(lead=lead).first()
+    has_client = client_for_lead is not None
+    linked_project = None
+    if client_for_lead:
+        linked_project = client_for_lead.projects.order_by('-created_at').first()
+    show_convert_to_project = (
+        lead.status == Lead.Status.ADVANCE_RECEIVED_PROJECT_STARTED or not has_client
+    )
+    convert_form = (
+        LeadConvertForm(employee=user)
+        if show_convert_to_project and not has_client
+        else None
+    )
     return render(
         request,
         'crm/lead_detail.html',
@@ -1178,11 +1292,16 @@ def lead_detail(request, pk):
             'packages': Package.objects.filter(employee=user),
             'fu_start': start,
             'fu_end': end,
+            'show_convert_to_project': show_convert_to_project,
+            'convert_form': convert_form,
+            'lead_has_client': has_client,
+            'linked_project': linked_project,
         },
     )
 
 
 @login_required
+@sales_pipeline_required
 @require_POST
 def lead_status_detail(request, pk):
     user = request.user
@@ -1212,6 +1331,7 @@ def lead_status_detail(request, pk):
 
 
 @login_required
+@sales_pipeline_required
 @require_POST
 def followup_add(request, lead_pk):
     user = request.user
@@ -1270,6 +1390,7 @@ def _tasks_panel_ctx(user, lead_pk):
 
 
 @login_required
+@sales_pipeline_required
 def lead_tasks_panel(request, pk):
     user = request.user
     get_object_or_404(Lead, pk=pk, employee=user)
@@ -1281,6 +1402,7 @@ def lead_tasks_panel(request, pk):
 
 
 @login_required
+@sales_pipeline_required
 @require_POST
 def task_add(request, lead_pk):
     user = request.user
@@ -1362,6 +1484,7 @@ def task_add(request, lead_pk):
 
 
 @login_required
+@sales_pipeline_required
 @require_POST
 def task_update(request, pk):
     user = request.user
@@ -1401,6 +1524,7 @@ def task_update(request, pk):
 
 
 @login_required
+@sales_pipeline_required
 @require_POST
 def task_toggle(request, pk):
     user = request.user
@@ -1452,6 +1576,7 @@ def task_toggle(request, pk):
 
 
 @login_required
+@sales_pipeline_required
 @require_POST
 def lead_log_call(request, pk):
     user = request.user
@@ -1465,6 +1590,7 @@ def lead_log_call(request, pk):
 
 
 @login_required
+@sales_pipeline_required
 @require_POST
 def lead_log_whatsapp(request, pk):
     user = request.user
@@ -1551,6 +1677,7 @@ def tasks_header_badges(request):
 
 
 @login_required
+@sales_pipeline_required
 def followups_page(request):
     user = request.user
     ctx = _followups_queue_context(user)
@@ -1558,6 +1685,7 @@ def followups_page(request):
 
 
 @login_required
+@sales_pipeline_required
 @require_POST
 def followup_done(request, pk):
     user = request.user
@@ -1581,6 +1709,7 @@ def followup_done(request, pk):
 
 
 @login_required
+@sales_pipeline_required
 @require_POST
 def followup_reschedule(request, pk):
     user = request.user
@@ -1630,6 +1759,7 @@ def followup_reschedule(request, pk):
 
 
 @login_required
+@sales_pipeline_required
 def packages_page(request):
     user = request.user
     packages = Package.objects.filter(employee=user)
@@ -1652,6 +1782,7 @@ def packages_page(request):
 
 
 @login_required
+@sales_pipeline_required
 @require_http_methods(['GET', 'POST'])
 def package_create(request):
     user = request.user
@@ -1675,6 +1806,7 @@ def package_create(request):
 
 
 @login_required
+@sales_pipeline_required
 @require_POST
 def package_update(request, pk):
     user = request.user
@@ -1695,6 +1827,7 @@ def package_update(request, pk):
 
 
 @login_required
+@sales_pipeline_required
 @require_POST
 def package_delete(request, pk):
     user = request.user
@@ -1712,6 +1845,7 @@ def package_delete(request, pk):
 
 
 @login_required
+@sales_pipeline_required
 @require_POST
 def leads_import_excel(request):
     user = request.user
@@ -1741,6 +1875,7 @@ def leads_import_excel(request):
 
 
 @login_required
+@sales_pipeline_required
 def performance(request):
     user = request.user
     leads = Lead.objects.filter(employee=user)
@@ -1818,6 +1953,7 @@ def performance(request):
 
 
 @login_required
+@sales_pipeline_required
 def achievements_dashboard(request):
     user = request.user
     # Month filter: ?month=YYYY-MM (defaults to current month)
@@ -1901,6 +2037,7 @@ def achievements_dashboard(request):
 
 
 @login_required
+@sales_pipeline_required
 @require_http_methods(['POST'])
 def achievement_create(request):
     user = request.user
@@ -1948,6 +2085,7 @@ def achievement_create(request):
 
 
 @login_required
+@sales_pipeline_required
 @require_http_methods(['GET', 'POST'])
 def achievement_update(request, pk):
     user = request.user
@@ -1980,6 +2118,7 @@ def achievement_update(request, pk):
 
 
 @login_required
+@sales_pipeline_required
 @require_POST
 def achievement_delete(request, pk):
     user = request.user
@@ -2000,6 +2139,7 @@ def achievement_delete(request, pk):
 
 
 @login_required
+@sales_pipeline_required
 def performance_report_card(request):
     """HTMX fragment: Sales Report Card for Daily / Weekly / Monthly."""
     period = (request.GET.get('period') or 'daily').strip().lower()
@@ -2008,3 +2148,1579 @@ def performance_report_card(request):
         'crm/partials/sales_report_card_inner.html',
         {'r': get_report_data(request.user, period)},
     )
+
+
+@login_required
+def projects_list(request):
+    user = request.user
+    raw_status = (request.GET.get('status') or '').strip()
+    current_status = ''
+    if raw_status in dict(Project.Status.choices):
+        current_status = raw_status
+    qs = get_projects_for_user(user)
+    if current_status:
+        qs = qs.filter(status=current_status)
+    projects_base = reverse('crm:projects')
+    status_pills = [{'val': '', 'label': 'All', 'url': projects_base}]
+    for val, label in Project.Status.choices:
+        url = f'{projects_base}?{urlencode({"status": val})}'
+        status_pills.append({'val': val, 'label': label, 'url': url})
+    return render(
+        request,
+        'crm/projects/list.html',
+        {
+            'projects': qs,
+            'status_choices': Project.Status.choices,
+            'current_status': current_status,
+            'status_pills': status_pills,
+        },
+    )
+
+
+@login_required
+@sales_pipeline_required
+@require_http_methods(['GET', 'POST'])
+def project_create(request):
+    user = request.user
+    if request.method == 'POST':
+        form = ProjectForm(request.POST, user=user)
+        if form.is_valid():
+            cd = form.cleaned_data
+            lead = cd['lead']
+            client, client_created = get_or_create_client_for_lead(
+                lead, created_by=user
+            )
+            project = create_project(
+                client,
+                package=cd['package'],
+                deal_value=cd['deal_value'],
+                advance_received=cd['advance_received'],
+                assigned_to=cd.get('assigned_to'),
+                notes=cd.get('notes') or '',
+                created_by=user,
+            )
+            if client_created:
+                log_activity(
+                    lead,
+                    'lead_converted_to_project',
+                    f'Client "{client.business_name}", project #{project.pk}',
+                )
+                if lead.status == Lead.Status.CLOSED:
+                    lead.status = Lead.Status.ADVANCE_RECEIVED_PROJECT_STARTED
+                    lead.save(update_fields=['status', 'updated_at'])
+            messages.success(request, 'Project created.')
+            return redirect('crm:project_detail', pk=project.pk)
+        messages.error(request, form.errors.as_text())
+    else:
+        form = ProjectForm(user=user)
+    return render(request, 'crm/projects/create.html', {'form': form})
+
+
+@login_required
+def project_detail(request, pk):
+    user = request.user
+    project = get_object_or_404(get_projects_for_user(user), pk=pk)
+    client_obj = project.client
+    lead_obj = client_obj.lead
+    submission = OnboardingSubmission.objects.filter(project=project).first()
+    onboarding_pct = submission.overall_completion_percent() if submission else 0
+    onboarding_public_url = request.build_absolute_uri(
+        reverse('crm:onboarding_form', args=[project.onboarding_token])
+    )
+    readiness = readiness_service.get_operational_readiness(project)
+    return render(
+        request,
+        'crm/projects/detail.html',
+        {
+            'project': project,
+            'client': client_obj,
+            'lead': lead_obj,
+            'project_status_choices': Project.Status.choices,
+            'onboarding_submission': submission,
+            'onboarding_pct': onboarding_pct,
+            'onboarding_public_url': onboarding_public_url,
+            'readiness': readiness,
+        },
+    )
+
+
+@login_required
+@require_POST
+def project_status_update(request, pk):
+    user = request.user
+    project = get_object_or_404(get_projects_for_user(user), pk=pk)
+    new_status = (request.POST.get('status') or '').strip()
+    try:
+        update_project_status(
+            project, new_status=new_status, updated_by=user
+        )
+    except ValueError:
+        project.refresh_from_db()
+        resp = render(
+            request,
+            'crm/projects/partials/status_badge.html',
+            {
+                'project': project,
+                'project_status_choices': Project.Status.choices,
+                'status_error': 'Invalid status.',
+            },
+        )
+        return resp
+    project.refresh_from_db()
+    return render(
+        request,
+        'crm/projects/partials/status_badge.html',
+        {
+            'project': project,
+            'project_status_choices': Project.Status.choices,
+        },
+    )
+
+
+@login_required
+@sales_pipeline_required
+@require_POST
+def lead_convert_to_project(request, lead_pk):
+    user = request.user
+    lead = get_object_or_404(Lead, pk=lead_pk, employee=user)
+    if Client.objects.filter(lead=lead).exists():
+        msg = 'This lead already has a client.'
+        if request.headers.get('HX-Request'):
+            return render(
+                request,
+                'crm/partials/lead_convert_feedback.html',
+                {'error': msg, 'form': LeadConvertForm(employee=user)},
+            )
+        messages.error(request, msg)
+        return redirect('crm:lead_detail', pk=lead_pk)
+
+    form = LeadConvertForm(request.POST, employee=user)
+    if not form.is_valid():
+        if request.headers.get('HX-Request'):
+            return render(
+                request,
+                'crm/partials/lead_convert_feedback.html',
+                {'error': None, 'form': form},
+            )
+        messages.error(request, form.errors.as_text())
+        return redirect('crm:lead_detail', pk=lead_pk)
+
+    pkg = form.cleaned_data['package']
+    if pkg.employee_id != user.id:
+        msg = 'Invalid package for this account.'
+        if request.headers.get('HX-Request'):
+            return render(
+                request,
+                'crm/partials/lead_convert_feedback.html',
+                {'error': msg, 'form': LeadConvertForm(employee=user)},
+            )
+        messages.error(request, msg)
+        return redirect('crm:lead_detail', pk=lead_pk)
+
+    try:
+        _, project = convert_lead_to_project(
+            lead,
+            package=pkg,
+            deal_value=form.cleaned_data['deal_value'],
+            advance_received=form.cleaned_data['advance_received'],
+            assigned_to=form.cleaned_data.get('assigned_to'),
+            notes=form.cleaned_data.get('notes') or '',
+            created_by=user,
+        )
+    except ValueError as exc:
+        msg = str(exc) or 'Could not convert this lead.'
+        if request.headers.get('HX-Request'):
+            return render(
+                request,
+                'crm/partials/lead_convert_feedback.html',
+                {'error': msg, 'form': LeadConvertForm(employee=user)},
+            )
+        messages.error(request, msg)
+        return redirect('crm:lead_detail', pk=lead_pk)
+
+    messages.success(request, 'Lead converted to project.')
+    detail_url = reverse('crm:project_detail', args=[project.pk])
+    if request.headers.get('HX-Request'):
+        r = HttpResponse()
+        r['HX-Location'] = json.dumps({
+            'path': detail_url,
+            'target': '#crm-main-content',
+            'select': '#crm-main-content',
+            'swap': 'outerHTML',
+        })
+        return r
+    return redirect('crm:project_detail', pk=project.pk)
+
+
+def _submission_by_token(token):
+    return get_object_or_404(
+        OnboardingSubmission.objects.select_related(
+            'project', 'project__client', 'project__package'
+        ),
+        project__onboarding_token=token,
+    )
+
+
+def _onboarding_form_redirect(request, token):
+    """Full-page redirect; HTMX needs HX-Redirect or it may mishandle 302 and duplicate layout."""
+    url = reverse('crm:onboarding_form', kwargs={'token': token})
+    resp = redirect(url)
+    if request.headers.get('HX-Request'):
+        resp['HX-Redirect'] = url
+    return resp
+
+
+def _onboarding_client_ip(request):
+    xff = request.META.get('HTTP_X_FORWARDED_FOR')
+    if xff:
+        return xff.split(',')[0].strip()[:45]
+    return (request.META.get('REMOTE_ADDR') or '').strip()[:45] or None
+
+
+def _onboarding_ip_for_db(ip_str):
+    if not ip_str:
+        return None
+    if len(ip_str) > 39:
+        return ip_str[:39]
+    return ip_str
+
+
+# Public onboarding — WhatsApp support (country code + number, no + for wa.me).
+ONBOARDING_SUPPORT_WHATSAPP_E164 = '919544196763'
+
+
+def _onboarding_whatsapp_support_url(project) -> str:
+    client = getattr(project, 'client', None)
+    client_name = (client.business_name or 'Client').strip() if client else 'Client'
+    pkg = getattr(project, 'package', None)
+    pkg_label = str(pkg) if pkg else '—'
+    body = (
+        'I found some issues while submitting the form. Please assist me.\n\n'
+        f'Client / business: {client_name}\n'
+        f'Package: {pkg_label}'
+    )
+    return f'https://wa.me/{ONBOARDING_SUPPORT_WHATSAPP_E164}?text={quote(body)}'
+
+
+ONBOARDING_PUBLIC_FORM_MAP = {
+    'business_info': OnboardingBusinessInfoForm,
+    'contact': OnboardingContactForm,
+    'branding': OnboardingBrandingForm,
+    'requirements': OnboardingRequirementsForm,
+    'content': OnboardingContentForm,
+    'documents': OnboardingDocumentForm,
+    'payment_kyc': OnboardingPaymentKycForm,
+}
+
+
+def onboarding_form(request, token):
+    submission = _submission_by_token(token)
+    scope_check = {'violations': [], 'warnings': [], 'clean': True}
+    if not submission.is_fully_submitted():
+        scope_check = scope_service.validate_onboarding_requirements(submission)
+    steps, first_open = onboarding_service.get_public_onboarding_step_meta(submission)
+    if first_open is None and steps and all(s['saved'] for s in steps):
+        first_open = steps[-1]['slug']
+    step_meta = {s['slug']: s for s in steps}
+    flow_slugs_json = json.dumps([s[0] for s in onboarding_service.PUBLIC_ONBOARDING_FLOW])
+    if submission.is_fully_submitted():
+        return render(
+            request,
+            'crm/onboarding/form.html',
+            {
+                'submission': submission,
+                'project': submission.project,
+                'readonly_done': True,
+                'overall_pct': submission.overall_completion_percent(),
+                'scope_violations': [],
+                'scope_feature_labels': scope_service.FEATURE_LABELS,
+                'onboarding_whatsapp_url': _onboarding_whatsapp_support_url(
+                    submission.project
+                ),
+                'onboarding_step_meta': step_meta,
+                'onboarding_first_open': first_open,
+                'onboarding_flow_slugs_json': flow_slugs_json,
+            },
+        )
+    business_form = OnboardingBusinessInfoForm(instance=submission)
+    contact_form = OnboardingContactForm(instance=submission)
+    branding_form = OnboardingBrandingForm(instance=submission)
+    requirements_form = OnboardingRequirementsForm(instance=submission)
+    content_form = OnboardingContentForm(instance=submission)
+    document_form = OnboardingDocumentForm(instance=submission)
+    payment_kyc_form = OnboardingPaymentKycForm(instance=submission)
+    agreement_form = OnboardingAgreementForm()
+    return render(
+        request,
+        'crm/onboarding/form.html',
+        {
+            'submission': submission,
+            'project': submission.project,
+            'token': token,
+            'readonly_done': False,
+            'overall_pct': submission.overall_completion_percent(),
+            'business_form': business_form,
+            'contact_form': contact_form,
+            'branding_form': branding_form,
+            'requirements_form': requirements_form,
+            'content_form': content_form,
+            'document_form': document_form,
+            'payment_kyc_form': payment_kyc_form,
+            'agreement_form': agreement_form,
+            'scope_violations': scope_check.get('violations') or [],
+            'scope_feature_labels': scope_service.FEATURE_LABELS,
+            'onboarding_whatsapp_url': _onboarding_whatsapp_support_url(
+                submission.project
+            ),
+            'onboarding_step_meta': step_meta,
+            'onboarding_first_open': first_open,
+            'onboarding_flow_slugs_json': flow_slugs_json,
+        },
+    )
+
+
+@require_POST
+def onboarding_section_save(request, token):
+    submission = _submission_by_token(token)
+    if submission.is_fully_submitted():
+        return HttpResponse(status=403)
+    section = (request.POST.get('section') or '').strip()
+    form_cls = ONBOARDING_PUBLIC_FORM_MAP.get(section)
+    if not form_cls:
+        return HttpResponse('Invalid section', status=400)
+    try:
+        onboarding_service.assert_section_save_allowed(submission, section)
+    except ValueError as exc:
+        return HttpResponse(str(exc), status=403)
+    if section in ('documents', 'payment_kyc'):
+        form = form_cls(request.POST, request.FILES, instance=submission)
+    else:
+        form = form_cls(request.POST, instance=submission)
+    if not form.is_valid():
+        return render(
+            request,
+            'crm/onboarding/partials/section_saved.html',
+            {
+                'section': section,
+                'ok': False,
+                'errors': form.errors,
+                'overall_pct': submission.overall_completion_percent(),
+            },
+        )
+    field_names = onboarding_service.SECTION_MODEL_FIELDS[section]
+    data = {}
+    for name in field_names:
+        if name in form.cleaned_data:
+            data[name] = form.cleaned_data[name]
+    if section in ('documents', 'payment_kyc'):
+        for name in field_names:
+            if name in request.FILES:
+                data[name] = request.FILES[name]
+    onboarding_service.save_onboarding_section(
+        submission, section, data, updated_by=None
+    )
+    submission.refresh_from_db()
+    return render(
+        request,
+        'crm/onboarding/partials/section_saved.html',
+        {
+            'section': section,
+            'ok': True,
+            'errors': None,
+            'overall_pct': submission.overall_completion_percent(),
+        },
+    )
+
+
+@require_POST
+def onboarding_final_submit(request, token):
+    submission = _submission_by_token(token)
+    if submission.is_fully_submitted():
+        return render(request, 'crm/onboarding/partials/already_submitted.html')
+    form = OnboardingAgreementForm(request.POST)
+    if not form.is_valid():
+        return render(
+            request,
+            'crm/onboarding/partials/agreement_errors.html',
+            {'agreement_form': form, 'onboarding_token': token},
+        )
+    tv = form.cleaned_data.get('terms_version') or '1.0'
+    OnboardingSubmission.objects.filter(pk=submission.pk).update(terms_version=tv[:20])
+    submission.refresh_from_db()
+    if not submission.is_payment_kyc_complete():
+        reasons = submission.payment_kyc_incomplete_reasons()
+        msg = (
+            'Cannot submit yet. Open Payment & owner KYC, fix the items below, then click '
+            '“Save section” again: '
+            + ' '.join(reasons)
+        )
+        messages.error(request, msg)
+        return _onboarding_form_redirect(request, token)
+    try:
+        onboarding_service.submit_onboarding(
+            submission,
+            ip_address=_onboarding_ip_for_db(_onboarding_client_ip(request)),
+        )
+    except ValueError:
+        return render(request, 'crm/onboarding/partials/already_submitted.html')
+    submission.refresh_from_db()
+    if request.headers.get('HX-Request'):
+        return render(request, 'crm/onboarding/partials/thank_you.html')
+    return render(
+        request,
+        'crm/onboarding/form.html',
+        {
+            'submission': submission,
+            'project': submission.project,
+            'readonly_done': True,
+            'overall_pct': submission.overall_completion_percent(),
+            'onboarding_whatsapp_url': _onboarding_whatsapp_support_url(
+                submission.project
+            ),
+        },
+    )
+
+
+@login_required
+def project_onboarding_detail(request, pk):
+    user = request.user
+    project = get_object_or_404(get_projects_for_user(user), pk=pk)
+    submission = get_object_or_404(OnboardingSubmission, project=project)
+    summary = onboarding_service.get_onboarding_summary(submission)
+    return render(
+        request,
+        'crm/projects/onboarding_detail.html',
+        {
+            'project': project,
+            'submission': submission,
+            'summary': summary,
+            'section_status_choices': OnboardingSubmission.SectionStatus.choices,
+        },
+    )
+
+
+@login_required
+@require_POST
+def onboarding_section_verify(request, pk):
+    user = request.user
+    project = get_object_or_404(get_projects_for_user(user), pk=pk)
+    submission = get_object_or_404(OnboardingSubmission, project=project)
+    section = (request.POST.get('section') or '').strip()
+    new_status = (request.POST.get('new_status') or '').strip()
+    try:
+        onboarding_service.verify_section(
+            submission, section, new_status, updated_by=user
+        )
+    except ValueError:
+        submission.refresh_from_db()
+        summary = onboarding_service.get_onboarding_summary(submission)
+        sec_meta = next(
+            (s for s in summary['sections'] if s['name'] == section),
+            None,
+        )
+        if sec_meta is None:
+            sec_meta = {
+                'name': section,
+                'label': section,
+                'status': '',
+                'status_label': section,
+                'completion': 0,
+            }
+        ctx = {
+            'submission': submission,
+            'project': project,
+            'sec': sec_meta,
+            'error': 'Could not update status.',
+            'section_status_choices': OnboardingSubmission.SectionStatus.choices,
+            'summary': summary,
+        }
+        return render(request, 'crm/projects/partials/section_verify_response.html', ctx)
+    submission.refresh_from_db()
+    summary = onboarding_service.get_onboarding_summary(submission)
+    sec_meta = next(s for s in summary['sections'] if s['name'] == section)
+    ctx = {
+        'submission': submission,
+        'project': project,
+        'sec': sec_meta,
+        'error': None,
+        'section_status_choices': OnboardingSubmission.SectionStatus.choices,
+        'summary': summary,
+    }
+    return render(request, 'crm/projects/partials/section_verify_response.html', ctx)
+
+
+@login_required
+@require_POST
+def onboarding_internal_notes_save(request, pk):
+    user = request.user
+    project = get_object_or_404(get_projects_for_user(user), pk=pk)
+    submission = get_object_or_404(OnboardingSubmission, project=project)
+    notes = request.POST.get('internal_notes', '')
+    submission.internal_notes = notes[:20000]
+    submission.save(update_fields=['internal_notes', 'updated_at'])
+    return render(
+        request,
+        'crm/projects/partials/onboarding_notes.html',
+        {'submission': submission, 'project': project},
+    )
+
+
+def _crm_client_ip(request):
+    xff = request.META.get('HTTP_X_FORWARDED_FOR')
+    if xff:
+        return xff.split(',')[0].strip()[:45]
+    return (request.META.get('REMOTE_ADDR') or '').strip()[:45] or None
+
+
+@login_required
+@require_POST
+def onboarding_client_notes_save(request, pk):
+    user = request.user
+    project = get_object_or_404(get_projects_for_user(user), pk=pk)
+    submission = get_object_or_404(OnboardingSubmission, project=project)
+    notes = request.POST.get('client_notes', '')
+    submission.client_notes = notes[:20000]
+    submission.save(update_fields=['client_notes', 'updated_at'])
+    return render(
+        request,
+        'crm/projects/partials/onboarding_notes.html',
+        {'submission': submission, 'project': project},
+    )
+
+
+@login_required
+def operations_dashboard(request):
+    if not can_access_operations_dashboard(request.user):
+        return HttpResponse(status=403)
+    flt = (request.GET.get('filter') or '').strip()
+    now = timezone.now()
+    today = timezone.localtime(now).date()
+    renewals_expiring_7d = RenewalTracker.objects.filter(
+        status=RenewalTracker.Status.ACTIVE,
+        expires_at__date__gte=today,
+        expires_at__date__lte=today + timedelta(days=7),
+    ).count()
+    renewals_expired_or_overdue = RenewalTracker.objects.filter(
+        Q(status=RenewalTracker.Status.EXPIRED)
+        | Q(
+            status=RenewalTracker.Status.ACTIVE,
+            expires_at__date__lt=today,
+        )
+    ).count()
+    qs = (
+        get_projects_for_user(request.user)
+        .select_related('client', 'onboarding')
+        .order_by('-updated_at')[:300]
+    )
+    rows = []
+    for p in qs:
+        readiness = readiness_service.get_operational_readiness(p)
+        ps = provisioning_service.get_project_provisioning_summary(p)
+        miss_cred = readiness_service.missing_client_visible_logins(p)
+        exp_ren = RenewalTracker.objects.filter(
+            Q(project=p, status=RenewalTracker.Status.EXPIRED)
+            | Q(
+                project=p,
+                status=RenewalTracker.Status.ACTIVE,
+                expires_at__date__lt=today,
+            )
+        ).exists()
+        exp_cred = ProjectCredential.objects.filter(
+            project=p, expires_at__isnull=False, expires_at__lt=now
+        ).exists()
+        rows.append(
+            {
+                'project': p,
+                'readiness': readiness,
+                'prov': ps,
+                'blocked': (ps.get('blocked') or 0) + (ps.get('failed') or 0),
+                'missing_cred': miss_cred,
+                'expired': exp_ren or exp_cred,
+            }
+        )
+    if flt == 'onboarding_pending':
+        rows = [r for r in rows if not r['readiness']['onboarding_complete']]
+    elif flt == 'provisioning_pending':
+        rows = [
+            r
+            for r in rows
+            if r['readiness']['onboarding_complete']
+            and not r['readiness']['provisioning_complete']
+        ]
+    elif flt == 'handover_pending':
+        rows = [
+            r
+            for r in rows
+            if r['readiness']['onboarding_complete']
+            and r['readiness']['provisioning_complete']
+            and not r['readiness']['handover_complete']
+        ]
+    elif flt == 'expired':
+        rows = [r for r in rows if r['expired']]
+    return render(
+        request,
+        'crm/operations/dashboard.html',
+        {
+            'rows': rows,
+            'active_filter': flt,
+            'renewals_expiring_7d': renewals_expiring_7d,
+            'renewals_expired_or_overdue': renewals_expired_or_overdue,
+        },
+    )
+
+
+def _operations_context(request, project):
+    user = request.user
+    readiness = readiness_service.get_operational_readiness(project)
+    prov_summary = provisioning_service.get_project_provisioning_summary(project)
+    credentials_list = credential_service.queryset_for_user(user, project)
+    handover = ProjectHandover.objects.filter(project=project).first()
+    if handover is None:
+        handover = ProjectHandover(project=project)
+    handover_form = ProjectHandoverForm(instance=handover)
+    cred_form = ProjectCredentialForm()
+    renewal_form = RenewalTrackerForm()
+    renewals = list(project.renewals.order_by('expires_at')[:48])
+    audit_logs = CredentialAuditLog.objects.none()
+    if can_view_credential_audit(user):
+        audit_logs = (
+            CredentialAuditLog.objects.filter(credential__project=project)
+            .select_related('user', 'credential')
+            .order_by('-timestamp')[:50]
+        )
+    portal_access = HandoverPortalAccess.objects.filter(project=project).first()
+    portal_url = ''
+    if portal_access and portal_access.is_active:
+        portal_url = request.build_absolute_uri(
+            reverse('crm:client_portal', args=[portal_access.access_token])
+        )
+    return {
+        'project': project,
+        'readiness': readiness,
+        'prov_summary': prov_summary,
+        'credentials_list': credentials_list,
+        'handover': handover,
+        'handover_form': handover_form,
+        'cred_form': cred_form,
+        'renewal_form': renewal_form,
+        'renewals': renewals,
+        'audit_logs': audit_logs,
+        'provisioning_status_choices': ProvisioningStep.Status.choices,
+        'can_edit_credentials': can_edit_credentials(user),
+        'can_manage_provisioning': can_manage_provisioning(user),
+        'can_complete_handover': can_complete_handover(user),
+        'portal_access': portal_access,
+        'portal_url': portal_url,
+        'portal_activate_form': PortalActivateForm(),
+        'can_manage_portal': can_manage_portal(user),
+        'cr_staff_form': ChangeRequestStaffForm(),
+        'cr_staff_error': False,
+        'cr_staff_success': False,
+        'new_cr_id': None,
+    }
+
+
+@login_required
+def project_operations(request, pk):
+    user = request.user
+    project = get_object_or_404(get_projects_for_user(user), pk=pk)
+    ctx = _operations_context(request, project)
+    return render(request, 'crm/projects/operations.html', ctx)
+
+
+@login_required
+@require_POST
+def project_provisioning_step_update(request, pk):
+    user = request.user
+    if not can_manage_provisioning(user):
+        return HttpResponse('Forbidden', status=403)
+    project = get_object_or_404(get_projects_for_user(user), pk=pk)
+    form = ProvisioningStepStatusForm(request.POST)
+    if not form.is_valid():
+        return HttpResponse(status=400)
+    step_key = form.cleaned_data['step_key']
+    status = form.cleaned_data['status']
+    notes = form.cleaned_data.get('notes') or ''
+    try:
+        if status == ProvisioningStep.Status.COMPLETED:
+            step = provisioning_service.complete_provisioning_step(
+                project=project,
+                step_key=step_key,
+                user=user,
+                notes=notes or None,
+            )
+        else:
+            step = provisioning_service.update_provisioning_status(
+                project=project,
+                step_key=step_key,
+                status=status,
+                user=user,
+                notes=notes or None,
+            )
+    except (ProjectProvisioning.DoesNotExist, ProvisioningStep.DoesNotExist):
+        return HttpResponse(status=404)
+    lead = project.client.lead
+    if lead is not None:
+        log_activity(lead, 'provisioning_updated', f'{step_key}:{status}')
+    return render(
+        request,
+        'crm/projects/partials/provisioning_step_row.html',
+        {
+            'step': step,
+            'project': project,
+            'provisioning_status_choices': ProvisioningStep.Status.choices,
+            'can_manage_provisioning': can_manage_provisioning(request.user),
+        },
+    )
+
+
+@login_required
+@require_POST
+def project_credential_save(request, pk):
+    user = request.user
+    if not can_edit_credentials(user):
+        return HttpResponse('Forbidden', status=403)
+    project = get_object_or_404(get_projects_for_user(user), pk=pk)
+    cred_id = (request.POST.get('credential_id') or '').strip()
+    instance = None
+    if cred_id.isdigit():
+        instance = get_object_or_404(
+            ProjectCredential, pk=int(cred_id), project=project
+        )
+        if not credential_allowed_for_role(user, instance):
+            return HttpResponse('Forbidden', status=403)
+    form = ProjectCredentialForm(request.POST, instance=instance)
+    if not form.is_valid():
+        ctx = _operations_context(request, project)
+        ctx['cred_form'] = form
+        ctx['cred_form_error'] = True
+        if request.headers.get('HX-Request'):
+            return render(
+                request,
+                'crm/projects/partials/credentials_block.html',
+                ctx,
+                status=400,
+            )
+        return render(request, 'crm/projects/operations.html', ctx, status=400)
+    pwd_in = (form.cleaned_data.get('password_plain') or '').strip()
+    sec_in = (form.cleaned_data.get('secret_plain') or '').strip()
+    plain_password = None
+    plain_secret = None
+    if instance is None:
+        inst = form.save(commit=False)
+        inst.project = project
+        plain_password = pwd_in
+        plain_secret = sec_in
+    else:
+        inst = form.save(commit=False)
+        if pwd_in:
+            plain_password = pwd_in
+        if sec_in:
+            plain_secret = sec_in
+    credential_service.save_credential(
+        project=project,
+        user=user,
+        ip=_crm_client_ip(request),
+        instance=inst,
+        plain_password=plain_password,
+        plain_secret=plain_secret,
+    )
+    if request.headers.get('HX-Request'):
+        ctx = _operations_context(request, project)
+        return render(
+            request,
+            'crm/projects/partials/credentials_block.html',
+            ctx,
+        )
+    return redirect('crm:project_operations', pk=pk)
+
+
+@login_required
+def credential_reveal(request, pk, cred_id):
+    user = request.user
+    project = get_object_or_404(get_projects_for_user(user), pk=pk)
+    cred = get_object_or_404(ProjectCredential, pk=cred_id, project=project)
+    if not credential_allowed_for_role(user, cred):
+        return HttpResponse('Forbidden', status=403)
+    field = (request.GET.get('field') or 'password').strip()
+    if field == 'secret':
+        val = credential_service.decrypt_secret_for_user(cred, user=user)
+    else:
+        val = credential_service.decrypt_password_for_user(cred, user=user)
+    credential_service.record_view(cred, user=user, ip=_crm_client_ip(request))
+    return render(
+        request,
+        'crm/projects/partials/credential_reveal.html',
+        {'value': val, 'field': field},
+    )
+
+
+@login_required
+@require_POST
+def credential_copy_logged(request, pk, cred_id):
+    user = request.user
+    project = get_object_or_404(get_projects_for_user(user), pk=pk)
+    cred = get_object_or_404(ProjectCredential, pk=cred_id, project=project)
+    if not credential_allowed_for_role(user, cred):
+        return HttpResponse('Forbidden', status=403)
+    field = (request.POST.get('field') or 'password').strip()
+    if field == 'secret':
+        _ = credential_service.decrypt_secret_for_user(cred, user=user)
+    else:
+        _ = credential_service.decrypt_password_for_user(cred, user=user)
+    credential_service.record_copy(cred, user=user, ip=_crm_client_ip(request))
+    r = HttpResponse('')
+    return _hx_toast(r, 'Copy logged for audit.')
+
+
+@login_required
+@require_POST
+def project_handover_save(request, pk):
+    user = request.user
+    if not can_complete_handover(user):
+        return HttpResponse('Forbidden', status=403)
+    project = get_object_or_404(get_projects_for_user(user), pk=pk)
+    ho, _ = ProjectHandover.objects.get_or_create(project=project)
+    form = ProjectHandoverForm(request.POST, request.FILES, instance=ho)
+    if not form.is_valid():
+        ctx = _operations_context(request, project)
+        ctx['handover_form'] = form
+        ctx['handover_error'] = True
+        ctx['handover'] = form.instance
+        if request.headers.get('HX-Request'):
+            return render(
+                request,
+                'crm/projects/partials/handover_block.html',
+                ctx,
+                status=400,
+            )
+        return render(request, 'crm/projects/operations.html', ctx, status=400)
+    ho = form.save(commit=False)
+    if request.POST.get('mark_complete'):
+        ho.completed_at = timezone.now()
+        ho.completed_by = user
+    ho.save()
+    if request.headers.get('HX-Request'):
+        ctx = _operations_context(request, project)
+        return render(
+            request,
+            'crm/projects/partials/handover_block.html',
+            ctx,
+        )
+    return redirect('crm:project_operations', pk=pk)
+
+
+@login_required
+@require_POST
+def project_renewal_add(request, pk):
+    user = request.user
+    if not can_manage_provisioning(user) or not can_access_renewals_dashboard(user):
+        return HttpResponse('Forbidden', status=403)
+    project = get_object_or_404(get_projects_for_user(user), pk=pk)
+    form = RenewalTrackerForm(request.POST)
+    if not form.is_valid():
+        ctx = _operations_context(request, project)
+        ctx['renewal_form'] = form
+        ctx['renewal_error'] = True
+        if request.headers.get('HX-Request'):
+            return render(
+                request,
+                'crm/projects/partials/renewals_block.html',
+                ctx,
+                status=400,
+            )
+        return render(request, 'crm/projects/operations.html', ctx, status=400)
+    rt = form.save(commit=False)
+    rt.project = project
+    rt.save()
+    if request.headers.get('HX-Request'):
+        ctx = _operations_context(request, project)
+        return render(
+            request,
+            'crm/projects/partials/renewals_block.html',
+            ctx,
+        )
+    return redirect('crm:project_operations', pk=pk)
+
+
+def client_portal(request, token):
+    import uuid as uuid_mod
+
+    try:
+        u = uuid_mod.UUID(str(token).strip())
+    except (ValueError, TypeError, AttributeError):
+        return render(request, 'crm/portal/not_found.html', status=404)
+    access = (
+        HandoverPortalAccess.objects.filter(access_token=u)
+        .select_related(
+            'project',
+            'project__client',
+            'project__package',
+            'project__onboarding',
+            'project__handover',
+        )
+        .first()
+    )
+    if access is None:
+        return render(request, 'crm/portal/not_found.html', status=404)
+    if not access.is_active:
+        return render(request, 'crm/portal/inactive.html', {'access': access}, status=200)
+    portal = portal_service.get_portal_by_token(str(token))
+    if portal is None:
+        return render(request, 'crm/portal/inactive.html', {'access': access}, status=200)
+    payload = portal_service.get_portal_payload(portal)
+    portal_credentials = []
+    for row in payload['credentials']:
+        cred = (
+            ProjectCredential.objects.filter(
+                pk=row['id'],
+                project_id=portal.project_id,
+                visibility_level=ProjectCredential.VisibilityLevel.SHARED,
+            )
+            .first()
+        )
+        if not cred:
+            continue
+        portal_credentials.append(
+            {
+                **row,
+                'password_value': (
+                    decrypt_ciphertext(cred.password_encrypted)
+                    if cred.password_encrypted
+                    else ''
+                ),
+                'secret_value': (
+                    decrypt_ciphertext(cred.secret_key_encrypted)
+                    if cred.secret_key_encrypted
+                    else ''
+                ),
+            }
+        )
+    return render(
+        request,
+        'crm/portal/dashboard.html',
+        {
+            'portal': portal,
+            'payload': payload,
+            'portal_credentials': portal_credentials,
+            'portal_cr_form': ChangeRequestPortalForm(),
+            'portal_token': str(portal.access_token),
+        },
+    )
+
+
+@login_required
+@require_POST
+def portal_activate(request, pk):
+    user = request.user
+    if not can_manage_portal(user):
+        return HttpResponse('Forbidden', status=403)
+    project = get_object_or_404(get_projects_for_user(user), pk=pk)
+    form = PortalActivateForm(request.POST)
+    if not form.is_valid():
+        return HttpResponse(status=400)
+    try:
+        portal_service.activate_portal(project, activated_by=user)
+    except ValueError as exc:
+        ctx = _operations_context(request, project)
+        ctx['portal_error'] = str(exc)
+        return render(
+            request,
+            'crm/projects/partials/portal_status.html',
+            ctx,
+            status=400,
+        )
+    ctx = _operations_context(request, project)
+    return render(request, 'crm/projects/partials/portal_status.html', ctx)
+
+
+@login_required
+@require_POST
+def portal_deactivate(request, pk):
+    user = request.user
+    if not can_manage_portal(user):
+        return HttpResponse('Forbidden', status=403)
+    project = get_object_or_404(get_projects_for_user(user), pk=pk)
+    form = PortalActivateForm(request.POST)
+    if not form.is_valid():
+        return HttpResponse(status=400)
+    try:
+        portal_service.deactivate_portal(project, deactivated_by=user)
+    except ValueError as exc:
+        ctx = _operations_context(request, project)
+        ctx['portal_error'] = str(exc)
+        return render(
+            request,
+            'crm/projects/partials/portal_status.html',
+            ctx,
+            status=400,
+        )
+    ctx = _operations_context(request, project)
+    return render(request, 'crm/projects/partials/portal_status.html', ctx)
+
+
+@login_required
+def renewals_dashboard(request):
+    if not can_access_renewals_dashboard(request.user):
+        return HttpResponse(status=403)
+    form = RenewalFilterForm(request.GET)
+    form.is_valid()
+    st = (form.cleaned_data.get('status') or '').strip()
+    win = (form.cleaned_data.get('window') or '').strip()
+    today = timezone.localtime(timezone.now()).date()
+    qs = RenewalTracker.objects.select_related(
+        'project', 'project__client', 'project__package'
+    ).annotate(log_count=Count('reminder_logs'))
+    if st == 'active':
+        qs = qs.filter(status=RenewalTracker.Status.ACTIVE)
+    elif st == 'expired':
+        qs = qs.filter(status=RenewalTracker.Status.EXPIRED)
+    elif st == 'suspended':
+        qs = qs.filter(project__status=Project.Status.SUSPENDED)
+    if win == '30d':
+        qs = qs.filter(
+            status=RenewalTracker.Status.ACTIVE,
+            expires_at__date__gte=today,
+            expires_at__date__lte=today + timedelta(days=30),
+        )
+    elif win == '7d':
+        qs = qs.filter(
+            status=RenewalTracker.Status.ACTIVE,
+            expires_at__date__gte=today,
+            expires_at__date__lte=today + timedelta(days=7),
+        )
+    elif win == 'overdue':
+        qs = qs.filter(
+            Q(status=RenewalTracker.Status.EXPIRED)
+            | Q(
+                status=RenewalTracker.Status.ACTIVE,
+                expires_at__date__lt=today,
+            )
+        )
+    qs = qs.order_by('expires_at')
+    rows = []
+    for r in qs:
+        expd = timezone.localtime(r.expires_at).date()
+        rows.append({'renewal': r, 'days_remaining': (expd - today).days})
+    return render(
+        request,
+        'crm/renewals/list.html',
+        {'rows': rows, 'filter_form': form},
+    )
+
+
+@login_required
+def renewal_detail(request, pk):
+    if not can_access_renewals_dashboard(request.user):
+        return HttpResponse(status=403)
+    renewal = get_object_or_404(
+        RenewalTracker.objects.select_related(
+            'project', 'project__client', 'project__package'
+        ),
+        pk=pk,
+    )
+    get_object_or_404(get_projects_for_user(request.user), pk=renewal.project_id)
+    logs = list(renewal.reminder_logs.order_by('-sent_at'))
+    return render(
+        request,
+        'crm/renewals/detail.html',
+        {
+            'renewal': renewal,
+            'logs': logs,
+            'reminder_types': RenewalReminderLog.ReminderType.choices,
+            'can_manual_reminder': can_send_renewal_reminder_manual(request.user),
+        },
+    )
+
+
+@login_required
+@require_POST
+def renewal_send_reminder_manual(request, pk):
+    user = request.user
+    if not can_send_renewal_reminder_manual(user):
+        return HttpResponse('Forbidden', status=403)
+    renewal = get_object_or_404(
+        RenewalTracker.objects.select_related('project', 'project__client'),
+        pk=pk,
+    )
+    get_object_or_404(get_projects_for_user(user), pk=renewal.project_id)
+    reminder_type = (request.POST.get('reminder_type') or '').strip()
+    valid = {c.value for c in RenewalReminderLog.ReminderType}
+    if reminder_type not in valid:
+        return HttpResponse(status=400)
+    RenewalReminderLog.objects.filter(
+        renewal=renewal, reminder_type=reminder_type
+    ).delete()
+    if reminder_type == RenewalReminderLog.ReminderType.INTERNAL:
+        recipient = (getattr(settings, 'RENEWAL_INTERNAL_ALERT_EMAIL', '') or '').strip()
+    else:
+        recipient = (renewal.project.client.email or '').strip()
+    renewals_service.send_renewal_reminder(
+        renewal, reminder_type, recipient_email=recipient
+    )
+    renewal.refresh_from_db()
+    logs = list(renewal.reminder_logs.order_by('-sent_at'))
+    if request.headers.get('HX-Request'):
+        return render(
+            request,
+            'crm/renewals/partials/reminder_log.html',
+            {'renewal': renewal, 'logs': logs},
+        )
+    return redirect('crm:renewal_detail', pk=renewal.pk)
+
+
+# ---------------------------------------------------------------------------
+# Phase 5 — audit trail, change requests, package scope
+# ---------------------------------------------------------------------------
+
+
+def _portal_session_key(token) -> str:
+    return f'portal_cr_submissions_{token}'
+
+
+@require_POST
+def portal_submit_change_request(request, token):
+    import uuid as uuid_mod
+
+    try:
+        u = uuid_mod.UUID(str(token).strip())
+    except (ValueError, TypeError, AttributeError):
+        return render(request, 'crm/portal/partials/change_request_submitted.html', {'ok': False, 'error': 'Invalid link.'}, status=404)
+    access = (
+        HandoverPortalAccess.objects.filter(access_token=u, is_active=True)
+        .select_related('project')
+        .first()
+    )
+    if access is None:
+        return render(request, 'crm/portal/partials/change_request_submitted.html', {'ok': False, 'error': 'Portal not available.'}, status=404)
+    sk = _portal_session_key(str(u))
+    count = int(request.session.get(sk, 0))
+    if count >= 3:
+        return render(
+            request,
+            'crm/portal/partials/change_request_submitted.html',
+            {'ok': False, 'error': 'You have reached the maximum number of requests for this session.'},
+            status=429,
+        )
+    form = ChangeRequestPortalForm(request.POST)
+    if not form.is_valid():
+        return render(
+            request,
+            'crm/portal/partials/change_request_submitted.html',
+            {'ok': False, 'error': 'Please check the form fields.', 'form': form},
+            status=400,
+        )
+    change_request_service.submit_change_request(
+        access.project,
+        title=form.cleaned_data['title'],
+        description=form.cleaned_data['description'],
+        request_type=form.cleaned_data['request_type'],
+        submitted_via_portal=True,
+    )
+    request.session[sk] = count + 1
+    request.session.modified = True
+    return render(request, 'crm/portal/partials/change_request_submitted.html', {'ok': True})
+
+
+def portal_change_requests(request, token):
+    import uuid as uuid_mod
+
+    try:
+        u = uuid_mod.UUID(str(token).strip())
+    except (ValueError, TypeError, AttributeError):
+        return HttpResponse(status=404)
+    access = (
+        HandoverPortalAccess.objects.filter(access_token=u, is_active=True)
+        .select_related('project')
+        .first()
+    )
+    if access is None:
+        return HttpResponse(status=404)
+    qs = change_request_service.get_change_requests_for_project(access.project)[:50]
+    rows = []
+    for cr in qs:
+        rows.append(
+            {
+                'title': cr.title,
+                'request_type': cr.get_request_type_display(),
+                'status': cr.get_status_display(),
+                'resolution_note': cr.resolution_note
+                if cr.status == ChangeRequest.Status.COMPLETED
+                else '',
+            }
+        )
+    return render(
+        request,
+        'crm/portal/partials/change_requests_list.html',
+        {'rows': rows},
+    )
+
+
+@login_required
+def audit_trail(request):
+    if not can_access_audit_trail(request.user):
+        return HttpResponse(status=403)
+    form = AuditFilterForm(request.GET)
+    form.is_valid()
+    qs = AuditEntry.objects.select_related('actor', 'project').order_by('-created_at')
+    cat = (form.cleaned_data.get('category') or '').strip()
+    if cat:
+        qs = qs.filter(category=cat)
+    actor = form.cleaned_data.get('actor')
+    if actor:
+        qs = qs.filter(actor=actor)
+    df = form.cleaned_data.get('date_from')
+    dt = form.cleaned_data.get('date_to')
+    if df:
+        start = timezone.make_aware(datetime.combine(df, datetime.min.time()))
+        qs = qs.filter(created_at__gte=start)
+    if dt:
+        end = timezone.make_aware(datetime.combine(dt, time(23, 59, 59)))
+        qs = qs.filter(created_at__lte=end)
+    paginator = Paginator(qs, 50)
+    page = request.GET.get('page', 1)
+    try:
+        page_obj = paginator.page(page)
+    except PageNotAnInteger:
+        page_obj = paginator.page(1)
+    except EmptyPage:
+        page_obj = paginator.page(paginator.num_pages)
+    return render(
+        request,
+        'crm/audit/list.html',
+        {'page_obj': page_obj, 'filter_form': form},
+    )
+
+
+@login_required
+def project_audit_trail(request, pk):
+    project = get_object_or_404(get_projects_for_user(request.user), pk=pk)
+    entries = list(audit_service.get_project_audit_trail(project, limit=20))
+    return render(
+        request,
+        'crm/projects/partials/audit_trail.html',
+        {'project': project, 'entries': entries},
+    )
+
+
+@login_required
+def change_requests_list(request):
+    if not can_access_change_requests(request.user):
+        return HttpResponse(status=403)
+    pq = get_projects_for_user(request.user)
+    form = ChangeRequestFilterForm(request.GET, project_qs=pq)
+    form.is_valid()
+    qs = (
+        ChangeRequest.objects.filter(project__in=pq)
+        .select_related('project', 'project__client', 'assigned_to')
+        .order_by('-created_at')
+    )
+    st = (form.cleaned_data.get('status') or '').strip()
+    if st:
+        qs = qs.filter(status=st)
+    rt = (form.cleaned_data.get('request_type') or '').strip()
+    if rt:
+        qs = qs.filter(request_type=rt)
+    proj = form.cleaned_data.get('project')
+    if proj:
+        qs = qs.filter(project=proj)
+    paginator = Paginator(qs, 50)
+    page = request.GET.get('page', 1)
+    try:
+        page_obj = paginator.page(page)
+    except PageNotAnInteger:
+        page_obj = paginator.page(1)
+    except EmptyPage:
+        page_obj = paginator.page(paginator.num_pages)
+    return render(
+        request,
+        'crm/change_requests/list.html',
+        {'page_obj': page_obj, 'filter_form': form},
+    )
+
+
+@login_required
+def change_request_detail(request, pk):
+    if not can_access_change_requests(request.user):
+        return HttpResponse(status=403)
+    cr = get_object_or_404(
+        ChangeRequest.objects.select_related(
+            'project', 'project__client', 'project__package', 'assigned_to'
+        ),
+        pk=pk,
+    )
+    get_object_or_404(get_projects_for_user(request.user), pk=cr.project_id)
+    timeline = list(
+        audit_service.get_audit_trail_for_object('ChangeRequest', cr.pk)[:100]
+    )
+    scope_summary = scope_service.get_scope_summary(cr.project.package)
+    in_scope_features = []
+    out_of_scope_features = []
+    if cr.project.package:
+        try:
+            sc = cr.project.package.scope
+            info = sc.check_request_in_scope(cr.requested_features or [])
+            in_scope_features = info['in_scope']
+            out_of_scope_features = info['out_of_scope']
+        except Exception:
+            pass
+    triage_form = TriageForm(initial={'requested_features': cr.requested_features or []})
+    quote_form = QuoteForm()
+    reject_form = RejectForm()
+    complete_form = CompleteForm()
+    return render(
+        request,
+        'crm/change_requests/detail.html',
+        {
+            'cr': cr,
+            'timeline': timeline,
+            'scope_summary': scope_summary,
+            'in_scope_features': in_scope_features,
+            'out_of_scope_features': out_of_scope_features,
+            'triage_form': triage_form,
+            'quote_form': quote_form,
+            'reject_form': reject_form,
+            'complete_form': complete_form,
+        },
+    )
+
+
+@login_required
+@require_POST
+def change_request_triage(request, pk):
+    if not can_access_change_requests(request.user):
+        return HttpResponse(status=403)
+    cr = get_object_or_404(ChangeRequest, pk=pk)
+    get_object_or_404(get_projects_for_user(request.user), pk=cr.project_id)
+    form = TriageForm(request.POST)
+    if not form.is_valid():
+        return HttpResponse(status=400)
+    try:
+        change_request_service.triage_change_request(
+            cr,
+            requested_features=form.cleaned_data.get('requested_features') or [],
+            updated_by=request.user,
+        )
+    except ValueError as exc:
+        return HttpResponse(str(exc), status=400)
+    cr.refresh_from_db()
+    scope_summary = scope_service.get_scope_summary(cr.project.package)
+    in_scope = []
+    out_of_scope = []
+    if cr.project.package:
+        try:
+            sc = cr.project.package.scope
+            info = sc.check_request_in_scope(cr.requested_features or [])
+            in_scope = info['in_scope']
+            out_of_scope = info['out_of_scope']
+        except Exception:
+            pass
+    return render(
+        request,
+        'crm/change_requests/partials/cr_triage_oob.html',
+        {
+            'cr': cr,
+            'scope_summary': scope_summary,
+            'in_scope_features': in_scope,
+            'out_of_scope_features': out_of_scope,
+        },
+    )
+
+
+@login_required
+@require_POST
+def change_request_quote(request, pk):
+    if not can_access_change_requests(request.user):
+        return HttpResponse(status=403)
+    cr = get_object_or_404(ChangeRequest, pk=pk)
+    get_object_or_404(get_projects_for_user(request.user), pk=cr.project_id)
+    form = QuoteForm(request.POST)
+    if not form.is_valid():
+        return HttpResponse(status=400)
+    try:
+        change_request_service.quote_change_request(
+            cr,
+            quoted_amount=form.cleaned_data['quoted_amount'],
+            quote_notes=form.cleaned_data.get('quote_notes') or '',
+            updated_by=request.user,
+        )
+    except ValueError as exc:
+        return HttpResponse(str(exc), status=400)
+    cr.refresh_from_db()
+    return render(
+        request,
+        'crm/change_requests/partials/cr_status.html',
+        {'cr': cr},
+    )
+
+
+@login_required
+@require_POST
+def change_request_approve(request, pk):
+    if not can_access_change_requests(request.user):
+        return HttpResponse(status=403)
+    cr = get_object_or_404(ChangeRequest, pk=pk)
+    get_object_or_404(get_projects_for_user(request.user), pk=cr.project_id)
+    try:
+        change_request_service.approve_change_request(cr, approved_by=request.user)
+    except ValueError as exc:
+        return HttpResponse(str(exc), status=400)
+    cr.refresh_from_db()
+    return render(
+        request,
+        'crm/change_requests/partials/cr_status.html',
+        {'cr': cr},
+    )
+
+
+@login_required
+@require_POST
+def change_request_start(request, pk):
+    if not can_access_change_requests(request.user):
+        return HttpResponse(status=403)
+    cr = get_object_or_404(ChangeRequest, pk=pk)
+    get_object_or_404(get_projects_for_user(request.user), pk=cr.project_id)
+    try:
+        change_request_service.start_change_request(cr, started_by=request.user)
+    except ValueError as exc:
+        return HttpResponse(str(exc), status=400)
+    cr.refresh_from_db()
+    return render(
+        request,
+        'crm/change_requests/partials/cr_status.html',
+        {'cr': cr},
+    )
+
+
+@login_required
+@require_POST
+def change_request_reject(request, pk):
+    if not can_access_change_requests(request.user):
+        return HttpResponse(status=403)
+    cr = get_object_or_404(ChangeRequest, pk=pk)
+    get_object_or_404(get_projects_for_user(request.user), pk=cr.project_id)
+    form = RejectForm(request.POST)
+    if not form.is_valid():
+        return HttpResponse(status=400)
+    try:
+        change_request_service.reject_change_request(
+            cr,
+            rejected_by=request.user,
+            reason=form.cleaned_data['reason'],
+        )
+    except ValueError as exc:
+        return HttpResponse(str(exc), status=400)
+    cr.refresh_from_db()
+    return render(
+        request,
+        'crm/change_requests/partials/cr_status.html',
+        {'cr': cr},
+    )
+
+
+@login_required
+@require_POST
+def change_request_complete(request, pk):
+    if not can_access_change_requests(request.user):
+        return HttpResponse(status=403)
+    cr = get_object_or_404(ChangeRequest, pk=pk)
+    get_object_or_404(get_projects_for_user(request.user), pk=cr.project_id)
+    form = CompleteForm(request.POST)
+    if not form.is_valid():
+        return HttpResponse(status=400)
+    try:
+        change_request_service.complete_change_request(
+            cr,
+            resolution_note=form.cleaned_data['resolution_note'],
+            completed_by=request.user,
+        )
+    except ValueError as exc:
+        return HttpResponse(str(exc), status=400)
+    cr.refresh_from_db()
+    return render(
+        request,
+        'crm/change_requests/partials/cr_status.html',
+        {'cr': cr},
+    )
+
+
+@login_required
+@sales_pipeline_required
+@require_http_methods(['GET', 'POST'])
+def package_scope_edit(request, pk):
+    if not can_edit_package_scope(request.user):
+        return HttpResponse(status=403)
+    if request.user.is_superuser:
+        package = get_object_or_404(Package, pk=pk)
+    else:
+        package = get_object_or_404(Package, pk=pk, employee=request.user)
+    try:
+        scope = package.scope
+    except Exception:
+        return HttpResponse(
+            'Scope record is being created — save the package again or contact support.',
+            status=400,
+        )
+    if request.method == 'POST':
+        form = PackageScopeForm(request.POST, instance=scope)
+        if form.is_valid():
+            form.save()
+            if request.headers.get('HX-Request'):
+                r = HttpResponse()
+                r['HX-Location'] = json.dumps({
+                    'path': reverse('crm:packages'),
+                    'target': '#crm-main-content',
+                    'select': '#crm-main-content',
+                    'swap': 'outerHTML',
+                })
+                return r
+            return redirect('crm:packages')
+    else:
+        form = PackageScopeForm(instance=scope)
+    return render(
+        request,
+        'crm/packages/scope_edit.html',
+        {'form': form, 'package': package},
+    )
+
+
+@login_required
+@require_POST
+def change_request_staff_create(request, pk):
+    if not can_access_change_requests(request.user):
+        return HttpResponse(status=403)
+    project = get_object_or_404(get_projects_for_user(request.user), pk=pk)
+    form = ChangeRequestStaffForm(request.POST)
+    if not form.is_valid():
+        ctx = _operations_context(request, project)
+        ctx['cr_staff_form'] = form
+        ctx['cr_staff_error'] = True
+        if request.headers.get('HX-Request'):
+            return render(
+                request,
+                'crm/projects/partials/change_request_staff_block.html',
+                ctx,
+                status=400,
+            )
+        return redirect('crm:project_operations', pk=pk)
+    data = form.cleaned_data
+    cr = change_request_service.submit_change_request(
+        project,
+        title=data['title'],
+        description=data['description'],
+        request_type=data['request_type'],
+        submitted_via_portal=False,
+        submitted_by_staff=request.user,
+        assigned_to=data.get('assigned_to'),
+    )
+    if request.headers.get('HX-Request'):
+        ctx = _operations_context(request, project)
+        ctx['cr_staff_form'] = ChangeRequestStaffForm()
+        ctx['cr_staff_success'] = True
+        ctx['new_cr_id'] = cr.pk
+        return render(
+            request,
+            'crm/projects/partials/change_request_staff_block.html',
+            ctx,
+        )
+    return redirect('crm:change_request_detail', pk=cr.pk)

@@ -93,6 +93,10 @@ LOGIN_URL = '/crm/login/'
 LOGIN_REDIRECT_URL = '/crm/'
 LOGOUT_REDIRECT_URL = '/crm/login/'
 
+# CRM Phase 3: Fernet key for ProjectCredential vault (urlsafe base64, 32 bytes).
+# Generate: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+CRM_CREDENTIALS_FERNET_KEY = os.environ.get('CRM_CREDENTIALS_FERNET_KEY', '').strip()
+
 # Email: contact form notifications (Gmail SMTP)
 # For production, set EMAIL_HOST_PASSWORD (and optionally others) via environment variables.
 EMAIL_BACKEND = os.environ.get(
@@ -110,6 +114,13 @@ DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
 # Address to receive contact form submissions
 CONTACT_EMAIL_TO = os.environ.get('CONTACT_EMAIL_TO', 'hr@bthinkx.com')
 
+# CRM Phase 4: renewal reminder emails (management command + manual sends).
+RENEWAL_FROM_EMAIL = os.environ.get('RENEWAL_FROM_EMAIL', '').strip() or DEFAULT_FROM_EMAIL
+RENEWAL_INTERNAL_ALERT_EMAIL = os.environ.get(
+    'RENEWAL_INTERNAL_ALERT_EMAIL', CONTACT_EMAIL_TO
+)
+RENEWAL_REMINDER_DAYS = [30, 7, 1]
+
 # Public site URL (used in blog notification emails and unsubscribe links)
 SITE_BASE_URL = os.environ.get('SITE_BASE_URL', 'http://127.0.0.1:8000').rstrip('/')
 
@@ -123,5 +134,5 @@ CRM_WHATSAPP_DEFAULT_COUNTRY_CODE = '91'
 
 # WhatsApp Cloud API webhook verification token.
 WHATSAPP_VERIFY_TOKEN = "bthinkx123"
-WHATSAPP_ACCESS_TOKEN = 'EAAe8YaGfcZBEBRKGFjhaa6jtuwjtvhpC2AjkUPsHbZBMrZCCTWV0q4aENgcXtdYCuQdjZAe3PjUid6HVE702YfsNXdjNHBBVhLd6ZCKJXoe20e5KGgvUnlZC1F4EIjIGtqb9oHJk8gYNvhy4gkAba9yZBvz0a1ZAUpTv1bOr9VV7KsA6QK4dUXZBvHs7fYrtnmX60K4ujhqKaCipGagXp6eccNGCbL7XghqB9iOD5VCsRHOSlCbLxyMik2W6BuFanRTdQjMNIgVTu1M36K9VQvkFNhNY6'
+WHATSAPP_ACCESS_TOKEN = 'EAAe8YaGfcZBEBRKSDf4ikI70kORTeeZBarsCZB4rjWcpvyGgyyjZAOFR4ZAb31JYCD48FZBYEJwfLJyzybfxvXCbx6uLeM6tZBLOjt2FZBj0PN1NIWMGpVQ2OvtkFIVZApLGoRwfMowc2dXGXh8JEJIHr9h02yN9F2o5WVRyjvdi4r56405KajaQfZCZBRJ1W7sIzAXR6lZCW7Yq6gbZCLNrUWCuFA8TUZB8wLjiGhqB3VpZCoyaAZCSK6JJh5rEFqW4ECHYX8LwAKx7k9Gjrm7MIfi5pLplycWG3gZDZD'
 WHATSAPP_PHONE_NUMBER_ID = "984411908097951"

@@ -1,0 +1,31 @@
+<div id="handover-block" class="panel-block">
+  <div class="panel-h">Handover</div>
+  {% if handover_error %}
+  <p style="color:var(--danger-600);font-size:13px;">Check the handover form.</p>
+  {% endif %}
+  {% if handover.completed_at %}
+  <p style="font-size:13px;margin-bottom:10px;"><span class="crm-badge crm-badge--green">Completed</span> {{ handover.completed_at|date:"M j, Y H:i" }}{% if handover.completed_by %} · {{ handover.completed_by.get_username }}{% endif %}</p>
+  {% endif %}
+  <form method="post" action="{% url 'crm:project_handover_save' project.pk %}" enctype="multipart/form-data"
+        hx-post="{% url 'crm:project_handover_save' project.pk %}"
+        hx-encoding="multipart/form-data"
+        hx-target="#handover-block"
+        hx-swap="outerHTML">
+    {% csrf_token %}
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;">
+      {% for field in handover_form.visible_fields %}
+      <div>
+        <label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:4px;">{{ field.label }}</label>
+        {{ field }}
+        {% if field.errors %}<div style="color:var(--danger-600);font-size:11px;">{{ field.errors }}</div>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% if can_complete_handover %}
+    <label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px;">
+      <input type="checkbox" name="mark_complete" value="1"> Mark handover complete (sets timestamp)
+    </label>
+    {% endif %}
+    <button type="submit" class="btn btn-primary btn-sm" style="margin-top:12px;">Save handover</button>
+  </form>
+</div>

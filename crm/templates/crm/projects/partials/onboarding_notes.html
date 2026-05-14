@@ -1,0 +1,35 @@
+<div class="panel-block">
+  <div class="panel-h">Internal notes</div>
+  <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Staff only — not visible to the client.</p>
+  <form method="post" action="{% url 'crm:onboarding_internal_notes_save' project.pk %}"
+        hx-post="{% url 'crm:onboarding_internal_notes_save' project.pk %}"
+        hx-target="#onboarding-notes-block"
+        hx-swap="innerHTML"
+        hx-indicator="#ob-notes-int-save-ind"
+        hx-disabled-elt="find button[type='submit']">
+    {% csrf_token %}
+    <textarea name="internal_notes" rows="8" style="width:100%;font-size:13px;">{{ submission.internal_notes }}</textarea>
+    <div style="display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap;">
+      <button type="submit" class="btn btn-primary btn-sm">Save internal notes</button>
+      <span id="ob-notes-int-save-ind" class="crm-inline-hx-ind" aria-live="polite">Saving…</span>
+    </div>
+  </form>
+</div>
+
+<div class="panel-block" style="margin-top:16px;">
+  <div class="panel-h">Client-visible notes</div>
+  <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Safe for tenant portal / handover summaries. Never put secrets here.</p>
+  <form method="post" action="{% url 'crm:onboarding_client_notes_save' project.pk %}"
+        hx-post="{% url 'crm:onboarding_client_notes_save' project.pk %}"
+        hx-target="#onboarding-notes-block"
+        hx-swap="innerHTML"
+        hx-indicator="#ob-notes-cli-save-ind"
+        hx-disabled-elt="find button[type='submit']">
+    {% csrf_token %}
+    <textarea name="client_notes" rows="5" style="width:100%;font-size:13px;">{{ submission.client_notes }}</textarea>
+    <div style="display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap;">
+      <button type="submit" class="btn btn-outline btn-sm">Save client notes</button>
+      <span id="ob-notes-cli-save-ind" class="crm-inline-hx-ind" aria-live="polite">Saving…</span>
+    </div>
+  </form>
+</div>

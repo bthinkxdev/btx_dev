@@ -18,6 +18,49 @@
 <!-- Lead Info Card (HTMX target for sticky updates) -->
 {% include "crm/partials/lead_detail_sticky.html" %}
 
+{% if linked_project %}
+<div style="margin-bottom:16px;">
+  <a href="{% url 'crm:project_detail' linked_project.pk %}"
+     class="btn btn-outline btn-sm"
+     hx-get="{% url 'crm:project_detail' linked_project.pk %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">View project</a>
+</div>
+{% elif show_convert_to_project and convert_form %}
+<div style="margin-bottom:16px;">
+  <button type="button" class="btn btn-success btn-sm" onclick="document.getElementById('lead-convert-dialog').showModal()">Convert to Project</button>
+</div>
+
+<dialog id="lead-convert-dialog" class="crm-add-task-dialog">
+  <div class="crm-add-task-dialog__inner">
+    <div class="crm-add-task-dialog__head">
+      <h2>Convert to project</h2>
+      <button type="button" class="crm-add-task-dialog__x" onclick="this.closest('dialog').close()" aria-label="Close">&times;</button>
+    </div>
+    <p class="crm-add-task-dialog__lead">Creates a client and project from this lead.</p>
+    <form method="post"
+          action="{% url 'crm:lead_convert' lead.pk %}"
+          hx-post="{% url 'crm:lead_convert' lead.pk %}"
+          hx-target="#lead-convert-feedback"
+          hx-swap="innerHTML">
+      {% csrf_token %}
+      <div id="lead-convert-feedback"></div>
+      {% for field in convert_form %}
+      <div class="crm-add-task-field">
+        {{ field.label_tag }}{{ field }}
+      </div>
+      {% endfor %}
+      <div class="crm-add-task-dialog__foot">
+        <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('lead-convert-dialog').close()">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-sm">Convert</button>
+      </div>
+    </form>
+  </div>
+</dialog>
+{% endif %}
+
 <!-- 2-Column Detail Grid -->
 <div class="detail-grid">
   <!-- Left: Notes -->

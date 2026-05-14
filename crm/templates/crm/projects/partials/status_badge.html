@@ -1,0 +1,20 @@
+<div id="project-status-badge" style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;">
+  {% with s=project.status %}
+  <span class="crm-badge {% if s == 'completed' %}crm-badge--green{% elif s == 'suspended' %}crm-badge--red{% elif s == 'in_development' %}crm-badge--blue{% elif s == 'review' %}crm-badge--orange{% elif s == 'onboarding_submitted' %}crm-badge--cyan{% else %}crm-badge--gray{% endif %}">{{ project.get_status_display }}</span>
+  {% endwith %}
+  <label class="sr-only" for="id_project_status_select">Update status</label>
+  <select id="id_project_status_select"
+          name="status"
+          class="exec-row-select"
+          style="min-width:200px;"
+          hx-post="{% url 'crm:project_status_update' project.pk %}"
+          hx-target="#project-status-badge"
+          hx-swap="outerHTML">
+    {% for val, label in project_status_choices %}
+    <option value="{{ val }}" {% if project.status == val %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+  {% if status_error %}
+  <span class="text-danger" style="font-size:12px;">{{ status_error }}</span>
+  {% endif %}
+</div>

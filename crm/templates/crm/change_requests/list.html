@@ -1,0 +1,66 @@
+{% extends "crm/base.html" %}
+{% block title %}Change requests{% endblock %}
+{% block page_title %}Change requests{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Change requests</h1>
+    <p>Client and portal submissions triaged against package scope.</p>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:20px;">
+  <form method="get" style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;">
+    <div class="form-row">{{ filter_form.status.label_tag }}{{ filter_form.status }}</div>
+    <div class="form-row">{{ filter_form.request_type.label_tag }}{{ filter_form.request_type }}</div>
+    <div class="form-row">{{ filter_form.project.label_tag }}{{ filter_form.project }}</div>
+    <button type="submit" class="btn btn-primary">Filter</button>
+    <a href="{% url 'crm:change_requests_list' %}" class="btn btn-outline">Reset</a>
+  </form>
+</div>
+
+<div class="card">
+  <div class="table-wrap" style="overflow-x:auto;">
+    <table class="crm-table" style="width:100%;font-size:13px;">
+      <thead>
+        <tr>
+          <th>Project</th>
+          <th>Title</th>
+          <th>Type</th>
+          <th>Status</th>
+          <th>Scope</th>
+          <th>Assigned</th>
+          <th>Created</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for cr in page_obj %}
+        <tr>
+          <td><a href="{% url 'crm:change_request_detail' cr.pk %}">{{ cr.project.client.business_name }}</a></td>
+          <td>{{ cr.title|truncatechars:50 }}</td>
+          <td><span class="crm-badge crm-badge--muted">{{ cr.get_request_type_display }}</span></td>
+          <td><span class="crm-badge crm-badge--orange">{{ cr.get_status_display }}</span></td>
+          <td>{% if cr.scope_verdict %}<span class="crm-badge crm-badge--muted">{{ cr.scope_verdict }}</span>{% else %}—{% endif %}</td>
+          <td>{% if cr.assigned_to %}{{ cr.assigned_to.get_username }}{% else %}—{% endif %}</td>
+          <td>{{ cr.created_at|date:"M j, Y" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7">No change requests found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if page_obj.has_other_pages %}
+  <div style="margin-top:16px;display:flex;gap:8px;">
+    {% if page_obj.has_previous %}
+    <a class="btn btn-outline btn-sm" href="?page={{ page_obj.previous_page_number }}&status={{ request.GET.status }}&request_type={{ request.GET.request_type }}&project={{ request.GET.project }}">Previous</a>
+    {% endif %}
+    <span style="font-size:13px;color:var(--text-muted);align-self:center;">Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+    <a class="btn btn-outline btn-sm" href="?page={{ page_obj.next_page_number }}&status={{ request.GET.status }}&request_type={{ request.GET.request_type }}&project={{ request.GET.project }}">Next</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

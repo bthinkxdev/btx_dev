@@ -1,0 +1,80 @@
+{% extends "crm/base.html" %}
+{% block title %}Audit trail{% endblock %}
+{% block page_title %}Audit trail{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Audit trail</h1>
+    <p>Significant CRM events across projects, onboarding, provisioning, portal, renewals, and change requests.</p>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:20px;">
+  <form method="get" action="{% url 'crm:audit_trail' %}" style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;">
+    <div class="form-row">{{ filter_form.category.label_tag }}{{ filter_form.category }}</div>
+    <div class="form-row">{{ filter_form.actor.label_tag }}{{ filter_form.actor }}</div>
+    <div class="form-row">{{ filter_form.date_from.label_tag }}{{ filter_form.date_from }}</div>
+    <div class="form-row">{{ filter_form.date_to.label_tag }}{{ filter_form.date_to }}</div>
+    <button type="submit" class="btn btn-primary">Filter</button>
+    <a href="{% url 'crm:audit_trail' %}" class="btn btn-outline">Reset</a>
+  </form>
+</div>
+
+<div class="card">
+  <div class="table-wrap" style="overflow-x:auto;">
+    <table class="crm-table" style="width:100%;font-size:13px;">
+      <thead>
+        <tr>
+          <th>When</th>
+          <th>Actor</th>
+          <th>Category</th>
+          <th>Action</th>
+          <th>Object</th>
+          <th>Delta</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in page_obj %}
+        <tr>
+          <td>{{ row.created_at|date:"Y-m-d H:i" }}</td>
+          <td>{{ row.actor_label|default:"—" }}</td>
+          <td><span class="crm-badge crm-badge--muted">{{ row.get_category_display }}</span></td>
+          <td><code style="font-size:12px;">{{ row.action }}</code></td>
+          <td>
+            {% if row.project_id %}
+            <a href="{% url 'crm:project_detail' row.project_id %}">{{ row.object_repr|truncatechars:48 }}</a>
+            {% else %}
+            {{ row.object_repr|truncatechars:48 }}
+            {% endif %}
+          </td>
+          <td>
+            {% if row.before_state or row.after_state %}
+            <details>
+              <summary style="cursor:pointer;color:var(--accent);">JSON</summary>
+              <pre style="margin-top:8px;font-size:11px;max-height:180px;overflow:auto;background:var(--neutral-50);padding:8px;border-radius:8px;">{% if row.before_state %}before: {{ row.before_state|default:"{}"|safe }}{% endif %}
+{% if row.after_state %}after: {{ row.after_state|default:"{}"|safe }}{% endif %}</pre>
+            </details>
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6">No audit entries match your filters.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if page_obj.has_other_pages %}
+  <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;">
+    {% if page_obj.has_previous %}
+    <a class="btn btn-outline btn-sm" href="?page={{ page_obj.previous_page_number }}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.actor %}&actor={{ request.GET.actor }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}">Previous</a>
+    {% endif %}
+    <span style="align-self:center;font-size:13px;color:var(--text-muted);">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+    <a class="btn btn-outline btn-sm" href="?page={{ page_obj.next_page_number }}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.actor %}&actor={{ request.GET.actor }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}">Next</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

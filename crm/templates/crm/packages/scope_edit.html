@@ -1,0 +1,41 @@
+{% extends "crm/base.html" %}
+{% block title %}Package scope · {{ package.name }}{% endblock %}
+{% block page_title %}Edit package scope{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{{ package.name }}</h1>
+    <p>Feature flags and limits enforced during onboarding and change-request triage.</p>
+  </div>
+</div>
+
+<div class="card" style="max-width:760px;">
+  <form method="post" action="{% url 'crm:package_scope_edit' package.pk %}"
+        hx-post="{% url 'crm:package_scope_edit' package.pk %}">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <fieldset style="border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px;">
+      <legend style="font-weight:600;padding:0 8px;">Included features</legend>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-top:8px;">
+        {% for field in form %}
+          {% if field.field.widget.input_type == 'checkbox' %}
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;">
+            {{ field }} {{ field.label }}
+          </label>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </fieldset>
+    {% for field in form %}
+      {% if field.field.widget.input_type != 'checkbox' %}
+      <div class="form-row" style="margin-bottom:10px;">{{ field.label_tag }}{{ field.errors }}{{ field }}</div>
+      {% endif %}
+    {% endfor %}
+    <div style="margin-top:16px;display:flex;gap:8px;">
+      <button type="submit" class="btn btn-primary">Save scope</button>
+      <a href="{% url 'crm:packages' %}" class="btn btn-outline">Back to packages</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

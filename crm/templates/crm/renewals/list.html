@@ -1,0 +1,82 @@
+{% extends "crm/base.html" %}
+{% block title %}Renewals{% endblock %}
+{% block page_title %}Renewals{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Renewals</h1>
+    <p>Track expiry dates, reminder history, and follow up with clients.</p>
+  </div>
+</div>
+
+<form method="get" action="{% url 'crm:renewals_dashboard' %}"
+      style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:20px;">
+  <div>
+    <label style="display:block;font-size:11px;color:var(--text-muted);">Status</label>
+    {{ filter_form.status }}
+  </div>
+  <div>
+    <label style="display:block;font-size:11px;color:var(--text-muted);">Expiry window</label>
+    {{ filter_form.window }}
+  </div>
+  <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+  <a href="{% url 'crm:renewals_dashboard' %}" class="btn btn-outline btn-sm">Reset</a>
+</form>
+
+<div class="panel-block">
+  <div class="panel-h">All renewals</div>
+  <div style="overflow-x:auto;">
+    <table class="mini-table" style="width:100%;min-width:800px;">
+      <thead>
+        <tr>
+          <th>Client</th>
+          <th>Title</th>
+          <th>Package</th>
+          <th>Expiry</th>
+          <th>Days left</th>
+          <th>Status</th>
+          <th>Reminders</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        {% with r=row.renewal d=row.days_remaining %}
+        <tr>
+          <td><strong>{{ r.project.client.business_name }}</strong></td>
+          <td>{{ r.title }}</td>
+          <td>{% if r.project.package %}{{ r.project.package.name }}{% else %}—{% endif %}</td>
+          <td>{{ r.expires_at|date:"M j, Y" }}</td>
+          <td>
+            {% if d < 0 %}
+            <span class="crm-badge crm-badge--red">{{ d }}</span>
+            {% elif d < 7 %}
+            <span class="crm-badge crm-badge--red">{{ d }}</span>
+            {% elif d < 30 %}
+            <span class="crm-badge crm-badge--orange">{{ d }}</span>
+            {% else %}
+            <span class="crm-badge crm-badge--green">{{ d }}</span>
+            {% endif %}
+          </td>
+          <td><span class="crm-badge crm-badge--slate">{{ r.get_status_display }}</span></td>
+          <td>{{ r.log_count }}</td>
+          <td>
+            <a href="{% url 'crm:renewal_detail' r.pk %}"
+               class="btn btn-outline btn-sm"
+               hx-get="{% url 'crm:renewal_detail' r.pk %}"
+               hx-target="#crm-main-content"
+               hx-select="#crm-main-content"
+               hx-swap="outerHTML"
+               hx-push-url="true">Detail</a>
+          </td>
+        </tr>
+        {% endwith %}
+        {% empty %}
+        <tr><td colspan="8" style="color:var(--text-muted);">No renewals match your filters.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

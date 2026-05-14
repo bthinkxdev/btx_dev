@@ -1,0 +1,12 @@
+  <div class="panel-h">Overall completion</div>
+  <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+    <div style="flex:1;min-width:200px;max-width:420px;height:12px;background:var(--neutral-200);border-radius:99px;overflow:hidden;">
+      <div style="height:100%;width:{{ summary.overall }}%;min-width:{% if summary.overall %}2px{% else %}0{% endif %};background:linear-gradient(90deg,var(--primary-600),var(--success-600));border-radius:99px;"></div>
+    </div>
+    <strong style="font-size:1.1rem;">{{ summary.overall }}%</strong>
+    {% if summary.is_submitted %}
+    <span class="crm-badge crm-badge--green">Submitted</span>
+    {% else %}
+    <span class="crm-badge crm-badge--gray">Draft</span>
+    {% endif %}
+  </div>

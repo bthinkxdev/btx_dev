@@ -1,0 +1,18 @@
+<div id="project-audit-trail" class="panel-block">
+  <div class="panel-h">Internal audit (recent)</div>
+  {% if entries %}
+  <ul style="list-style:none;padding:0;margin:0;font-size:12px;color:var(--neutral-700);">
+    {% for e in entries %}
+    <li style="padding:6px 0;border-bottom:1px solid var(--border);">
+      <strong>{{ e.get_category_display }}</strong>
+      · <code>{{ e.action }}</code>
+      · {{ e.actor_label|default:"system" }}
+      · {{ e.created_at|date:"M j, H:i" }}
+      {% if e.object_repr %}<br><span style="color:var(--text-muted);">{{ e.object_repr|truncatechars:80 }}</span>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p style="font-size:13px;color:var(--text-muted);">No audit entries for this project yet.</p>
+  {% endif %}
+</div>

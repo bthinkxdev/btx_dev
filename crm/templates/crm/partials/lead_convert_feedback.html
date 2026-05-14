@@ -1,0 +1,11 @@
+{% if error %}
+<div class="crm-flash crm-flash--err" style="margin-bottom:10px;">{{ error }}</div>
+{% endif %}
+{% if form.non_field_errors %}
+<div class="crm-flash crm-flash--err" style="margin-bottom:10px;">{{ form.non_field_errors }}</div>
+{% endif %}
+{% for field in form %}
+  {% if field.errors %}
+  <p class="text-danger" style="font-size:12px;margin:4px 0;">{{ field.label }}: {{ field.errors.0 }}</p>
+  {% endif %}
+{% endfor %}

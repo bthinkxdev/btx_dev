@@ -1,0 +1,28 @@
+<tr id="step-row-{{ step.pk }}">
+  <td style="font-size:12px;color:var(--text-muted);">{{ step.domain }}</td>
+  <td style="font-size:13px;">{{ step.step_key }}</td>
+  <td>
+    <span class="crm-badge {% if step.status == 'completed' %}crm-badge--green{% elif step.status == 'blocked' or step.status == 'failed' %}crm-badge--red{% elif step.status == 'in_progress' %}crm-badge--orange{% else %}crm-badge--gray{% endif %}">{{ step.get_status_display }}</span>
+  </td>
+  {% if can_manage_provisioning %}
+  <td colspan="2">
+    <form method="post" action="{% url 'crm:project_provisioning_step' project.pk %}"
+          hx-post="{% url 'crm:project_provisioning_step' project.pk %}"
+          hx-target="#step-row-{{ step.pk }}"
+          hx-swap="outerHTML"
+          style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;">
+      {% csrf_token %}
+      <input type="hidden" name="step_key" value="{{ step.step_key }}">
+      <select name="status" class="btn btn-outline btn-sm" style="padding:6px 10px;">
+        {% for val, label in provisioning_status_choices %}
+        <option value="{{ val }}" {% if step.status == val %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <textarea name="notes" rows="1" placeholder="Notes" style="flex:1;min-width:140px;font-size:12px;padding:6px 8px;border:1px solid var(--border);border-radius:8px;">{{ step.notes }}</textarea>
+      <button type="submit" class="btn btn-primary btn-sm">Update</button>
+    </form>
+  </td>
+  {% else %}
+  <td colspan="2" style="font-size:12px;color:var(--text-muted);white-space:pre-wrap;">{{ step.notes|default:"—" }}</td>
+  {% endif %}
+</tr>

@@ -1,0 +1,26 @@
+  <div class="panel-h" style="margin-bottom:8px;">Scope assessment</div>
+  {% if cr.scope_verdict %}
+  <p style="font-size:13px;margin-bottom:8px;">Verdict: <strong>{{ cr.scope_verdict }}</strong></p>
+  {% endif %}
+  {% if in_scope_features %}
+  <p style="font-size:12px;color:var(--success-600);font-weight:600;">In package scope</p>
+  <ul style="margin:4px 0 12px 18px;font-size:13px;">
+    {% for f in in_scope_features %}<li>{{ f }}</li>{% endfor %}
+  </ul>
+  {% endif %}
+  {% if out_of_scope_features %}
+  <p style="font-size:12px;color:var(--danger-600);font-weight:600;">Out of package scope</p>
+  <ul style="margin:4px 0 12px 18px;font-size:13px;">
+    {% for f in out_of_scope_features %}<li>{{ f }}</li>{% endfor %}
+  </ul>
+  {% endif %}
+  {% if scope_summary.features %}
+  <details style="font-size:12px;color:var(--text-muted);">
+    <summary>Package feature matrix</summary>
+    <ul style="margin:8px 0 0 16px;">
+      {% for feat in scope_summary.features %}
+      <li>{{ feat.label }}: {% if feat.included %}included{% else %}not included{% endif %}</li>
+      {% endfor %}
+    </ul>
+  </details>
+  {% endif %}

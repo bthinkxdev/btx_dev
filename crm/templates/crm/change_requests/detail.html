@@ -1,0 +1,94 @@
+{% extends "crm/base.html" %}
+{% block title %}Change request · {{ cr.title|truncatechars:40 }}{% endblock %}
+{% block page_title %}Change request{% endblock %}
+
+{% block content %}
+<div style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">
+  <a href="{% url 'crm:change_requests_list' %}">Change requests</a>
+  <span>/</span>
+  <a href="{% url 'crm:project_detail' cr.project.pk %}">{{ cr.project.client.business_name }}</a>
+</div>
+
+<div class="page-header">
+  <div>
+    <h1>{{ cr.title }}</h1>
+    <p>{{ cr.project }} · {{ cr.get_request_type_display }} · created {{ cr.created_at|date:"M j, Y H:i" }}</p>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+  <h2 class="card-title" style="margin-bottom:8px;">Status &amp; actions</h2>
+  <div id="cr-status-wrap">
+    {% include "crm/change_requests/partials/cr_status_inner.html" %}
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+  <h2 class="card-title" style="margin-bottom:8px;">Description</h2>
+  <p style="white-space:pre-wrap;font-size:14px;">{{ cr.description }}</p>
+  {% if cr.submitted_via_portal %}
+  <p style="font-size:12px;color:var(--text-muted);margin-top:8px;">Submitted via client portal.</p>
+  {% elif cr.submitted_by_staff %}
+  <p style="font-size:12px;color:var(--text-muted);margin-top:8px;">Submitted by staff: {{ cr.submitted_by_staff.get_username }}.</p>
+  {% endif %}
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+  <h2 class="card-title" style="margin-bottom:8px;">Triage</h2>
+  <form method="post"
+        action="{% url 'crm:change_request_triage' cr.pk %}"
+        hx-post="{% url 'crm:change_request_triage' cr.pk %}"
+        hx-swap="none">
+    {% csrf_token %}
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;">
+      {{ triage_form.requested_features }}
+    </div>
+    <button type="submit" class="btn btn-primary btn-sm" style="margin-top:12px;">Run triage</button>
+  </form>
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+  <h2 class="card-title" style="margin-bottom:8px;">Quote (partial / out of scope)</h2>
+  <form method="post"
+        action="{% url 'crm:change_request_quote' cr.pk %}"
+        hx-post="{% url 'crm:change_request_quote' cr.pk %}"
+        hx-target="#cr-status-wrap"
+        hx-swap="outerHTML">
+    {% csrf_token %}
+    <div class="form-row">{{ quote_form.quoted_amount.label_tag }}{{ quote_form.quoted_amount }}</div>
+    <div class="form-row">{{ quote_form.quote_notes.label_tag }}{{ quote_form.quote_notes }}</div>
+    <button type="submit" class="btn btn-primary btn-sm">Save quote</button>
+  </form>
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+  <h2 class="card-title" style="margin-bottom:8px;">Scope</h2>
+  <div id="cr-scope-wrap">
+    {% include "crm/change_requests/partials/cr_scope_inner.html" %}
+  </div>
+</div>
+
+{% if cr.quoted_amount %}
+<div class="card" style="margin-bottom:16px;">
+  <h2 class="card-title" style="margin-bottom:8px;">Quote</h2>
+  <p><strong>Amount:</strong> {{ cr.quoted_amount }}</p>
+  <p style="white-space:pre-wrap;font-size:14px;">{{ cr.quote_notes }}</p>
+</div>
+{% endif %}
+
+<div class="card">
+  <h2 class="card-title" style="margin-bottom:8px;">Timeline (audit)</h2>
+  <ul style="list-style:none;padding:0;margin:0;font-size:13px;">
+    {% for ev in timeline %}
+    <li style="padding:8px 0;border-bottom:1px solid var(--border);">
+      <strong>{{ ev.created_at|date:"Y-m-d H:i" }}</strong>
+      · {{ ev.actor_label|default:"—" }}
+      · <code>{{ ev.action }}</code>
+      {% if ev.after_state %}<pre style="font-size:11px;margin-top:4px;background:var(--neutral-50);padding:6px;border-radius:6px;overflow:auto;">{{ ev.after_state }}</pre>{% endif %}
+    </li>
+    {% empty %}
+    <li>No audit events yet.</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}

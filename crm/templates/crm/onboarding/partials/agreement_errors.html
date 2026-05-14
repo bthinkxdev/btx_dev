@@ -1,0 +1,24 @@
+<div id="onboarding-agreement-wrap" class="ob-card" style="margin-top:18px;">
+  <h2>Terms &amp; final submission</h2>
+  <p class="ob-err" style="margin:0 0 10px;">Please correct the following.</p>
+  {% if agreement_form.non_field_errors %}
+  <ul class="errorlist">{% for e in agreement_form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>
+  {% endif %}
+  <form method="post" action="{% url 'crm:onboarding_final_submit' onboarding_token %}"
+        hx-post="{% url 'crm:onboarding_final_submit' onboarding_token %}"
+        hx-target="#onboarding-agreement-wrap"
+        hx-swap="outerHTML">
+    {% csrf_token %}
+    <div class="ob-check">
+      {{ agreement_form.terms_accepted }}
+      <label for="{{ agreement_form.terms_accepted.id_for_label }}" style="margin:0;text-transform:none;font-size:0.88rem;font-weight:500;">
+        I agree to BThinkX onboarding terms.
+      </label>
+    </div>
+    {{ agreement_form.terms_version }}
+    {% if agreement_form.terms_accepted.errors %}
+    <ul class="errorlist">{% for e in agreement_form.terms_accepted.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+    {% endif %}
+    <button type="submit" class="ob-btn" style="margin-top:12px;">Submit again</button>
+  </form>
+</div>

@@ -1,0 +1,37 @@
+<div id="section-status-{{ sec.name }}" style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--border);">
+  <div style="min-width:160px;font-weight:700;font-size:14px;">{{ sec.label }}</div>
+  <div style="min-width:90px;font-size:12px;color:var(--text-muted);">{{ sec.completion }}% filled</div>
+  <div>
+    {% for val, label in section_status_choices %}
+      {% if val == sec.status %}
+      <span class="crm-badge {% if val == 'verified' %}crm-badge--green{% elif val == 'rejected' %}crm-badge--red{% elif val == 'submitted' %}crm-badge--blue{% elif val == 'partial' %}crm-badge--orange{% else %}crm-badge--gray{% endif %}">{{ sec.status_label }}</span>
+      {% endif %}
+    {% endfor %}
+  </div>
+  {% if error %}
+  <span class="text-danger" style="font-size:12px;">{{ error }}</span>
+  {% endif %}
+  <span id="ob-hx-ind-{{ sec.name }}" class="crm-inline-hx-ind" aria-live="polite">Updating…</span>
+  <form method="post" action="{% url 'crm:onboarding_section_verify' project.pk %}"
+        hx-post="{% url 'crm:onboarding_section_verify' project.pk %}"
+        hx-target="#section-status-{{ sec.name }}"
+        hx-swap="outerHTML"
+        hx-indicator="#ob-hx-ind-{{ sec.name }}"
+        style="display:inline;margin:0;">
+    {% csrf_token %}
+    <input type="hidden" name="section" value="{{ sec.name }}">
+    <input type="hidden" name="new_status" value="verified">
+    <button type="submit" class="btn btn-sm btn-success">Verify</button>
+  </form>
+  <form method="post" action="{% url 'crm:onboarding_section_verify' project.pk %}"
+        hx-post="{% url 'crm:onboarding_section_verify' project.pk %}"
+        hx-target="#section-status-{{ sec.name }}"
+        hx-swap="outerHTML"
+        hx-indicator="#ob-hx-ind-{{ sec.name }}"
+        style="display:inline;margin:0;">
+    {% csrf_token %}
+    <input type="hidden" name="section" value="{{ sec.name }}">
+    <input type="hidden" name="new_status" value="rejected">
+    <button type="submit" class="btn btn-sm btn-danger">Reject</button>
+  </form>
+</div>

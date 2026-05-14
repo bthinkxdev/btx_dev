@@ -1,0 +1,11 @@
+{% if ok %}
+<div class="ob-card" style="background:#ecfdf5;border-color:#a7f3d0;">
+  <p style="font-weight:600;color:#047857;">Request received</p>
+  <p style="font-size:0.9rem;color:#065f46;margin-top:6px;">Our team will review your change request shortly.</p>
+</div>
+{% else %}
+<div class="ob-card" style="background:#fef2f2;border-color:#fecaca;">
+  <p style="font-weight:600;color:#b91c1c;">Could not submit</p>
+  <p style="font-size:0.9rem;margin-top:6px;">{{ error }}</p>
+</div>
+{% endif %}

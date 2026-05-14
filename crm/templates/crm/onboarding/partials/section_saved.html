@@ -1,0 +1,24 @@
+{% if ok %}
+<p class="ob-ok" style="margin:0 0 6px;">Saved.</p>
+<script>
+(function() {
+  if (typeof window.obMarkSectionSaved === 'function') {
+    window.obMarkSectionSaved('{{ section|escapejs }}');
+  }
+})();
+</script>
+{% else %}
+<p class="ob-err" style="margin:0 0 6px;">Please fix the errors below.</p>
+{% if errors %}
+{{ errors }}
+{% endif %}
+{% endif %}
+<div id="onboarding-progress-card" hx-swap-oob="true" class="ob-card" style="margin-bottom:16px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+    <strong style="font-size:0.9rem;">Overall progress</strong>
+    <span class="ob-progress-label"><span id="onboarding-pct-label">{{ overall_pct }}</span>% complete</span>
+  </div>
+  <div class="ob-progress" id="onboarding-progress-host">
+    <i style="width:{{ overall_pct }}%;min-width:{% if overall_pct %}2px{% else %}0{% endif %};"></i>
+  </div>
+</div>

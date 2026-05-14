@@ -1,0 +1,49 @@
+{% extends "crm/base.html" %}
+{% block title %}Renewal · {{ renewal.title }}{% endblock %}
+{% block page_title %}Renewal detail{% endblock %}
+
+{% block content %}
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;font-size:13px;color:var(--text-muted);">
+  <a href="{% url 'crm:renewals_dashboard' %}"
+     hx-get="{% url 'crm:renewals_dashboard' %}"
+     hx-target="#crm-main-content" hx-select="#crm-main-content" hx-swap="outerHTML" hx-push-url="true">Renewals</a>
+  <span>/</span>
+  <span style="color:var(--neutral-800);font-weight:600;">{{ renewal.title }}</span>
+</div>
+
+<div class="panel-block">
+  <div class="panel-h">Renewal</div>
+  <table class="mini-table">
+    <tr><td style="width:36%;color:var(--text-muted);">Client</td><td>{{ renewal.project.client.business_name }}</td></tr>
+    <tr><td style="color:var(--text-muted);">Title</td><td>{{ renewal.title }}</td></tr>
+    <tr><td style="color:var(--text-muted);">Type</td><td>{{ renewal.get_subject_type_display }}</td></tr>
+    <tr><td style="color:var(--text-muted);">Expires</td><td>{{ renewal.expires_at|date:"M j, Y H:i" }}</td></tr>
+    <tr><td style="color:var(--text-muted);">Status</td><td>{{ renewal.get_status_display }}</td></tr>
+    {% if renewal.renewal_url %}<tr><td style="color:var(--text-muted);">Renewal URL</td><td><a href="{{ renewal.renewal_url }}" target="_blank" rel="noopener noreferrer">{{ renewal.renewal_url }}</a></td></tr>{% endif %}
+    {% if renewal.notes %}<tr><td style="color:var(--text-muted);">Notes</td><td style="white-space:pre-wrap;">{{ renewal.notes }}</td></tr>{% endif %}
+  </table>
+</div>
+
+{% if can_manual_reminder %}
+<div class="panel-block">
+  <div class="panel-h">Manual reminder (admin)</div>
+  <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Deletes any existing log for that type, then sends one email. Use only when you intentionally need a resend.</p>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;">
+    {% for val, label in reminder_types %}
+    <form method="post" action="{% url 'crm:renewal_send_reminder_manual' renewal.pk %}"
+          hx-post="{% url 'crm:renewal_send_reminder_manual' renewal.pk %}"
+          hx-target="#renewal-reminder-log"
+          hx-swap="innerHTML">
+      {% csrf_token %}
+      <input type="hidden" name="reminder_type" value="{{ val }}">
+      <button type="submit" class="btn btn-outline btn-sm">{{ label }}</button>
+    </form>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<div id="renewal-reminder-log">
+  {% include "crm/renewals/partials/reminder_log.html" %}
+</div>
+{% endblock %}

@@ -1,0 +1,122 @@
+{% extends "crm/base.html" %}
+{% block title %}{{ project.client.business_name }} — Project{% endblock %}
+{% block page_title %}Project{% endblock %}
+
+{% block content %}
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;font-size:13px;color:var(--text-muted);">
+  <a href="{% url 'crm:projects' %}"
+     hx-get="{% url 'crm:projects' %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true"
+     style="color:var(--text-muted);">Projects</a>
+  <span>/</span>
+  <span style="color:var(--neutral-800);font-weight:600;">{{ project.client.business_name }}</span>
+</div>
+
+<div class="page-header">
+  <div>
+    <h1>{{ project.client.business_name }}</h1>
+    <p>{% if crm_can_view_financial_data %}{% if project.package %}{{ project.package.name }}{% else %}No package{% endif %} · Deal {{ project.deal_value }} · Balance due {{ project.balance_due }}{% else %}Status: <strong>{{ project.get_status_display }}</strong>{% endif %}</p>
+  </div>
+</div>
+
+<div class="detail-grid">
+  <div class="panel-block">
+    <div class="panel-h">Client</div>
+    <table class="mini-table">
+      <tr><td style="width:38%;color:var(--text-muted);">Business</td><td>{{ client.business_name }}</td></tr>
+      <tr><td style="color:var(--text-muted);">Contact</td><td>{{ client.contact_person }}</td></tr>
+      <tr><td style="color:var(--text-muted);">Phone</td><td>{{ client.phone }}</td></tr>
+      <tr><td style="color:var(--text-muted);">Email</td><td>{{ client.email|default:"—" }}</td></tr>
+      <tr><td style="color:var(--text-muted);">GST</td><td>{{ client.gst_number|default:"—" }}</td></tr>
+      <tr><td style="color:var(--text-muted);">PAN</td><td>{{ client.pan_number|default:"—" }}</td></tr>
+    </table>
+    {% if client.address %}
+    <p style="font-size:13px;margin-top:10px;color:var(--neutral-700);white-space:pre-wrap;">{{ client.address }}</p>
+    {% endif %}
+  </div>
+
+  <div class="panel-block">
+    <div class="panel-h">Project</div>
+    <table class="mini-table">
+      {% if crm_can_view_financial_data %}
+      <tr><td style="width:38%;color:var(--text-muted);">Deal value</td><td>{{ project.deal_value }}</td></tr>
+      <tr><td style="color:var(--text-muted);">Advance</td><td>{{ project.advance_received }}</td></tr>
+      <tr><td style="color:var(--text-muted);">Balance due</td><td>{{ project.balance_due }}</td></tr>
+      {% endif %}
+      <tr><td style="color:var(--text-muted);">Assigned</td><td>{% if project.assigned_to %}{{ project.assigned_to.get_username }}{% else %}—{% endif %}</td></tr>
+      <tr><td style="color:var(--text-muted);">Created</td><td>{{ project.created_at|date:"M j, Y H:i" }}</td></tr>
+    </table>
+    {% if project.notes %}
+    <p style="font-size:13px;margin-top:10px;color:var(--neutral-700);white-space:pre-wrap;">{{ project.notes }}</p>
+    {% endif %}
+    {% if lead and crm_can_access_sales_pipeline %}
+    <p style="margin-top:14px;font-size:13px;">
+      <span class="text-muted">Originating lead:</span>
+      <a href="{% url 'crm:lead_detail' lead.pk %}"
+         hx-get="{% url 'crm:lead_detail' lead.pk %}"
+         hx-target="#crm-main-content"
+         hx-select="#crm-main-content"
+         hx-swap="outerHTML"
+         hx-push-url="true"
+         style="font-weight:600;">{{ lead.name }}</a>
+    </p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="panel-block">
+  <div class="panel-h">Status</div>
+  {% include "crm/projects/partials/status_badge.html" %}
+</div>
+
+<div class="panel-block">
+  <div class="panel-h">Operational readiness</div>
+  {% if readiness %}
+  <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">
+    Readiness: <strong>{{ readiness.readiness_percent }}%</strong>
+    {% if readiness.operationally_ready %}
+    <span class="crm-badge crm-badge--green" style="margin-left:8px;">Ready</span>
+    {% endif %}
+  </p>
+  <ul style="font-size:12px;color:var(--neutral-700);list-style:none;padding:0;margin:0 0 12px 0;display:grid;gap:4px;">
+    <li>Portal active: {% if readiness.portal_active %}✓{% else %}—{% endif %}</li>
+  </ul>
+  <p style="margin-bottom:10px;">
+    <a href="{% url 'crm:project_operations' project.pk %}"
+       class="btn btn-outline btn-sm"
+       hx-get="{% url 'crm:project_operations' project.pk %}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">Open operations &amp; vault</a>
+  </p>
+  {% endif %}
+</div>
+
+{% if onboarding_submission %}
+<div class="panel-block">
+  <div class="panel-h">Client onboarding</div>
+  <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">
+    Overall completion: <strong>{{ onboarding_pct }}%</strong>
+  </p>
+  <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+    <a href="{% url 'crm:project_onboarding_detail' project.pk %}"
+       class="btn btn-outline btn-sm"
+       hx-get="{% url 'crm:project_onboarding_detail' project.pk %}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">Open onboarding review</a>
+    <label style="margin:0;font-size:12px;color:var(--text-muted);">Public link (share with client)</label>
+  </div>
+  <input type="text" readonly
+         value="{{ onboarding_public_url }}"
+         style="width:100%;max-width:560px;margin-top:8px;font-size:12px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--neutral-50);"
+         aria-label="Public onboarding URL">
+  <p style="font-size:11px;color:var(--text-light);margin-top:6px;">Select the link above and copy it to share with your client. Do not share your CRM login.</p>
+</div>
+{% endif %}
+{% endblock %}

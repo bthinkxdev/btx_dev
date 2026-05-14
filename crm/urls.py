@@ -16,7 +16,103 @@ urlpatterns = [
         auth_views.LogoutView.as_view(),
         name='logout',
     ),
+    path('onboarding/<uuid:token>/', views.onboarding_form, name='onboarding_form'),
+    path(
+        'onboarding/<uuid:token>/section/',
+        views.onboarding_section_save,
+        name='onboarding_section_save',
+    ),
+    path(
+        'onboarding/<uuid:token>/submit/',
+        views.onboarding_final_submit,
+        name='onboarding_final_submit',
+    ),
+    path('portal/<uuid:token>/', views.client_portal, name='client_portal'),
+    path(
+        'portal/<uuid:token>/change-request/',
+        views.portal_submit_change_request,
+        name='portal_submit_change_request',
+    ),
+    path(
+        'portal/<uuid:token>/change-requests/',
+        views.portal_change_requests,
+        name='portal_change_requests',
+    ),
     path('', views.dashboard, name='dashboard'),
+    path('operations/', views.operations_dashboard, name='operations_dashboard'),
+    path('projects/', views.projects_list, name='projects'),
+    path('projects/create/', views.project_create, name='project_create'),
+    path('projects/<int:pk>/', views.project_detail, name='project_detail'),
+    path(
+        'projects/<int:pk>/operations/',
+        views.project_operations,
+        name='project_operations',
+    ),
+    path(
+        'projects/<int:pk>/operations/provisioning/',
+        views.project_provisioning_step_update,
+        name='project_provisioning_step',
+    ),
+    path(
+        'projects/<int:pk>/operations/credentials/',
+        views.project_credential_save,
+        name='project_credential_save',
+    ),
+    path(
+        'projects/<int:pk>/operations/credentials/<int:cred_id>/reveal/',
+        views.credential_reveal,
+        name='credential_reveal',
+    ),
+    path(
+        'projects/<int:pk>/operations/credentials/<int:cred_id>/copy-log/',
+        views.credential_copy_logged,
+        name='credential_copy_logged',
+    ),
+    path(
+        'projects/<int:pk>/operations/handover/',
+        views.project_handover_save,
+        name='project_handover_save',
+    ),
+    path(
+        'projects/<int:pk>/operations/renewals/',
+        views.project_renewal_add,
+        name='project_renewal_add',
+    ),
+    path(
+        'projects/<int:pk>/portal/activate/',
+        views.portal_activate,
+        name='portal_activate',
+    ),
+    path(
+        'projects/<int:pk>/portal/deactivate/',
+        views.portal_deactivate,
+        name='portal_deactivate',
+    ),
+    path(
+        'projects/<int:pk>/status/',
+        views.project_status_update,
+        name='project_status_update',
+    ),
+    path(
+        'projects/<int:pk>/onboarding/',
+        views.project_onboarding_detail,
+        name='project_onboarding_detail',
+    ),
+    path(
+        'projects/<int:pk>/onboarding/section/verify/',
+        views.onboarding_section_verify,
+        name='onboarding_section_verify',
+    ),
+    path(
+        'projects/<int:pk>/onboarding/notes/',
+        views.onboarding_internal_notes_save,
+        name='onboarding_internal_notes_save',
+    ),
+    path(
+        'projects/<int:pk>/onboarding/client-notes/',
+        views.onboarding_client_notes_save,
+        name='onboarding_client_notes_save',
+    ),
     path('leads/', views.leads_list, name='leads'),
     path('leads/more/', views.leads_more_json, name='leads_more'),
     path('leads/search/', views.lead_search, name='lead_search'),
@@ -26,6 +122,11 @@ urlpatterns = [
     path('leads/<int:pk>/patch/', views.lead_patch, name='lead_patch'),
     path('leads/<int:pk>/quick-fu/', views.lead_quick_followup, name='lead_quick_fu'),
     path('leads/<int:pk>/quick-note/', views.lead_quick_note, name='lead_quick_note'),
+    path(
+        'leads/<int:lead_pk>/convert/',
+        views.lead_convert_to_project,
+        name='lead_convert',
+    ),
     path('leads/<int:pk>/', views.lead_detail, name='lead_detail'),
     path('leads/<int:pk>/notes/', views.lead_notes_save, name='lead_notes_save'),
     path(
@@ -66,6 +167,7 @@ urlpatterns = [
     path('packages/create/', views.package_create, name='package_create'),
     path('packages/<int:pk>/edit/', views.package_update, name='package_update'),
     path('packages/<int:pk>/delete/', views.package_delete, name='package_delete'),
+    path('packages/<int:pk>/scope/', views.package_scope_edit, name='package_scope_edit'),
     path('performance/', views.performance, name='performance'),
     path(
         'performance/report-card/',
@@ -81,4 +183,54 @@ urlpatterns = [
     path('achievements/create/', views.achievement_create, name='achievement_create'),
     path('achievements/<int:pk>/edit/', views.achievement_update, name='achievement_update'),
     path('achievements/<int:pk>/delete/', views.achievement_delete, name='achievement_delete'),
+    path('audit/', views.audit_trail, name='audit_trail'),
+    path('projects/<int:pk>/audit/', views.project_audit_trail, name='project_audit_trail'),
+    path(
+        'projects/<int:pk>/change-request/staff/',
+        views.change_request_staff_create,
+        name='change_request_staff_create',
+    ),
+    path('change-requests/', views.change_requests_list, name='change_requests_list'),
+    path(
+        'change-requests/<int:pk>/',
+        views.change_request_detail,
+        name='change_request_detail',
+    ),
+    path(
+        'change-requests/<int:pk>/triage/',
+        views.change_request_triage,
+        name='change_request_triage',
+    ),
+    path(
+        'change-requests/<int:pk>/quote/',
+        views.change_request_quote,
+        name='change_request_quote',
+    ),
+    path(
+        'change-requests/<int:pk>/approve/',
+        views.change_request_approve,
+        name='change_request_approve',
+    ),
+    path(
+        'change-requests/<int:pk>/reject/',
+        views.change_request_reject,
+        name='change_request_reject',
+    ),
+    path(
+        'change-requests/<int:pk>/complete/',
+        views.change_request_complete,
+        name='change_request_complete',
+    ),
+    path(
+        'change-requests/<int:pk>/start/',
+        views.change_request_start,
+        name='change_request_start',
+    ),
+    path('renewals/', views.renewals_dashboard, name='renewals_dashboard'),
+    path('renewals/<int:pk>/', views.renewal_detail, name='renewal_detail'),
+    path(
+        'renewals/<int:pk>/send-reminder/',
+        views.renewal_send_reminder_manual,
+        name='renewal_send_reminder_manual',
+    ),
 ]

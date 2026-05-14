@@ -1,8 +1,10 @@
 {% extends "crm/base.html" %}
+{% load crm_extras %}
 {% block title %}Dashboard{% endblock %}
 {% block page_title %}Dashboard{% endblock %}
 
 {% block content %}
+{% if show_sales_dashboard %}
 <!-- Page header -->
 <div class="page-header">
   <div>
@@ -211,9 +213,48 @@
     </div>
   </div>
 </div>
+{% else %}
+<div class="page-header">
+  <div>
+    <h1>Good day, {{ request.user.first_name|default:request.user.username }} 👋</h1>
+    <p>Developer workspace — use <strong>Projects</strong> and <strong>Operations</strong>. Leads, pipeline, packages, and financial summaries are not shown for your role.</p>
+  </div>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:4px;">
+  <a href="{% url 'crm:projects' %}" class="btn btn-primary"
+     hx-get="{% url 'crm:projects' %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">Open projects</a>
+  <a href="{% url 'crm:operations_dashboard' %}" class="btn btn-outline"
+     hx-get="{% url 'crm:operations_dashboard' %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">Operations hub</a>
+  {% if request.user|crm_can_change_requests %}
+  <a href="{% url 'crm:change_requests_list' %}" class="btn btn-outline"
+     hx-get="{% url 'crm:change_requests_list' %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">Change requests</a>
+  {% endif %}
+  {% if request.user|crm_can_audit %}
+  <a href="{% url 'crm:audit_trail' %}" class="btn btn-outline"
+     hx-get="{% url 'crm:audit_trail' %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">Audit trail</a>
+  {% endif %}
+</div>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
+{% if show_sales_dashboard %}
 <script>
 (function(){
   var chartDefaults = {
@@ -294,4 +335,5 @@
   }
 })();
 </script>
+{% endif %}
 {% endblock %}

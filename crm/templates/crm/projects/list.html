@@ -1,0 +1,85 @@
+{% extends "crm/base.html" %}
+{% block title %}Projects{% endblock %}
+{% block page_title %}Projects{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Projects</h1>
+    <p>Client projects, onboarding status, and delivery pipeline.</p>
+  </div>
+  {% if crm_can_access_sales_pipeline %}
+  <a href="{% url 'crm:project_create' %}"
+     class="btn btn-primary"
+     hx-get="{% url 'crm:project_create' %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">New project</a>
+  {% endif %}
+</div>
+
+<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;align-items:center;">
+  {% for pill in status_pills %}
+  <a href="{{ pill.url }}"
+     class="pill {% if current_status == pill.val %}on{% endif %}"
+     hx-get="{{ pill.url }}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">{{ pill.label }}</a>
+  {% endfor %}
+</div>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Client</th>
+        {% if crm_can_view_financial_data %}<th>Package</th>{% endif %}
+        {% if crm_can_view_financial_data %}<th>Deal</th>{% endif %}
+        {% if crm_can_view_financial_data %}<th>Advance</th>{% endif %}
+        {% if crm_can_view_financial_data %}<th>Balance</th>{% endif %}
+        <th>Status</th>
+        <th>Assigned</th>
+        <th>Created</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in projects %}
+      <tr>
+        <td>
+          <a href="{% url 'crm:project_detail' p.pk %}"
+             hx-get="{% url 'crm:project_detail' p.pk %}"
+             hx-target="#crm-main-content"
+             hx-select="#crm-main-content"
+             hx-swap="outerHTML"
+             hx-push-url="true"
+             style="font-weight:700;color:var(--neutral-900);">{{ p.client.business_name }}</a>
+        </td>
+        {% if crm_can_view_financial_data %}<td>{{ p.package|default:"—" }}</td>{% endif %}
+        {% if crm_can_view_financial_data %}<td>{{ p.deal_value }}</td>{% endif %}
+        {% if crm_can_view_financial_data %}<td>{{ p.advance_received }}</td>{% endif %}
+        {% if crm_can_view_financial_data %}<td>{{ p.balance_due }}</td>{% endif %}
+        <td>
+          {% with s=p.status %}
+          <span class="crm-badge {% if s == 'completed' %}crm-badge--green{% elif s == 'suspended' %}crm-badge--red{% elif s == 'in_development' %}crm-badge--blue{% elif s == 'review' %}crm-badge--orange{% else %}crm-badge--gray{% endif %}">{{ p.get_status_display }}</span>
+          {% endwith %}
+        </td>
+        <td>{% if p.assigned_to %}{{ p.assigned_to.get_username }}{% else %}—{% endif %}</td>
+        <td style="color:var(--text-muted);font-size:12px;">{{ p.created_at|date:"M j, Y" }}</td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="{% if crm_can_view_financial_data %}8{% else %}4{% endif %}">
+          <div class="empty-state" style="border:none;margin:0;">
+            <strong>No projects yet</strong>
+            Create one from the button above or convert a lead from its detail page.
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

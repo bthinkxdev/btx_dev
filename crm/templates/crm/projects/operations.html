@@ -1,0 +1,80 @@
+{% extends "crm/base.html" %}
+{% load crm_extras %}
+{% block title %}Operations · {{ project.client.business_name }}{% endblock %}
+{% block page_title %}Project operations{% endblock %}
+
+{% block content %}
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;font-size:13px;color:var(--text-muted);">
+  <a href="{% url 'crm:operations_dashboard' %}" hx-get="{% url 'crm:operations_dashboard' %}" hx-target="#crm-main-content" hx-select="#crm-main-content" hx-swap="outerHTML" hx-push-url="true">Operations</a>
+  <span>/</span>
+  <a href="{% url 'crm:project_detail' project.pk %}" hx-get="{% url 'crm:project_detail' project.pk %}" hx-target="#crm-main-content" hx-select="#crm-main-content" hx-swap="outerHTML" hx-push-url="true">{{ project.client.business_name }}</a>
+  <span>/</span>
+  <span style="color:var(--neutral-800);font-weight:600;">Provisioning &amp; vault</span>
+</div>
+
+<div class="page-header">
+  <div>
+    <h1>{{ project.client.business_name }}</h1>
+    <p>Operational readiness, provisioning checklist, encrypted credentials, handover, and renewals.</p>
+  </div>
+</div>
+
+<div class="panel-block">
+  <div class="panel-h">Operational readiness</div>
+  <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:10px;">
+    <div style="flex:1;min-width:200px;max-width:420px;height:12px;background:var(--neutral-200);border-radius:99px;overflow:hidden;">
+      <div style="height:100%;width:{{ readiness.readiness_percent }}%;min-width:{% if readiness.readiness_percent %}2px{% else %}0{% endif %};background:linear-gradient(90deg,var(--primary-600),var(--success-600));border-radius:99px;"></div>
+    </div>
+    <strong>{{ readiness.readiness_percent }}%</strong>
+    {% if readiness.operationally_ready %}
+    <span class="crm-badge crm-badge--green">Ready</span>
+    {% else %}
+    <span class="crm-badge crm-badge--orange">In progress</span>
+    {% endif %}
+  </div>
+  <ul style="font-size:13px;color:var(--neutral-700);list-style:none;padding:0;margin:0;display:grid;gap:6px;">
+    <li>Onboarding submitted: {% if readiness.onboarding_complete %}✓{% else %}—{% endif %}</li>
+    <li>Provisioning complete: {% if readiness.provisioning_complete %}✓{% else %}—{% endif %}</li>
+    <li>SHARED portal logins stored: {% if readiness.credentials_ready %}✓{% else %}—{% endif %}</li>
+    <li>Handover completed: {% if readiness.handover_complete %}✓{% else %}—{% endif %}</li>
+    <li>Tenant portal active: {% if readiness.portal_active %}✓{% else %}—{% endif %}</li>
+  </ul>
+</div>
+
+{% include "crm/projects/partials/portal_status.html" %}
+
+{% include "crm/projects/partials/provisioning_block.html" %}
+
+{% include "crm/projects/partials/credentials_block.html" %}
+
+{% if request.user|crm_can_access_renewals %}
+{% include "crm/projects/partials/renewals_block.html" %}
+{% endif %}
+
+{% include "crm/projects/partials/handover_block.html" %}
+
+<div id="project-audit-trail"
+     hx-get="{% url 'crm:project_audit_trail' project.pk %}"
+     hx-trigger="load"
+     hx-swap="outerHTML"></div>
+
+{% if request.user|crm_can_change_requests %}
+{% include "crm/projects/partials/change_request_staff_block.html" %}
+{% endif %}
+
+{% if audit_logs %}
+<div class="panel-block">
+  <div class="panel-h">Credential audit (recent)</div>
+  <ul style="list-style:none;padding:0;margin:0;font-size:12px;color:var(--neutral-700);">
+    {% for log in audit_logs %}
+    <li style="padding:6px 0;border-bottom:1px solid var(--border);">
+      <strong>{{ log.action }}</strong> · {{ log.credential.label }}
+      {% if log.user %} · {{ log.user.get_username }}{% endif %}
+      · {{ log.timestamp|date:"M j, Y H:i" }}
+      {% if log.ip %} · {{ log.ip }}{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+{% endblock %}

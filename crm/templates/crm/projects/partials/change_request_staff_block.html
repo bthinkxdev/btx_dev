@@ -1,0 +1,21 @@
+<div class="panel-block" id="change-request-staff-block">
+  <div class="panel-h">Change request (on behalf of client)</div>
+  {% if cr_staff_success %}
+  <p style="font-size:13px;color:var(--success-600);">Created. <a href="{% url 'crm:change_request_detail' new_cr_id %}">Open change request</a></p>
+  {% endif %}
+  <form method="post"
+        action="{% url 'crm:change_request_staff_create' project.pk %}"
+        hx-post="{% url 'crm:change_request_staff_create' project.pk %}"
+        hx-target="#change-request-staff-block"
+        hx-swap="outerHTML">
+    {% csrf_token %}
+    {% if cr_staff_error %}
+    <p style="color:var(--danger-600);font-size:13px;margin-bottom:8px;">Please correct the form.</p>
+    {% endif %}
+    <div class="form-row">{{ cr_staff_form.title.label_tag }}{{ cr_staff_form.title }}</div>
+    <div class="form-row">{{ cr_staff_form.request_type.label_tag }}{{ cr_staff_form.request_type }}</div>
+    <div class="form-row">{{ cr_staff_form.description.label_tag }}{{ cr_staff_form.description }}</div>
+    <div class="form-row">{{ cr_staff_form.assigned_to.label_tag }}{{ cr_staff_form.assigned_to }}</div>
+    <button type="submit" class="btn btn-primary btn-sm" style="margin-top:8px;">Submit</button>
+  </form>
+</div>

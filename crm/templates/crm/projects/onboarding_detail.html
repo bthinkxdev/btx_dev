@@ -1,0 +1,137 @@
+{% extends "crm/base.html" %}
+{% block title %}Onboarding · {{ project.client.business_name }}{% endblock %}
+{% block page_title %}Project onboarding{% endblock %}
+
+{% block content %}
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;font-size:13px;color:var(--text-muted);">
+  <a href="{% url 'crm:projects' %}" hx-get="{% url 'crm:projects' %}" hx-target="#crm-main-content" hx-select="#crm-main-content" hx-swap="outerHTML" hx-push-url="true">Projects</a>
+  <span>/</span>
+  <a href="{% url 'crm:project_detail' project.pk %}" hx-get="{% url 'crm:project_detail' project.pk %}" hx-target="#crm-main-content" hx-select="#crm-main-content" hx-swap="outerHTML" hx-push-url="true">{{ project.client.business_name }}</a>
+  <span>/</span>
+  <span style="color:var(--neutral-800);font-weight:600;">Onboarding</span>
+</div>
+
+<div class="page-header">
+  <div>
+    <h1>Onboarding — {{ project.client.business_name }}</h1>
+    <p>Review client submission, verify sections, and keep internal notes.</p>
+  </div>
+</div>
+
+{% include "crm/projects/partials/onboarding_overall_card.html" %}
+
+<div class="detail-grid">
+  <div style="display:flex;flex-direction:column;gap:16px;">
+    {% for sec in summary.sections %}
+    {% include "crm/projects/partials/section_status.html" %}
+    {% endfor %}
+  </div>
+  <div>
+    <div id="onboarding-notes-block">
+      {% include "crm/projects/partials/onboarding_notes.html" %}
+    </div>
+  </div>
+</div>
+
+<div class="panel-block" style="margin-top:8px;">
+  <div class="panel-h">Business information</div>
+  <table class="mini-table">
+    <tr><td class="text-muted" style="width:40%;">Business name</td><td>{{ submission.business_name|default:"—" }}</td></tr>
+    <tr><td class="text-muted">Tagline</td><td>{{ submission.tagline|default:"—" }}</td></tr>
+    <tr><td class="text-muted">Description</td><td style="white-space:pre-wrap;">{{ submission.business_description|default:"—" }}</td></tr>
+    <tr><td class="text-muted">Years in business</td><td>{{ submission.years_in_business|default:"—" }}</td></tr>
+    <tr><td class="text-muted">Industry</td><td>{{ submission.industry|default:"—" }}</td></tr>
+    <tr><td class="text-muted">Target audience</td><td style="white-space:pre-wrap;">{{ submission.target_audience|default:"—" }}</td></tr>
+    <tr><td class="text-muted">Competitors</td><td style="white-space:pre-wrap;">{{ submission.competitors|default:"—" }}</td></tr>
+    <tr><td class="text-muted">USP</td><td style="white-space:pre-wrap;">{{ submission.usp|default:"—" }}</td></tr>
+  </table>
+</div>
+
+<div class="panel-block">
+  <div class="panel-h">Contact</div>
+  <table class="mini-table">
+    <tr><td class="text-muted" style="width:40%;">Phone</td><td>{{ submission.contact_phone|default:"—" }}</td></tr>
+    <tr><td class="text-muted">WhatsApp</td><td>{{ submission.whatsapp_number|default:"—" }}</td></tr>
+    <tr><td class="text-muted">Email</td><td>{{ submission.contact_email|default:"—" }}</td></tr>
+    <tr><td class="text-muted">Office address</td><td style="white-space:pre-wrap;">{{ submission.office_address|default:"—" }}</td></tr>
+    <tr><td class="text-muted">Google Maps</td><td>{{ submission.google_maps_url|default:"—" }}</td></tr>
+    <tr><td class="text-muted">Instagram</td><td>{{ submission.instagram_url|default:"—" }}</td></tr>
+    <tr><td class="text-muted">Facebook</td><td>{{ submission.facebook_url|default:"—" }}</td></tr>
+    <tr><td class="text-muted">YouTube</td><td>{{ submission.youtube_url|default:"—" }}</td></tr>
+    <tr><td class="text-muted">Website</td><td>{{ submission.website_url|default:"—" }}</td></tr>
+  </table>
+</div>
+
+<div class="panel-block">
+  <div class="panel-h">Branding</div>
+  <table class="mini-table">
+    <tr><td class="text-muted" style="width:40%;">Colors</td><td>{{ submission.brand_colors|default:"—" }}</td></tr>
+    <tr><td class="text-muted">Fonts</td><td>{{ submission.brand_fonts|default:"—" }}</td></tr>
+    <tr><td class="text-muted">Notes</td><td style="white-space:pre-wrap;">{{ submission.brand_notes|default:"—" }}</td></tr>
+  </table>
+</div>
+
+<div class="panel-block">
+  <div class="panel-h">Website requirements</div>
+  <p style="font-size:13px;margin-bottom:8px;"><strong>References:</strong></p>
+  <p style="white-space:pre-wrap;font-size:13px;">{{ submission.reference_websites|default:"—" }}</p>
+  <p style="font-size:13px;margin:12px 0 6px;"><strong>Feature flags</strong></p>
+  <ul style="font-size:13px;margin:0;padding-left:18px;">
+    {% for k, v in submission.website_requirements.items %}
+    <li>{{ k }}: {% if v %}Yes{% else %}No{% endif %}</li>
+    {% empty %}
+    <li>—</li>
+    {% endfor %}
+  </ul>
+</div>
+
+<div class="panel-block">
+  <div class="panel-h">Content &amp; policies</div>
+  <table class="mini-table">
+    <tr><td class="text-muted" style="width:40%;">About us</td><td style="white-space:pre-wrap;">{{ submission.about_us|default:"—" }}</td></tr>
+    <tr><td class="text-muted">Privacy policy</td><td style="white-space:pre-wrap;">{{ submission.privacy_policy|default:"—" }}</td></tr>
+    <tr><td class="text-muted">Refund policy</td><td style="white-space:pre-wrap;">{{ submission.refund_policy|default:"—" }}</td></tr>
+    <tr><td class="text-muted">Shipping policy</td><td style="white-space:pre-wrap;">{{ submission.shipping_policy|default:"—" }}</td></tr>
+    <tr><td class="text-muted">Terms &amp; conditions</td><td style="white-space:pre-wrap;">{{ submission.terms_and_conditions|default:"—" }}</td></tr>
+    <tr><td class="text-muted">FAQ</td><td style="white-space:pre-wrap;">{{ submission.faq|default:"—" }}</td></tr>
+  </table>
+</div>
+
+<div class="panel-block">
+  <div class="panel-h">Documents</div>
+  <table class="mini-table">
+    <tr><td class="text-muted" style="width:40%;">Logo</td><td>{% if submission.logo_file %}<a href="{{ submission.logo_file.url }}" target="_blank" rel="noopener">View file</a>{% else %}—{% endif %}</td></tr>
+    <tr><td class="text-muted">GST certificate</td><td>{% if submission.gst_certificate %}<a href="{{ submission.gst_certificate.url }}" target="_blank" rel="noopener">View file</a>{% else %}—{% endif %}</td></tr>
+    <tr><td class="text-muted">PAN</td><td>{% if submission.pan_document %}<a href="{{ submission.pan_document.url }}" target="_blank" rel="noopener">View file</a>{% else %}—{% endif %}</td></tr>
+    <tr><td class="text-muted">Business registration</td><td>{% if submission.business_registration %}<a href="{{ submission.business_registration.url }}" target="_blank" rel="noopener">View file</a>{% else %}—{% endif %}</td></tr>
+    <tr><td class="text-muted">Brand guidelines</td><td>{% if submission.brand_guidelines %}<a href="{{ submission.brand_guidelines.url }}" target="_blank" rel="noopener">View file</a>{% else %}—{% endif %}</td></tr>
+  </table>
+</div>
+
+<div class="panel-block">
+  <div class="panel-h">Payment gateway &amp; owner KYC</div>
+  <table class="mini-table">
+    <tr><td class="text-muted" style="width:40%;">KYC notice accepted</td><td>{% if submission.kyc_privacy_acknowledged %}Yes{% else %}No{% endif %}</td></tr>
+    <tr><td class="text-muted">Owner Aadhaar (front)</td><td>{% if submission.owner_aadhaar_front %}<a href="{{ submission.owner_aadhaar_front.url }}" target="_blank" rel="noopener">View file</a>{% else %}—{% endif %}</td></tr>
+    <tr><td class="text-muted">Owner Aadhaar (back)</td><td>{% if submission.owner_aadhaar_back %}<a href="{{ submission.owner_aadhaar_back.url }}" target="_blank" rel="noopener">View file</a>{% else %}—{% endif %}</td></tr>
+    <tr><td class="text-muted">Bank name</td><td>{{ submission.bank_name|default:"—" }}</td></tr>
+    <tr><td class="text-muted">Account number</td><td>{{ submission.bank_account_number|default:"—" }}</td></tr>
+    <tr><td class="text-muted">IFSC</td><td>{{ submission.bank_ifsc|default:"—" }}</td></tr>
+    <tr><td class="text-muted">Branch</td><td>{{ submission.bank_branch_name|default:"—" }}</td></tr>
+    <tr><td class="text-muted">Phone (bank)</td><td>{{ submission.phone_registered_bank|default:"—" }}</td></tr>
+    <tr><td class="text-muted">Phone (Aadhaar)</td><td>{{ submission.phone_registered_aadhaar|default:"—" }}</td></tr>
+    <tr><td class="text-muted">Phone (PAN)</td><td>{{ submission.phone_registered_pan|default:"—" }}</td></tr>
+  </table>
+</div>
+
+<div class="panel-block">
+  <div class="panel-h">Agreement</div>
+  <table class="mini-table">
+    <tr><td class="text-muted" style="width:40%;">Terms accepted</td><td>{% if submission.terms_accepted %}Yes{% else %}No{% endif %}</td></tr>
+    <tr><td class="text-muted">Version</td><td>{{ submission.terms_version|default:"—" }}</td></tr>
+    <tr><td class="text-muted">Accepted at</td><td>{% if submission.terms_accepted_at %}{{ submission.terms_accepted_at }}{% else %}—{% endif %}</td></tr>
+    <tr><td class="text-muted">IP address</td><td>{% if submission.terms_accepted_ip %}{{ submission.terms_accepted_ip }}{% else %}—{% endif %}</td></tr>
+    <tr><td class="text-muted">Submitted at</td><td>{% if submission.submitted_at %}{{ submission.submitted_at }}{% else %}—{% endif %}</td></tr>
+  </table>
+</div>
+{% endblock %}

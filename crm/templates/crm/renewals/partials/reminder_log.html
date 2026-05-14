@@ -1,0 +1,29 @@
+<div class="panel-block">
+  <div class="panel-h">Reminder log</div>
+  {% if logs %}
+  <table class="mini-table" style="width:100%;">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Sent at</th>
+        <th>To</th>
+        <th>OK</th>
+        <th>Error</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for log in logs %}
+      <tr>
+        <td>{{ log.get_reminder_type_display }}</td>
+        <td>{{ log.sent_at|date:"M j, Y H:i" }}</td>
+        <td style="font-size:12px;">{{ log.sent_to }}</td>
+        <td>{% if log.success %}Yes{% else %}No{% endif %}</td>
+        <td style="font-size:12px;color:var(--danger-600);max-width:220px;">{{ log.error_message|default:"—"|truncatechars:80 }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="font-size:13px;color:var(--text-muted);">No reminder emails logged yet.</p>
+  {% endif %}
+</div>

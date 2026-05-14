@@ -1,0 +1,11 @@
+<summary class="ob-acc-sum" role="button" tabindex="0">
+  <span class="ob-acc-sum-left">
+    <span class="ob-acc-chev" aria-hidden="true"></span>
+    <span class="ob-acc-title">{{ step.title }}</span>
+  </span>
+  <span class="ob-acc-meta">
+    <span class="ob-step-pill {% if not step.unlocked %}ob-step-pill--locked{% elif step.saved %}ob-step-pill--saved{% else %}ob-step-pill--progress{% endif %}">
+      {% if not step.unlocked %}Locked{% elif step.saved %}Saved{% else %}In progress{% endif %}
+    </span>
+  </span>
+</summary>
