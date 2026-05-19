@@ -130,6 +130,11 @@ def can_send_renewal_reminder_manual(user) -> bool:
     return user.is_authenticated and (user.is_superuser or get_crm_role(user) == ROLE_ADMIN)
 
 
+def can_access_billing(user) -> bool:
+    """Billing, ledger, statements, and payment recording (admin only)."""
+    return user.is_authenticated and (user.is_superuser or get_crm_role(user) == ROLE_ADMIN)
+
+
 def credential_type_is_secret(ct: str) -> bool:
     return ct in (
         ProjectCredential.CredentialType.API_KEY,

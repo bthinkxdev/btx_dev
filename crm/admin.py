@@ -4,12 +4,17 @@ from .models import (
     Achievement,
     ActivityLog,
     AuditEntry,
+    Bill,
+    BillLineItem,
+    BillPayment,
+    BillSequence,
     ChangeRequest,
     Client,
     CredentialAuditLog,
     EmployeeProfile,
     FollowUp,
     HandoverPortalAccess,
+    LedgerEntry,
     Lead,
     MonthlyTarget,
     OnboardingSubmission,
@@ -245,6 +250,63 @@ class AuditEntryAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+class BillLineItemInline(admin.TabularInline):
+    model = BillLineItem
+    extra = 0
+
+
+@admin.register(Bill)
+class BillAdmin(admin.ModelAdmin):
+    list_display = (
+        'bill_number',
+        'client',
+        'project',
+        'bill_date',
+        'total_amount',
+        'balance_due',
+        'status',
+        'email_sent_at',
+    )
+    list_filter = ('status', 'bill_date')
+    search_fields = ('bill_number', 'client__business_name')
+    readonly_fields = ('bill_number', 'amount_paid', 'balance_due', 'subtotal', 'gst_amount', 'total_amount')
+    inlines = [BillLineItemInline]
+
+
+@admin.register(BillPayment)
+class BillPaymentAdmin(admin.ModelAdmin):
+    list_display = (
+        'project',
+        'bill',
+        'amount',
+        'payment_date',
+        'transaction_id',
+        'status',
+        'recorded_by',
+    )
+    list_filter = ('status', 'payment_method')
+    search_fields = ('transaction_id', 'project__client__business_name')
+
+
+@admin.register(LedgerEntry)
+class LedgerEntryAdmin(admin.ModelAdmin):
+    list_display = (
+        'entry_date',
+        'project',
+        'entry_type',
+        'amount',
+        'balance_after',
+        'reference',
+    )
+    list_filter = ('entry_type',)
+    search_fields = ('reference', 'description', 'client__business_name')
+
+
+@admin.register(BillSequence)
+class BillSequenceAdmin(admin.ModelAdmin):
+    list_display = ('fiscal_year', 'last_number')
 
 
 @admin.register(ChangeRequest)

@@ -1,0 +1,153 @@
+{% extends "crm/base.html" %}
+{% block title %}{{ bill.bill_number }}{% endblock %}
+{% block page_title %}{{ bill.bill_number }}{% endblock %}
+
+{% block content %}
+<div class="billing-page">
+  <nav class="billing-breadcrumb" aria-label="Breadcrumb">
+    <a href="{% url 'crm:billing_dashboard' %}"
+       hx-get="{% url 'crm:billing_dashboard' %}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">Billing</a>
+    <span class="billing-breadcrumb__sep">/</span>
+    <a href="{% url 'crm:billing_project' project.pk %}"
+       hx-get="{% url 'crm:billing_project' project.pk %}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">Project #{{ project.pk }}</a>
+    <span class="billing-breadcrumb__sep">/</span>
+    <span class="billing-breadcrumb__current">{{ bill.bill_number }}</span>
+  </nav>
+
+  <div class="billing-project-banner">
+    <div>
+      <h1 class="billing-project-banner__title">{{ bill.bill_number }}</h1>
+      <p class="billing-project-banner__meta">
+        {{ bill.get_kind_display }} · {{ bill.get_status_display }} · {{ bill.bill_date|date:"d M Y" }}
+        · Project #{{ project.pk }}
+        {% if project.package %} · {{ project.package.name }}{% endif %}
+      </p>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <a href="{% url 'crm:bill_pdf' bill.pk %}" class="btn btn-primary btn-sm" target="_blank" rel="noopener">Download PDF</a>
+      <form method="post"
+            action="{% url 'crm:bill_resend_email' bill.pk %}"
+            class="billing-inline-form"
+            hx-post="{% url 'crm:bill_resend_email' bill.pk %}"
+            hx-target="#crm-main-content"
+            hx-select="#crm-main-content"
+            hx-swap="outerHTML"
+            hx-push-url="true">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline btn-sm">Email to client</button>
+      </form>
+      <a href="{% url 'crm:billing_project' project.pk %}" class="btn btn-outline btn-sm"
+         hx-get="{% url 'crm:billing_project' project.pk %}"
+         hx-target="#crm-main-content"
+         hx-select="#crm-main-content"
+         hx-swap="outerHTML"
+         hx-push-url="true">Back to project billing</a>
+    </div>
+  </div>
+
+  <div class="billing-stats" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));">
+    <div class="billing-stat">
+      <span class="billing-stat__label">Subtotal</span>
+      <span class="billing-stat__value">Rs. {{ bill.subtotal|floatformat:2 }}</span>
+    </div>
+    {% if bill.gst_percent > 0 %}
+    <div class="billing-stat billing-stat--muted">
+      <span class="billing-stat__label">GST ({{ bill.gst_percent }}%)</span>
+      <span class="billing-stat__value">Rs. {{ bill.gst_amount|floatformat:2 }}</span>
+    </div>
+    {% endif %}
+    <div class="billing-stat billing-stat--success">
+      <span class="billing-stat__label">Total</span>
+      <span class="billing-stat__value">Rs. {{ bill.total_amount|floatformat:2 }}</span>
+    </div>
+  </div>
+
+  <div class="billing-panel">
+    <div class="billing-panel__head">
+      <div>
+        <h2 class="billing-panel__title">Bill to</h2>
+        <p class="billing-panel__sub" style="margin:0;">
+          {{ bill.client.business_name }}<br>
+          {{ bill.client.contact_person|default:"" }}
+          {% if bill.client.email %}<br>{{ bill.client.email }}{% endif %}
+        </p>
+      </div>
+      {% if bill.email_sent_at %}
+      <p class="billing-email-hint billing-email-hint--ok">
+        Emailed to {{ bill.email_sent_to }} on {{ bill.email_sent_at|date:"d M Y H:i" }}
+      </p>
+      {% endif %}
+    </div>
+
+    <div class="billing-table-wrap">
+      <table class="data-table billing-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Description</th>
+            <th class="num">Qty</th>
+            <th class="num">Rate</th>
+            <th class="num">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ln in bill.line_items.all %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ ln.description }}</td>
+            <td class="num">{{ ln.quantity }}</td>
+            <td class="num">Rs. {{ ln.unit_price|floatformat:2 }}</td>
+            <td class="num">Rs. {{ ln.amount|floatformat:2 }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if bill.description %}
+    <p style="font-size:13px;margin-top:14px;white-space:pre-wrap;color:var(--text-muted);">{{ bill.description }}</p>
+    {% endif %}
+  </div>
+
+  {% if payments %}
+  <div class="billing-panel">
+    <div class="billing-panel__head">
+      <h2 class="billing-panel__title">Linked payments</h2>
+    </div>
+    <div class="billing-table-wrap">
+      <table class="data-table billing-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th class="num">Amount</th>
+            <th>Transaction ID</th>
+            <th>Status</th>
+            <th>Proof</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for pay in payments %}
+          <tr>
+            <td>{{ pay.payment_date|date:"d M Y" }}</td>
+            <td class="num">Rs. {{ pay.amount|floatformat:2 }}</td>
+            <td>{{ pay.transaction_id|default:"—" }}</td>
+            <td><span class="billing-badge {% if pay.status == 'verified' %}billing-badge--ok{% endif %}">{{ pay.get_status_display }}</span></td>
+            <td>{% if pay.proof_file %}<a href="{{ pay.proof_file.url }}" target="_blank" rel="noopener">View</a>{% else %}—{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+{% include "crm/billing/_billing_styles.html" %}
+{% endblock %}

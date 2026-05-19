@@ -162,6 +162,13 @@ def crm_can_access_renewals(user):
 
 
 @register.filter
+def crm_can_access_billing(user):
+    from ..rbac import can_access_billing
+
+    return bool(user and user.is_authenticated and can_access_billing(user))
+
+
+@register.filter
 def dict_get(mapping, key):
     if not mapping or key is None:
         return key

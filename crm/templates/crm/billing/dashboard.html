@@ -1,0 +1,139 @@
+{% extends "crm/base.html" %}
+{% block title %}Billing & Accounts{% endblock %}
+{% block page_title %}Billing & Accounts{% endblock %}
+
+{% block content %}
+<div class="billing-page">
+  <div class="billing-panel" style="margin-bottom:20px;border:none;box-shadow:none;padding:0;">
+    <h1 style="font-size:22px;font-weight:700;margin:0 0 6px;">Billing &amp; Accounts</h1>
+    <p class="billing-panel__sub" style="margin:0;">Project-scoped ledger, receipts, and statements. Open a project to record payments or download its account statement.</p>
+  </div>
+
+  <div class="billing-stats">
+    <div class="billing-stat">
+      <span class="billing-stat__label">Total billed</span>
+      <span class="billing-stat__value">Rs. {{ total_billed|floatformat:2 }}</span>
+      <span class="billing-stat__hint">All issued bills</span>
+    </div>
+    <div class="billing-stat billing-stat--warn">
+      <span class="billing-stat__label">Invoice outstanding</span>
+      <span class="billing-stat__value">Rs. {{ total_outstanding|floatformat:2 }}</span>
+      <span class="billing-stat__hint">Unpaid invoice balances</span>
+    </div>
+    <div class="billing-stat billing-stat--muted">
+      <span class="billing-stat__label">Pending verification</span>
+      <span class="billing-stat__value">{{ pending_payments }}</span>
+      <span class="billing-stat__hint">Payments awaiting review</span>
+    </div>
+  </div>
+
+  {% if recent_bills %}
+  <div class="billing-panel">
+    <div class="billing-panel__head">
+      <div>
+        <h2 class="billing-panel__title">Recent receipts &amp; invoices</h2>
+        <p class="billing-panel__sub">Latest documents across all projects.</p>
+      </div>
+    </div>
+    <div class="billing-table-wrap">
+      <table class="data-table billing-table">
+        <thead>
+          <tr>
+            <th>Number</th>
+            <th>Type</th>
+            <th>Project</th>
+            <th>Client</th>
+            <th>Date</th>
+            <th class="num">Amount</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for b in recent_bills %}
+          <tr>
+            <td>
+              <a href="{% url 'crm:bill_detail' b.pk %}"
+                 hx-get="{% url 'crm:bill_detail' b.pk %}"
+                 hx-target="#crm-main-content"
+                 hx-select="#crm-main-content"
+                 hx-swap="outerHTML"
+                 hx-push-url="true">{{ b.bill_number }}</a>
+            </td>
+            <td><span class="billing-badge {% if b.kind == 'receipt' %}billing-badge--ok{% endif %}">{{ b.get_kind_display }}</span></td>
+            <td>
+              <a href="{% url 'crm:billing_project' b.project_id %}"
+                 hx-get="{% url 'crm:billing_project' b.project_id %}"
+                 hx-target="#crm-main-content"
+                 hx-select="#crm-main-content"
+                 hx-swap="outerHTML"
+                 hx-push-url="true">#{{ b.project_id }}</a>
+            </td>
+            <td>{{ b.client.business_name }}</td>
+            <td>{{ b.bill_date|date:"d M Y" }}</td>
+            <td class="num">Rs. {{ b.total_amount|floatformat:2 }}</td>
+            <td class="billing-actions-col">
+              <a href="{% url 'crm:bill_pdf' b.pk %}" class="btn btn-outline btn-sm" target="_blank" rel="noopener">PDF</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="billing-panel">
+    <div class="billing-panel__head">
+      <div>
+        <h2 class="billing-panel__title">Projects</h2>
+        <p class="billing-panel__sub">Each project has its own ledger and statement. Select one to record a payment or view history.</p>
+      </div>
+    </div>
+    <div class="billing-table-wrap">
+      <table class="data-table billing-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Client</th>
+            <th>Package</th>
+            <th class="num">Deal</th>
+            <th class="num">Received</th>
+            <th class="num">Balance</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in projects %}
+          <tr>
+            <td><strong>{{ p.pk }}</strong></td>
+            <td>{{ p.client.business_name }}</td>
+            <td>{% if p.package %}{{ p.package.name }}{% else %}—{% endif %}</td>
+            <td class="num">Rs. {{ p.deal_value|floatformat:2 }}</td>
+            <td class="num">Rs. {{ p.advance_received|floatformat:2 }}</td>
+            <td class="num {% if p.balance_due > 0 %}billing-stat--warn{% endif %}">Rs. {{ p.balance_due|floatformat:2 }}</td>
+            <td class="billing-actions-col">
+              <a href="{% url 'crm:billing_project' p.pk %}" class="btn btn-primary btn-sm"
+                 hx-get="{% url 'crm:billing_project' p.pk %}"
+                 hx-target="#crm-main-content"
+                 hx-select="#crm-main-content"
+                 hx-swap="outerHTML"
+                 hx-push-url="true">Open billing</a>
+              <a href="{% url 'crm:billing_ledger' %}?project={{ p.pk }}" class="btn btn-outline btn-sm"
+                 hx-get="{% url 'crm:billing_ledger' %}?project={{ p.pk }}"
+                 hx-target="#crm-main-content"
+                 hx-select="#crm-main-content"
+                 hx-swap="outerHTML"
+                 hx-push-url="true">Ledger</a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="7" class="billing-empty">No projects yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% include "crm/billing/_billing_styles.html" %}
+{% endblock %}

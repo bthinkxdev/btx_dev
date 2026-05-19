@@ -1,0 +1,41 @@
+{% extends "crm/base.html" %}
+{% block title %}Create Bill{% endblock %}
+{% block page_title %}Create Bill{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:16px;font-size:13px;">
+  <a href="{% url 'crm:billing_project' project.pk %}">← {{ project.client.business_name }}</a>
+</div>
+
+<div class="panel-block" style="max-width:720px;">
+  <div class="panel-h">New tax invoice — {{ project.client.business_name }}</div>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+
+    <h3 style="font-size:14px;margin:20px 0 10px;">Line items</h3>
+    {{ formset.management_form }}
+    <table class="data-table">
+      <thead>
+        <tr><th>Description</th><th>Qty</th><th>Rate (₹)</th><th>Delete</th></tr>
+      </thead>
+      <tbody>
+        {% for f in formset %}
+        <tr>
+          <td>{{ f.description }}{{ f.id }}</td>
+          <td>{{ f.quantity }}</td>
+          <td>{{ f.unit_price }}</td>
+          <td>{% if f.DELETE %}{{ f.DELETE }}{% endif %}</td>
+        </tr>
+        {% if f.errors %}<tr><td colspan="4" style="color:var(--danger-600);font-size:12px;">{{ f.errors }}</td></tr>{% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div style="margin-top:20px;display:flex;gap:10px;">
+      <button type="submit" class="btn btn-primary">Create &amp; issue bill</button>
+      <a href="{% url 'crm:billing_project' project.pk %}" class="btn btn-outline">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

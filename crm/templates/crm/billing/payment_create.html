@@ -1,0 +1,22 @@
+{% extends "crm/base.html" %}
+{% block title %}Record Payment{% endblock %}
+{% block page_title %}Record Payment{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:16px;font-size:13px;">
+  <a href="{% url 'crm:billing_project' project.pk %}">← {{ project.client.business_name }}</a>
+</div>
+
+<div class="panel-block" style="max-width:520px;">
+  <div class="panel-h">Mark payment received</div>
+  <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Upload screenshot or PDF of the bank/UPI transaction. Transaction ID is required for audit.</p>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <div style="margin-top:16px;display:flex;gap:10px;">
+      <button type="submit" class="btn btn-primary">Save payment</button>
+      <a href="{% url 'crm:billing_project' project.pk %}" class="btn btn-outline">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -6,6 +6,31 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Local secrets (gitignored) — e.g. EMAIL_HOST_PASSWORD
+def _load_env_file(path: Path) -> None:
+  """Load KEY=value lines into os.environ (does not override existing vars)."""
+  if not path.is_file():
+    return
+  for raw in path.read_text(encoding='utf-8').splitlines():
+    line = raw.strip()
+    if not line or line.startswith('#') or '=' not in line:
+      continue
+    key, _, value = line.partition('=')
+    key = key.strip()
+    value = value.strip().strip('"').strip("'")
+    if key:
+      os.environ.setdefault(key, value)
+
+
+_env_file = BASE_DIR / '.env'
+_load_env_file(_env_file)
+if _env_file.is_file():
+  try:
+    from dotenv import load_dotenv
+    load_dotenv(_env_file, override=False)
+  except ImportError:
+    pass
+
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'dev-secret-change-in-production')
 
 DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() in ('1', 'true', 'yes')
@@ -97,19 +122,20 @@ LOGOUT_REDIRECT_URL = '/crm/login/'
 # Generate: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 CRM_CREDENTIALS_FERNET_KEY = os.environ.get('CRM_CREDENTIALS_FERNET_KEY', '').strip()
 
-# Email: contact form notifications (Gmail SMTP)
-# For production, set EMAIL_HOST_PASSWORD (and optionally others) via environment variables.
+# Email: SMTP (Zoho Mail for @bthinkx.com — see .env.example). Credentials in .env only.
 EMAIL_BACKEND = os.environ.get(
     'EMAIL_BACKEND',
-    'django.core.mail.backends.smtp.EmailBackend'
+    'django.core.mail.backends.smtp.EmailBackend',
 )
-EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
+# bthinkx.com uses Zoho (MX: mx.zoho.in)
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.zoho.in')
 EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
-# Never commit real passwords — set EMAIL_HOST_PASSWORD in environment / .env
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'true').lower() in ('1', 'true', 'yes')
+EMAIL_USE_SSL = os.environ.get('EMAIL_USE_SSL', 'false').lower() in ('1', 'true', 'yes')
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'hr@bthinkx.com').strip()
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER).strip() or EMAIL_HOST_USER
+EMAIL_TIMEOUT = int(os.environ.get('EMAIL_TIMEOUT', '30'))
 
 # Address to receive contact form submissions
 CONTACT_EMAIL_TO = os.environ.get('CONTACT_EMAIL_TO', 'hr@bthinkx.com')
@@ -120,6 +146,11 @@ RENEWAL_INTERNAL_ALERT_EMAIL = os.environ.get(
     'RENEWAL_INTERNAL_ALERT_EMAIL', CONTACT_EMAIL_TO
 )
 RENEWAL_REMINDER_DAYS = [30, 7, 1]
+
+# CRM Billing: receipt & invoice emails (From: hr@bthinkx.com)
+BILLING_FROM_EMAIL = (
+    os.environ.get('BILLING_FROM_EMAIL', 'hr@bthinkx.com').strip() or DEFAULT_FROM_EMAIL
+)
 
 # Public site URL (used in blog notification emails and unsubscribe links)
 SITE_BASE_URL = os.environ.get('SITE_BASE_URL', 'http://127.0.0.1:8000').rstrip('/')

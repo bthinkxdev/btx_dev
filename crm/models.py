@@ -1344,3 +1344,257 @@ class ChangeRequest(models.Model):
 
     def __str__(self):
         return f'{self.project} — {self.title}'
+
+
+# ─── Billing & Accounts (admin-only CRM module) ─────────────────────────────
+
+
+class BillSequence(models.Model):
+    """Atomic bill number sequence per Indian financial year (Apr–Mar)."""
+
+    fiscal_year = models.CharField(max_length=4, unique=True, db_index=True)
+    last_number = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        verbose_name_plural = 'Bill sequences'
+
+    def __str__(self):
+        return f'{self.fiscal_year} → {self.last_number}'
+
+
+class Bill(models.Model):
+    class Status(models.TextChoices):
+        DRAFT = 'draft', 'Draft'
+        ISSUED = 'issued', 'Issued'
+        PARTIALLY_PAID = 'partially_paid', 'Partially Paid'
+        PAID = 'paid', 'Paid'
+        CANCELLED = 'cancelled', 'Cancelled'
+
+    class Kind(models.TextChoices):
+        INVOICE = 'invoice', 'Tax Invoice'
+        RECEIPT = 'receipt', 'Payment Receipt'
+
+    bill_number = models.CharField(max_length=32, unique=True, db_index=True)
+    kind = models.CharField(
+        max_length=10,
+        choices=Kind.choices,
+        default=Kind.RECEIPT,
+        db_index=True,
+    )
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name='bills',
+    )
+    client = models.ForeignKey(
+        Client,
+        on_delete=models.CASCADE,
+        related_name='bills',
+    )
+    bill_date = models.DateField(default=timezone.localdate)
+    due_date = models.DateField(null=True, blank=True)
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.DRAFT,
+        db_index=True,
+    )
+    description = models.TextField(
+        blank=True,
+        help_text='Notes printed on the bill (payment terms, scope, etc.)',
+    )
+    subtotal = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal('0'))
+    gst_percent = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal('0'),
+        help_text='GST rate applied to subtotal (0 for non-GST bills)',
+    )
+    gst_amount = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal('0'))
+    total_amount = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal('0'))
+    amount_paid = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal('0'))
+    balance_due = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal('0'))
+    pdf_file = models.FileField(upload_to='bills/pdf/', blank=True)
+    email_sent_at = models.DateTimeField(null=True, blank=True)
+    email_sent_to = models.EmailField(blank=True)
+    issued_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='created_bills',
+    )
+
+    class Meta:
+        ordering = ['-bill_date', '-created_at']
+
+    def __str__(self):
+        return self.bill_number
+
+    def recalculate_totals(self):
+        lines = self.line_items.all()
+        self.subtotal = sum((ln.amount for ln in lines), Decimal('0'))
+        self.gst_amount = (self.subtotal * self.gst_percent / Decimal('100')).quantize(
+            Decimal('0.01')
+        )
+        self.total_amount = self.subtotal + self.gst_amount
+        verified_paid = self.payments.filter(
+            status=BillPayment.Status.VERIFIED
+        ).aggregate(total=models.Sum('amount'))['total'] or Decimal('0')
+        self.amount_paid = verified_paid
+        self.balance_due = self.total_amount - self.amount_paid
+        if self.status not in (self.Status.CANCELLED, self.Status.DRAFT):
+            if self.balance_due <= 0 and self.total_amount > 0:
+                self.status = self.Status.PAID
+            elif self.amount_paid > 0:
+                self.status = self.Status.PARTIALLY_PAID
+            elif self.amount_paid == 0 and self.status in (
+                self.Status.PARTIALLY_PAID,
+                self.Status.PAID,
+            ):
+                self.status = self.Status.ISSUED
+        return self
+
+
+class BillLineItem(models.Model):
+    bill = models.ForeignKey(Bill, on_delete=models.CASCADE, related_name='line_items')
+    description = models.CharField(max_length=500)
+    quantity = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('1'))
+    unit_price = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal('0'))
+    amount = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal('0'))
+    sort_order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ['sort_order', 'pk']
+
+    def save(self, *args, **kwargs):
+        self.amount = (self.quantity * self.unit_price).quantize(Decimal('0.01'))
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.description[:60]
+
+
+class BillPayment(models.Model):
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pending Verification'
+        VERIFIED = 'verified', 'Verified'
+
+    class PaymentMethod(models.TextChoices):
+        BANK_TRANSFER = 'bank_transfer', 'Bank Transfer'
+        UPI = 'upi', 'UPI'
+        CHEQUE = 'cheque', 'Cheque'
+        CASH = 'cash', 'Cash'
+        OTHER = 'other', 'Other'
+
+    bill = models.ForeignKey(
+        Bill,
+        on_delete=models.CASCADE,
+        related_name='payments',
+        null=True,
+        blank=True,
+        help_text='Optional — payment can apply to project without a specific bill',
+    )
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name='bill_payments',
+    )
+    amount = models.DecimalField(max_digits=14, decimal_places=2)
+    transaction_id = models.CharField(max_length=120, blank=True)
+    payment_method = models.CharField(
+        max_length=20,
+        choices=PaymentMethod.choices,
+        default=PaymentMethod.BANK_TRANSFER,
+    )
+    payment_date = models.DateField(default=timezone.localdate)
+    proof_file = models.FileField(
+        upload_to='bills/payments/',
+        blank=True,
+        help_text='Screenshot or PDF of bank/UPI transaction',
+    )
+    notes = models.TextField(blank=True)
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING,
+        db_index=True,
+    )
+    recorded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='recorded_bill_payments',
+    )
+    verified_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='verified_bill_payments',
+    )
+    verified_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-payment_date', '-created_at']
+
+    def __str__(self):
+        return f'{self.amount} — {self.project_id}'
+
+
+class LedgerEntry(models.Model):
+    class EntryType(models.TextChoices):
+        DEBIT = 'debit', 'Debit'
+        CREDIT = 'credit', 'Credit'
+
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name='ledger_entries',
+    )
+    client = models.ForeignKey(
+        Client,
+        on_delete=models.CASCADE,
+        related_name='ledger_entries',
+    )
+    entry_type = models.CharField(max_length=10, choices=EntryType.choices)
+    amount = models.DecimalField(max_digits=14, decimal_places=2)
+    balance_after = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        help_text='Running balance (debits − credits) for this project after this entry',
+    )
+    bill = models.ForeignKey(
+        Bill,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='ledger_entries',
+    )
+    payment = models.ForeignKey(
+        BillPayment,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='ledger_entries',
+    )
+    reference = models.CharField(max_length=120, blank=True)
+    description = models.CharField(max_length=300)
+    entry_date = models.DateField(default=timezone.localdate, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='ledger_entries_created',
+    )
+
+    class Meta:
+        ordering = ['entry_date', 'created_at', 'pk']
+        verbose_name_plural = 'Ledger entries'
+
+    def __str__(self):
+        return f'{self.entry_type} {self.amount} — {self.reference}'

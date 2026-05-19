@@ -1,0 +1,58 @@
+<aside class="billing-page__ledger-rail" aria-label="Project ledger">
+  <div class="billing-ledger-card">
+    <div class="billing-ledger-card__head">
+      <h2 class="billing-ledger-card__title">Ledger</h2>
+      <p class="billing-ledger-card__sub">Project #{{ project.pk }} · {{ client.business_name }}</p>
+    </div>
+
+    <div class="billing-ledger-closing {% if snapshot.balance_due > 0 %}billing-ledger-closing--due{% else %}billing-ledger-closing--clear{% endif %}">
+      <span class="billing-ledger-closing__label">Balance due now</span>
+      <span class="billing-ledger-closing__value">Rs. {{ snapshot.ledger_balance|floatformat:2 }}</span>
+    </div>
+
+    <div class="billing-ledger-summary">
+      <div class="billing-ledger-summary__row">
+        <span>Contract</span>
+        <span>Rs. {{ snapshot.deal_value|floatformat:2 }}</span>
+      </div>
+      <div class="billing-ledger-summary__row">
+        <span>Received</span>
+        <span>Rs. {{ snapshot.advance_received|floatformat:2 }}</span>
+      </div>
+    </div>
+
+    <div class="billing-ledger-table-wrap">
+      <table class="billing-ledger-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Description</th>
+            <th class="num">Dr</th>
+            <th class="num">Cr</th>
+            <th class="num">Due</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in ledger %}
+          <tr>
+            <td>{{ e.entry_date|date:"d M y" }}</td>
+            <td title="{{ e.description }}">
+              <span class="billing-ledger-desc">{{ e.description|truncatechars:36 }}</span>
+              {% if e.reference %}<span class="billing-ledger-ref">{{ e.reference }}</span>{% endif %}
+            </td>
+            <td class="num">{% if e.entry_type == 'debit' %}{{ e.amount|floatformat:0 }}{% endif %}</td>
+            <td class="num">{% if e.entry_type == 'credit' %}{{ e.amount|floatformat:0 }}{% endif %}</td>
+            <td class="num billing-ledger-due"><strong>{{ e.balance_after|floatformat:0 }}</strong></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" class="billing-empty">No entries yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <p class="billing-ledger-foot">
+      Debits = amount owed increases · Credits = payments received
+    </p>
+  </div>
+</aside>

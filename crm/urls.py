@@ -1,7 +1,7 @@
 from django.contrib.auth import views as auth_views
 from django.urls import path
 
-from . import views
+from . import billing_views, views
 
 app_name = 'crm'
 
@@ -232,5 +232,44 @@ urlpatterns = [
         'renewals/<int:pk>/send-reminder/',
         views.renewal_send_reminder_manual,
         name='renewal_send_reminder_manual',
+    ),
+    # Billing & Accounts (admin only)
+    path('billing/', billing_views.billing_dashboard, name='billing_dashboard'),
+    path('billing/ledger/', billing_views.ledger_list, name='billing_ledger'),
+    path('billing/projects/<int:pk>/', billing_views.billing_project, name='billing_project'),
+    path('billing/projects/<int:pk>/record/', billing_views.billing_project, name='billing_record'),
+    path('billing/projects/<int:pk>/bills/create/', billing_views.bill_create, name='bill_create'),
+    path(
+        'billing/projects/<int:pk>/bills/quick/',
+        billing_views.bill_quick_create,
+        name='bill_quick_create',
+    ),
+    path('billing/projects/<int:pk>/payments/', billing_views.payment_create, name='payment_create'),
+    path(
+        'billing/projects/<int:pk>/statement/',
+        billing_views.statement_download,
+        name='statement_download',
+    ),
+    path('billing/bills/<int:pk>/', billing_views.bill_detail, name='bill_detail'),
+    path('billing/bills/<int:pk>/pdf/', billing_views.bill_pdf, name='bill_pdf'),
+    path(
+        'billing/bills/<int:pk>/resend-email/',
+        billing_views.bill_resend_email,
+        name='bill_resend_email',
+    ),
+    path(
+        'billing/payments/<int:payment_pk>/verify/',
+        billing_views.payment_verify,
+        name='payment_verify',
+    ),
+    path(
+        'billing/payments/<int:payment_pk>/pdf/',
+        billing_views.payment_receipt_pdf,
+        name='payment_receipt_pdf',
+    ),
+    path(
+        'billing/payments/<int:payment_pk>/resend-email/',
+        billing_views.payment_resend_email,
+        name='payment_resend_email',
     ),
 ]

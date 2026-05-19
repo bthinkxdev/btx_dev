@@ -1,0 +1,194 @@
+{% extends "crm/base.html" %}
+{% block title %}Billing — Project #{{ project.pk }}{% endblock %}
+{% block page_title %}Project billing{% endblock %}
+
+{% block extra_css %}
+{% include "crm/billing/_billing_styles.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="billing-page billing-page--split"
+     {% if show_payment_modal %}data-billing-modal-open="true"{% endif %}
+     {% if form.errors %}data-billing-form-invalid="true"{% endif %}>
+  <div class="billing-page__primary">
+    <nav class="billing-breadcrumb" aria-label="Breadcrumb">
+      <a href="{% url 'crm:billing_dashboard' %}"
+         hx-get="{% url 'crm:billing_dashboard' %}"
+         hx-target="#crm-main-content"
+         hx-select="#crm-main-content"
+         hx-swap="outerHTML"
+         hx-push-url="true">Billing</a>
+      <span class="billing-breadcrumb__sep">/</span>
+      <span class="billing-breadcrumb__current">Project #{{ project.pk }}</span>
+    </nav>
+
+    <div class="billing-project-banner">
+      <div>
+        <h1 class="billing-project-banner__title">{{ client.business_name }}</h1>
+        <p class="billing-project-banner__meta">
+          <strong>Project #{{ project.pk }}</strong>
+          {% if project.package %} · {{ project.package.name }}{% endif %}
+          · <a href="{% url 'crm:project_detail' project.pk %}"
+               hx-get="{% url 'crm:project_detail' project.pk %}"
+               hx-target="#crm-main-content"
+               hx-select="#crm-main-content"
+               hx-swap="outerHTML"
+               hx-push-url="true">Open in CRM</a>
+        </p>
+      </div>
+      <div class="billing-banner-actions">
+      {% if snapshot.billing_email %}
+      <p class="billing-email-hint billing-email-hint--ok">
+        Receipts → {{ snapshot.billing_email }}
+        {% if snapshot.billing_email_source == 'onboarding' %}
+        <span class="billing-email-hint__src">(from onboarding)</span>
+        {% elif snapshot.billing_email_source == 'lead' %}
+        <span class="billing-email-hint__src">(from lead)</span>
+        {% endif %}
+      </p>
+      {% else %}
+      <p class="billing-email-hint billing-email-hint--missing">No billing email — add client, onboarding, or lead email</p>
+      {% endif %}
+        <button type="button"
+                class="btn btn-primary"
+                id="billing-open-payment-modal"
+                aria-haspopup="dialog"
+                aria-controls="billing-payment-modal">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          Record payment
+        </button>
+      </div>
+    </div>
+
+    <div class="billing-stats billing-stats--3">
+      <div class="billing-stat">
+        <span class="billing-stat__label">Contract value</span>
+        <span class="billing-stat__value">Rs. {{ snapshot.deal_value|floatformat:2 }}</span>
+        <span class="billing-stat__hint">Total agreed for this project</span>
+      </div>
+      <div class="billing-stat billing-stat--success">
+        <span class="billing-stat__label">Received</span>
+        <span class="billing-stat__value">Rs. {{ snapshot.advance_received|floatformat:2 }}</span>
+        <span class="billing-stat__hint">Verified payments recorded</span>
+      </div>
+      <div class="billing-stat {% if snapshot.balance_due > 0 %}billing-stat--warn{% else %}billing-stat--success{% endif %}">
+        <span class="billing-stat__label">Balance due</span>
+        <span class="billing-stat__value">Rs. {{ snapshot.balance_due|floatformat:2 }}</span>
+        <span class="billing-stat__hint">Matches ledger →</span>
+      </div>
+    </div>
+
+    <div class="billing-panel billing-panel--compact">
+      <div class="billing-stmt-box billing-stmt-box--inline">
+        <div>
+          <p class="billing-stmt-box__title">Account statement (PDF)</p>
+          <p class="billing-field-hint" style="margin:0;">Project #{{ project.pk }} · leave dates empty for full history</p>
+        </div>
+        <form method="get"
+              action="{% url 'crm:statement_download' project.pk %}"
+              target="_blank"
+              class="billing-stmt-fields">
+          <div class="billing-field">
+            <label for="{{ statement_form.date_from.id_for_label }}">{{ statement_form.date_from.label }}</label>
+            {{ statement_form.date_from }}
+          </div>
+          <div class="billing-field">
+            <label for="{{ statement_form.date_to.id_for_label }}">{{ statement_form.date_to.label }}</label>
+            {{ statement_form.date_to }}
+          </div>
+          <button type="submit" class="btn btn-outline btn-sm">Download</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="billing-panel">
+      <div class="billing-panel__head">
+        <div>
+          <h2 class="billing-panel__title">Payment history</h2>
+          <p class="billing-panel__sub">{{ snapshot.payments_count }} payment{{ snapshot.payments_count|pluralize }} · {{ snapshot.receipts_count }} receipt{{ snapshot.receipts_count|pluralize }}</p>
+        </div>
+        <div class="billing-panel__actions">
+          <button type="button" class="btn btn-primary btn-sm" data-billing-open-modal>+ Record payment</button>
+        </div>
+      </div>
+
+      {% if payments %}
+      <div class="billing-table-wrap">
+        <table class="data-table billing-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Receipt</th>
+              <th class="num">Amount</th>
+              <th>Transaction ID</th>
+              <th>Proof</th>
+              <th>Email</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for pay in payments %}
+            <tr>
+              <td>{{ pay.payment_date|date:"d M Y" }}</td>
+              <td>
+                {% if pay.bill %}
+                <a href="{% url 'crm:bill_detail' pay.bill.pk %}"
+                   hx-get="{% url 'crm:bill_detail' pay.bill.pk %}"
+                   hx-target="#crm-main-content"
+                   hx-select="#crm-main-content"
+                   hx-swap="outerHTML"
+                   hx-push-url="true"
+                   class="billing-receipt-link">{{ pay.bill.bill_number }}</a>
+                {% else %}—{% endif %}
+              </td>
+              <td class="num"><strong>Rs. {{ pay.amount|floatformat:2 }}</strong></td>
+              <td>{{ pay.transaction_id|default:"—" }}</td>
+              <td>{% if pay.proof_file %}<a href="{{ pay.proof_file.url }}" target="_blank" rel="noopener">View</a>{% else %}—{% endif %}</td>
+              <td>
+                {% if pay.bill and pay.bill.email_sent_at %}
+                <span class="billing-badge billing-badge--ok" title="{{ pay.bill.email_sent_to }}">Sent</span>
+                {% else %}
+                <span class="billing-badge">—</span>
+                {% endif %}
+              </td>
+              <td class="billing-actions-col">
+                {% if pay.bill %}
+                <a href="{% url 'crm:bill_pdf' pay.bill.pk %}" class="btn btn-outline btn-sm" target="_blank" rel="noopener">PDF</a>
+                <form method="post"
+                      action="{% url 'crm:bill_resend_email' pay.bill.pk %}"
+                      class="billing-inline-form"
+                      hx-post="{% url 'crm:bill_resend_email' pay.bill.pk %}"
+                      hx-target="#crm-main-content"
+                      hx-select="#crm-main-content"
+                      hx-swap="outerHTML"
+                      hx-push-url="true">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-outline btn-sm">Email</button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="billing-empty-state">
+        <p>No payments recorded for this project yet.</p>
+        <button type="button" class="btn btn-primary btn-sm" data-billing-open-modal>Record first payment</button>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% include "crm/billing/_ledger_sidebar.html" %}
+</div>
+
+{% if open_pdf_url and not show_payment_modal %}
+<script>window.open("{{ open_pdf_url|escapejs }}", "_blank", "noopener");</script>
+{% endif %}
+{% endblock %}
+
+{% block crm_modals %}
+{% include "crm/billing/_payment_modal.html" %}
+{% endblock %}

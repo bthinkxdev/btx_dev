@@ -8,6 +8,7 @@ from django.db.models import Q
 from ..models import AuditEntry, Client, Lead, Project
 from ..utils import log_activity
 from . import audit as audit_service
+from . import billing as billing_service
 from . import scope as scope_service
 
 
@@ -55,17 +56,26 @@ def create_project(
     Creates a Project for a Client. Calculates balance_due automatically.
     Logs an ActivityLog entry on the originating lead if client.lead exists.
     """
+    advance = advance_received or Decimal('0')
     project = Project(
         client=client,
         package=package,
         deal_value=deal_value,
-        advance_received=advance_received or Decimal('0'),
+        advance_received=Decimal('0'),
         assigned_to=assigned_to,
         notes=notes or '',
         created_by=created_by,
     )
     project.save()
     scope_service.enforce_scope_on_project_create(project)
+    billing_service.ensure_project_contract_ledger(project, actor=created_by)
+    if advance > 0:
+        billing_service.record_opening_advance(
+            project,
+            advance,
+            actor=created_by,
+            notes='Advance recorded at project creation',
+        )
     lead = client.lead
     if lead is not None:
         pkg_label = str(package) if package else '—'

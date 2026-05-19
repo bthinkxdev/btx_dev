@@ -1,0 +1,127 @@
+{% extends "crm/base.html" %}
+{% block title %}Ledger — Project #{{ project.pk }}{% endblock %}
+{% block page_title %}Project ledger{% endblock %}
+
+{% block content %}
+<div class="billing-page">
+  <nav class="billing-breadcrumb" aria-label="Breadcrumb">
+    <a href="{% url 'crm:billing_dashboard' %}"
+       hx-get="{% url 'crm:billing_dashboard' %}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">Billing</a>
+    <span class="billing-breadcrumb__sep">/</span>
+    <a href="{% url 'crm:billing_project' project.pk %}"
+       hx-get="{% url 'crm:billing_project' project.pk %}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">Project #{{ project.pk }}</a>
+    <span class="billing-breadcrumb__sep">/</span>
+    <span class="billing-breadcrumb__current">Ledger</span>
+  </nav>
+
+  <div class="billing-project-banner">
+    <div>
+      <h1 class="billing-project-banner__title">{{ project.client.business_name }}</h1>
+      <p class="billing-project-banner__meta">
+        <strong>Project #{{ project.pk }}</strong>
+        {% if project.package %} · {{ project.package.name }}{% endif %}
+      </p>
+    </div>
+    <a href="{% url 'crm:billing_project' project.pk %}" class="btn btn-primary btn-sm"
+       hx-get="{% url 'crm:billing_project' project.pk %}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">Record payment</a>
+  </div>
+
+  <div class="billing-stats">
+    <div class="billing-stat">
+      <span class="billing-stat__label">Contract value</span>
+      <span class="billing-stat__value">Rs. {{ snapshot.deal_value|floatformat:2 }}</span>
+    </div>
+    <div class="billing-stat billing-stat--success">
+      <span class="billing-stat__label">Received</span>
+      <span class="billing-stat__value">Rs. {{ snapshot.advance_received|floatformat:2 }}</span>
+    </div>
+    <div class="billing-stat {% if snapshot.balance_due > 0 %}billing-stat--warn{% else %}billing-stat--success{% endif %}">
+      <span class="billing-stat__label">Balance due</span>
+      <span class="billing-stat__value">Rs. {{ snapshot.ledger_balance|floatformat:2 }}</span>
+      <span class="billing-stat__hint">Ledger closing balance</span>
+    </div>
+  </div>
+
+  <div class="billing-panel">
+    <div class="billing-panel__head">
+      <div>
+        <h2 class="billing-panel__title">Switch project</h2>
+        <p class="billing-panel__sub">Ledger balances are per project — never combined across projects.</p>
+      </div>
+    </div>
+    <form method="get"
+          class="billing-stmt-fields"
+          hx-get="{% url 'crm:billing_ledger' %}"
+          hx-target="#crm-main-content"
+          hx-select="#crm-main-content"
+          hx-swap="outerHTML"
+          hx-push-url="true">
+      <div class="billing-field" style="flex:2;min-width:220px;">
+        <label for="ledger-project-select">Project</label>
+        <select name="project" id="ledger-project-select" class="billing-select" required>
+          {% for p in projects %}
+          <option value="{{ p.pk }}" {% if filter_project == p.pk|stringformat:"s" %}selected{% endif %}>
+            #{{ p.pk }} — {{ p.client.business_name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="btn btn-outline btn-sm">View ledger</button>
+    </form>
+  </div>
+
+  <div class="billing-panel">
+    <div class="billing-panel__head">
+      <div>
+        <h2 class="billing-panel__title">Ledger entries</h2>
+        <p class="billing-panel__sub">Chronological debits and credits for project #{{ project.pk }}.</p>
+      </div>
+      <form method="get" action="{% url 'crm:statement_download' project.pk %}" target="_blank">
+        <button type="submit" class="btn btn-outline btn-sm">Download statement</button>
+      </form>
+    </div>
+    <div class="billing-table-wrap">
+      <table class="data-table billing-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Ref</th>
+            <th>Description</th>
+            <th class="num">Debit</th>
+            <th class="num">Credit</th>
+            <th class="num">Balance</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in entries %}
+          <tr>
+            <td>{{ e.entry_date|date:"d M Y" }}</td>
+            <td>{{ e.reference|default:"—" }}</td>
+            <td>{{ e.description }}</td>
+            <td class="num">{% if e.entry_type == 'debit' %}Rs. {{ e.amount|floatformat:2 }}{% endif %}</td>
+            <td class="num">{% if e.entry_type == 'credit' %}Rs. {{ e.amount|floatformat:2 }}{% endif %}</td>
+            <td class="num">Rs. {{ e.balance_after|floatformat:2 }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="billing-empty">No ledger entries for this project.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% include "crm/billing/_billing_styles.html" %}
+{% endblock %}

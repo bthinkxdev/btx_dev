@@ -1776,6 +1776,21 @@
       </a>
       {% endif %}
 
+      {% if crm_can_access_billing %}
+      <a href="{% url 'crm:billing_dashboard' %}"
+         hx-get="{% url 'crm:billing_dashboard' %}"
+         hx-target="#crm-main-content"
+         hx-select="#crm-main-content"
+         hx-swap="outerHTML"
+         hx-push-url="true"
+         class="nav-item {% if 'billing' in request.resolver_match.url_name or request.resolver_match.url_name == 'bill_detail' or request.resolver_match.url_name == 'bill_create' or request.resolver_match.url_name == 'payment_create' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>
+        </svg>
+        <span>Billing &amp; Accounts</span>
+      </a>
+      {% endif %}
+
       {% if request.user|crm_can_audit %}
       <a href="{% url 'crm:audit_trail' %}"
          hx-get="{% url 'crm:audit_trail' %}"
@@ -1884,6 +1899,8 @@
     {% endif %}
     {% block content %}{% endblock %}
   </main>
+
+  {% block crm_modals %}{% endblock %}
 
   <div class="crm-toast-root" id="crm-toast-root" aria-live="polite"></div>
 
@@ -2007,6 +2024,25 @@
             var errEl = document.getElementById('crm-task-modal-err');
             if (errEl) errEl.textContent = '';
             if (dlg) dlg.close();
+          }
+          if (j.billingPaymentModalClose) {
+            var bdlgClose = document.getElementById('billing-payment-modal');
+            if (bdlgClose && bdlgClose.open) bdlgClose.close();
+          }
+          if (j.billingPaymentModalOpen) {
+            var bdlg = document.getElementById('billing-payment-modal');
+            if (bdlg && typeof bdlg.showModal === 'function') bdlg.showModal();
+          }
+          if (j.billingOpenPdf) {
+            var pdfUrl = j.billingOpenPdf;
+            if (pdfUrl) window.open(pdfUrl, '_blank', 'noopener');
+          }
+          if (j.billingFormInvalid) {
+            var bdlg2 = document.getElementById('billing-payment-modal');
+            if (bdlg2) {
+              var errEl2 = bdlg2.querySelector('.billing-modal-error, .billing-field--highlight');
+              if (errEl2) errEl2.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
           }
           if (j.crmTaskPanelRefresh != null && j.crmTaskPanelRefresh !== false && typeof htmx !== 'undefined') {
             var tpk = j.crmTaskPanelRefresh;
@@ -2313,16 +2349,68 @@
         document.body.addEventListener('htmx:beforeSwap', function(evt) {
           if (evt.detail.target && evt.detail.target.id === 'crm-main-content') {
             crmLeadsCleanupInfScroll();
+            var bdlgPre = document.getElementById('billing-payment-modal');
+            if (bdlgPre && bdlgPre.open) bdlgPre.close();
           }
         });
+        (function() {
+          if (window.__billingModalBound) return;
+          window.__billingModalBound = true;
+          document.body.addEventListener('click', function(e) {
+            if (e.target.closest('[data-billing-open-modal], #billing-open-payment-modal')) {
+              var m = document.getElementById('billing-payment-modal');
+              if (m && typeof m.showModal === 'function') m.showModal();
+            }
+            if (e.target.closest('[data-billing-modal-close]')) {
+              var m2 = document.getElementById('billing-payment-modal');
+              if (m2) m2.close();
+            }
+          });
+          document.body.addEventListener('click', function(e) {
+            var modal = document.getElementById('billing-payment-modal');
+            if (modal && e.target === modal) modal.close();
+          });
+        })();
+        function crmInitBillingPage(root) {
+          if (!root || !root.querySelector) return;
+          var page = root.querySelector('[data-billing-modal-open]');
+          if (!page) return;
+          var modal = document.getElementById('billing-payment-modal');
+          if (modal && typeof modal.showModal === 'function' && !modal.open) {
+            modal.showModal();
+          }
+          var invoiceOnly = document.getElementById('id_invoice_only');
+          var proofWrap = modal && modal.querySelector('[data-billing-proof]');
+          var txnWrap = modal && modal.querySelector('[data-billing-txn]');
+          function syncInvoiceOnly() {
+            if (!invoiceOnly) return;
+            var on = invoiceOnly.checked;
+            if (proofWrap) proofWrap.classList.toggle('billing-field--optional', on);
+            if (txnWrap) txnWrap.classList.toggle('billing-field--optional', on);
+          }
+          if (invoiceOnly && !invoiceOnly.dataset.billingBound) {
+            invoiceOnly.dataset.billingBound = '1';
+            invoiceOnly.addEventListener('change', syncInvoiceOnly);
+          }
+          syncInvoiceOnly();
+          if (page.getAttribute('data-billing-form-invalid') === 'true' && modal) {
+            var errEl = modal.querySelector('.billing-modal-error, .billing-field--highlight');
+            if (errEl) errEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        }
         document.body.addEventListener('htmx:afterSwap', function(evt) {
           if (!evt.detail.target || evt.detail.target.id !== 'crm-main-content') return;
           crmInitLeadsPage();
+          crmInitBillingPage(evt.detail.target);
         });
         if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', crmInitLeadsPage);
+          document.addEventListener('DOMContentLoaded', function() {
+            crmInitLeadsPage();
+            crmInitBillingPage(document.getElementById('crm-main-content'));
+          });
         } else {
           crmInitLeadsPage();
+          crmInitBillingPage(document.getElementById('crm-main-content'));
         }
       })();
 

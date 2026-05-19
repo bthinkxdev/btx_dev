@@ -96,6 +96,20 @@
   {% endif %}
 </div>
 
+{% if crm_can_access_billing %}
+<div class="panel-block">
+  <div class="panel-h">Billing &amp; accounts</div>
+  <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">Record payment, issue receipt PDF, and email client in one step.</p>
+  <a href="{% url 'crm:billing_project' project.pk %}?record=1"
+     class="btn btn-primary btn-sm"
+     hx-get="{% url 'crm:billing_project' project.pk %}?record=1"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">Record payment</a>
+</div>
+{% endif %}
+
 {% if onboarding_submission %}
 <div class="panel-block">
   <div class="panel-h">Client onboarding</div>

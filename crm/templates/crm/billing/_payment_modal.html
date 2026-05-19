@@ -1,0 +1,133 @@
+<dialog id="billing-payment-modal"
+        class="billing-modal"
+        aria-labelledby="billing-payment-modal-title"
+        hx-swap-oob="true">
+  <div class="billing-modal__inner">
+    <header class="billing-modal__head">
+      <div class="billing-modal__head-text">
+        <h2 id="billing-payment-modal-title">Record payment &amp; issue receipt</h2>
+        <p>Upload proof, enter amount and transaction ID — receipt, ledger, and email are handled automatically.</p>
+      </div>
+      <button type="button"
+              class="billing-modal__close"
+              data-billing-modal-close
+              aria-label="Close">&times;</button>
+    </header>
+
+    {% if form.errors %}
+    <div class="billing-modal-error" role="alert">
+      <strong>Fix these before saving</strong>
+      <ul>
+        {% if form.non_field_errors %}
+          {% for err in form.non_field_errors %}<li>{{ err }}</li>{% endfor %}
+        {% endif %}
+        {% for field in form %}
+          {% if field.errors %}
+            {% for err in field.errors %}<li>{{ field.label }}: {{ err }}</li>{% endfor %}
+          {% endif %}
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    <form method="post"
+          action="{% url 'crm:billing_project' project.pk %}"
+          enctype="multipart/form-data"
+          id="billing-record-form"
+          class="billing-modal__form"
+          hx-post="{% url 'crm:billing_project' project.pk %}"
+          hx-target="#crm-main-content"
+          hx-select="#crm-main-content"
+          hx-swap="outerHTML"
+          hx-push-url="true"
+          hx-encoding="multipart/form-data"
+          hx-indicator="#billing-form-indicator">
+      {% csrf_token %}
+
+      <div id="billing-form-indicator" class="htmx-indicator billing-form-loading">
+        <span class="billing-form-loading__spinner" aria-hidden="true"></span>
+        Saving receipt…
+      </div>
+
+      <div class="billing-modal__grid">
+        <div class="billing-field {% if form.amount.errors %}billing-field--error{% endif %}">
+          <label for="{{ form.amount.id_for_label }}">{{ form.amount.label }}</label>
+          {{ form.amount }}
+          {% for e in form.amount.errors %}<span class="billing-field-error">{{ e }}</span>{% endfor %}
+        </div>
+        <div class="billing-field {% if form.payment_date.errors %}billing-field--error{% endif %}">
+          <label for="{{ form.payment_date.id_for_label }}">{{ form.payment_date.label }}</label>
+          {{ form.payment_date }}
+        </div>
+        <div class="billing-field {% if form.payment_method.errors %}billing-field--error{% endif %}">
+          <label for="{{ form.payment_method.id_for_label }}">{{ form.payment_method.label }}</label>
+          {{ form.payment_method }}
+        </div>
+        <div class="billing-field {% if form.transaction_id.errors %}billing-field--error billing-field--highlight{% endif %}" data-billing-txn>
+          <label for="{{ form.transaction_id.id_for_label }}">{{ form.transaction_id.label }}</label>
+          {{ form.transaction_id }}
+          {% for e in form.transaction_id.errors %}<span class="billing-field-error">{{ e }}</span>{% endfor %}
+        </div>
+        <div class="billing-field billing-field--full {% if form.description.errors %}billing-field--error{% endif %}">
+          <label for="{{ form.description.id_for_label }}">{{ form.description.label }}</label>
+          {{ form.description }}
+        </div>
+        <div class="billing-field billing-field--full {% if form.proof_file.errors %}billing-field--error billing-field--highlight{% endif %}"
+             data-billing-proof>
+          <label for="{{ form.proof_file.id_for_label }}">{{ form.proof_file.label }}</label>
+          <div class="billing-file-drop">
+            {{ form.proof_file }}
+          </div>
+          <span class="billing-field-hint">{{ form.proof_file.help_text }}</span>
+          {% for e in form.proof_file.errors %}<span class="billing-field-error">{{ e }}</span>{% endfor %}
+        </div>
+        <div class="billing-field {% if form.gst_percent.errors %}billing-field--error{% endif %}">
+          <label for="{{ form.gst_percent.id_for_label }}">{{ form.gst_percent.label }}</label>
+          {{ form.gst_percent }}
+        </div>
+        <div class="billing-field billing-field--full">
+          <label for="{{ form.notes.id_for_label }}">{{ form.notes.label }}</label>
+          {{ form.notes }}
+        </div>
+      </div>
+
+      <fieldset class="billing-option-cards" aria-label="Receipt options">
+        <legend class="billing-option-cards__legend">Options</legend>
+
+        <label class="billing-option-card billing-option-card--email">
+          {{ form.send_email }}
+          <span class="billing-option-card__surface">
+            <span class="billing-option-card__icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="m22 6-10 7L2 6"/></svg>
+            </span>
+            <span class="billing-option-card__copy">
+              <span class="billing-option-card__title">{{ form.send_email.label }}</span>
+              <span class="billing-option-card__desc">Attach PDF and send to billing email on save</span>
+            </span>
+            <span class="billing-option-card__tick" aria-hidden="true"></span>
+          </span>
+        </label>
+
+        <label class="billing-option-card billing-option-card--invoice">
+          {{ form.invoice_only }}
+          <span class="billing-option-card__surface">
+            <span class="billing-option-card__icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8M8 9h2"/></svg>
+            </span>
+            <span class="billing-option-card__copy">
+              <span class="billing-option-card__title">{{ form.invoice_only.label }}</span>
+              <span class="billing-option-card__desc">Tax invoice only — payment not received, no receipt</span>
+            </span>
+            <span class="billing-option-card__tick" aria-hidden="true"></span>
+          </span>
+        </label>
+      </fieldset>
+
+      <footer class="billing-modal__foot">
+        <button type="button" class="btn btn-outline" data-billing-modal-close>Cancel</button>
+        <button type="submit" name="download_pdf" value="0" class="btn btn-primary">Save &amp; issue receipt</button>
+        <button type="submit" name="download_pdf" value="1" class="btn btn-outline">Save &amp; download PDF</button>
+      </footer>
+    </form>
+  </div>
+</dialog>
