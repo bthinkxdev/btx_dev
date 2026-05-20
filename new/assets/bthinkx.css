@@ -801,6 +801,41 @@ section{padding:var(--section-py) 0}
 .section-header h2{margin-bottom:16px}
 .section-header p{font-size:1.05rem}
 
+/* Services intro: copy left, compact “Who we are” video right */
+.services-intro{
+  display:grid;
+  grid-template-columns:1fr minmax(220px,360px);
+  gap:28px 40px;
+  align-items:center;
+  margin:0 0 48px;
+  text-align:left;
+}
+.services-intro__copy .badge{margin-bottom:16px}
+.services-intro__copy h2{margin-bottom:12px}
+.services-intro__copy p{font-size:1.02rem;color:var(--text-secondary);max-width:520px;margin:0}
+.services-intro__video{align-self:center;justify-self:end;width:100%;max-width:360px}
+.services-intro__video-label{
+  display:block;margin-top:8px;font-size:.72rem;font-weight:600;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);text-align:right;
+}
+.video-embed-wrap{
+  position:relative;width:100%;aspect-ratio:16/9;
+  border-radius:var(--radius-md);overflow:hidden;
+  border:1px solid var(--border);background:var(--bg-card);
+  box-shadow:var(--shadow-card);
+}
+.video-embed-wrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+@media(max-width:900px){
+  .services-intro{grid-template-columns:1fr;gap:24px}
+  .services-intro__video{max-width:320px;justify-self:end}
+  .services-intro__video-label{text-align:right}
+}
+@media(max-width:640px){
+  .services-intro{margin-bottom:36px}
+  .services-intro__video{max-width:100%;justify-self:stretch}
+  .services-intro__video-label{text-align:center}
+}
+
 /* ═══════════════════════════════════════════════════════════════
    HERO
 ═══════════════════════════════════════════════════════════════ */
