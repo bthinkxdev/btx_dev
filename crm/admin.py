@@ -22,6 +22,10 @@ from .models import (
     PackageScope,
     Project,
     ProjectCredential,
+    ProjectMember,
+    ProjectTicket,
+    ProjectTicketAttachment,
+    ProjectTicketLink,
     ProjectHandover,
     ProjectProvisioning,
     ProvisioningStep,
@@ -46,8 +50,15 @@ class ClientAdmin(admin.ModelAdmin):
     search_fields = ('business_name', 'contact_person', 'phone', 'email', 'gst_number', 'pan_number')
 
 
+class ProjectMemberInline(admin.TabularInline):
+    model = ProjectMember
+    extra = 0
+    autocomplete_fields = ('user',)
+
+
 @admin.register(Project)
 class ProjectAdmin(admin.ModelAdmin):
+    inlines = [ProjectMemberInline]
     list_display = (
         'id',
         'client',
@@ -67,6 +78,19 @@ class ProjectAdmin(admin.ModelAdmin):
         'client__email',
         'notes',
     )
+
+
+class ProjectTicketLinkInline(admin.TabularInline):
+    model = ProjectTicketLink
+    extra = 0
+
+
+@admin.register(ProjectTicket)
+class ProjectTicketAdmin(admin.ModelAdmin):
+    list_display = ('title', 'project', 'status', 'priority', 'assigned_to', 'updated_at')
+    list_filter = ('status', 'priority', 'project')
+    search_fields = ('title', 'description', 'project__client__business_name')
+    inlines = [ProjectTicketLinkInline]
 
 
 @admin.register(EmployeeProfile)

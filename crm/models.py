@@ -380,6 +380,172 @@ class Project(models.Model):
         self.balance_due = self.deal_value - self.advance_received
         super().save(*args, **kwargs)
 
+    @property
+    def assignee_usernames(self):
+        names = list(
+            self.memberships.values_list('user__username', flat=True)
+        )
+        if names:
+            return names
+        if self.assigned_to_id:
+            return [self.assigned_to.get_username()]
+        return []
+
+
+class ProjectMember(models.Model):
+    """Many-to-many team assignment for delivery projects."""
+
+    class Role(models.TextChoices):
+        LEAD = 'lead', 'Lead'
+        MEMBER = 'member', 'Member'
+
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name='memberships',
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='project_memberships',
+    )
+    role = models.CharField(
+        max_length=20,
+        choices=Role.choices,
+        default=Role.MEMBER,
+    )
+    added_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-role', 'added_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['project', 'user'],
+                name='crm_projectmember_project_user_uniq',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.project_id} · {self.user_id}'
+
+
+class ProjectTicket(models.Model):
+    """Simple Jira-style task board scoped to a project."""
+
+    class Status(models.TextChoices):
+        BACKLOG = 'backlog', 'Backlog'
+        TODO = 'todo', 'To Do'
+        IN_PROGRESS = 'in_progress', 'In Progress'
+        REVIEW = 'review', 'Review'
+        DONE = 'done', 'Done'
+
+    class Priority(models.TextChoices):
+        LOW = 'low', 'Low'
+        MEDIUM = 'medium', 'Medium'
+        HIGH = 'high', 'High'
+
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name='tickets',
+    )
+    title = models.CharField(max_length=300)
+    description = models.TextField(blank=True)
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.BACKLOG,
+        db_index=True,
+    )
+    priority = models.CharField(
+        max_length=10,
+        choices=Priority.choices,
+        default=Priority.MEDIUM,
+    )
+    assigned_to = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='project_tickets_assigned',
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='project_tickets_created',
+    )
+    position = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['status', 'position', '-updated_at']
+
+    def __str__(self):
+        return self.title
+
+
+class ProjectTicketLink(models.Model):
+    """Reference links shown with the ticket description."""
+
+    ticket = models.ForeignKey(
+        ProjectTicket,
+        on_delete=models.CASCADE,
+        related_name='links',
+    )
+    label = models.CharField(max_length=200)
+    url = models.URLField(max_length=500)
+    note = models.TextField(blank=True)
+    sort_order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ['sort_order', 'id']
+
+    def __str__(self):
+        return self.label or self.url
+
+
+class ProjectTicketAttachment(models.Model):
+    class Visibility(models.TextChoices):
+        TEAM = 'team', 'Project team'
+        ASSIGNEE = 'assignee', 'Assignee only'
+        LEAD = 'lead', 'Team lead only'
+
+    ticket = models.ForeignKey(
+        ProjectTicket,
+        on_delete=models.CASCADE,
+        related_name='attachments',
+    )
+    file = models.FileField(upload_to='crm/ticket_attachments/%Y/%m/')
+    original_name = models.CharField(max_length=255, blank=True)
+    visibility = models.CharField(
+        max_length=20,
+        choices=Visibility.choices,
+        default=Visibility.TEAM,
+    )
+    save_to_desk = models.BooleanField(
+        default=False,
+        help_text='Highlight as a desk download for the team.',
+    )
+    is_reference_screenshot = models.BooleanField(
+        default=False,
+        help_text='Shown in the reference screenshots gallery on the ticket.',
+    )
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='project_ticket_uploads',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return self.original_name or str(self.file)
+
 
 class OnboardingSubmission(models.Model):
     class SectionStatus(models.TextChoices):

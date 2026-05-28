@@ -1,0 +1,10 @@
+<ul class="ticket-attach-list" style="list-style:none;padding:0;margin:8px 0 0;">
+  {% for att in ticket.attachments.all %}
+  <li style="font-size:12px;margin-bottom:6px;">
+    <a href="{{ att.file.url }}" target="_blank" rel="noopener">{{ att.original_name|default:att.file.name }}</a>
+    <span style="color:var(--text-muted);"> · {{ att.created_at|date:"M j" }}</span>
+  </li>
+  {% empty %}
+  <li style="font-size:12px;color:var(--text-muted);">No files yet</li>
+  {% endfor %}
+</ul>

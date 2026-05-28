@@ -9,6 +9,7 @@ from django.contrib import messages
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
+from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.db.models import Case, Count, F, IntegerField, OuterRef, Prefetch, Q, Subquery, Sum, Value, When
 from django.db.models.functions import TruncDate, TruncMonth
@@ -45,8 +46,10 @@ from .forms import (
     PackageScopeForm,
     PortalActivateForm,
     ProjectCredentialForm,
+    ProjectAssigneesForm,
     ProjectForm,
     ProjectHandoverForm,
+    ProjectTicketForm,
     ProvisioningStepStatusForm,
     QuickFollowUpForm,
     QuickNoteForm,
@@ -74,6 +77,7 @@ from .models import (
     Package,
     Project,
     ProjectCredential,
+    ProjectTicket,
     ProjectHandover,
     ProjectProvisioning,
     ProvisioningStep,
@@ -111,8 +115,10 @@ from .services.project import (
     create_project,
     get_or_create_client_for_lead,
     get_projects_for_user,
+    set_project_assignees,
     update_project_status,
 )
+from .services import project_tickets as ticket_service
 from .crypto import decrypt_ciphertext
 from .utils import (
     get_report_data,
@@ -120,6 +126,8 @@ from .utils import (
     log_activity,
     recalc_lead_next_followup,
 )
+
+User = get_user_model()
 
 logger = logging.getLogger(__name__)
 
@@ -2195,7 +2203,7 @@ def project_create(request):
                 package=cd['package'],
                 deal_value=cd['deal_value'],
                 advance_received=cd['advance_received'],
-                assigned_to=cd.get('assigned_to'),
+                assignees=list(cd.get('assignees') or []),
                 notes=cd.get('notes') or '',
                 created_by=user,
             )
@@ -2228,6 +2236,9 @@ def project_detail(request, pk):
         reverse('crm:onboarding_form', args=[project.onboarding_token])
     )
     readiness = readiness_service.get_operational_readiness(project)
+    team_users = [
+        m.user for m in project.memberships.select_related('user').order_by('-role', 'added_at')
+    ]
     return render(
         request,
         'crm/projects/detail.html',
@@ -2240,6 +2251,8 @@ def project_detail(request, pk):
             'onboarding_pct': onboarding_pct,
             'onboarding_public_url': onboarding_public_url,
             'readiness': readiness,
+            'team_users': team_users,
+            'assignees_form': ProjectAssigneesForm(project=project),
         },
     )
 
@@ -2323,7 +2336,7 @@ def lead_convert_to_project(request, lead_pk):
             package=pkg,
             deal_value=form.cleaned_data['deal_value'],
             advance_received=form.cleaned_data['advance_received'],
-            assigned_to=form.cleaned_data.get('assigned_to'),
+            assignees=list(form.cleaned_data.get('assignees') or []),
             notes=form.cleaned_data.get('notes') or '',
             created_by=user,
         )
@@ -3724,3 +3737,190 @@ def change_request_staff_create(request, pk):
             ctx,
         )
     return redirect('crm:change_request_detail', pk=cr.pk)
+
+
+def _ticket_board_ctx(project):
+    return {
+        'project': project,
+        'ticket_columns': ticket_service.ticket_columns(project),
+        'ticket_form': ProjectTicketForm(project=project),
+    }
+
+
+@login_required
+@require_POST
+def project_assignees_update(request, pk):
+    project = get_object_or_404(get_projects_for_user(request.user), pk=pk)
+    form = ProjectAssigneesForm(request.POST, project=project)
+    if form.is_valid():
+        set_project_assignees(
+            project, form.cleaned_data.get('assignees') or [], updated_by=request.user
+        )
+        project.refresh_from_db()
+        messages.success(request, 'Team updated.')
+    else:
+        messages.error(request, form.errors.as_text())
+    if request.headers.get('HX-Request'):
+        team_users = [
+            m.user
+            for m in project.memberships.select_related('user').order_by('-role', 'added_at')
+        ]
+        return render(
+            request,
+            'crm/projects/partials/assignees_block.html',
+            {
+                'project': project,
+                'team_users': team_users,
+                'assignees_form': form if not form.is_valid() else ProjectAssigneesForm(project=project),
+            },
+        )
+    return redirect('crm:project_detail', pk=pk)
+
+
+@login_required
+def project_tickets_board(request, pk):
+    project = get_object_or_404(get_projects_for_user(request.user), pk=pk)
+    return render(
+        request,
+        'crm/projects/partials/ticket_board.html',
+        _ticket_board_ctx(project),
+    )
+
+
+@login_required
+@require_POST
+def project_ticket_create(request, pk):
+    project = get_object_or_404(get_projects_for_user(request.user), pk=pk)
+    form = ProjectTicketForm(request.POST, project=project)
+    if form.is_valid():
+        cd = form.cleaned_data
+        try:
+            ticket_service.create_ticket(
+                project,
+                title=cd['title'],
+                description=cd.get('description') or '',
+                status=cd.get('status') or ProjectTicket.Status.BACKLOG,
+                priority=cd.get('priority') or ProjectTicket.Priority.MEDIUM,
+                assigned_to=cd.get('assigned_to'),
+                created_by=request.user,
+            )
+        except ValueError as exc:
+            form.add_error(None, str(exc))
+    if request.headers.get('HX-Request'):
+        ctx = _ticket_board_ctx(project)
+        ctx['ticket_form'] = form
+        ctx['ticket_create_error'] = not form.is_valid()
+        return render(request, 'crm/projects/partials/ticket_board.html', ctx)
+    return redirect('crm:project_detail', pk=pk)
+
+
+@login_required
+@require_POST
+def project_ticket_move(request, pk, ticket_pk):
+    project = get_object_or_404(get_projects_for_user(request.user), pk=pk)
+    ticket = get_object_or_404(ProjectTicket, pk=ticket_pk, project=project)
+    new_status = (request.POST.get('status') or '').strip()
+    try:
+        position = int(request.POST.get('position', 0))
+    except (TypeError, ValueError):
+        position = None
+    try:
+        ticket_service.move_ticket(
+            ticket, new_status=new_status, position=position
+        )
+    except ValueError:
+        pass
+    if request.headers.get('HX-Request'):
+        return render(
+            request,
+            'crm/projects/partials/ticket_board.html',
+            _ticket_board_ctx(project),
+        )
+    return redirect('crm:project_detail', pk=pk)
+
+
+@login_required
+@require_http_methods(['GET', 'POST'])
+def project_ticket_detail(request, pk, ticket_pk):
+    project = get_object_or_404(get_projects_for_user(request.user), pk=pk)
+    ticket = get_object_or_404(
+        ProjectTicket.objects.prefetch_related('attachments'),
+        pk=ticket_pk,
+        project=project,
+    )
+    if request.method == 'POST':
+        action = (request.POST.get('action') or '').strip()
+        if action == 'update':
+            try:
+                aid = request.POST.get('assigned_to')
+                assignee = None
+                if aid:
+                    assignee = get_object_or_404(User, pk=aid)
+                ticket_service.update_ticket_fields(
+                    ticket,
+                    title=request.POST.get('title'),
+                    description=request.POST.get('description', ''),
+                    priority=request.POST.get('priority'),
+                    assigned_to=assignee,
+                )
+                if request.headers.get('HX-Request'):
+                    board = render_to_string(
+                        'crm/projects/partials/ticket_board.html',
+                        _ticket_board_ctx(project),
+                        request=request,
+                    )
+                    resp = HttpResponse(board)
+                    resp['HX-Trigger'] = json.dumps({
+                        'crmCloseTicketDrawer': True,
+                        'crmToast': 'Ticket saved',
+                    })
+                    return resp
+            except ValueError as exc:
+                messages.error(request, str(exc))
+        elif action == 'delete':
+            ticket.delete()
+            if request.headers.get('HX-Request'):
+                board = render_to_string(
+                    'crm/projects/partials/ticket_board.html',
+                    _ticket_board_ctx(project),
+                    request=request,
+                )
+                resp = HttpResponse(board)
+                resp['HX-Trigger'] = json.dumps({'crmCloseTicketDrawer': True})
+                return resp
+            return redirect('crm:project_detail', pk=pk)
+        ticket.refresh_from_db()
+    team_qs = User.objects.filter(
+        pk__in=project.memberships.values_list('user_id', flat=True),
+        is_active=True,
+    ).order_by('username')
+    return render(
+        request,
+        'crm/projects/partials/ticket_drawer.html',
+        {
+            'project': project,
+            'ticket': ticket,
+            'team_users': team_qs,
+            'priority_choices': ProjectTicket.Priority.choices,
+        },
+    )
+
+
+@login_required
+@require_POST
+def project_ticket_upload(request, pk, ticket_pk):
+    project = get_object_or_404(get_projects_for_user(request.user), pk=pk)
+    ticket = get_object_or_404(ProjectTicket, pk=ticket_pk, project=project)
+    uploaded = request.FILES.get('file')
+    if uploaded:
+        ticket_service.add_attachment(
+            ticket, uploaded_file=uploaded, uploaded_by=request.user
+        )
+    if request.headers.get('HX-Request'):
+        ticket.refresh_from_db()
+        return render(
+            request,
+            'crm/projects/partials/ticket_attachments.html',
+            {'ticket': ticket},
+        )
+    return redirect('crm:project_detail', pk=pk)

@@ -1,0 +1,260 @@
+<div id="project-ticket-board" class="project-ticket-board">
+  <style>
+    .project-ticket-board { margin-top: 8px; }
+    .ticket-board-toolbar {
+      display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;
+      justify-content: space-between; margin-bottom: 16px;
+    }
+    .ticket-board-create {
+      flex: 1; min-width: 260px; max-width: 520px;
+      display: flex; gap: 8px; align-items: flex-end;
+    }
+    .ticket-board-create input[type="text"] { flex: 1; }
+    .ticket-kanban {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(160px, 1fr));
+      gap: 10px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+    }
+    .ticket-col {
+      background: var(--neutral-50);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      min-height: 120px;
+      display: flex;
+      flex-direction: column;
+    }
+    .ticket-col__head {
+      padding: 8px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      gap: 6px;
+    }
+    .ticket-col__body {
+      flex: 1;
+      padding: 8px;
+      min-height: 80px;
+    }
+    .ticket-col__body.is-drag-over {
+      background: var(--primary-50);
+      outline: 2px dashed var(--primary-500);
+      outline-offset: -4px;
+    }
+    .ticket-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      margin-bottom: 8px;
+      cursor: grab;
+      font-size: 12px;
+      box-shadow: 0 1px 2px rgba(0,0,0,.04);
+    }
+    .ticket-card:active { cursor: grabbing; }
+    .ticket-card.is-dragging { opacity: 0.45; }
+    .ticket-card__title { font-weight: 600; color: var(--neutral-900); line-height: 1.35; }
+    .ticket-card__meta {
+      margin-top: 6px;
+      font-size: 10px;
+      color: var(--text-muted);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 8px;
+    }
+    .ticket-priority--high { color: var(--danger-600); font-weight: 600; }
+    .ticket-priority--medium { color: var(--warning-600); }
+    .ticket-priority--low { color: var(--text-muted); }
+    .ticket-drawer-host { position: fixed; inset: 0; z-index: 1200; pointer-events: none; }
+    .ticket-drawer-host > * { pointer-events: auto; }
+    .ticket-drawer-backdrop {
+      position: fixed; inset: 0; background: rgba(15,23,42,.45);
+      display: flex; justify-content: flex-end; align-items: stretch;
+    }
+    .ticket-drawer {
+      width: min(420px, 100vw); background: #fff; padding: 20px;
+      overflow-y: auto; box-shadow: -8px 0 32px rgba(0,0,0,.12);
+    }
+    .ticket-drawer__head {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 16px;
+    }
+    .ticket-dropzone {
+      margin-top: 10px; padding: 16px; border: 2px dashed var(--border);
+      border-radius: 8px; text-align: center; position: relative;
+      cursor: pointer; background: var(--neutral-50);
+    }
+    .ticket-dropzone.is-dragover { border-color: var(--primary-500); background: var(--primary-50); }
+    .ticket-dropzone__input {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .ticket-dropzone__hint { font-size: 12px; color: var(--text-muted); margin: 0; pointer-events: none; }
+    @media (max-width: 1100px) {
+      .ticket-kanban { grid-template-columns: repeat(3, minmax(200px, 1fr)); }
+    }
+    @media (max-width: 700px) {
+      .ticket-kanban { grid-template-columns: repeat(2, minmax(160px, 1fr)); }
+    }
+  </style>
+
+  <div class="ticket-board-toolbar">
+    <form class="ticket-board-create"
+          method="post"
+          action="{% url 'crm:project_ticket_create' project.pk %}"
+          hx-post="{% url 'crm:project_ticket_create' project.pk %}"
+          hx-target="#project-ticket-board"
+          hx-swap="outerHTML">
+      {% csrf_token %}
+      <div style="flex:1;">
+        <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;">New ticket</label>
+        <input type="text" name="title" class="form-control" placeholder="What needs to be done?" maxlength="300" required>
+      </div>
+      <input type="hidden" name="status" value="backlog">
+      <input type="hidden" name="priority" value="medium">
+      <button type="submit" class="btn btn-primary btn-sm">Add</button>
+    </form>
+  </div>
+  {% if ticket_create_error %}
+  <p class="text-danger" style="font-size:12px;margin:-8px 0 12px;">Could not create ticket. Check the title.</p>
+  {% endif %}
+
+  <div class="ticket-kanban" id="ticket-kanban">
+    {% for status_code, status_label, tickets in ticket_columns %}
+    <div class="ticket-col" data-status="{{ status_code }}">
+      <div class="ticket-col__head">
+        <span>{{ status_label }}</span>
+        <span>{{ tickets|length }}</span>
+      </div>
+      <div class="ticket-col__body ticket-drop-target" data-status="{{ status_code }}">
+        {% for t in tickets %}
+        {% include "crm/projects/partials/ticket_card.html" with t=t project=project %}
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="ticket-drawer-host" id="ticket-drawer-host"></div>
+
+<script>
+(function () {
+
+  function csrf() {
+    const el = document.querySelector('[name=csrfmiddlewaretoken]');
+    return el ? el.value : '';
+  }
+
+  window.closeTicketDrawer = function () {
+    const host = document.getElementById('ticket-drawer-host');
+    if (host) host.innerHTML = '';
+  };
+
+  document.body.addEventListener('click', function (e) {
+    const card = e.target.closest('.ticket-card[data-ticket-id]');
+    if (!card || e.target.closest('a')) return;
+    const url = card.getAttribute('data-detail-url');
+    if (!url) return;
+    fetch(url, { headers: { 'HX-Request': 'true' } })
+      .then(r => r.text())
+      .then(html => {
+        const host = document.getElementById('ticket-drawer-host');
+        if (host) {
+          host.innerHTML = html;
+          initDropzones(host);
+        }
+      });
+  });
+
+  document.body.addEventListener('crmCloseTicketDrawer', function () {
+    closeTicketDrawer();
+  });
+  document.body.addEventListener('htmx:afterSwap', function (ev) {
+    if (ev.detail.target && ev.detail.target.id === 'project-ticket-board') {
+      closeTicketDrawer();
+      initTicketDragDrop();
+    }
+    initDropzones(ev.detail.target || document);
+  });
+
+  function initDropzones(root) {
+    root.querySelectorAll('.ticket-dropzone').forEach(zone => {
+      if (zone.dataset.bound) return;
+      zone.dataset.bound = '1';
+      zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('is-dragover'); });
+      zone.addEventListener('dragleave', () => zone.classList.remove('is-dragover'));
+      zone.addEventListener('drop', e => {
+        e.preventDefault();
+        zone.classList.remove('is-dragover');
+        const input = zone.querySelector('input[type=file]');
+        if (input && e.dataTransfer.files.length) {
+          input.files = e.dataTransfer.files;
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+          zone.closest('form').requestSubmit();
+        }
+      });
+    });
+  }
+
+  function initTicketDragDrop() {
+    const board = document.getElementById('ticket-kanban');
+    if (!board) return;
+    let dragged = null;
+
+    board.querySelectorAll('.ticket-card').forEach(card => {
+      card.setAttribute('draggable', 'true');
+      card.addEventListener('dragstart', e => {
+        dragged = card;
+        card.classList.add('is-dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', card.dataset.ticketId);
+      });
+      card.addEventListener('dragend', () => {
+        card.classList.remove('is-dragging');
+        board.querySelectorAll('.ticket-drop-target').forEach(c => c.classList.remove('is-drag-over'));
+      });
+    });
+
+    board.querySelectorAll('.ticket-drop-target').forEach(col => {
+      col.addEventListener('dragover', e => {
+        e.preventDefault();
+        col.classList.add('is-drag-over');
+      });
+      col.addEventListener('dragleave', () => col.classList.remove('is-drag-over'));
+      col.addEventListener('drop', e => {
+        e.preventDefault();
+        col.classList.remove('is-drag-over');
+        if (!dragged) return;
+        const newStatus = col.dataset.status;
+        const ticketId = dragged.dataset.ticketId;
+        const moveUrl = dragged.dataset.moveUrl;
+        col.appendChild(dragged);
+        const fd = new FormData();
+        fd.append('status', newStatus);
+        fd.append('position', col.querySelectorAll('.ticket-card').length);
+        fd.append('csrfmiddlewaretoken', csrf());
+        fetch(moveUrl, {
+          method: 'POST',
+          body: fd,
+          headers: { 'HX-Request': 'true' },
+        }).then(r => r.text()).then(html => {
+          const wrap = document.getElementById('project-ticket-board');
+          if (wrap && html) {
+            wrap.outerHTML = html;
+            initTicketDragDrop();
+          }
+        });
+      });
+    });
+  }
+
+  initTicketDragDrop();
+  initDropzones(document);
+})();
+</script>

@@ -1,0 +1,18 @@
+<div id="project-ticket-board" class="project-ticket-board" data-filter-query="{{ filter_query|default:'' }}">
+  {% include "crm/tickets/partials/board_styles_scripts.html" %}
+  <div class="ticket-kanban" id="ticket-kanban">
+    {% for status_code, status_label, tickets in ticket_columns %}
+    <div class="ticket-col" data-status="{{ status_code }}">
+      <div class="ticket-col__head">
+        <span>{{ status_label }}</span>
+        <span>{{ tickets|length }}</span>
+      </div>
+      <div class="ticket-col__body ticket-drop-target" data-status="{{ status_code }}">
+        {% for t in tickets %}
+        {% include "crm/tickets/partials/ticket_card.html" with t=t filter_query=filter_query %}
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>

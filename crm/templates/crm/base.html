@@ -190,6 +190,22 @@
       color: var(--primary-700);
       font-weight: 600;
     }
+    .nav-item--with-badge { justify-content: flex-start; }
+    .nav-item--with-badge > span:first-of-type { flex: 1; }
+    .nav-item .nav-count {
+      margin-left: auto;
+      min-width: 20px;
+      height: 20px;
+      padding: 0 6px;
+      border-radius: 10px;
+      background: var(--danger-500);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 20px;
+      text-align: center;
+      flex-shrink: 0;
+    }
 
     .sidebar-footer {
       padding: 14px 16px;
@@ -1691,6 +1707,21 @@
           <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
         </svg>
         <span>Projects</span>
+      </a>
+
+      <a href="{% url 'crm:tickets' %}?view=board"
+         hx-get="{% url 'crm:tickets' %}?view=board"
+         hx-target="#crm-main-content"
+         hx-select="#crm-main-content"
+         hx-swap="outerHTML"
+         hx-push-url="true"
+         class="nav-item nav-item--with-badge {% if 'ticket' in request.resolver_match.url_name %}active{% endif %}"
+         title="{% if crm_tickets_open_n %}{{ crm_tickets_open_n }} open ticket{{ crm_tickets_open_n|pluralize }}{% else %}Tickets{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+        </svg>
+        <span>Tickets</span>
+        {% if crm_tickets_open_n %}<span class="nav-count">{{ crm_tickets_open_n }}</span>{% endif %}
       </a>
 
       <a href="{% url 'crm:operations_dashboard' %}"

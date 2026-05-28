@@ -1,0 +1,106 @@
+{% extends "crm/base.html" %}
+{% block title %}New ticket{% endblock %}
+{% block page_title %}New ticket{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:16px;font-size:13px;">
+  <a href="{% url 'crm:tickets' %}" hx-get="{% url 'crm:tickets' %}" hx-target="#crm-main-content" hx-select="#crm-main-content" hx-swap="outerHTML" hx-push-url="true">Tickets</a>
+  <span> / New</span>
+</div>
+
+<div class="page-header">
+  <div><h1>Create ticket</h1><p>Heading, detailed note, project member, links, and files.</p></div>
+</div>
+
+<form method="post" enctype="multipart/form-data" class="card" style="max-width:820px;padding:24px;">
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="crm-flash crm-flash--err">{{ form.non_field_errors }}</div>{% endif %}
+
+  {% if form.project %}
+  <div class="form-row">
+    {{ form.project.label_tag }}
+    {{ form.project }}
+    {% if form.project.errors %}<p class="text-danger" style="font-size:12px;">{{ form.project.errors.0 }}</p>{% endif %}
+  </div>
+  {% endif %}
+
+  <div class="form-row">
+    {{ form.title.label_tag }}
+    {{ form.title }}
+    {% if form.title.errors %}<p class="text-danger" style="font-size:12px;">{{ form.title.errors.0 }}</p>{% endif %}
+  </div>
+
+  <div class="form-row">
+    {{ form.description.label_tag }}
+    {{ form.description }}
+    <p style="font-size:11px;color:var(--text-muted);margin:6px 0 0;">Use blank lines between sections. URLs in the note are auto-linked on the ticket page.</p>
+  </div>
+
+  <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+    <div>{{ form.status.label_tag }}{{ form.status }}</div>
+    <div>{{ form.priority.label_tag }}{{ form.priority }}</div>
+    <div id="ticket-assignee-host"
+         {% if form.project %}hx-get="{% url 'crm:ticket_member_select' %}?project={{ form.project.value|default:project.pk }}"
+         hx-trigger="change from:#id_ticket_project"
+         hx-include="#id_ticket_project"
+         hx-target="#ticket-assignee-host"
+         hx-swap="innerHTML"{% endif %}>
+      {% if project %}
+        {% include "crm/tickets/partials/member_select.html" with members=form.fields.assigned_to.queryset selected="" %}
+      {% else %}
+        <label style="font-size:11px;font-weight:700;color:var(--text-muted);">Assign to</label>
+        <p style="font-size:12px;color:var(--text-muted);">Select a project first.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  {% include "crm/tickets/partials/link_fields.html" %}
+
+  <div class="form-row" style="margin-top:20px;">
+    <div class="panel-h">Reference screenshots</div>
+    <p style="font-size:12px;color:var(--text-muted);margin:0 0 10px;">Upload multiple images (UI mockups, bugs, designs) shown in a gallery on the ticket.</p>
+    <input type="file" name="reference_screenshots" class="form-control" accept="image/*" multiple>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px;">
+      <div>
+        <label style="font-size:11px;font-weight:700;">Visibility</label>
+        <select name="ref_visibility" class="form-control">
+          {% for val, label in visibility_choices %}
+          <option value="{{ val }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div style="display:flex;align-items:flex-end;padding-bottom:8px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;">
+          <input type="checkbox" name="ref_save_desk" value="1"> Save to desk
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-row" style="margin-top:20px;">
+    <div class="panel-h">Other file uploads</div>
+    <p style="font-size:12px;color:var(--text-muted);margin:0 0 10px;">Choose visibility and whether teammates should get a prominent “save to desk” download.</p>
+    <input type="file" name="files" class="form-control" multiple>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px;">
+      <div>
+        <label style="font-size:11px;font-weight:700;">Visibility (all files)</label>
+        <select name="file_visibility" class="form-control">
+          {% for val, label in visibility_choices %}
+          <option value="{{ val }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div style="display:flex;align-items:flex-end;padding-bottom:8px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;">
+          <input type="checkbox" name="file_save_desk" value="1"> Save to desk (highlight download)
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:10px;margin-top:24px;">
+    <button type="submit" class="btn btn-primary">Create ticket</button>
+    <a href="{% url 'crm:tickets' %}" class="btn btn-outline">Cancel</a>
+  </div>
+</form>
+{% endblock %}

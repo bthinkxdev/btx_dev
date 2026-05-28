@@ -173,3 +173,35 @@ def dict_get(mapping, key):
     if not mapping or key is None:
         return key
     return mapping.get(key, key)
+
+
+def _linkify_ticket_note_text(text):
+    """Escape HTML, preserve line breaks, turn http(s) URLs into anchor tags."""
+    from django.utils.html import escape
+
+    text = escape(text or '')
+    text = text.replace('\n\n', '</p><p>').replace('\n', '<br>')
+
+    def _replace_url(match):
+        url = match.group(0)
+        trail = ''
+        while url and url[-1] in '.,;:!?)':
+            trail = url[-1] + trail
+            url = url[:-1]
+        if not url:
+            return match.group(0)
+        return (
+            f'<a href="{url}" target="_blank" rel="noopener noreferrer">{url}</a>{trail}'
+        )
+
+    text = re.sub(r'https?://[^\s<>"\']+', _replace_url, text)
+    return text
+
+
+@register.filter
+def ticket_richtext(value):
+    """Line breaks + auto-link URLs in ticket detailed notes."""
+    from django.utils.safestring import mark_safe
+
+    body = _linkify_ticket_note_text(value)
+    return mark_safe(f'<p>{body}</p>')

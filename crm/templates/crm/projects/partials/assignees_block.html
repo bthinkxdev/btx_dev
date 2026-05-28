@@ -1,0 +1,23 @@
+<div id="project-assignees-block">
+  <p style="font-size:13px;margin:0 0 10px;">
+    {% if team_users %}
+      {% for u in team_users %}<span class="crm-badge crm-badge--blue" style="margin:0 6px 6px 0;">{{ u.get_full_name|default:u.username }}</span>{% endfor %}
+    {% elif project.assigned_to %}
+      <span class="crm-badge crm-badge--blue">{{ project.assigned_to.get_username }}</span>
+    {% else %}
+      <span style="color:var(--text-muted);">No team assigned</span>
+    {% endif %}
+  </p>
+  <form method="post"
+        action="{% url 'crm:project_assignees_update' project.pk %}"
+        hx-post="{% url 'crm:project_assignees_update' project.pk %}"
+        hx-target="#project-assignees-block"
+        hx-swap="outerHTML">
+    {% csrf_token %}
+    <div class="form-row" style="margin-bottom:8px;">
+      {{ assignees_form.assignees.label_tag }}
+      {{ assignees_form.assignees }}
+    </div>
+    <button type="submit" class="btn btn-outline btn-sm">Save team</button>
+  </form>
+</div>

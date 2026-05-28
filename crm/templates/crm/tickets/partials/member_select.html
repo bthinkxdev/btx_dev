@@ -1,0 +1,10 @@
+<label for="id_assigned_to" style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted);display:block;margin-bottom:4px;">Assignee</label>
+<select name="assigned_to" id="id_assigned_to" class="form-control">
+  <option value="">Unassigned</option>
+  {% for u in members %}
+  <option value="{{ u.pk }}" {% if selected == u.pk|stringformat:"s" %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
+  {% endfor %}
+</select>
+{% if not members %}
+<p style="font-size:12px;color:var(--warning-600);margin:8px 0 0;">No team on this project yet. Add members on the project page first.</p>
+{% endif %}

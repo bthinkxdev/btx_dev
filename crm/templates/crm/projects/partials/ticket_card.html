@@ -1,0 +1,11 @@
+<article class="ticket-card"
+         data-ticket-id="{{ t.pk }}"
+         data-move-url="{% url 'crm:project_ticket_move' project.pk t.pk %}"
+         data-detail-url="{% url 'crm:project_ticket_detail' project.pk t.pk %}">
+  <div class="ticket-card__title">{{ t.title }}</div>
+  <div class="ticket-card__meta">
+    <span class="ticket-priority--{{ t.priority }}">{{ t.get_priority_display }}</span>
+    {% if t.assigned_to %}<span>{{ t.assigned_to.get_username }}</span>{% endif %}
+    {% if t.attachments.count %}<span>📎 {{ t.attachments.count }}</span>{% endif %}
+  </div>
+</article>

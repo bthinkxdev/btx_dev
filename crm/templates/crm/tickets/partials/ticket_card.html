@@ -1,0 +1,32 @@
+<div class="ticket-card"
+     draggable="true"
+     data-ticket-id="{{ t.pk }}"
+     data-move-url="{% url 'crm:ticket_move' t.pk %}{% if filter_query %}?{{ filter_query }}{% endif %}"
+     data-upload-url="{% url 'crm:ticket_upload' t.pk %}">
+  <a class="ticket-card__link"
+     href="{% url 'crm:ticket_detail' t.pk %}"
+     hx-get="{% url 'crm:ticket_detail' t.pk %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">{{ t.title }}</a>
+  <div class="ticket-card__project">{{ t.project.client.business_name }}</div>
+  <div class="ticket-card__meta">
+    <span class="ticket-priority--{{ t.priority }}">{{ t.get_priority_display }}</span>
+    {% if t.assigned_to %}<span>{{ t.assigned_to.get_username }}</span>{% endif %}
+  </div>
+  {% with refs=t.attachments.all %}
+  {% if refs %}
+  <div class="ticket-card__thumbs">
+    {% for a in refs %}{% if a.is_reference_screenshot %}
+    <span class="ticket-ref-thumb" style="width:36px;height:36px;cursor:default;" onclick="event.stopPropagation();">
+      <img src="{{ a.file.url }}" alt="" loading="lazy">
+    </span>
+    {% endif %}{% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
+  <div class="ticket-card__dropzone" title="Drop screenshots or files here">
+    <span>Drop files to attach</span>
+  </div>
+</div>

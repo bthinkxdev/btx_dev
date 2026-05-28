@@ -5,6 +5,7 @@ from datetime import datetime
 from django.utils import timezone
 
 from .models import EmployeeProfile, FollowUp, Task
+from .services import project_tickets as ticket_service
 from .rbac import (
     can_access_billing,
     can_access_sales_pipeline,
@@ -20,6 +21,7 @@ def crm_header(request):
         'crm_tasks_today_n': 0,
         'crm_tasks_open_n': 0,
         'crm_tasks_undated_n': 0,
+        'crm_tickets_open_n': 0,
         'crm_employee_profile': None,
         'crm_is_developer': False,
         'crm_can_view_financial_data': True,
@@ -63,6 +65,10 @@ def crm_header(request):
         is_completed=False,
         due_date__isnull=True,
     ).count()
+    try:
+        out['crm_tickets_open_n'] = ticket_service.count_open_tickets_for_user(user)
+    except Exception:
+        out['crm_tickets_open_n'] = 0
     out['crm_employee_profile'] = EmployeeProfile.objects.filter(user=user).first()
     out['crm_is_developer'] = is_crm_developer(user)
     out['crm_can_view_financial_data'] = can_view_financial_data(user)

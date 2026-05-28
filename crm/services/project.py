@@ -5,7 +5,7 @@ from decimal import Decimal
 from django.db import transaction
 from django.db.models import Q
 
-from ..models import AuditEntry, Client, Lead, Project
+from ..models import AuditEntry, Client, Lead, Project, ProjectMember
 from ..utils import log_activity
 from . import audit as audit_service
 from . import billing as billing_service
@@ -41,6 +41,42 @@ def get_or_create_client_for_lead(lead, *, created_by) -> tuple[Client, bool]:
     return convert_lead_to_client(lead, created_by=created_by), True
 
 
+def _sync_assigned_to_primary(project):
+    """Keep legacy assigned_to in sync with first team member (lead or earliest)."""
+    membership = (
+        project.memberships.select_related('user')
+        .order_by('-role', 'added_at')
+        .first()
+    )
+    primary = membership.user if membership else None
+    if project.assigned_to_id != (primary.pk if primary else None):
+        project.assigned_to = primary
+        project.save(update_fields=['assigned_to', 'updated_at'])
+
+
+@transaction.atomic
+def set_project_assignees(project, users, *, updated_by=None):
+    """Replace project team. First user becomes primary (assigned_to)."""
+    user_list = list(users or [])
+    ids = {getattr(u, 'pk', u) for u in user_list if u}
+    project.memberships.exclude(user_id__in=ids).delete()
+    for idx, user in enumerate(user_list):
+        if not user:
+            continue
+        ProjectMember.objects.update_or_create(
+            project=project,
+            user_id=getattr(user, 'pk', user),
+            defaults={
+                'role': (
+                    ProjectMember.Role.LEAD
+                    if idx == 0
+                    else ProjectMember.Role.MEMBER
+                ),
+            },
+        )
+    _sync_assigned_to_primary(project)
+
+
 @transaction.atomic
 def create_project(
     client,
@@ -49,6 +85,7 @@ def create_project(
     deal_value,
     advance_received=0,
     assigned_to=None,
+    assignees=None,
     notes='',
     created_by,
 ) -> Project:
@@ -67,6 +104,13 @@ def create_project(
         created_by=created_by,
     )
     project.save()
+    team = list(assignees or [])
+    if assigned_to and assigned_to not in team:
+        team.insert(0, assigned_to)
+    elif assigned_to and not team:
+        team = [assigned_to]
+    if team:
+        set_project_assignees(project, team, updated_by=created_by)
     scope_service.enforce_scope_on_project_create(project)
     billing_service.ensure_project_contract_ledger(project, actor=created_by)
     if advance > 0:
@@ -108,6 +152,7 @@ def convert_lead_to_project(
     deal_value,
     advance_received=0,
     assigned_to=None,
+    assignees=None,
     notes='',
     created_by,
 ):
@@ -125,6 +170,7 @@ def convert_lead_to_project(
         deal_value=deal_value,
         advance_received=advance_received,
         assigned_to=assigned_to,
+        assignees=assignees,
         notes=notes,
         created_by=created_by,
     )
@@ -178,7 +224,13 @@ def get_projects_for_user(user):
     Regular users see only projects they created or are assigned_to.
     Returns queryset with select_related('client', 'package', 'assigned_to').
     """
-    qs = Project.objects.select_related('client', 'package', 'assigned_to')
+    qs = Project.objects.select_related(
+        'client', 'package', 'assigned_to'
+    ).prefetch_related('memberships__user')
     if user.is_superuser or user.is_staff:
         return qs
-    return qs.filter(Q(created_by=user) | Q(assigned_to=user))
+    return qs.filter(
+        Q(created_by=user)
+        | Q(assigned_to=user)
+        | Q(memberships__user=user)
+    ).distinct()

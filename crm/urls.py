@@ -1,7 +1,7 @@
 from django.contrib.auth import views as auth_views
 from django.urls import path
 
-from . import billing_views, views
+from . import billing_views, views, views_tickets
 
 app_name = 'crm'
 
@@ -43,6 +43,43 @@ urlpatterns = [
     path('projects/', views.projects_list, name='projects'),
     path('projects/create/', views.project_create, name='project_create'),
     path('projects/<int:pk>/', views.project_detail, name='project_detail'),
+    path('tickets/', views_tickets.tickets_hub, name='tickets'),
+    path('tickets/board/', views_tickets.tickets_board_partial, name='tickets_board'),
+    path('tickets/create/', views_tickets.ticket_create, name='ticket_create'),
+    path('tickets/members/', views_tickets.ticket_member_select, name='ticket_member_select'),
+    path('tickets/<int:pk>/', views_tickets.ticket_detail, name='ticket_detail'),
+    path('tickets/<int:pk>/move/', views_tickets.ticket_move, name='ticket_move'),
+    path('tickets/<int:pk>/upload/', views_tickets.ticket_upload, name='ticket_upload'),
+    path(
+        'projects/<int:pk>/assignees/',
+        views.project_assignees_update,
+        name='project_assignees_update',
+    ),
+    path(
+        'projects/<int:pk>/tickets/',
+        views.project_tickets_board,
+        name='project_tickets_board',
+    ),
+    path(
+        'projects/<int:pk>/tickets/create/',
+        views.project_ticket_create,
+        name='project_ticket_create',
+    ),
+    path(
+        'projects/<int:pk>/tickets/<int:ticket_pk>/move/',
+        views.project_ticket_move,
+        name='project_ticket_move',
+    ),
+    path(
+        'projects/<int:pk>/tickets/<int:ticket_pk>/',
+        views.project_ticket_detail,
+        name='project_ticket_detail',
+    ),
+    path(
+        'projects/<int:pk>/tickets/<int:ticket_pk>/upload/',
+        views.project_ticket_upload,
+        name='project_ticket_upload',
+    ),
     path(
         'projects/<int:pk>/operations/',
         views.project_operations,

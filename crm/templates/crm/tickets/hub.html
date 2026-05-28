@@ -1,0 +1,81 @@
+{% extends "crm/base.html" %}
+{% block title %}Tickets{% endblock %}
+{% block page_title %}Tickets{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Tickets</h1>
+    <p>Kanban board · drag cards · drop files on a card · reference screenshots on each ticket.</p>
+  </div>
+  <a href="{% url 'crm:ticket_create' %}{% if project %}?project={{ project.pk }}{% endif %}"
+     class="btn btn-primary"
+     hx-get="{% url 'crm:ticket_create' %}{% if project %}?project={{ project.pk }}{% endif %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">+ New ticket</a>
+</div>
+
+<form method="get" class="card" style="padding:16px 18px;margin-bottom:20px;display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;">
+  {% for field in filter_form %}
+  <div class="form-row" style="margin:0;min-width:140px;">
+    {{ field.label_tag }}
+    {{ field }}
+  </div>
+  {% endfor %}
+  <input type="hidden" name="view" value="{{ view }}">
+  <button type="submit" class="btn btn-outline btn-sm">Filter</button>
+  <div style="display:flex;gap:8px;margin-left:auto;">
+    <a href="?{% if request.GET.project %}project={{ request.GET.project }}&{% endif %}{% if request.GET.status %}status={{ request.GET.status }}&{% endif %}{% if request.GET.assigned_to %}assigned_to={{ request.GET.assigned_to }}&{% endif %}{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}view=board"
+       class="btn btn-sm {% if view == 'board' %}btn-primary{% else %}btn-outline{% endif %}">Board</a>
+    <a href="?{% if request.GET.project %}project={{ request.GET.project }}&{% endif %}{% if request.GET.status %}status={{ request.GET.status }}&{% endif %}{% if request.GET.assigned_to %}assigned_to={{ request.GET.assigned_to }}&{% endif %}{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}view=list"
+       class="btn btn-sm {% if view == 'list' %}btn-primary{% else %}btn-outline{% endif %}">List</a>
+  </div>
+</form>
+
+{% if view == 'board' %}
+  <p style="font-size:13px;margin-bottom:12px;color:var(--text-muted);">
+    {% if project %}<strong>{{ project.client.business_name }}</strong> ·{% endif %}
+    Drag cards between columns · drop images/files onto a card · click heading to open
+  </p>
+  {% include "crm/tickets/partials/board.html" %}
+{% else %}
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Heading</th>
+          <th>Project</th>
+          <th>Status</th>
+          <th>Assignee</th>
+          <th>Refs</th>
+          <th>Updated</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in tickets %}
+        <tr>
+          <td>
+            <a href="{% url 'crm:ticket_detail' t.pk %}"
+               hx-get="{% url 'crm:ticket_detail' t.pk %}"
+               hx-target="#crm-main-content"
+               hx-select="#crm-main-content"
+               hx-swap="outerHTML"
+               hx-push-url="true"
+               style="font-weight:600;">{{ t.title }}</a>
+          </td>
+          <td>{{ t.project.client.business_name }}</td>
+          <td><span class="crm-badge crm-badge--gray">{{ t.get_status_display }}</span></td>
+          <td>{% if t.assigned_to %}{{ t.assigned_to.get_username }}{% else %}—{% endif %}</td>
+          <td>{% for a in t.attachments.all %}{% if a.is_reference_screenshot %}🖼{% endif %}{% endfor %}</td>
+          <td style="font-size:12px;color:var(--text-muted);">{{ t.updated_at|date:"M j, H:i" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6"><div class="empty-state">No tickets yet. <a href="{% url 'crm:ticket_create' %}">Create one</a>.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endif %}
+{% endblock %}

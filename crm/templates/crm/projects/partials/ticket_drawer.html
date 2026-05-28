@@ -1,0 +1,78 @@
+<div class="ticket-drawer-backdrop" id="ticket-drawer-backdrop" onclick="if(event.target===this) closeTicketDrawer()">
+  <div class="ticket-drawer" role="dialog" aria-label="Ticket detail">
+    <div class="ticket-drawer__head">
+      <h3 style="margin:0;font-size:1rem;">Ticket #{{ ticket.pk }}</h3>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="closeTicketDrawer()" aria-label="Close">✕</button>
+    </div>
+    <form method="post"
+          action="{% url 'crm:project_ticket_detail' project.pk ticket.pk %}"
+          hx-post="{% url 'crm:project_ticket_detail' project.pk ticket.pk %}"
+          hx-target="#ticket-drawer-host"
+          hx-swap="innerHTML">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="update">
+      <div class="form-row">
+        <label>Title</label>
+        <input type="text" name="title" class="form-control" value="{{ ticket.title }}" required maxlength="300">
+      </div>
+      <div class="form-row">
+        <label>Description</label>
+        <textarea name="description" class="form-control" rows="4">{{ ticket.description }}</textarea>
+      </div>
+      <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div>
+          <label>Priority</label>
+          <select name="priority" class="form-control">
+            {% for val, label in priority_choices %}
+            <option value="{{ val }}" {% if ticket.priority == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label>Assignee</label>
+          <select name="assigned_to" class="form-control">
+            <option value="">Unassigned</option>
+            {% for u in team_users %}
+            <option value="{{ u.pk }}" {% if ticket.assigned_to_id == u.pk %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:14px;">
+        <button type="submit" class="btn btn-primary btn-sm">Save</button>
+      </div>
+    </form>
+    <form method="post"
+          action="{% url 'crm:project_ticket_detail' project.pk ticket.pk %}"
+          style="display:inline;margin-top:8px;"
+          hx-post="{% url 'crm:project_ticket_detail' project.pk ticket.pk %}"
+          hx-vals='{"action": "delete"}'
+          hx-confirm="Delete this ticket?"
+          hx-target="#project-ticket-board"
+          hx-select="#project-ticket-board"
+          hx-swap="outerHTML">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="delete">
+      <button type="submit" class="btn btn-outline btn-sm" style="color:var(--danger-600);">Delete</button>
+    </form>
+
+    <div style="margin-top:18px;border-top:1px solid var(--border);padding-top:14px;">
+      <div class="panel-h" style="margin-bottom:8px;">Attachments</div>
+      <div id="ticket-attachments-{{ ticket.pk }}">
+        {% include "crm/projects/partials/ticket_attachments.html" %}
+      </div>
+      <form class="ticket-dropzone"
+            method="post"
+            enctype="multipart/form-data"
+            action="{% url 'crm:project_ticket_upload' project.pk ticket.pk %}"
+            hx-post="{% url 'crm:project_ticket_upload' project.pk ticket.pk %}"
+            hx-encoding="multipart/form-data"
+            hx-target="#ticket-attachments-{{ ticket.pk }}"
+            hx-swap="innerHTML">
+        {% csrf_token %}
+        <p class="ticket-dropzone__hint">Drag files here or click to upload</p>
+        <input type="file" name="file" class="ticket-dropzone__input" hx-trigger="change" multiple>
+      </form>
+    </div>
+  </div>
+</div>

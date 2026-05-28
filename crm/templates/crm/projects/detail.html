@@ -46,7 +46,12 @@
       <tr><td style="color:var(--text-muted);">Advance</td><td>{{ project.advance_received }}</td></tr>
       <tr><td style="color:var(--text-muted);">Balance due</td><td>{{ project.balance_due }}</td></tr>
       {% endif %}
-      <tr><td style="color:var(--text-muted);">Assigned</td><td>{% if project.assigned_to %}{{ project.assigned_to.get_username }}{% else %}—{% endif %}</td></tr>
+      <tr><td style="color:var(--text-muted);">Team</td><td>
+        {% if team_users %}
+          {% for u in team_users %}{{ u.get_full_name|default:u.username }}{% if not forloop.last %}, {% endif %}{% endfor %}
+        {% elif project.assigned_to %}{{ project.assigned_to.get_username }}
+        {% else %}—{% endif %}
+      </td></tr>
       <tr><td style="color:var(--text-muted);">Created</td><td>{{ project.created_at|date:"M j, Y H:i" }}</td></tr>
     </table>
     {% if project.notes %}
@@ -64,6 +69,32 @@
          style="font-weight:600;">{{ lead.name }}</a>
     </p>
     {% endif %}
+  </div>
+</div>
+
+<div class="panel-block">
+  <div class="panel-h">Delivery team</div>
+  {% include "crm/projects/partials/assignees_block.html" %}
+</div>
+
+<div class="panel-block">
+  <div class="panel-h">Tickets</div>
+  <p style="font-size:13px;color:var(--text-muted);margin:0 0 12px;">Manage delivery tasks, files, and links in the Tickets section.</p>
+  <div style="display:flex;flex-wrap:wrap;gap:10px;">
+    <a href="{% url 'crm:tickets' %}?project={{ project.pk }}&view=board"
+       class="btn btn-primary btn-sm"
+       hx-get="{% url 'crm:tickets' %}?project={{ project.pk }}&view=board"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">Open ticket board</a>
+    <a href="{% url 'crm:ticket_create' %}?project={{ project.pk }}"
+       class="btn btn-outline btn-sm"
+       hx-get="{% url 'crm:ticket_create' %}?project={{ project.pk }}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">New ticket</a>
   </div>
 </div>
 

@@ -1,0 +1,15 @@
+{% if reference_screenshots %}
+<div class="ticket-ref-thumbs" role="list">
+  {% for img in reference_screenshots %}
+  <button type="button" class="ticket-ref-thumb" role="listitem"
+          data-full="{{ img.file.url }}"
+          data-name="{{ img.original_name|default:'Screenshot' }}"
+          title="Click to view · {{ img.original_name|default:'Screenshot' }}{% if img.save_to_desk %} · save to desk{% endif %}">
+    <img src="{{ img.file.url }}" alt="" loading="lazy">
+  </button>
+  {% endfor %}
+</div>
+<p class="ticket-ref-hint">Click any thumbnail to open full size</p>
+{% else %}
+<p class="ticket-empty-hint">No reference screenshots yet</p>
+{% endif %}

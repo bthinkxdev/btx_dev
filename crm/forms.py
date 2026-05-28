@@ -151,10 +151,23 @@ class ClientForm(forms.ModelForm):
         }
 
 
+def _active_dev_users_qs():
+    return User.objects.filter(is_active=True).order_by(
+        'first_name', 'last_name', 'username'
+    )
+
+
 class ProjectForm(forms.ModelForm):
     lead = forms.ModelChoiceField(
         queryset=Lead.objects.none(),
         label='Lead',
+    )
+    assignees = forms.ModelMultipleChoiceField(
+        queryset=User.objects.none(),
+        required=False,
+        label='Team members',
+        widget=forms.SelectMultiple(attrs={'size': 6, 'class': 'form-control'}),
+        help_text='Select one or more developers. First selected is team lead.',
     )
 
     class Meta:
@@ -163,7 +176,6 @@ class ProjectForm(forms.ModelForm):
             'package',
             'deal_value',
             'advance_received',
-            'assigned_to',
             'notes',
         )
         widgets = {
@@ -175,7 +187,7 @@ class ProjectForm(forms.ModelForm):
         'package',
         'deal_value',
         'advance_received',
-        'assigned_to',
+        'assignees',
         'notes',
     )
 
@@ -196,10 +208,7 @@ class ProjectForm(forms.ModelForm):
                 pkg_qs = Package.objects.filter(employee=user)
             self.fields['lead'].queryset = lead_qs.order_by('-updated_at')
             self.fields['package'].queryset = pkg_qs.order_by('name')
-            self.fields['assigned_to'].queryset = User.objects.filter(
-                is_active=True
-            ).order_by('username')
-            self.fields['assigned_to'].required = False
+            self.fields['assignees'].queryset = _active_dev_users_qs()
 
     def clean_lead(self):
         lead = self.cleaned_data.get('lead')
@@ -510,9 +519,11 @@ class LeadConvertForm(forms.Form):
         initial=Decimal('0'),
         required=False,
     )
-    assigned_to = forms.ModelChoiceField(
+    assignees = forms.ModelMultipleChoiceField(
         queryset=User.objects.none(),
         required=False,
+        label='Team members',
+        widget=forms.SelectMultiple(attrs={'size': 5, 'class': 'form-control'}),
     )
     notes = forms.CharField(
         required=False,
@@ -525,9 +536,7 @@ class LeadConvertForm(forms.Form):
             self.fields['package'].queryset = Package.objects.filter(
                 employee=employee
             ).order_by('name')
-        self.fields['assigned_to'].queryset = User.objects.filter(
-            is_active=True
-        ).order_by('username')
+        self.fields['assignees'].queryset = _active_dev_users_qs()
 
     def clean(self):
         cleaned = super().clean()
@@ -539,6 +548,125 @@ class LeadConvertForm(forms.Form):
                 'Advance received cannot be greater than deal value.'
             )
         return cleaned
+
+
+class ProjectAssigneesForm(forms.Form):
+    assignees = forms.ModelMultipleChoiceField(
+        queryset=User.objects.none(),
+        required=False,
+        label='Team members',
+        widget=forms.SelectMultiple(attrs={'size': 6, 'class': 'form-control'}),
+    )
+
+    def __init__(self, *args, project=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['assignees'].queryset = _active_dev_users_qs()
+        if project is not None:
+            self.fields['assignees'].initial = list(
+                project.memberships.values_list('user_id', flat=True)
+            )
+
+
+class ProjectTicketForm(forms.Form):
+    """Full ticket form: heading, detailed note, project member assignee."""
+
+    title = forms.CharField(
+        max_length=300,
+        label='Heading',
+        widget=forms.TextInput(
+            attrs={'class': 'form-control', 'placeholder': 'Short ticket title'}
+        ),
+    )
+    description = forms.CharField(
+        label='Detailed note',
+        required=False,
+        widget=forms.Textarea(
+            attrs={
+                'rows': 6,
+                'class': 'form-control ticket-note-input',
+                'placeholder': 'Steps, context, acceptance criteria. Use blank lines between sections. Paste URLs here or add structured links below.',
+            }
+        ),
+    )
+    status = forms.ChoiceField(required=False, widget=forms.Select(attrs={'class': 'form-control'}))
+    priority = forms.ChoiceField(required=False, widget=forms.Select(attrs={'class': 'form-control'}))
+    assigned_to = forms.ModelChoiceField(
+        queryset=User.objects.none(),
+        required=False,
+        label='Assign to (project member)',
+        empty_label='Unassigned',
+        widget=forms.Select(attrs={'class': 'form-control'}),
+    )
+
+    def __init__(self, *args, project=None, user=None, show_project=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        from .models import ProjectTicket
+        from .services.project import get_projects_for_user
+        from .services import project_tickets as ticket_svc
+
+        self.fields['status'].choices = ProjectTicket.Status.choices
+        self.fields['priority'].choices = ProjectTicket.Priority.choices
+        self._project = project
+        if show_project and user is not None:
+            self.fields['project'] = forms.ModelChoiceField(
+                queryset=get_projects_for_user(user).order_by('-updated_at'),
+                label='Project',
+                required=True,
+                widget=forms.Select(
+                    attrs={'class': 'form-control', 'id': 'id_ticket_project'}
+                ),
+            )
+        if project is not None:
+            self.fields['assigned_to'].queryset = ticket_svc.project_member_users(
+                project
+            )
+        else:
+            self.fields['assigned_to'].queryset = User.objects.none()
+
+    def clean(self):
+        cleaned = super().clean()
+        project = self._project
+        if project is None and 'project' in self.fields:
+            project = cleaned.get('project')
+            self._project = project
+        assignee = cleaned.get('assigned_to')
+        if assignee and project:
+            from .services import project_tickets as ticket_svc
+
+            if not ticket_svc.project_member_users(project).filter(pk=assignee.pk).exists():
+                raise forms.ValidationError(
+                    {'assigned_to': 'Must be a member of the selected project team.'}
+                )
+        return cleaned
+
+
+class ProjectTicketFilterForm(forms.Form):
+    project = forms.ModelChoiceField(
+        queryset=Project.objects.none(),
+        required=False,
+        empty_label='All projects',
+    )
+    status = forms.ChoiceField(required=False)
+    assigned_to = forms.ModelChoiceField(
+        queryset=User.objects.none(),
+        required=False,
+        empty_label='Anyone',
+    )
+    q = forms.CharField(required=False, label='Search')
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        from .models import ProjectTicket
+        from .services.project import get_projects_for_user
+
+        self.fields['status'].choices = [('', 'All statuses')] + list(
+            ProjectTicket.Status.choices
+        )
+        if user is not None:
+            self.fields['project'].queryset = get_projects_for_user(user).order_by(
+                '-updated_at'
+            )
+            self.fields['assigned_to'].queryset = _active_dev_users_qs()
 
 
 class ProvisioningStepStatusForm(forms.Form):

@@ -1,0 +1,800 @@
+{% extends "crm/base.html" %}
+{% load crm_extras %}
+{% block title %}{{ ticket.title }}{% endblock %}
+{% block page_title %}Ticket{% endblock %}
+
+{% block content %}
+<style>
+  .ticket-detail { width: 100%; max-width: none; }
+  .ticket-detail__crumb { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
+  .ticket-detail__crumb a { color: var(--text-muted); text-decoration: none; }
+  .ticket-detail__crumb a:hover { color: var(--primary-600); }
+  .ticket-detail__head {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 12px; margin-bottom: 16px;
+  }
+  .ticket-detail__head h1 { font-size: 1.35rem; margin: 0 0 6px; }
+  .ticket-detail__meta {
+    font-size: 12px; color: var(--text-muted);
+    display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center;
+  }
+  .ticket-detail-layout {
+    display: grid;
+    grid-template-columns: minmax(300px, 1fr) minmax(300px, 1fr);
+    gap: 18px;
+    align-items: start;
+  }
+  @media (max-width: 960px) {
+    .ticket-detail-layout { grid-template-columns: 1fr; }
+  }
+  .ticket-panel {
+    background: var(--bg-card, #fff);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 14px;
+    overflow: hidden;
+  }
+  .ticket-panel--accent { border-color: var(--primary-200); }
+  .ticket-panel__head {
+    padding: 10px 14px;
+    background: var(--neutral-50);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: flex-start; gap: 10px;
+  }
+  .ticket-panel__num {
+    flex-shrink: 0;
+    width: 22px; height: 22px;
+    border-radius: 6px;
+    background: var(--primary-600);
+    color: #fff;
+    font-size: 11px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    line-height: 1;
+  }
+  .ticket-panel__num--muted { background: var(--neutral-400); }
+  .ticket-panel__num--save { background: var(--success-600, #059669); }
+  .ticket-panel__title-wrap { flex: 1; min-width: 0; }
+  .ticket-panel__title {
+    font-size: 12px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--neutral-900); margin: 0 0 2px;
+  }
+  .ticket-panel__title--plain {
+    padding: 10px 14px;
+    font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--text-muted);
+    background: var(--neutral-50);
+    border-bottom: 1px solid var(--border);
+    margin: 0;
+  }
+  .ticket-panel__desc {
+    font-size: 12px; color: var(--text-muted);
+    line-height: 1.45; margin: 0;
+    font-weight: 400; text-transform: none; letter-spacing: 0;
+  }
+  .ticket-panel__when {
+    display: inline-block; margin-top: 4px;
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 2px 7px; border-radius: 4px;
+    background: var(--primary-50); color: var(--primary-700);
+  }
+  .ticket-panel__when--save { background: var(--success-50, #ecfdf5); color: var(--success-700, #047857); }
+  .ticket-panel__body { padding: 12px 14px; font-size: 13px; }
+  .ticket-panel .form-row { margin-bottom: 12px; }
+  .ticket-panel .form-row:last-child { margin-bottom: 0; }
+  .ticket-panel label {
+    display: block;
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.04em; color: var(--text-muted); margin-bottom: 4px;
+  }
+  .ticket-panel .form-control { font-size: 13px; padding: 8px 10px; width: 100%; }
+  .ticket-panel textarea.form-control { min-height: 160px; resize: vertical; }
+  .ticket-detail-row {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;
+  }
+  @media (max-width: 640px) { .ticket-detail-row { grid-template-columns: 1fr; } }
+  .ticket-richtext { font-size: 13px; line-height: 1.6; color: var(--neutral-800); }
+  .ticket-richtext p { margin: 0 0 10px; }
+  .ticket-richtext p:last-child { margin-bottom: 0; }
+  .ticket-richtext a {
+    color: var(--primary-600);
+    text-decoration: underline;
+    font-weight: 600;
+    cursor: pointer;
+    pointer-events: auto;
+  }
+  .ticket-richtext a:hover { color: var(--primary-700); }
+  .ticket-note-block .ticket-note-input { margin-bottom: 0; }
+  /* note link handling is inside the field now */
+  .ticket-link-preview {
+    display: block; padding: 10px 12px; margin-bottom: 8px;
+    border: 1px solid var(--border); border-radius: 8px;
+    font-size: 13px; text-decoration: none; color: inherit;
+    background: var(--neutral-50); cursor: pointer;
+  }
+  .ticket-link-preview:hover { border-color: var(--primary-400); }
+  .ticket-link-preview strong { display: block; font-size: 13px; color: var(--neutral-900); }
+  .ticket-link-preview span { color: var(--text-muted); font-size: 11px; word-break: break-all; }
+  .ticket-ref-thumbs {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+    gap: 10px;
+  }
+  .ticket-ref-thumb {
+    width: 100%; aspect-ratio: 1; padding: 0; margin: 0;
+    border: 1px solid var(--border); border-radius: 8px;
+    overflow: hidden; cursor: zoom-in; background: #fff; display: block;
+  }
+  .ticket-ref-thumb:hover { border-color: var(--primary-400); box-shadow: 0 4px 12px rgba(0,0,0,.1); }
+  .ticket-ref-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+  .ticket-ref-hint, .ticket-empty-hint { font-size: 11px; color: var(--text-muted); margin: 8px 0 0; }
+  .ticket-file-list { list-style: none; padding: 0; margin: 0; }
+  .ticket-file-list__item {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 8px 10px; font-size: 12px;
+    border: 1px solid var(--border); border-radius: 6px;
+    margin-bottom: 6px; background: var(--neutral-50);
+  }
+  .ticket-file-list__item a { font-weight: 600; color: var(--primary-600); text-decoration: underline; word-break: break-all; }
+  .ticket-file-list__meta { font-size: 10px; color: var(--text-muted); flex-shrink: 0; }
+  .ticket-links-compact__row {
+    display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 8px; margin-bottom: 8px;
+  }
+  @media (max-width: 500px) { .ticket-links-compact__row { grid-template-columns: 1fr; } }
+  .ticket-upload-box {
+    margin-top: 12px; padding: 12px;
+    background: var(--neutral-50);
+    border: 1px dashed var(--border); border-radius: 8px;
+  }
+  .ticket-upload-box__label {
+    font-size: 11px; font-weight: 700; color: var(--text-muted);
+    text-transform: uppercase; margin: 0 0 8px;
+  }
+  .ticket-upload-form__actions {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    margin-top: 10px; padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+  .ticket-upload-form__actions select { font-size: 12px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--border); background: #fff; }
+  .ticket-upload-form__actions label.chk { font-size: 12px; display: flex; align-items: center; gap: 4px; margin: 0; cursor: pointer; font-weight: 500; text-transform: none; color: var(--neutral-700); }
+  .ticket-file-field { margin-bottom: 0; }
+  .ticket-file-field > label:not(.chk) {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.04em; color: var(--text-muted); margin-bottom: 6px;
+  }
+  .ticket-save-files .ticket-file-field { margin-bottom: 14px; }
+  .ticket-save-files .ticket-file-field:last-of-type { margin-bottom: 10px; }
+  input[type="file"].ticket-file-input {
+    display: block; width: 100%; max-width: 100%; margin: 0; padding: 14px 16px;
+    font-size: 13px; font-family: inherit; color: var(--neutral-600);
+    border: 1.5px dashed #c7d2fe; border-radius: 10px;
+    background: linear-gradient(180deg, #fafbff 0%, #f8fafc 100%);
+    cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+    box-sizing: border-box;
+  }
+  input[type="file"].ticket-file-input:hover {
+    border-color: var(--primary-400, #818cf8);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    background: linear-gradient(180deg, #f5f7ff 0%, #f1f5f9 100%);
+  }
+  input[type="file"].ticket-file-input:focus {
+    outline: none;
+    border-color: var(--primary-500, #6366f1);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+  }
+  input[type="file"].ticket-file-input::file-selector-button {
+    margin-right: 14px; padding: 9px 18px; border: none; border-radius: 8px;
+    background: linear-gradient(135deg, var(--primary-600, #4f46e5), var(--primary-500, #6366f1));
+    color: #fff; font-weight: 600; font-size: 12px; font-family: inherit;
+    cursor: pointer; box-shadow: 0 2px 8px rgba(79, 70, 229, 0.28);
+    transition: filter 0.15s, transform 0.1s;
+  }
+  input[type="file"].ticket-file-input::file-selector-button:hover {
+    filter: brightness(1.08);
+  }
+  input[type="file"].ticket-file-input::-webkit-file-upload-button {
+    margin-right: 14px; padding: 9px 18px; border: none; border-radius: 8px;
+    background: linear-gradient(135deg, var(--primary-600, #4f46e5), var(--primary-500, #6366f1));
+    color: #fff; font-weight: 600; font-size: 12px; font-family: inherit;
+    cursor: pointer; box-shadow: 0 2px 8px rgba(79, 70, 229, 0.28);
+  }
+  .ticket-file-input__chosen {
+    display: flex; align-items: center; gap: 6px;
+    margin: 8px 0 0; padding: 8px 10px;
+    font-size: 12px; color: var(--neutral-700);
+    background: #fff; border: 1px solid var(--border); border-radius: 8px;
+    min-height: 36px; word-break: break-all;
+  }
+  .ticket-file-input__chosen:empty { display: none; }
+  .ticket-file-input__chosen.is-empty {
+    color: var(--text-muted); font-style: italic; background: transparent; border-style: dashed;
+  }
+  .ticket-file-input__chosen::before {
+    content: '';
+    flex-shrink: 0; width: 16px; height: 16px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236366f1' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13'/%3E%3C/svg%3E") center/contain no-repeat;
+  }
+  .ticket-file-input__chosen.is-empty::before { opacity: 0.4; }
+  .ticket-detail-col--main { padding-bottom: 72px; }
+  .ticket-save-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 50;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-top: 16px;
+    padding: 14px 16px;
+    background: var(--surface, #fff);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 -4px 24px rgba(15, 23, 42, 0.1), 0 8px 32px rgba(15, 23, 42, 0.08);
+  }
+  .ticket-save-bar .ticket-btn-action--save { flex: 1; min-width: 200px; }
+  .ticket-btn-action {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    min-height: 44px; padding: 10px 24px;
+    font-size: 14px; font-weight: 700; font-family: inherit;
+    border-radius: 10px; border: none;
+    background: linear-gradient(135deg, var(--primary-600, #4f46e5), var(--primary-500, #6366f1));
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.32);
+    cursor: pointer;
+    transition: transform 0.12s, box-shadow 0.15s, opacity 0.15s, background 0.15s;
+  }
+  .ticket-btn-action:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(79, 70, 229, 0.38);
+  }
+  .ticket-btn-action:disabled {
+    background: var(--neutral-300, #d4d4d8);
+    color: var(--neutral-500, #71717a);
+    box-shadow: none;
+    cursor: not-allowed;
+    transform: none;
+  }
+  .ticket-btn-action--save {
+    flex: 1;
+    min-width: 160px;
+    background: linear-gradient(135deg, #059669, #10b981);
+    box-shadow: 0 4px 14px rgba(5, 150, 105, 0.32);
+  }
+  .ticket-btn-action--save:hover:not(:disabled) {
+    box-shadow: 0 6px 18px rgba(5, 150, 105, 0.38);
+  }
+  .ticket-btn-action--save:disabled {
+    background: var(--neutral-300, #d4d4d8);
+    box-shadow: none;
+  }
+  .ticket-btn-action--add { min-width: 120px; margin-left: auto; }
+  .ticket-btn-spinner {
+    display: none;
+    width: 18px; height: 18px;
+    border: 2px solid rgba(255,255,255,0.35);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: ticketSpin 0.65s linear infinite;
+    flex-shrink: 0;
+  }
+  .ticket-btn-action.is-loading .ticket-btn-spinner,
+  .ticket-quick-upload.htmx-request .ticket-btn-action .ticket-btn-spinner {
+    display: block;
+  }
+  .ticket-btn-action.is-loading .ticket-btn-action__label,
+  .ticket-quick-upload.htmx-request .ticket-btn-action .ticket-btn-action__label {
+    opacity: 0.85;
+  }
+  @keyframes ticketSpin { to { transform: rotate(360deg); } }
+  .ticket-upload-box { position: relative; }
+  .ticket-upload-overlay {
+    position: absolute; inset: 0; z-index: 5;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 8px;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.15s;
+  }
+  .ticket-quick-upload.htmx-request .ticket-upload-overlay {
+    opacity: 1; pointer-events: auto;
+  }
+  .ticket-upload-overlay__spinner {
+    width: 32px; height: 32px;
+    border: 3px solid var(--primary-100, #e0e7ff);
+    border-top-color: var(--primary-600, #4f46e5);
+    border-radius: 50%;
+    animation: ticketSpin 0.65s linear infinite;
+  }
+  .ticket-upload-overlay__text {
+    font-size: 13px; font-weight: 600; color: var(--primary-700, #4338ca);
+  }
+  .ticket-upload-form__actions {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+    margin-top: 10px; padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+  .ticket-upload-form__actions .ticket-btn-action--add { margin-left: auto; }
+  .ticket-note-block { position: relative; }
+  .ticket-note-render {
+    display: none;
+    width: 100%;
+    padding: 10px 12px;
+    min-height: 160px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #fff;
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--neutral-800);
+    overflow: auto;
+    white-space: pre-wrap;
+    cursor: text;
+  }
+  .ticket-note-render.is-active { display: block; }
+  .ticket-note-render a { color: var(--primary-600); text-decoration: underline; font-weight: 600; }
+  .ticket-note-render a:hover { color: var(--primary-700); }
+  .ticket-note-render__empty { color: var(--text-muted); font-style: italic; }
+  .ticket-lightbox {
+    position: fixed; inset: 0; z-index: 9999;
+    background: rgba(15, 23, 42, 0.94);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 24px;
+  }
+  .ticket-lightbox[hidden] { display: none !important; }
+  .ticket-lightbox__img { max-width: min(1100px, 92vw); max-height: 78vh; border-radius: 8px; }
+  .ticket-lightbox__cap { color: #e2e8f0; font-size: 13px; margin-top: 12px; }
+  .ticket-lightbox__close {
+    position: absolute; top: 16px; right: 20px;
+    background: rgba(255,255,255,.2); border: none; color: #fff;
+    width: 40px; height: 40px; border-radius: 8px; font-size: 24px; cursor: pointer;
+  }
+  .ticket-lightbox__open { margin-top: 10px; color: #93c5fd; font-size: 13px; }
+</style>
+
+<div class="ticket-detail">
+  <div class="ticket-detail__crumb">
+    <a href="{% url 'crm:tickets' %}?view=board"
+       hx-get="{% url 'crm:tickets' %}?view=board"
+       hx-target="#crm-main-content" hx-select="#crm-main-content" hx-swap="outerHTML" hx-push-url="true">Tickets</a>
+    <span> / #{{ ticket.pk }}</span>
+  </div>
+
+  <div class="ticket-detail__head">
+    <div>
+      <h1>{{ ticket.title }}</h1>
+      <div class="ticket-detail__meta">
+        <span>{{ project.client.business_name }}</span>
+        <span class="crm-badge crm-badge--gray">{{ ticket.get_status_display }}</span>
+        <span class="crm-badge crm-badge--blue">{{ ticket.get_priority_display }}</span>
+        {% if ticket.assigned_to %}<span>{{ ticket.assigned_to.get_username }}</span>{% else %}<span>Unassigned</span>{% endif %}
+      </div>
+    </div>
+    <a href="{% url 'crm:tickets' %}?view=board{% if project %}&project={{ project.pk }}{% endif %}"
+       class="btn btn-outline btn-sm"
+       hx-get="{% url 'crm:tickets' %}?view=board{% if project %}&project={{ project.pk }}{% endif %}"
+       hx-target="#crm-main-content" hx-select="#crm-main-content" hx-swap="outerHTML" hx-push-url="true">Board</a>
+  </div>
+
+  <div class="ticket-detail-layout">
+    <!-- ═══ LEFT: ticket info, note preview, links, sticky save ═══ -->
+    <div class="ticket-detail-col ticket-detail-col--main">
+      <form id="ticket-main-form" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="update">
+
+        {% if form.non_field_errors %}
+        <div class="crm-flash crm-flash--err" style="margin-bottom:12px;">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        <div class="ticket-panel">
+          <h3 class="ticket-panel__title--plain">Edit ticket</h3>
+          <div class="ticket-panel__body">
+            <div class="form-row">
+              {{ form.title.label_tag }}
+              {{ form.title }}
+            </div>
+            <div class="ticket-detail-row">
+              <div class="form-row" style="margin:0;">{{ form.status.label_tag }}{{ form.status }}</div>
+              <div class="form-row" style="margin:0;">{{ form.priority.label_tag }}{{ form.priority }}</div>
+              <div class="form-row" style="margin:0;" id="ticket-assignee-host">
+                {% include "crm/tickets/partials/member_select.html" with members=team_users selected=ticket.assigned_to_id %}
+              </div>
+            </div>
+            <div class="form-row ticket-note-block">
+              {{ form.description.label_tag }}
+              {{ form.description }}
+              <div id="ticket-note-render" class="ticket-note-render" aria-label="Detailed note (click to edit)"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ticket-panel">
+          <h3 class="ticket-panel__title--plain">Links{% if ticket.links.all %} ({{ ticket.links.count }}){% endif %}</h3>
+          <div class="ticket-panel__body">
+            {% if ticket.links.all %}
+              {% for link in ticket.links.all %}
+              <a class="ticket-link-preview" href="{{ link.url }}" target="_blank" rel="noopener noreferrer">
+                <strong>{{ link.label }}</strong>
+                <span>{{ link.url }}</span>
+                {% if link.note %}<span style="display:block;margin-top:6px;color:var(--neutral-700);">{{ link.note }}</span>{% endif %}
+              </a>
+              {% endfor %}
+            {% else %}
+              <p class="ticket-empty-hint">No links yet — add below and save.</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="ticket-panel">
+          <h3 class="ticket-panel__title--plain">Edit links</h3>
+          <div class="ticket-panel__body">
+            {% include "crm/tickets/partials/link_fields.html" %}
+            <p class="ticket-ref-hint">Use Save ticket below to apply link changes.</p>
+          </div>
+        </div>
+
+        <div class="ticket-save-bar">
+          <button type="submit" id="ticket-save-btn" class="ticket-btn-action ticket-btn-action--save" disabled>
+            <span class="ticket-btn-spinner" aria-hidden="true"></span>
+            <span class="ticket-btn-action__label">Save ticket</span>
+          </button>
+          <button type="submit" name="action" value="delete" class="btn btn-outline btn-sm" style="color:var(--danger-600);"
+                  onclick="return confirm('Delete this ticket?');">Delete</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- ═══ RIGHT: file uploads only ═══ -->
+    <div class="ticket-detail-col">
+      {# ① Reference screenshots #}
+      <div class="ticket-panel">
+        <div class="ticket-panel__head">
+          <span class="ticket-panel__num">1</span>
+          <div class="ticket-panel__title-wrap">
+            <h3 class="ticket-panel__title">Reference screenshots ({{ reference_screenshots|length }})</h3>
+            <p class="ticket-panel__desc">
+              <strong>What:</strong> Design mockups, UI captures, or bug screenshots for this task.<br>
+              <strong>Why:</strong> Shown as thumbnails on the Kanban board so the team sees context at a glance.
+            </p>
+            <span class="ticket-panel__when">Instant upload · click Add</span>
+          </div>
+        </div>
+        <div class="ticket-panel__body">
+          <div id="ticket-files-combined">
+            {% include "crm/tickets/partials/reference_gallery.html" %}
+          </div>
+          <div class="ticket-upload-box">
+            <p class="ticket-upload-box__label">Quick add screenshot</p>
+            <form class="ticket-quick-upload" method="post" enctype="multipart/form-data"
+                  action="{% url 'crm:ticket_upload' ticket.pk %}"
+                  hx-post="{% url 'crm:ticket_upload' ticket.pk %}"
+                  hx-encoding="multipart/form-data"
+                  hx-target="#ticket-files-combined"
+                  hx-swap="innerHTML">
+              <div class="ticket-upload-overlay htmx-indicator" aria-hidden="true">
+                <div class="ticket-upload-overlay__spinner"></div>
+                <span class="ticket-upload-overlay__text">Uploading…</span>
+              </div>
+              {% csrf_token %}
+              <input type="hidden" name="is_reference" value="1">
+              <div class="ticket-file-field">
+                <input type="file" id="ticket-ref-quick-input" name="file" accept="image/*" multiple
+                       class="ticket-file-input" data-file-hint="ticket-ref-quick-hint" data-add-btn="ticket-ref-add-btn">
+                <p class="ticket-file-input__chosen is-empty" id="ticket-ref-quick-hint" aria-live="polite">No files selected</p>
+              </div>
+              <div class="ticket-upload-form__actions">
+                <select name="visibility" title="Who can view">
+                  {% for val, label in visibility_choices %}
+                  <option value="{{ val }}">{{ label }}</option>
+                  {% endfor %}
+                </select>
+                <label class="chk"><input type="checkbox" name="save_to_desk" value="1"> Copy to Desk</label>
+                <button type="submit" id="ticket-ref-add-btn" class="ticket-btn-action ticket-btn-action--add" disabled>
+                  <span class="ticket-btn-spinner" aria-hidden="true"></span>
+                  <span class="ticket-btn-action__label">Add now</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      {# ② Other files #}
+      <div class="ticket-panel">
+        <div class="ticket-panel__head">
+          <span class="ticket-panel__num ticket-panel__num--muted">2</span>
+          <div class="ticket-panel__title-wrap">
+            <h3 class="ticket-panel__title">Other files ({{ visible_attachments|length }})</h3>
+            <p class="ticket-panel__desc">
+              <strong>What:</strong> Non-image attachments — PDFs, spreadsheets, zip archives, videos, specs.<br>
+              <strong>Why:</strong> Downloadable files linked to this ticket (not shown as board thumbnails).
+            </p>
+            <span class="ticket-panel__when">Instant upload · click Add now</span>
+          </div>
+        </div>
+        <div class="ticket-panel__body">
+          <div id="ticket-attachments-only">
+            {% include "crm/tickets/partials/attachments.html" with attachments=visible_attachments %}
+          </div>
+          <div class="ticket-upload-box">
+            <p class="ticket-upload-box__label">Quick add file</p>
+            <form class="ticket-quick-upload" method="post" enctype="multipart/form-data"
+                  action="{% url 'crm:ticket_upload' ticket.pk %}"
+                  hx-post="{% url 'crm:ticket_upload' ticket.pk %}"
+                  hx-encoding="multipart/form-data"
+                  hx-target="#ticket-attachments-only"
+                  hx-swap="innerHTML">
+              <div class="ticket-upload-overlay htmx-indicator" aria-hidden="true">
+                <div class="ticket-upload-overlay__spinner"></div>
+                <span class="ticket-upload-overlay__text">Uploading…</span>
+              </div>
+              {% csrf_token %}
+              <div class="ticket-file-field">
+                <input type="file" id="ticket-file-quick-input" name="file" multiple
+                       class="ticket-file-input" data-file-hint="ticket-file-quick-hint" data-add-btn="ticket-file-add-btn">
+                <p class="ticket-file-input__chosen is-empty" id="ticket-file-quick-hint" aria-live="polite">No files selected</p>
+              </div>
+              <div class="ticket-upload-form__actions">
+                <select name="visibility" title="Who can view">
+                  {% for val, label in visibility_choices %}
+                  <option value="{{ val }}">{{ label }}</option>
+                  {% endfor %}
+                </select>
+                <label class="chk"><input type="checkbox" name="save_to_desk" value="1"> Copy to Desk</label>
+                <button type="submit" id="ticket-file-add-btn" class="ticket-btn-action ticket-btn-action--add" disabled>
+                  <span class="ticket-btn-spinner" aria-hidden="true"></span>
+                  <span class="ticket-btn-action__label">Add now</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="ticket-lightbox" class="ticket-lightbox" hidden role="dialog" aria-modal="true" aria-label="Image preview">
+  <button type="button" class="ticket-lightbox__close" aria-label="Close">&times;</button>
+  <img class="ticket-lightbox__img" src="" alt="">
+  <p class="ticket-lightbox__cap"></p>
+  <a class="ticket-lightbox__open" href="#" target="_blank" rel="noopener noreferrer">Open in new tab</a>
+</div>
+
+<script>
+(function () {
+  var box = document.getElementById('ticket-lightbox');
+  if (!box) return;
+  var lbImg = box.querySelector('.ticket-lightbox__img');
+  var lbCap = box.querySelector('.ticket-lightbox__cap');
+  var lbOpen = box.querySelector('.ticket-lightbox__open');
+
+  function showLightbox(url, name) {
+    if (!url) return;
+    lbImg.src = url;
+    lbCap.textContent = name || '';
+    lbOpen.href = url;
+    box.hidden = false;
+    document.body.style.overflow = 'hidden';
+  }
+  function hideLightbox() {
+    box.hidden = true;
+    lbImg.removeAttribute('src');
+    document.body.style.overflow = '';
+  }
+
+  document.addEventListener('click', function (e) {
+    var thumb = e.target.closest('.ticket-ref-thumb');
+    if (thumb && thumb.dataset.full) {
+      e.preventDefault();
+      e.stopPropagation();
+      showLightbox(thumb.dataset.full, thumb.dataset.name || '');
+      return;
+    }
+    if (e.target.classList.contains('ticket-lightbox__close') || e.target === box) hideLightbox();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !box.hidden) hideLightbox();
+  });
+
+  function formatFileNames(fileList) {
+    if (!fileList || !fileList.length) return '';
+    var names = Array.prototype.map.call(fileList, function (f) { return f.name; });
+    if (names.length === 1) return names[0];
+    if (names.length === 2) return names[0] + ', ' + names[1];
+    return names[0] + ', ' + names[1] + ' +' + (names.length - 2) + ' more';
+  }
+
+  function updateFileHint(input) {
+    var hintId = input.getAttribute('data-file-hint');
+    var hint = hintId ? document.getElementById(hintId) : null;
+    if (!hint) return;
+    var text = formatFileNames(input.files);
+    hint.textContent = text || 'No files selected';
+    hint.classList.toggle('is-empty', !text);
+  }
+
+  function updateAddButton(input) {
+    var btnId = input.getAttribute('data-add-btn');
+    var btn = btnId ? document.getElementById(btnId) : input.closest('form') && input.closest('form').querySelector('.ticket-btn-action--add');
+    if (btn) btn.disabled = !(input.files && input.files.length);
+  }
+
+  function cloneFileInput(input) {
+    var fresh = document.createElement('input');
+    fresh.type = 'file';
+    Array.prototype.forEach.call(input.attributes, function (attr) {
+      fresh.setAttribute(attr.name, attr.value);
+    });
+    input.parentNode.replaceChild(fresh, input);
+    return fresh;
+  }
+
+  function bindFileInput(input) {
+    if (!input || input._ticketFileBound) return input;
+    input._ticketFileBound = true;
+    input.addEventListener('change', function () {
+      updateFileHint(input);
+      updateAddButton(input);
+      var saveBtn = document.getElementById('ticket-save-btn');
+      if (saveBtn && (input.form === mainForm || input.getAttribute('form') === 'ticket-main-form')) {
+        updateMainSaveButton();
+      }
+    });
+    updateFileHint(input);
+    if (input.getAttribute('data-add-btn')) updateAddButton(input);
+    return input;
+  }
+
+  function bindFileHints(root) {
+    (root || document).querySelectorAll('.ticket-file-input').forEach(bindFileInput);
+  }
+
+  function resetQuickUploadForm(form) {
+    if (!form) return;
+    var input = form.querySelector('.ticket-file-input');
+    if (input) {
+      input = cloneFileInput(input);
+      bindFileInput(input);
+    }
+    var btn = form.querySelector('.ticket-btn-action--add');
+    if (btn) btn.disabled = true;
+  }
+
+  /* Main form: enable Save only when something changed */
+  var mainForm = document.getElementById('ticket-main-form');
+  var saveBtn = document.getElementById('ticket-save-btn');
+  var initialSnapshot = '';
+
+  function collectMainState() {
+    var parts = [];
+    if (!mainForm) return '';
+    mainForm.querySelectorAll('input, select, textarea').forEach(function (el) {
+      if (!el.name || el.type === 'hidden' && el.name === 'action') return;
+      if (el.type === 'file') {
+        parts.push(el.name + ':f' + (el.files ? el.files.length : 0));
+      } else if (el.type === 'checkbox') {
+        parts.push(el.name + ':' + (el.checked ? '1' : '0'));
+      } else {
+        parts.push(el.name + ':' + (el.value || ''));
+      }
+    });
+    document.querySelectorAll('[form="ticket-main-form"]').forEach(function (el) {
+      if (!el.name) return;
+      if (el.type === 'file') {
+        parts.push(el.name + ':f' + (el.files ? el.files.length : 0));
+      } else if (el.type === 'checkbox') {
+        parts.push(el.name + ':' + (el.checked ? '1' : '0'));
+      } else {
+        parts.push(el.name + ':' + (el.value || ''));
+      }
+    });
+    return parts.sort().join('|');
+  }
+
+  function updateMainSaveButton() {
+    if (!saveBtn) return;
+    var dirty = collectMainState() !== initialSnapshot;
+    saveBtn.disabled = !dirty;
+    saveBtn.title = dirty ? '' : 'Change something to enable save';
+  }
+
+  if (mainForm && saveBtn) {
+    initialSnapshot = collectMainState();
+    updateMainSaveButton();
+    mainForm.addEventListener('input', updateMainSaveButton);
+    mainForm.addEventListener('change', updateMainSaveButton);
+    document.querySelectorAll('[form="ticket-main-form"]').forEach(function (el) {
+      el.addEventListener('input', updateMainSaveButton);
+      el.addEventListener('change', updateMainSaveButton);
+    });
+    mainForm.addEventListener('submit', function () {
+      if (!saveBtn.disabled) {
+        saveBtn.classList.add('is-loading');
+        saveBtn.disabled = true;
+      }
+    });
+  }
+
+  bindFileHints(document);
+
+  document.querySelectorAll('.ticket-quick-upload').forEach(function (form) {
+    form.addEventListener('submit', function (e) {
+      var input = form.querySelector('.ticket-file-input');
+      if (!input || !input.files || !input.files.length) e.preventDefault();
+    });
+  });
+
+  document.body.addEventListener('htmx:afterRequest', function (evt) {
+    var form = evt.detail && evt.detail.elt;
+    if (!form || !form.classList || !form.classList.contains('ticket-quick-upload')) return;
+    if (evt.detail.successful) {
+      resetQuickUploadForm(form);
+    }
+  });
+
+  function linkifyTextToHtml(text) {
+    var esc = (text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    esc = esc.replace(/(https?:\/\/[^\s<>"']+)/g, function (raw) {
+      var url = raw;
+      var trail = '';
+      while (url.length && /[.,;:!?)]/.test(url.charAt(url.length - 1))) {
+        trail = url.charAt(url.length - 1) + trail;
+        url = url.slice(0, -1);
+      }
+      if (!url) return raw;
+      return '<a href="' + url + '" target="_blank" rel="noopener noreferrer">' + url + '</a>' + trail;
+    });
+    return esc.replace(/\n/g, '<br>');
+  }
+
+  function bindClickableNoteField() {
+    var ta = document.querySelector('textarea[name="description"]');
+    var render = document.getElementById('ticket-note-render');
+    if (!ta || !render) return;
+
+    function updateRender() {
+      var t = ta.value || '';
+      if (!t.trim()) {
+        render.innerHTML = '<span class="ticket-note-render__empty">Paste a URL here to make it clickable, or type notes…</span>';
+        return;
+      }
+      render.innerHTML = linkifyTextToHtml(t);
+    }
+
+    function showEditor() {
+      render.classList.remove('is-active');
+      ta.style.display = '';
+      ta.focus();
+    }
+
+    function showRender() {
+      updateRender();
+      ta.style.display = 'none';
+      render.classList.add('is-active');
+    }
+
+    render.addEventListener('click', function (e) {
+      var a = e.target.closest('a');
+      if (a) return; // allow link click
+      showEditor();
+    });
+    ta.addEventListener('blur', function () {
+      // small delay to allow clicking Save without flicker
+      setTimeout(showRender, 0);
+    });
+    ta.addEventListener('input', function () {
+      // keep render fresh if user toggles quickly
+      updateRender();
+    });
+
+    // start in clickable view
+    showRender();
+  }
+
+  bindClickableNoteField();
+})();
+</script>
+{% endblock %}

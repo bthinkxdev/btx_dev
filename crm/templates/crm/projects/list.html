@@ -66,7 +66,11 @@
           <span class="crm-badge {% if s == 'completed' %}crm-badge--green{% elif s == 'suspended' %}crm-badge--red{% elif s == 'in_development' %}crm-badge--blue{% elif s == 'review' %}crm-badge--orange{% else %}crm-badge--gray{% endif %}">{{ p.get_status_display }}</span>
           {% endwith %}
         </td>
-        <td>{% if p.assigned_to %}{{ p.assigned_to.get_username }}{% else %}—{% endif %}</td>
+        <td>
+          {% with names=p.assignee_usernames %}
+          {% if names %}{{ names|join:", " }}{% else %}—{% endif %}
+          {% endwith %}
+        </td>
         <td style="color:var(--text-muted);font-size:12px;">{{ p.created_at|date:"M j, Y" }}</td>
       </tr>
       {% empty %}

@@ -1,0 +1,12 @@
+{% if attachments %}
+<ul class="ticket-file-list">
+  {% for att in attachments %}
+  <li class="ticket-file-list__item">
+    <a href="{{ att.file.url }}" target="_blank" rel="noopener" {% if att.save_to_desk %}download{% endif %}>{{ att.original_name|default:att.file.name }}</a>
+    <span class="ticket-file-list__meta">{{ att.get_visibility_display }}{% if att.save_to_desk %} · desk{% endif %}</span>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="ticket-empty-hint">No other files</p>
+{% endif %}

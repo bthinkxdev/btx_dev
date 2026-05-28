@@ -1,0 +1,9 @@
+<div class="ticket-links-compact">
+  {% for row in link_rows %}
+  <div class="ticket-links-compact__row">
+    <input type="text" name="link_label_{{ forloop.counter0 }}" class="form-control" placeholder="Label" value="{{ row.label }}"{% if form_id %} form="{{ form_id }}"{% endif %}>
+    <input type="url" name="link_url_{{ forloop.counter0 }}" class="form-control" placeholder="https://…" value="{{ row.url }}"{% if form_id %} form="{{ form_id }}"{% endif %}>
+    <input type="text" name="link_note_{{ forloop.counter0 }}" class="form-control" placeholder="Note" value="{{ row.note }}"{% if form_id %} form="{{ form_id }}"{% endif %}>
+  </div>
+  {% endfor %}
+</div>
