@@ -1,0 +1,69 @@
+<div class="wa-bot-panel">
+  <form
+    class="wa-bot-toggle-form"
+    hx-post="{% url 'crm:whatsapp_bot_toggle' %}"
+    hx-target="#wa-bot-toggle-host"
+    hx-swap="innerHTML"
+  >
+    {% csrf_token %}
+    <button
+      type="submit"
+      class="wa-bot-toggle {% if crm_whatsapp_bot_enabled %}wa-bot-toggle--on{% else %}wa-bot-toggle--off{% endif %}"
+      title="{% if crm_whatsapp_bot_enabled %}WhatsApp bot ON{% else %}WhatsApp bot OFF{% endif %}"
+      aria-pressed="{% if crm_whatsapp_bot_enabled %}true{% else %}false{% endif %}"
+    >
+      <span class="wa-bot-toggle__track" aria-hidden="true">
+        <span class="wa-bot-toggle__thumb"></span>
+      </span>
+      <span class="wa-bot-toggle__text">
+        <span class="wa-bot-toggle__label">WA Bot</span>
+        <span class="wa-bot-toggle__state">{% if crm_whatsapp_bot_enabled %}ON{% else %}OFF{% endif %}</span>
+      </span>
+    </button>
+  </form>
+
+  <details class="wa-bot-exclude-dd">
+    <summary class="wa-bot-exclude-dd__sum" title="Team numbers — bot never replies to these">
+      Exclude list
+      {% if crm_wa_excludes %}<span class="wa-bot-exclude-dd__count">{{ crm_wa_excludes|length }}</span>{% endif %}
+    </summary>
+    <div class="wa-bot-exclude-dd__panel">
+      <p class="wa-bot-exclude-dd__hint">Internal team numbers — bot will not reply even when WA Bot is ON.</p>
+      {% if wa_exclude_error %}
+      <p class="wa-bot-exclude-dd__err">{{ wa_exclude_error }}</p>
+      {% endif %}
+      <form
+        class="wa-bot-exclude-add"
+        hx-post="{% url 'crm:whatsapp_bot_exclude_add' %}"
+        hx-target="#wa-bot-toggle-host"
+        hx-swap="innerHTML"
+      >
+        {% csrf_token %}
+        <input type="text" name="phone" placeholder="919876543210" inputmode="numeric" autocomplete="tel" required aria-label="Phone to exclude">
+        <input type="text" name="label" placeholder="Label (optional)" maxlength="120" aria-label="Label">
+        <button type="submit" class="btn btn-sm">Add</button>
+      </form>
+      {% if crm_wa_excludes %}
+      <ul class="wa-bot-exclude-list">
+        {% for row in crm_wa_excludes %}
+        <li class="wa-bot-exclude-list__item">
+          <span class="wa-bot-exclude-list__phone">{{ row.phone }}</span>
+          {% if row.label %}<span class="wa-bot-exclude-list__label">{{ row.label }}</span>{% endif %}
+          <form
+            hx-post="{% url 'crm:whatsapp_bot_exclude_remove' row.pk %}"
+            hx-target="#wa-bot-toggle-host"
+            hx-swap="innerHTML"
+            class="wa-bot-exclude-list__rm"
+          >
+            {% csrf_token %}
+            <button type="submit" class="wa-bot-exclude-list__x" aria-label="Remove">&times;</button>
+          </form>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="wa-bot-exclude-dd__empty">No numbers excluded yet.</p>
+      {% endif %}
+    </div>
+  </details>
+</div>

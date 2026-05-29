@@ -3,25 +3,38 @@ import random
 import re
 from datetime import time, timedelta
 
-import requests
 from django.conf import settings
 from django.core.cache import cache
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from .crm import (
+    conversation_phone_key,
     get_lead_by_phone,
     get_lead_funnel_data,
     get_lead_stage,
+    is_valid_lead_phone,
     update_lead_meta,
     update_lead_funnel,
     upsert_lead,
 )
+from crm.models import WhatsAppConversation, WhatsAppMessage, WhatsAppNumber
+from .whatsapp_transport import get_transport
 
 logger = logging.getLogger(__name__)
 
 
-def notify_sales_team(lead):
-    # placeholder (later integrate WhatsApp/Slack)
+def notify_sales_team(lead, *, reason: str = ''):
+    """Notify humans on AI handoff / hot lead (extend with Slack/email later)."""
+    if not lead:
+        return None
+    logger.info(
+        'Sales notify lead_id=%s name=%s phone=%s reason=%s',
+        lead.id,
+        getattr(lead, 'name', ''),
+        mask_phone(getattr(lead, 'phone', '')),
+        reason or 'handoff',
+    )
     return None
 
 
@@ -432,144 +445,322 @@ def _mark_reply_sent(lead):
 
 
 # ─────────────────────────────────────────────
-#  WHATSAPP SEND HELPERS
+#  WHATSAPP TRANSPORT (Web.js)
 # ─────────────────────────────────────────────
 
-def _wa_credentials():
-    token           = str(getattr(settings, 'WHATSAPP_ACCESS_TOKEN',    '') or '').strip()
-    phone_number_id = str(getattr(settings, 'WHATSAPP_PHONE_NUMBER_ID', '') or '').strip()
-    return token, phone_number_id
+def _account_id_for(wa_number: WhatsAppNumber | None) -> str:
+    """
+    For WhatsApp Web.js transport we need an account/session identifier.
+
+    We reuse WhatsAppNumber.phone_number_id as the account_id (bridge session key)
+    to avoid a breaking schema change during migration.
+    """
+    if wa_number and wa_number.is_active:
+        return str(wa_number.phone_number_id or '').strip()
+    return str(getattr(settings, 'WHATSAPP_DEFAULT_ACCOUNT_ID', '') or '').strip()
 
 
-def send_whatsapp_message(phone, text):
-    token, phone_number_id = _wa_credentials()
+def get_active_wa_number(phone_number_id: str | None) -> WhatsAppNumber | None:
+    if not phone_number_id:
+        return None
+    pid = str(phone_number_id).strip()
+    if not pid:
+        return None
+    return (
+        WhatsAppNumber.objects.filter(phone_number_id=pid, is_active=True)
+        .select_related('executive')
+        .first()
+    )
+
+
+def get_or_create_conversation(*, wa_number: WhatsAppNumber, customer_phone: str, lead=None) -> WhatsAppConversation:
+    """
+    Idempotent conversation creation (unique on wa_number + customer_phone).
+    """
+    customer_phone = _normalize_phone(customer_phone)
+    with transaction.atomic():
+        convo = (
+            WhatsAppConversation.objects.select_for_update()
+            .filter(wa_number=wa_number, customer_phone=customer_phone)
+            .first()
+        )
+        if convo:
+            if lead and not convo.lead_id:
+                convo.lead = lead
+                convo.save(update_fields=['lead', 'updated_at'])
+            return convo
+        try:
+            return WhatsAppConversation.objects.create(
+                wa_number=wa_number,
+                executive=wa_number.executive,
+                lead=lead,
+                customer_phone=customer_phone,
+            )
+        except IntegrityError:
+            # Race: another worker created it.
+            return WhatsAppConversation.objects.get(
+                wa_number=wa_number, customer_phone=customer_phone
+            )
+
+
+def record_inbound_message(
+    *,
+    convo: WhatsAppConversation,
+    lead,
+    message_id: str,
+    customer_phone: str,
+    text: str,
+    message_type: str,
+    raw_payload: dict | None,
+    provider_timestamp: timezone.datetime | None = None,
+) -> WhatsAppMessage | None:
+    """
+    Creates (or returns existing) inbound message row. Unique constraint is per (wa_number, message_id).
+    """
+    msg_id = str(message_id or '').strip()
+    try:
+        with transaction.atomic():
+            msg = WhatsAppMessage.objects.create(
+                conversation=convo,
+                wa_number=convo.wa_number,
+                executive=convo.executive,
+                lead=lead,
+                direction=WhatsAppMessage.Direction.INBOUND,
+                source=WhatsAppMessage.Source.SYSTEM,
+                message_id=msg_id,
+                customer_phone=_normalize_phone(customer_phone),
+                text=str(text or ''),
+                message_type=str(message_type or ''),
+                status=WhatsAppMessage.Status.RECEIVED,
+                provider_timestamp=provider_timestamp,
+                raw_payload=raw_payload or None,
+            )
+            return msg
+    except IntegrityError:
+        if not msg_id:
+            return None
+        return (
+            WhatsAppMessage.objects.filter(wa_number=convo.wa_number, message_id=msg_id)
+            .order_by('-id')
+            .first()
+        )
+
+
+def send_whatsapp_message(phone, text, *, wa_number: WhatsAppNumber | None = None, convo: WhatsAppConversation | None = None, lead=None, source=WhatsAppMessage.Source.BOT):
     to_phone = _normalize_phone(phone)
-
-    if not token or not phone_number_id:
-        logger.error('Missing WhatsApp credentials in environment variables')
-        return False
     if not to_phone:
         logger.warning('Cannot send WhatsApp message: invalid phone')
         return False
 
-    url     = f'https://graph.facebook.com/v22.0/{phone_number_id}/messages'
-    headers = {'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
-    payload = {
-        'messaging_product': 'whatsapp',
-        'to': to_phone,
-        'type': 'text',
-        'text': {'body': text},
-    }
+    transport = get_transport()
+    account_id = _account_id_for(wa_number)
+    if not account_id:
+        logger.error('Missing WhatsApp Web.js account_id mapping')
+        return False
 
+    result = transport.send_text(account_id=account_id, to_phone=to_phone, text=str(text or ''))
+    logger.info('WA(webjs) send phone=%s ok=%s msg_id=%s err=%s',
+                mask_phone(to_phone), result.ok, (result.provider_message_id or ''), (result.error or '')[:200])
+    if not result.ok:
+        return False
+
+    if convo and wa_number:
+        try:
+            WhatsAppMessage.objects.create(
+                conversation=convo,
+                wa_number=wa_number,
+                executive=wa_number.executive,
+                lead=lead or convo.lead,
+                direction=WhatsAppMessage.Direction.OUTBOUND,
+                source=source,
+                message_id=str(result.provider_message_id or '').strip(),
+                customer_phone=to_phone,
+                text=str(text or ''),
+                message_type='text',
+                status=WhatsAppMessage.Status.SENT,
+                status_updated_at=timezone.now(),
+                raw_payload=result.raw or None,
+            )
+        except IntegrityError:
+            pass
+        convo.last_outbound_at = timezone.now()
+        convo.save(update_fields=['last_outbound_at', 'updated_at'])
+    return True
+
+
+def _record_interactive_outbound(*, convo, wa_number, lead, source, phone, body, message_type, result, extra=None):
+    if not (convo and wa_number and result.ok):
+        return
     try:
-        r = requests.post(url, headers=headers, json=payload, timeout=20)
-        logger.info('WA send phone=%s status=%s body=%s',
-                    mask_phone(to_phone), r.status_code, _safe_response_excerpt(r.text))
-        if r.ok:
-            return True
-        logger.error('WA send failed phone=%s status=%s body=%s',
-                     mask_phone(to_phone), r.status_code, _safe_response_excerpt(r.text))
-        return False
-    except requests.RequestException:
-        logger.exception('WA send request failed')
-        return False
+        WhatsAppMessage.objects.create(
+            conversation=convo,
+            wa_number=wa_number,
+            executive=wa_number.executive,
+            lead=lead or convo.lead,
+            direction=WhatsAppMessage.Direction.OUTBOUND,
+            source=source,
+            message_id=str(result.provider_message_id or '').strip(),
+            customer_phone=_normalize_phone(phone),
+            text=str(body or '')[:2000],
+            message_type=message_type,
+            status=WhatsAppMessage.Status.SENT,
+            status_updated_at=timezone.now(),
+            raw_payload=extra or None,
+        )
+    except IntegrityError:
+        pass
+    convo.last_outbound_at = timezone.now()
+    convo.save(update_fields=['last_outbound_at', 'updated_at'])
 
 
-def send_flow_buttons(phone, body_text, options):
-    token, phone_number_id = _wa_credentials()
+def _send_reply_buttons_menu(phone, body_text, options, *, wa_number, convo, lead, source) -> bool:
+    """Green reply buttons under the message (max 3)."""
+    if not getattr(settings, 'WHATSAPP_USE_REPLY_BUTTONS', True):
+        return False
+    transport = get_transport()
+    account_id = _account_id_for(wa_number)
+    if not account_id or not hasattr(transport, 'send_buttons'):
+        return False
+    opts = [(str(oid), str(title).strip()) for oid, title in (options or []) if str(title).strip()][:3]
+    if not opts:
+        return False
+    body = str(body_text or 'Choose one').strip()
+    result = transport.send_buttons(
+        account_id=account_id,
+        to_phone=_normalize_phone(phone),
+        body=body,
+        options=opts,
+    )
+    if not result.ok:
+        logger.warning('Reply buttons failed phone=%s err=%s', mask_phone(phone), (result.error or '')[:120])
+        return False
+    _record_interactive_outbound(
+        convo=convo,
+        wa_number=wa_number,
+        lead=lead,
+        source=source,
+        phone=phone,
+        body=body,
+        message_type='buttons',
+        result=result,
+        extra={'options': opts},
+    )
+    return True
+
+
+def _send_reply_list_menu(
+    phone, body_text, options, *, button_text, wa_number, convo, lead, source
+) -> bool:
+    """List picker for 4+ options."""
+    if not getattr(settings, 'WHATSAPP_USE_REPLY_BUTTONS', True):
+        return False
+    transport = get_transport()
+    account_id = _account_id_for(wa_number)
+    if not account_id or not hasattr(transport, 'send_list'):
+        return False
+    opts = [(str(oid), str(title).strip()) for oid, title in (options or []) if str(title).strip()][:10]
+    if not opts:
+        return False
+    body = str(body_text or 'Choose one').strip()
+    result = transport.send_list(
+        account_id=account_id,
+        to_phone=_normalize_phone(phone),
+        body=body,
+        button_text=button_text,
+        options=opts,
+    )
+    if not result.ok:
+        logger.warning('Reply list failed phone=%s err=%s', mask_phone(phone), (result.error or '')[:120])
+        return False
+    _record_interactive_outbound(
+        convo=convo,
+        wa_number=wa_number,
+        lead=lead,
+        source=source,
+        phone=phone,
+        body=body,
+        message_type='list',
+        result=result,
+        extra={'options': opts, 'button_text': button_text},
+    )
+    return True
+
+
+def _send_text_menu(phone, body_text, options, *, wa_number, convo, lead, source) -> bool:
+    opts = options or []
+    lang = 'en'
+    if lead:
+        lang = _get_lang(get_lead_funnel_data(lead) or {})
+    lines = [str(body_text or '').strip(), '']
+    for oid, title in opts:
+        lines.append(f'{oid}. {title}')
+    hint = 'ഒരു number reply ചെയ്യൂ (1, 2, 3...)' if lang == 'ml' else 'Reply with a number (1, 2, 3...)'
+    lines.extend(['', hint])
+    return send_whatsapp_message(
+        phone,
+        '\n'.join(lines).strip(),
+        wa_number=wa_number,
+        convo=convo,
+        lead=lead,
+        source=source,
+    )
+
+
+def send_flow_buttons(phone, body_text, options, *, wa_number: WhatsAppNumber | None = None, convo: WhatsAppConversation | None = None, lead=None, source=WhatsAppMessage.Source.BOT):
     to_phone = _normalize_phone(phone)
-
-    if not token or not phone_number_id:
-        logger.error('Missing WhatsApp credentials in environment variables')
-        return False
     if not to_phone:
         logger.warning('Cannot send interactive WhatsApp message: invalid phone')
         return False
-
-    url     = f'https://graph.facebook.com/v22.0/{phone_number_id}/messages'
-    headers = {'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
-    payload = {
-        'messaging_product': 'whatsapp',
-        'to': to_phone,
-        'type': 'interactive',
-        'interactive': {
-            'type': 'button',
-            'body': {'text': str(body_text or '')[:1024]},
-            'action': {
-                'buttons': [
-                    {
-                        'type': 'reply',
-                        'reply': {
-                            'id':    str(opt_id)[:256],
-                            'title': str(opt_title)[:20],
-                        },
-                    }
-                    for opt_id, opt_title in (options or [])[:3]
-                ]
-            },
-        },
-    }
-
-    try:
-        r = requests.post(url, headers=headers, json=payload, timeout=20)
-        logger.info('WA buttons phone=%s status=%s body=%s',
-                    mask_phone(to_phone), r.status_code, _safe_response_excerpt(r.text))
-        if r.ok:
-            return True
-        logger.error('WA buttons failed phone=%s status=%s body=%s',
-                     mask_phone(to_phone), r.status_code, _safe_response_excerpt(r.text))
-        return False
-    except requests.RequestException:
-        logger.exception('WA buttons request failed')
-        return False
+    opts = (options or [])[:3]
+    if _send_reply_buttons_menu(phone, body_text, opts, wa_number=wa_number, convo=convo, lead=lead, source=source):
+        return True
+    return _send_text_menu(phone, body_text, opts, wa_number=wa_number, convo=convo, lead=lead, source=source)
 
 
-def send_flow_list(phone, body_text, options, button_text='Select'):
-    token, phone_number_id = _wa_credentials()
+def send_flow_list(phone, body_text, options, button_text='Select', *, wa_number: WhatsAppNumber | None = None, convo: WhatsAppConversation | None = None, lead=None, source=WhatsAppMessage.Source.BOT):
     to_phone = _normalize_phone(phone)
-
-    if not token or not phone_number_id:
-        logger.error('Missing WhatsApp credentials in environment variables')
-        return False
     if not to_phone:
         logger.warning('Cannot send interactive WhatsApp list: invalid phone')
         return False
+    opts = (options or [])[:12]
+    if not opts:
+        return send_whatsapp_message(phone, body_text, wa_number=wa_number, convo=convo, lead=lead, source=source)
+    lang = _get_lang(get_lead_funnel_data(lead) or {}) if lead else 'en'
+    if _send_reply_list_menu(
+        phone,
+        body_text,
+        opts,
+        button_text=_list_cta(lang),
+        wa_number=wa_number,
+        convo=convo,
+        lead=lead,
+        source=source,
+    ):
+        return True
+    return _send_text_menu(phone, body_text, opts, wa_number=wa_number, convo=convo, lead=lead, source=source)
 
-    rows = [
-        {'id': str(oid)[:200], 'title': str(title)[:24]}
-        for oid, title in (options or [])[:10]
-    ]
-    if not rows:
-        return send_whatsapp_message(phone, body_text)
 
-    url     = f'https://graph.facebook.com/v22.0/{phone_number_id}/messages'
-    headers = {'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
-    payload = {
-        'messaging_product': 'whatsapp',
-        'to': to_phone,
-        'type': 'interactive',
-        'interactive': {
-            'type': 'list',
-            'body': {'text': str(body_text or '')[:1024]},
-            'action': {
-                'button':   str(button_text or 'Select')[:20],
-                'sections': [{'title': 'Options', 'rows': rows}],
-            },
-        },
-    }
+def send_human_message(*, wa_number: WhatsAppNumber, customer_phone: str, text: str, lead=None) -> bool:
+    """
+    Human takeover helper:
+    - disables bot on the conversation
+    - sends message from the executive's number
+    - stores message as source=human
+    """
+    convo = get_or_create_conversation(
+        wa_number=wa_number, customer_phone=customer_phone, lead=lead
+    )
+    from crm.services.whatsapp_bot import record_human_takeover
 
-    try:
-        r = requests.post(url, headers=headers, json=payload, timeout=20)
-        logger.info('WA list phone=%s status=%s body=%s',
-                    mask_phone(to_phone), r.status_code, _safe_response_excerpt(r.text))
-        if r.ok:
-            return True
-        logger.error('WA list failed phone=%s status=%s body=%s',
-                     mask_phone(to_phone), r.status_code, _safe_response_excerpt(r.text))
-        return False
-    except requests.RequestException:
-        logger.exception('WA list request failed')
-        return False
+    record_human_takeover(convo)
+    return send_whatsapp_message(
+        customer_phone,
+        text,
+        wa_number=wa_number,
+        convo=convo,
+        lead=lead or convo.lead,
+        source=WhatsAppMessage.Source.HUMAN,
+    )
 
 
 # ─────────────────────────────────────────────
@@ -594,16 +785,33 @@ def _send_step_prompt(lead, phone, text, options):
         len(opts) > 3 or _option_titles_too_long(opts)
     )
 
+    # Transport routing: pick the conversation account_id from lead meta if present.
+    # We keep using WhatsAppNumber mapping for multi-executive routing.
+    meta = get_lead_funnel_data(lead) or {}
+    wa_pid = str(meta.get('wa_account_id') or meta.get('wa_phone_number_id') or '').strip()
+    wa_number = get_active_wa_number(wa_pid) if wa_pid else None
+    convo = None
+    if wa_number:
+        convo = get_or_create_conversation(wa_number=wa_number, customer_phone=phone, lead=lead)
+
     if use_list and len(opts) <= 10:
-        ok = send_flow_list(phone, text, opts, button_text=_list_cta(_get_lang(get_lead_funnel_data(lead) or {})))
+        ok = send_flow_list(
+            phone,
+            text,
+            opts,
+            button_text=_list_cta(_get_lang(get_lead_funnel_data(lead) or {})),
+            wa_number=wa_number,
+            convo=convo,
+            lead=lead,
+        )
     elif len(opts) <= 3:
-        ok = send_flow_buttons(phone, text, opts)
+        ok = send_flow_buttons(phone, text, opts, wa_number=wa_number, convo=convo, lead=lead)
     else:
         lines = [str(text or '').strip(), ''] + [f'{i}. {t}' for i, t in opts]
-        ok = send_whatsapp_message(phone, '\n'.join(lines).strip())
+        ok = send_whatsapp_message(phone, '\n'.join(lines).strip(), wa_number=wa_number, convo=convo, lead=lead)
 
     if not ok:
-        ok = send_whatsapp_message(phone, text)
+        ok = send_whatsapp_message(phone, text, wa_number=wa_number, convo=convo, lead=lead)
     if ok:
         _mark_reply_sent(lead)
     return ok
@@ -613,15 +821,29 @@ def _send_text(lead, phone, text):
     if not _rate_limit_ok(lead):
         logger.info('Rate-limited text phone=%s', mask_phone(phone))
         return False
-    ok = send_whatsapp_message(phone, text)
+    meta = get_lead_funnel_data(lead) or {}
+    wa_pid = str(meta.get('wa_account_id') or meta.get('wa_phone_number_id') or '').strip()
+    wa_number = get_active_wa_number(wa_pid) if wa_pid else None
+    convo = None
+    if wa_number:
+        convo = get_or_create_conversation(wa_number=wa_number, customer_phone=phone, lead=lead)
+    ok = send_whatsapp_message(phone, text, wa_number=wa_number, convo=convo, lead=lead)
     if ok:
         _mark_reply_sent(lead)
     return ok
 
 
 def _resolve_option(normalized_text, options):
+    text = str(normalized_text or '').strip()
+    if not text:
+        return None
     for opt_id, opt_title in options:
-        if normalized_text in (_normalize_text(opt_id), _normalize_text(opt_title)):
+        if text in (_normalize_text(opt_id), _normalize_text(opt_title)):
+            return str(opt_id)
+    # Button/list taps often send only the label — partial match
+    for opt_id, opt_title in options:
+        title_norm = _normalize_text(opt_title)
+        if title_norm and (title_norm in text or text in title_norm):
             return str(opt_id)
     return None
 
@@ -632,225 +854,278 @@ def _set_flow_stage(lead, stage, **extra):
         update_lead_meta(lead, **extra)
 
 
+def _send_bot_unavailable(lead, phone, executive):
+    from crm.services.whatsapp_bot import should_send_unavailable_reply, unavailable_reply_text
+
+    if not should_send_unavailable_reply(lead):
+        logger.info('Skipping duplicate unavailable reply lead=%s', lead.id)
+        return
+
+    meta = get_lead_funnel_data(lead) or {}
+    lang = 'ml' if str(meta.get('language') or '').lower() == 'ml' else 'en'
+    if _send_text(lead, phone, unavailable_reply_text(executive, lang=lang)):
+        update_lead_meta(lead, last_unavailable_sent_at=timezone.now().isoformat())
+
+
+def _run_ai_qualification_or_unavailable(*, lead, convo, text, phone, wa_number, executive):
+    from crm.services.ai import gemini_client
+    from crm.services.ai.conversation_manager import process_lead_message
+    from crm.services.whatsapp_bot import should_run_ai_qualification
+
+    normalized = _normalize_text(text)
+    if not should_run_ai_qualification(lead, text, normalized):
+        _send_bot_unavailable(lead, phone, executive)
+        return
+
+    if not getattr(settings, 'GEMINI_AI_QUALIFICATION_ENABLED', False):
+        logger.error('Qualification lead=%s but GEMINI_AI_QUALIFICATION_ENABLED is off', lead.id)
+        _send_bot_unavailable(lead, phone, executive)
+        return
+
+    if not gemini_client.is_configured():
+        logger.error('Qualification lead=%s but GEMINI_API_KEY missing', lead.id)
+        _send_bot_unavailable(lead, phone, executive)
+        return
+
+    try:
+        process_lead_message(
+            lead=lead,
+            convo=convo,
+            text=text,
+            phone=phone,
+            wa_number=wa_number,
+        )
+    except Exception as exc:
+        err = str(exc).lower()
+        if 'resourceexhausted' in type(exc).__name__.lower() or 'quota' in err or '429' in err:
+            logger.error('Gemini quota exceeded for lead=%s', lead.id)
+        else:
+            logger.exception('Gemini AI failed for lead=%s', lead.id)
+        _send_bot_unavailable(lead, phone, executive)
+
+
 # ─────────────────────────────────────────────
 #  MAIN HANDLER
 # ─────────────────────────────────────────────
 
-def handle_message(phone, text):
+def _resolve_outbound_phone(phone, lead) -> str:
+    for candidate in (_normalize_phone(phone), _normalize_phone(getattr(lead, 'phone', ''))):
+        if is_valid_lead_phone(candidate):
+            return candidate
+    return _normalize_phone(phone)
+
+
+def handle_message(phone, text, *, wa_number: WhatsAppNumber | None = None, message_id: str | None = None, raw_payload: dict | None = None, provider_timestamp=None):
+    # Button/list taps may arrive via selected_button_id when body is empty
+    if isinstance(raw_payload, dict):
+        if not str(text or '').strip():
+            text = str(
+                raw_payload.get('selected_button_id')
+                or raw_payload.get('selected_row_id')
+                or text
+                or ''
+            ).strip()
     normalized = _normalize_text(text)
-    logger.info('Incoming WA message phone=%s', mask_phone(phone))
+    chat_id = ''
+    contact_name = ''
+    if isinstance(raw_payload, dict):
+        chat_id = str(raw_payload.get('chat_id') or raw_payload.get('chatId') or '').strip()
+        contact_name = str(raw_payload.get('contact_name') or raw_payload.get('contactName') or '').strip()
 
-    lead = upsert_lead(phone, normalized, source='WhatsApp Ads')
-    lead = get_lead_by_phone(phone) if lead is None else lead
+    upsert_phone = _normalize_phone(phone)
+    if not is_valid_lead_phone(upsert_phone):
+        upsert_phone = ''
 
-    if _text_has_malayalam(text):
-        update_lead_meta(lead, language='ml')
+    logger.info('Incoming WA message phone=%s chat_id=%s', mask_phone(upsert_phone or phone), chat_id[:24])
 
-    stage = get_lead_stage(lead) or 'new'
-    meta  = get_lead_funnel_data(lead) or {}
-    lang  = _get_lang(meta)
-    words = _text_words(normalized)
-
-    is_greeting = any(w in {'hi', 'hello', 'hey'} for w in words)
-    is_fresh    = stage in {'new', 'completed'}
-
-    # ── Backward-compatibility: collapse old stages ──────────────
-    if stage in {'step_3', 'step_5'}:
-        _set_flow_stage(lead, 'step_2')
-        _send_step_prompt(lead, phone,
-                          _pick(STEP_2_EN, STEP_2_ML, lang),
-                          _options_step_3(lang))
+    exec_owner = wa_number.executive if wa_number else None
+    lead = upsert_lead(
+        upsert_phone,
+        normalized,
+        source='WhatsApp Ads',
+        owner=exec_owner,
+        wa_chat_id=chat_id,
+        contact_name=contact_name,
+    )
+    if lead is None and upsert_phone:
+        lead = get_lead_by_phone(upsert_phone)
+    if not lead:
+        logger.error('Cannot handle WA message: lead not found phone=%s chat_id=%s', mask_phone(phone), chat_id[:24])
         return
 
-    if stage in {'step_7', 'step_9', 'step_need_time', 'step_10'}:
-        _set_flow_stage(lead, 'step_8')
-        _send_text(lead, phone, _pick(STEP_8_EN, STEP_8_ML, lang))
-        return
+    phone = _resolve_outbound_phone(upsert_phone or phone, lead)
 
-    # ── Greeting / fresh start ───────────────────────────────────
-    if is_greeting or is_fresh:
-        _set_flow_stage(lead, 'step_lang')
-        _send_step_prompt(lead, phone,
-                          _pick(STEP_LANG_EN, STEP_LANG_ML, lang),
-                          _options_step_lang(lang))
-        return
+    # Persist routing on lead meta (used for correct outbound routing).
+    if wa_number and lead:
+        meta_updates = {
+            'wa_account_id': str(wa_number.phone_number_id),
+            'wa_executive_id': getattr(wa_number.executive, 'id', None),
+        }
+        if chat_id:
+            meta_updates['wa_chat_id'] = chat_id
+        update_lead_meta(lead, **meta_updates)
 
-    # ── step_lang: choose language ───────────────────────────────
-    if stage == 'step_lang':
-        opts     = _options_step_lang(lang)
-        selected = _resolve_option(normalized, opts)
-        if selected in {'1', '2'}:
-            selected_lang = 'en' if selected == '1' else 'ml'
-            update_lead_meta(lead, language=selected_lang)
-            _set_flow_stage(lead, 'step_1')
-            _send_step_prompt(lead, phone,
-                              _pick(STEP_1_EN, STEP_1_ML, selected_lang),
-                              _options_step_1(selected_lang))
-            return
-        # didn't pick — re-prompt
-        _send_step_prompt(lead, phone,
-                          _pick(STEP_LANG_EN, STEP_LANG_ML, lang),
-                          opts)
-        return
+    convo = None
+    executive = wa_number.executive if wa_number else getattr(lead, 'employee', None)
 
-    # ── step_1: what do you need ─────────────────────────────────
-    if stage == 'step_1':
-        opts     = _options_step_1(lang)
-        selected = _resolve_option(normalized, opts)
-        # legacy label fallback
-        if selected is None and normalized == _normalize_text('Improve existing business'):
-            selected = '3'
-        if selected in {'1', '2', '3'}:
-            service_map = {'1': 'marketing', '2': 'ecommerce', '3': 'website'}
-            label_map   = {'1': 'Marketing',  '2': 'Ecommerce', '3': 'Improve business'}
-            service     = service_map[selected]
-            _set_flow_stage(lead, 'step_2', service=service, business='business')
-            update_lead_meta(lead, service=service, business='business')
-            update_lead_funnel(lead, service=label_map[selected], set_qualified=True)
-            _send_step_prompt(lead, phone,
-                              _pick(STEP_2_EN, STEP_2_ML, lang),
-                              _options_step_3(lang))
-            return
-        _send_step_prompt(lead, phone,
-                          _pick(STEP_1_EN, STEP_1_ML, lang),
-                          opts)
-        return
+    if wa_number and lead:
+        convo_key = conversation_phone_key(phone, chat_id)
+        convo = get_or_create_conversation(wa_number=wa_number, customer_phone=convo_key, lead=lead)
+        convo.last_inbound_at = timezone.now()
+        convo.save(update_fields=['last_inbound_at', 'updated_at'])
 
-    # ── step_2: business situation ───────────────────────────────
-    if stage == 'step_2':
-        opts     = _options_step_3(lang)
-        selected = _resolve_option(normalized, opts)
-        if selected in {'1', '2'}:
-            stage_value = {'1': 'running', '2': 'planning'}[selected]
-            update_lead_meta(lead, stage_value=stage_value)
-            _set_flow_stage(lead, 'step_4', stage_value=stage_value)
-            _send_step_prompt(lead, phone,
-                              _pick(STEP_4_EN, STEP_4_ML, lang),
-                              _options_step_4(lang))
-            return
-        if selected == '3':
-            update_lead_meta(lead, stage_value='just_checking', flow_exit='just_exploring')
-            update_lead_funnel(lead, stage='completed')
-            _send_text(lead, phone, _pick(JUST_CHECKING_EN, JUST_CHECKING_ML, lang))
-            return
-        _send_step_prompt(lead, phone,
-                          _pick(STEP_2_EN, STEP_2_ML, lang),
-                          opts)
-        return
+        record_inbound_message(
+            convo=convo,
+            lead=lead,
+            message_id=str(message_id or ''),
+            customer_phone=phone,
+            text=text,
+            message_type='text',
+            raw_payload=raw_payload,
+            provider_timestamp=provider_timestamp,
+        )
 
-    # ── step_4: timeline ─────────────────────────────────────────
-    if stage == 'step_4':
-        opts     = _options_step_4(lang)
-        selected = _resolve_option(normalized, opts)
-        if selected in {'1', '2'}:
-            timeline = {'1': 'this_week', '2': 'within_1_month'}[selected]
-            update_lead_meta(lead, timeline=timeline)
+        from crm.services.whatsapp_bot import (
+            crm_whatsapp_bot_enabled,
+            human_takeover_blocks_reply,
+            is_sender_excluded,
+        )
 
-            meta        = get_lead_funnel_data(lead) or {}
-            service     = str(meta.get('service',     '') or '').strip().lower()
-            stage_value = str(meta.get('stage_value', '') or '').strip().lower()
-
-            offer_text = _budget_offer_body(service, stage_value, lang)
-            budget_opts = _budget_options(service, stage_value)
-
-            _set_flow_stage(lead, 'step_6')
-            _send_step_prompt(lead, phone, offer_text, budget_opts)
+        if is_sender_excluded(executive, phone):
+            logger.info(
+                'Sender on bot exclude list — exec=%s phone=%s — stored only',
+                getattr(executive, 'username', None),
+                mask_phone(phone),
+            )
             return
 
-        if selected == '3':
-            update_lead_meta(lead, timeline='just_checking', flow_exit='timeline_just_checking')
-            update_lead_funnel(lead, stage='completed')
-            _send_text(lead, phone, _pick(JUST_CHECKING_EN, JUST_CHECKING_ML, lang))
+        if not crm_whatsapp_bot_enabled(executive):
+            logger.warning(
+                'CRM WA bot is OFF (toggle in CRM header) — exec=%s lead=%s — '
+                'message saved, no auto-reply. Turn WA Bot ON to respond.',
+                getattr(executive, 'username', None) or getattr(executive, 'id', None),
+                lead.id,
+            )
             return
 
-        _send_step_prompt(lead, phone,
-                          _pick(STEP_4_EN, STEP_4_ML, lang),
-                          opts)
-        return
-
-    # ── step_6: budget selection ──────────────────────────────────
-    if stage == 'step_6':
-        meta        = get_lead_funnel_data(lead) or {}
-        service     = str(meta.get('service',     '') or '').strip().lower()
-        stage_value = str(meta.get('stage_value', '') or '').strip().lower()
-        timeline    = str(meta.get('timeline',    '') or '').strip().lower()
-
-        offer_opts = _budget_options(service, stage_value)
-        selected   = _resolve_option(normalized, offer_opts)
-        valid_ids  = {oid for oid, _ in offer_opts}
-
-        if selected in valid_ids:
-            budget_range = dict(offer_opts)[selected]
-            priority     = _priority_from(service, selected, stage_value)
-
-            update_lead_meta(lead,
-                             budget_range=budget_range,
-                             budget_choice=str(selected),
-                             priority=priority)
-
-            if priority == 'high':
-                update_lead_meta(lead, hot_lead=True)
-                notify_sales_team(lead)
-
-            if priority == 'low':
-                update_lead_funnel(lead, stage='completed')
-                _send_text(lead, phone, _pick(LOW_BUDGET_EN, LOW_BUDGET_ML, lang))
-                return
-
-            close_text = _closing_after_budget(timeline, lang)
-            _set_flow_stage(lead, 'step_8')
-            _send_text(lead, phone, close_text)
+        if human_takeover_blocks_reply(convo):
+            logger.info(
+                'No auto-reply — human takeover active convo=%s phone=%s reason=%s',
+                convo.id,
+                mask_phone(phone),
+                convo.bot_disabled_reason or 'unknown',
+            )
             return
 
-        # invalid input — re-prompt
-        retry_text = ('Tap one option below 👇'
-                      if lang != 'ml' else
-                      'ഒരു option tap ചെയ്യൂ 👇')
-        _send_step_prompt(lead, phone, retry_text, offer_opts)
+        _run_ai_qualification_or_unavailable(
+            lead=lead,
+            convo=convo,
+            text=text,
+            phone=phone,
+            wa_number=wa_number,
+            executive=executive,
+        )
         return
 
-    # ── step_8: collect name + call time ─────────────────────────
-    if stage == 'step_8':
-        raw = str(text or '').strip()
-        if not raw:
-            _send_text(lead, phone, _pick(STEP_8_EN, STEP_8_ML, lang))
-            return
 
-        low = raw.lower()
-        if   any(k in low for k in ['morning',   'രാവിലെ', 'പ്രഭാത', 'am']):
-            contact_time = 'morning'
-        elif any(k in low for k in ['afternoon',  'ഉച്ച',    'pm']):
-            contact_time = 'afternoon'
-        elif any(k in low for k in ['evening',   'സായാഹ്ന', 'രാത്രി']):
-            contact_time = 'evening'
-        else:
-            contact_time = 'any'
+def handle_voice_message(
+    phone,
+    *,
+    wa_number: WhatsAppNumber | None = None,
+    message_id: str | None = None,
+    raw_payload: dict | None = None,
+    provider_timestamp=None,
+    media: dict | None = None,
+    message_type: str = 'ptt',
+):
+    """Inbound voice note → transcribe → Gemini qualification pipeline."""
+    chat_id = ''
+    contact_name = ''
+    if isinstance(raw_payload, dict):
+        chat_id = str(raw_payload.get('chat_id') or raw_payload.get('chatId') or '').strip()
+        contact_name = str(raw_payload.get('contact_name') or raw_payload.get('contactName') or '').strip()
 
-        # strip time keywords from name
-        cleaned = re.sub(r'[,|–\-]+', ' ', raw).strip()
-        for kw in ['morning', 'afternoon', 'evening', 'am', 'pm']:
-            cleaned = re.sub(rf'\b{kw}\b', '', cleaned, flags=re.I)
-        for kw in ['രാവിലെ', 'ഉച്ച', 'സായാഹ്നം', 'സായാഹ്ന', 'രാത്രി']:
-            cleaned = cleaned.replace(kw, '')
-        clean_name = cleaned.strip()[:120] or raw[:120]
+    upsert_phone = _normalize_phone(phone)
+    if not is_valid_lead_phone(upsert_phone):
+        upsert_phone = ''
 
-        update_lead_funnel(lead, name=clean_name, stage='completed', set_qualified=True)
-        update_lead_meta(lead,
-                         name=clean_name,
-                         contact_time=contact_time,
-                         final_message_sent=True)
-
-        now = timezone.localtime().time()
-        if now >= time(19, 0) or now < time(10, 0):
-            final = _pick(FINAL_OFF_TIME_EN, FINAL_OFF_TIME_ML, lang)
-        else:
-            final = _pick(FINAL_NORMAL_EN, FINAL_NORMAL_ML, lang)
-
-        _send_text(lead, phone, final)
+    exec_owner = wa_number.executive if wa_number else None
+    lead = upsert_lead(
+        upsert_phone,
+        '[voice note]',
+        source='WhatsApp Ads',
+        owner=exec_owner,
+        wa_chat_id=chat_id,
+        contact_name=contact_name,
+    )
+    if lead is None and upsert_phone:
+        lead = get_lead_by_phone(upsert_phone)
+    if not lead or not wa_number:
         return
 
-    # ── Fallback: restart ────────────────────────────────────────
-    _set_flow_stage(lead, 'step_lang')
-    _send_step_prompt(lead, phone,
-                      _pick(STEP_LANG_EN, STEP_LANG_ML, lang),
-                      _options_step_lang(lang))
+    phone = _resolve_outbound_phone(upsert_phone or phone, lead)
+    meta_updates = {
+        'wa_account_id': str(wa_number.phone_number_id),
+        'wa_executive_id': getattr(wa_number.executive, 'id', None),
+    }
+    if chat_id:
+        meta_updates['wa_chat_id'] = chat_id
+    update_lead_meta(lead, **meta_updates)
+
+    convo_key = conversation_phone_key(phone, chat_id)
+    convo = get_or_create_conversation(wa_number=wa_number, customer_phone=convo_key, lead=lead)
+    convo.last_inbound_at = timezone.now()
+    convo.save(update_fields=['last_inbound_at', 'updated_at'])
+    executive = wa_number.executive
+
+    record_inbound_message(
+        convo=convo,
+        lead=lead,
+        message_id=str(message_id or ''),
+        customer_phone=phone,
+        text='[voice note]',
+        message_type=message_type,
+        raw_payload=raw_payload,
+        provider_timestamp=provider_timestamp,
+    )
+
+    from crm.services.whatsapp_bot import (
+        crm_whatsapp_bot_enabled,
+        human_takeover_blocks_reply,
+        is_sender_excluded,
+    )
+
+    if is_sender_excluded(executive, phone):
+        return
+
+    if not crm_whatsapp_bot_enabled(executive):
+        return
+
+    if human_takeover_blocks_reply(convo):
+        return
+
+    meta = get_lead_funnel_data(lead) or {}
+    in_qual = meta.get('ai_qualification_track') == 'full_qualification'
+
+    if not in_qual:
+        _send_bot_unavailable(lead, phone, executive)
+        return
+
+    if getattr(settings, 'GEMINI_AI_QUALIFICATION_ENABLED', False) and _rate_limit_ok(lead):
+        from crm.services.ai.conversation_manager import process_voice_inbound
+
+        result = process_voice_inbound(
+            lead=lead,
+            convo=convo,
+            media=media,
+            phone=phone,
+            wa_number=wa_number,
+            raw_payload=raw_payload,
+        )
+        if result and result.reply:
+            transcript = str((get_lead_funnel_data(lead) or {}).get('voice_transcript') or '').strip()
+            if transcript:
+                update_lead_meta(lead, last_voice_display=transcript[:200])
+        return
+
+    _send_bot_unavailable(lead, phone, executive)

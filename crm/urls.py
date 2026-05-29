@@ -216,6 +216,21 @@ urlpatterns = [
         views.lead_high_hope_toggle,
         name='lead_high_hope_toggle',
     ),
+    path(
+        'whatsapp-bot-toggle/',
+        views.whatsapp_bot_toggle,
+        name='whatsapp_bot_toggle',
+    ),
+    path(
+        'whatsapp-bot-exclude/add/',
+        views.whatsapp_bot_exclude_add,
+        name='whatsapp_bot_exclude_add',
+    ),
+    path(
+        'whatsapp-bot-exclude/<int:pk>/remove/',
+        views.whatsapp_bot_exclude_remove,
+        name='whatsapp_bot_exclude_remove',
+    ),
     path('achievements/', views.achievements_dashboard, name='achievements_dashboard'),
     path('achievements/create/', views.achievement_create, name='achievement_create'),
     path('achievements/<int:pk>/edit/', views.achievement_update, name='achievement_update'),

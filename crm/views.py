@@ -21,7 +21,12 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods, require_POST
 
-from .services.whatsapp import handle_message, is_duplicate_event, mask_phone
+from .services.whatsapp import (
+    handle_message,
+    is_duplicate_event,
+    mask_phone,
+    get_active_wa_number,
+)
 from .services.achievements import get_monthly_performance
 from .forms import (
     AchievementForm,
@@ -84,6 +89,7 @@ from .models import (
     RenewalReminderLog,
     RenewalTracker,
     Task,
+    WhatsAppBotExcludePhone,
 )
 from .services import change_requests as change_request_service
 from .services import onboarding as onboarding_service
@@ -276,101 +282,60 @@ HOT_ACTIVE_FILTER_EXCLUDE_STATUSES = (STATUS_NEW,) + TERMINAL_STATUSES
 @require_http_methods(['GET', 'POST'])
 def whatsapp_webhook(request):
     """
-    WhatsApp Cloud API webhook endpoint:
-    - GET: verification handshake (hub.mode / hub.verify_token / hub.challenge)
-    - POST: incoming message events
+    WhatsApp inbound webhook endpoint (transport-agnostic).
+
+    Meta Cloud API transport was removed; we now expect a WhatsApp Web.js bridge
+    to POST inbound messages here.
     """
     if request.method == 'GET':
-        mode = request.GET.get('hub.mode')
-        token = request.GET.get('hub.verify_token')
-        challenge = request.GET.get('hub.challenge', '')
-        verify_token = getattr(settings, 'WHATSAPP_VERIFY_TOKEN', '')
-
-        if mode == 'subscribe' and verify_token and token == verify_token:
-            return HttpResponse(challenge, content_type='text/plain')
-        return JsonResponse({'error': 'Invalid verify token'}, status=403)
+        return JsonResponse({'status': 'ok'})
 
     try:
         payload = json.loads(request.body.decode('utf-8'))
     except (TypeError, ValueError, UnicodeDecodeError):
         logger.exception('Invalid WhatsApp webhook payload')
         return JsonResponse({'error': 'Invalid JSON payload'}, status=400)
-    logger.info('WhatsApp webhook received: entries=%s', len(payload.get('entry', [])))
 
+    # Expected Web.js payload (bridge -> Django):
+    # {
+    #   "account_id": "exec1",           # maps to WhatsAppNumber.phone_number_id (temporary)
+    #   "from": "9198....",             # customer phone digits (or +E164; we normalize downstream)
+    #   "text": "hi",
+    #   "message_id": "provider-id",    # optional but recommended for dedupe
+    #   "timestamp": 1716...,           # optional epoch seconds
+    #   "raw": {...}                    # optional provider payload
+    # }
+    account_id = str(payload.get('account_id') or '').strip()
+    phone = payload.get('from') or payload.get('phone') or payload.get('customer_phone')
+    text = payload.get('text') or payload.get('message') or ''
+    message_id = str(payload.get('message_id') or payload.get('id') or '').strip()
+    ts = payload.get('timestamp')
+
+    if not phone or not str(text).strip():
+        return JsonResponse({'status': 'ignored', 'reason': 'missing_phone_or_text'})
+
+    wa_number = get_active_wa_number(account_id) if account_id else None
+    provider_dt = None
     try:
-        entries = payload.get('entry')
-        if not isinstance(entries, list) or not entries:
-            return JsonResponse({'status': 'ignored', 'reason': 'missing_entry'})
-        processed = 0
-        duplicates = 0
-        ignored = 0
-        for entry in entries:
-            changes = (entry or {}).get('changes') or []
-            if not isinstance(changes, list):
-                continue
-            for change in changes:
-                value = (change or {}).get('value', {})
-                messages = value.get('messages', [])
-                if not isinstance(messages, list):
-                    continue
-                for message in messages:
-                    message = message or {}
-                    message_type = message.get('type')
-                    phone = message.get('from')
-                    message_id = message.get('id')
-                    text = ''
-
-                    if message_type == 'text':
-                        text = ((message.get('text') or {}).get('body') or '').strip()
-                    elif message_type == 'interactive':
-                        interactive = message.get('interactive') or {}
-                        button_reply = interactive.get('button_reply') or {}
-                        list_reply = interactive.get('list_reply') or {}
-                        text = (
-                            button_reply.get('id')
-                            or list_reply.get('id')
-                            or button_reply.get('title')
-                            or list_reply.get('title')
-                            or ''
-                        ).strip()
-                    else:
-                        ignored += 1
-                        continue
-
-                    if not phone or not text:
-                        ignored += 1
-                        continue
-                    if is_duplicate_event(message_id):
-                        duplicates += 1
-                        logger.info(
-                            'Ignored duplicate WhatsApp message id=%s phone=%s',
-                            message_id,
-                            mask_phone(phone),
-                        )
-                        continue
-
-                    logger.info(
-                        'Processing WhatsApp message id=%s phone=%s type=%s',
-                        message_id,
-                        mask_phone(phone),
-                        message_type,
-                    )
-                    handle_message(phone, text)
-                    processed += 1
+        if ts:
+            provider_dt = timezone.datetime.fromtimestamp(int(ts), tz=timezone.utc)
     except Exception:
-        logger.exception('Failed to process WhatsApp webhook event')
-        return JsonResponse({'status': 'error'}, status=500)
+        provider_dt = None
 
-    if processed == 0 and duplicates == 0:
-        return JsonResponse({'status': 'ignored', 'reason': 'no_messages'})
-    return JsonResponse(
-        {
-            'status': 'ok',
-            'processed': processed,
-            'duplicates': duplicates,
-            'ignored': ignored,
-        }
+    if message_id and is_duplicate_event(message_id):
+        logger.info('Ignored duplicate WhatsApp message id=%s phone=%s', message_id, mask_phone(phone))
+        return JsonResponse({'status': 'ok', 'processed': 0, 'duplicates': 1})
+
+    logger.info('Processing WA(webjs) message id=%s phone=%s account_id=%s', message_id, mask_phone(phone), account_id)
+    handle_message(
+        phone,
+        text,
+        wa_number=wa_number,
+        message_id=message_id,
+        raw_payload=(payload.get('raw') if isinstance(payload.get('raw'), dict) else payload),
+        provider_timestamp=provider_dt,
     )
+    return JsonResponse({'status': 'ok', 'processed': 1, 'duplicates': 0})
 
 
 # GET ?sort=… for leads list (validated keys)
@@ -1114,6 +1079,83 @@ def lead_high_hope_toggle(request, pk):
         return resp
 
     return HttpResponse(status=204)
+
+
+def _whatsapp_bot_panel_context(user):
+    profile, _ = EmployeeProfile.objects.get_or_create(user=user)
+    return {
+        'crm_whatsapp_bot_enabled': profile.whatsapp_bot_enabled,
+        'crm_employee_profile': profile,
+        'crm_wa_excludes': WhatsAppBotExcludePhone.objects.filter(executive=user),
+    }
+
+
+@login_required
+@sales_pipeline_required
+@require_POST
+def whatsapp_bot_toggle(request):
+    """Toggle CRM master switch for WhatsApp auto-replies (per executive)."""
+    profile, _ = EmployeeProfile.objects.get_or_create(user=request.user)
+    profile.whatsapp_bot_enabled = not profile.whatsapp_bot_enabled
+    profile.save(update_fields=['whatsapp_bot_enabled'])
+
+    if request.headers.get('HX-Request'):
+        resp = render(
+            request,
+            'crm/partials/whatsapp_bot_panel.html',
+            _whatsapp_bot_panel_context(request.user),
+        )
+        state = 'ON — bot will reply on WhatsApp' if profile.whatsapp_bot_enabled else 'OFF — messages stored only'
+        _hx_toast(resp, state)
+        return resp
+
+    return redirect('crm:leads')
+
+
+@login_required
+@sales_pipeline_required
+@require_POST
+def whatsapp_bot_exclude_add(request):
+    """Add a phone number to this executive's bot exclude list."""
+    raw = str(request.POST.get('phone') or '').strip()
+    label = str(request.POST.get('label') or '').strip()[:120]
+    digits = ''.join(ch for ch in raw if ch.isdigit())
+    if len(digits) < 10:
+        resp = render(
+            request,
+            'crm/partials/whatsapp_bot_panel.html',
+            {**_whatsapp_bot_panel_context(request.user), 'wa_exclude_error': 'Enter a valid phone with country code.'},
+        )
+        _hx_toast(resp, 'Invalid phone')
+        return resp
+
+    WhatsAppBotExcludePhone.objects.get_or_create(
+        executive=request.user,
+        phone=digits,
+        defaults={'label': label},
+    )
+    resp = render(
+        request,
+        'crm/partials/whatsapp_bot_panel.html',
+        _whatsapp_bot_panel_context(request.user),
+    )
+    _hx_toast(resp, 'Number excluded from bot')
+    return resp
+
+
+@login_required
+@sales_pipeline_required
+@require_POST
+def whatsapp_bot_exclude_remove(request, pk):
+    """Remove a phone from the bot exclude list."""
+    WhatsAppBotExcludePhone.objects.filter(pk=pk, executive=request.user).delete()
+    resp = render(
+        request,
+        'crm/partials/whatsapp_bot_panel.html',
+        _whatsapp_bot_panel_context(request.user),
+    )
+    _hx_toast(resp, 'Removed from exclude list')
+    return resp
 
 
 @login_required

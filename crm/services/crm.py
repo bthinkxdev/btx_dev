@@ -17,6 +17,45 @@ def _normalize_phone(phone):
     return ''.join(ch for ch in str(phone or '') if ch.isdigit())
 
 
+def is_valid_lead_phone(phone) -> bool:
+    """
+    True for plausible customer mobiles; false for WhatsApp LID opaque ids
+    (often 14+ digit strings that are not real phone numbers).
+    """
+    digits = _normalize_phone(phone)
+    if not digits:
+        return False
+    length = len(digits)
+    if length < 10 or length > 15:
+        return False
+    if length >= 14:
+        if digits.startswith('91') and length <= 12:
+            return True
+        if digits.startswith('1') and length == 11:
+            return True
+        return False
+    return True
+
+
+def conversation_phone_key(phone, wa_chat_id='') -> str:
+    """Stable key for WhatsAppConversation when only a LID chat id is known."""
+    normalized = _normalize_phone(phone)
+    if is_valid_lead_phone(normalized):
+        return normalized
+    chat_id = str(wa_chat_id or '').strip()
+    if '@' in chat_id:
+        return _normalize_phone(chat_id.split('@')[0])
+    return normalized
+
+
+def _find_lead_by_wa_chat_id(wa_chat_id: str):
+    chat_id = str(wa_chat_id or '').strip()
+    if not chat_id:
+        return None
+    needle = f'"wa_chat_id":{json.dumps(chat_id, ensure_ascii=True)}'
+    return Lead.objects.filter(notes__contains=needle).order_by('id').first()
+
+
 def _lead_field_names():
     return {f.name for f in Lead._meta.get_fields()}
 
@@ -68,32 +107,57 @@ def _status_values():
     return {value for value, _label in getattr(Lead.Status, 'choices', [])}
 
 
-def upsert_lead(phone, message, source='WhatsApp Ads'):
+def upsert_lead(phone, message, source='WhatsApp Ads', *, owner=None, wa_chat_id='', contact_name=''):
     normalized_phone = _normalize_phone(phone)
-    if not normalized_phone:
-        logger.warning('Cannot upsert lead: empty/invalid phone')
+    valid_phone = is_valid_lead_phone(normalized_phone)
+    wa_chat_id = str(wa_chat_id or '').strip()
+    contact_name = str(contact_name or '').strip()[:200]
+
+    if not valid_phone and not wa_chat_id:
+        logger.warning('Cannot upsert lead: no valid phone or wa_chat_id')
         return None
 
     fields = _lead_field_names()
     now = timezone.now()
 
     with transaction.atomic():
-        raw_phone = str(phone or '').strip()
-        phone_candidates = [normalized_phone]
-        if raw_phone and raw_phone != normalized_phone:
-            phone_candidates.append(raw_phone)
+        lead = None
+        if valid_phone:
+            raw_phone = str(phone or '').strip()
+            phone_candidates = [normalized_phone]
+            if raw_phone and raw_phone != normalized_phone:
+                phone_candidates.append(raw_phone)
+            lead = (
+                Lead.objects.select_for_update()
+                .filter(phone__in=phone_candidates)
+                .order_by('id')
+                .first()
+            )
 
-        qs = (
-            Lead.objects.select_for_update()
-            .filter(phone__in=phone_candidates)
-            .order_by('id')
-        )
-        lead = qs.first()
+        if not lead and wa_chat_id:
+            lead = _find_lead_by_wa_chat_id(wa_chat_id)
+            if lead:
+                lead = Lead.objects.select_for_update().filter(pk=lead.pk).first()
+            if not lead:
+                lid_key = _normalize_phone(wa_chat_id.split('@')[0])
+                if lid_key:
+                    lead = (
+                        Lead.objects.select_for_update()
+                        .filter(phone=lid_key)
+                        .order_by('id')
+                        .first()
+                    )
+
         if lead:
             changed_fields = []
-            if lead.phone != normalized_phone:
-                lead.phone = normalized_phone
-                changed_fields.append('phone')
+            if valid_phone and lead.phone != normalized_phone:
+                # Replace a previously saved LID with the real number when we learn it.
+                if not is_valid_lead_phone(lead.phone) or lead.phone != normalized_phone:
+                    lead.phone = normalized_phone
+                    changed_fields.append('phone')
+            if contact_name and lead.name in {'', 'WhatsApp Lead'}:
+                lead.name = contact_name
+                changed_fields.append('name')
             if getattr(lead, 'source', '') != source:
                 lead.source = source
                 changed_fields.append('source')
@@ -106,17 +170,19 @@ def upsert_lead(phone, message, source='WhatsApp Ads'):
                     changed_fields.append('last_contacted')
             if changed_fields:
                 lead.save(update_fields=list(dict.fromkeys(changed_fields + ['updated_at'])))
+            if wa_chat_id:
+                update_lead_meta(lead, wa_chat_id=wa_chat_id)
             return lead
 
-        owner = _get_lead_owner()
-        if not owner:
+        lead_owner = owner or _get_lead_owner()
+        if not lead_owner:
             logger.error('Cannot create WhatsApp lead: no active user found')
             return None
 
         create_data = {
-            'employee': owner,
-            'phone': normalized_phone,
-            'name': 'WhatsApp Lead',
+            'employee': lead_owner,
+            'phone': normalized_phone if valid_phone else '',
+            'name': contact_name or 'WhatsApp Lead',
             'source': source,
         }
         if 'status' in fields:
@@ -125,7 +191,10 @@ def upsert_lead(phone, message, source='WhatsApp Ads'):
             create_data['last_message'] = message
         if 'last_contacted' in fields:
             create_data['last_contacted'] = now
-        return Lead.objects.create(**create_data)
+        lead = Lead.objects.create(**create_data)
+        if wa_chat_id:
+            update_lead_meta(lead, wa_chat_id=wa_chat_id)
+        return lead
 
 
 def get_lead_by_phone(phone):

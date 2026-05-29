@@ -164,6 +164,76 @@ NEWSLETTER_EMAIL_INTERVAL_SECONDS = float(
 CRM_WHATSAPP_DEFAULT_COUNTRY_CODE = '91'
 
 # WhatsApp Cloud API webhook verification token.
-WHATSAPP_VERIFY_TOKEN = "bthinkx123"
-WHATSAPP_ACCESS_TOKEN = 'EAAe8YaGfcZBEBRKSDf4ikI70kORTeeZBarsCZB4rjWcpvyGgyyjZAOFR4ZAb31JYCD48FZBYEJwfLJyzybfxvXCbx6uLeM6tZBLOjt2FZBj0PN1NIWMGpVQ2OvtkFIVZApLGoRwfMowc2dXGXh8JEJIHr9h02yN9F2o5WVRyjvdi4r56405KajaQfZCZBRJ1W7sIzAXR6lZCW7Yq6gbZCLNrUWCuFA8TUZB8wLjiGhqB3VpZCoyaAZCSK6JJh5rEFqW4ECHYX8LwAKx7k9Gjrm7MIfi5pLplycWG3gZDZD'
-WHATSAPP_PHONE_NUMBER_ID = "984411908097951"
+WHATSAPP_VERIFY_TOKEN = os.environ.get('WHATSAPP_VERIFY_TOKEN', 'bthinkx123').strip()
+
+# WhatsApp transport configuration.
+# We are migrating away from Meta Cloud API to a WhatsApp Web.js bridge.
+WHATSAPP_TRANSPORT = os.environ.get('WHATSAPP_TRANSPORT', 'webjs').strip()
+WHATSAPP_WEBJS_BRIDGE_URL = os.environ.get('WHATSAPP_WEBJS_BRIDGE_URL', '').strip()
+WHATSAPP_WEBJS_BRIDGE_TOKEN = os.environ.get('WHATSAPP_WEBJS_BRIDGE_TOKEN', '').strip()
+
+# Node -> Django API token (Bearer). If unset, we fall back to WHATSAPP_WEBJS_BRIDGE_TOKEN.
+DJANGO_API_TOKEN = os.environ.get('DJANGO_API_TOKEN', '').strip()
+
+# Deprecated Meta Cloud API settings (kept only to avoid breaking old envs).
+# They are no longer used when WHATSAPP_TRANSPORT=webjs.
+WHATSAPP_APP_SECRET = os.environ.get('WHATSAPP_APP_SECRET', '').strip()
+WHATSAPP_ACCESS_TOKEN = os.environ.get('WHATSAPP_ACCESS_TOKEN', '').strip()
+WHATSAPP_PHONE_NUMBER_ID = os.environ.get('WHATSAPP_PHONE_NUMBER_ID', '').strip()
+
+# Gemini AI WhatsApp qualification (human-like sales coordinator)
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '').strip()
+GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash').strip()
+GEMINI_AI_QUALIFICATION_ENABLED = os.environ.get(
+    'GEMINI_AI_QUALIFICATION_ENABLED', 'false'
+).lower() in ('1', 'true', 'yes')
+GEMINI_MAX_HISTORY_MESSAGES = int(os.environ.get('GEMINI_MAX_HISTORY_MESSAGES', '10'))
+GEMINI_REQUEST_TIMEOUT = int(os.environ.get('GEMINI_REQUEST_TIMEOUT', '60'))
+
+# Pause auto-replies after executive sends from phone; resume after this many minutes.
+WHATSAPP_HUMAN_TAKEOVER_COOLDOWN_MINUTES = int(
+    os.environ.get('WHATSAPP_HUMAN_TAKEOVER_COOLDOWN_MINUTES', '30')
+)
+
+# WhatsApp Web.js reply buttons are DEPRECATED by Meta — often invisible on phones.
+# Keep false; use numbered text menus (reliable). Set true only if buttons work on your account.
+WHATSAPP_USE_REPLY_BUTTONS = os.environ.get('WHATSAPP_USE_REPLY_BUTTONS', 'false').lower() in (
+    '1',
+    'true',
+    'yes',
+)
+
+# Optional local voice transcription (pip install faster-whisper).
+# If false, voice notes use Gemini (recommended when GEMINI_API_KEY is set).
+WHISPER_LOCAL_ENABLED = os.environ.get('WHISPER_LOCAL_ENABLED', 'false').lower() in (
+    '1',
+    'true',
+    'yes',
+)
+WHISPER_MODEL_SIZE = os.environ.get('WHISPER_MODEL_SIZE', 'small').strip()
+HF_TOKEN = os.environ.get('HF_TOKEN', '').strip()
+if WHISPER_LOCAL_ENABLED:
+    os.environ.setdefault('HF_HUB_DISABLE_SYMLINKS_WARNING', '1')
+    if HF_TOKEN:
+        os.environ.setdefault('HF_TOKEN', HF_TOKEN)
+
+# Redis cache (recommended for webhook dedupe + rate limiting + multi-worker safety).
+# Set REDIS_URL like: redis://127.0.0.1:6379/1
+REDIS_URL = os.environ.get('REDIS_URL', '').strip()
+if REDIS_URL:
+  CACHES = {
+      'default': {
+          'BACKEND': 'django_redis.cache.RedisCache',
+          'LOCATION': REDIS_URL,
+          'OPTIONS': {
+              'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+          },
+          'TIMEOUT': 300,
+      }
+  }
+
+# Celery (optional) — uses Redis when REDIS_URL is set.
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', '').strip() or (REDIS_URL or '')
+CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', '').strip() or (REDIS_URL or '')
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_ENABLE_UTC = True

@@ -3,20 +3,26 @@
 # ==============================
 __pycache__/
 *.py[cod]
+*$py.class
 *.pyo
 *.pyd
 *.so
+*.egg
 *.egg-info/
 .eggs/
-.env
-.env.*
+dist/
+build/
+*.manifest
+*.spec
+pip-log.txt
+pip-delete-this-directory.txt
+.Python
+
+# Virtual environments
 .venv/
 venv/
 ENV/
 env/
-pip-log.txt
-pip-delete-this-directory.txt
-
 
 # ==============================
 # DJANGO
@@ -30,35 +36,39 @@ staticfiles/
 *.mo
 *.pot
 
+# Celery
+celerybeat-schedule
+celerybeat.pid
 
 # ==============================
-# DJANGO MIGRATIONS
-# (keep __init__.py)
+# DJANGO MIGRATIONS (keep __init__.py)
 # ==============================
 **/migrations/*
 !**/migrations/__init__.py
 
-
 # ==============================
-# SECRETS / CREDENTIALS
+# SECRETS / CREDENTIALS (keep *.example templates)
 # ==============================
 .env
 .env.local
 .env.production
 .env.staging
 .env.dev
+wa_gateway/.env
 secrets.json
 credentials.json
-
+!.env.example
+!**/.env.example
 
 # ==============================
-# IDE / EDITORS
+# IDE / EDITORS / CURSOR
 # ==============================
 .vscode/
 .idea/
+.cursor/
 *.sublime-project
 *.sublime-workspace
-
+*.code-workspace
 
 # ==============================
 # OS FILES
@@ -66,18 +76,9 @@ credentials.json
 .DS_Store
 Thumbs.db
 desktop.ini
-
-
-# ==============================
-# BUILD / DEPLOY
-# ==============================
-*.pem
-*.key
-*.crt
-*.pid
-*.sock
-*.log
-
+ehthumbs.db
+*.swp
+*~
 
 # ==============================
 # TEST / COVERAGE
@@ -87,18 +88,52 @@ htmlcov/
 .coverage.*
 .tox/
 .pytest_cache/
-
+.mypy_cache/
+.ruff_cache/
+.dmypy.json
+dmypy.json
 
 # ==============================
-# FRONTEND / NODE (if any)
+# NODE / FRONTEND
 # ==============================
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-dist/
-build/
+pnpm-debug.log*
+.pnpm-store/
+.npm/
+.yarn/
+package-lock.json.bak
 
+# ==============================
+# WHATSAPP WEB.JS GATEWAY (wa_gateway)
+# ==============================
+wa_gateway/node_modules/
+wa_gateway/logs/
+wa_gateway/sessions/
+wa_gateway/tmp_media/
+wa_gateway/.wwebjs_auth/
+wa_gateway/.wwebjs_cache/
+wa_gateway/.puppeteer/
+wa_gateway/.chrome/
+
+# ==============================
+# ML / VOICE CACHE (local downloads)
+# ==============================
+.cache/
+*.pt
+*.bin
+*.onnx
+
+# ==============================
+# BUILD / DEPLOY / TLS
+# ==============================
+*.pem
+*.key
+*.crt
+*.pid
+*.sock
 
 # ==============================
 # CUSTOM PROJECT FILES

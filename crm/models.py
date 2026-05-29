@@ -38,6 +38,11 @@ class EmployeeProfile(models.Model):
         db_index=True,
         help_text='CRM RBAC: controls provisioning, credentials, and secrets access.',
     )
+    whatsapp_bot_enabled = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text='When on, WhatsApp auto-replies and qualification run for this executive.',
+    )
 
     class Meta:
         verbose_name = 'Employee profile'
@@ -130,6 +135,232 @@ class Lead(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class WhatsAppBotExcludePhone(models.Model):
+    """Numbers that must never receive bot auto-replies for this executive (e.g. team phones)."""
+
+    executive = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='wa_bot_excludes',
+    )
+    phone = models.CharField(
+        max_length=20,
+        db_index=True,
+        help_text='Digits only with country code, e.g. 919876543210',
+    )
+    label = models.CharField(max_length=120, blank=True, help_text='Optional note, e.g. Team — Rajesh')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['executive', 'phone'],
+                name='uniq_wa_bot_exclude_exec_phone',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['executive', 'phone']),
+        ]
+
+    def save(self, *args, **kwargs):
+        self.phone = ''.join(ch for ch in str(self.phone or '') if ch.isdigit())
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        label = f' ({self.label})' if self.label else ''
+        return f'{self.phone}{label}'
+
+
+class WhatsAppNumber(models.Model):
+    """
+    One row per WhatsApp Cloud API phone number (under your WABA).
+
+    Purpose:
+    - route inbound webhooks by metadata.phone_number_id to the correct executive
+    - send outbound messages using the same number (and token if per-number)
+    """
+
+    phone_number_id = models.CharField(max_length=100, unique=True)
+    display_phone_number = models.CharField(max_length=50, blank=True)
+
+    executive = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='crm_whatsapp_numbers',
+    )
+
+    # Optional per-number token. If empty, the global WHATSAPP_ACCESS_TOKEN is used.
+    access_token = models.TextField(blank=True)
+
+    business_account_id = models.CharField(max_length=100, blank=True)
+    is_active = models.BooleanField(default=True, db_index=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-is_active', 'display_phone_number', 'phone_number_id']
+        indexes = [
+            models.Index(fields=['executive', 'is_active']),
+        ]
+
+    def __str__(self):
+        label = self.display_phone_number or self.phone_number_id
+        return f'{label} → {self.executive}'
+
+
+class WhatsAppConversation(models.Model):
+    """
+    Conversation scope for one customer with one WhatsAppNumber.
+
+    This is where bot/human takeover lives, and it anchors message history.
+    """
+
+    wa_number = models.ForeignKey(
+        WhatsAppNumber,
+        on_delete=models.PROTECT,
+        related_name='conversations',
+    )
+    executive = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='crm_whatsapp_conversations',
+    )
+    lead = models.ForeignKey(
+        Lead,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='whatsapp_conversations',
+    )
+
+    customer_phone = models.CharField(max_length=40, db_index=True)
+
+    bot_enabled = models.BooleanField(default=True, db_index=True)
+    human_takeover_at = models.DateTimeField(null=True, blank=True)
+    bot_disabled_reason = models.CharField(max_length=120, blank=True)
+
+    last_inbound_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    last_outbound_at = models.DateTimeField(null=True, blank=True, db_index=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-updated_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['wa_number', 'customer_phone'],
+                name='uniq_whatsapp_conversation_number_customer',
+            )
+        ]
+        indexes = [
+            models.Index(fields=['executive', 'updated_at']),
+            models.Index(fields=['lead', 'updated_at']),
+            models.Index(fields=['wa_number', 'updated_at']),
+        ]
+
+    def __str__(self):
+        return f'WA convo {self.customer_phone} ({self.wa_number_id})'
+
+
+class WhatsAppMessage(models.Model):
+    class Direction(models.TextChoices):
+        INBOUND = 'inbound', 'Inbound'
+        OUTBOUND = 'outbound', 'Outbound'
+
+    class Status(models.TextChoices):
+        RECEIVED = 'received', 'Received'
+        SENT = 'sent', 'Sent'
+        DELIVERED = 'delivered', 'Delivered'
+        READ = 'read', 'Read'
+        FAILED = 'failed', 'Failed'
+
+    class Source(models.TextChoices):
+        BOT = 'bot', 'Bot'
+        HUMAN = 'human', 'Human'
+        SYSTEM = 'system', 'System'
+
+    conversation = models.ForeignKey(
+        WhatsAppConversation,
+        on_delete=models.CASCADE,
+        related_name='messages',
+    )
+    wa_number = models.ForeignKey(
+        WhatsAppNumber,
+        on_delete=models.PROTECT,
+        related_name='messages',
+    )
+    executive = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='crm_whatsapp_messages',
+    )
+    lead = models.ForeignKey(
+        Lead,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='whatsapp_messages',
+    )
+
+    direction = models.CharField(
+        max_length=10,
+        choices=Direction.choices,
+        db_index=True,
+    )
+    source = models.CharField(
+        max_length=10,
+        choices=Source.choices,
+        default=Source.BOT,
+        db_index=True,
+    )
+
+    message_id = models.CharField(max_length=128, blank=True, db_index=True)
+    customer_phone = models.CharField(max_length=40, db_index=True)
+
+    text = models.TextField(blank=True)
+    message_type = models.CharField(max_length=40, blank=True)
+
+    status = models.CharField(
+        max_length=12,
+        choices=Status.choices,
+        default=Status.RECEIVED,
+        db_index=True,
+    )
+    status_updated_at = models.DateTimeField(null=True, blank=True)
+    error_code = models.CharField(max_length=40, blank=True)
+    error_title = models.CharField(max_length=200, blank=True)
+    error_details = models.TextField(blank=True)
+
+    provider_timestamp = models.DateTimeField(null=True, blank=True, db_index=True)
+    raw_payload = models.JSONField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['wa_number', 'message_id'],
+                name='uniq_whatsapp_message_id_per_number',
+            )
+        ]
+        indexes = [
+            models.Index(fields=['conversation', 'created_at']),
+            models.Index(fields=['lead', 'created_at']),
+            models.Index(fields=['executive', 'created_at']),
+            models.Index(fields=['customer_phone', 'created_at']),
+            models.Index(fields=['direction', 'status', 'created_at']),
+        ]
+
+    def __str__(self):
+        mid = self.message_id or 'no-id'
+        return f'{self.direction} {self.status} {mid}'
 
 
 class FollowUp(models.Model):

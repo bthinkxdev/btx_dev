@@ -1,0 +1,22 @@
+<form
+  class="wa-bot-toggle-form"
+  hx-post="{% url 'crm:whatsapp_bot_toggle' %}"
+  hx-target="#wa-bot-toggle-host"
+  hx-swap="innerHTML"
+>
+  {% csrf_token %}
+  <button
+    type="submit"
+    class="wa-bot-toggle {% if crm_whatsapp_bot_enabled %}wa-bot-toggle--on{% else %}wa-bot-toggle--off{% endif %}"
+    title="{% if crm_whatsapp_bot_enabled %}WhatsApp bot ON — auto-replies active{% else %}WhatsApp bot OFF — inbound stored only{% endif %}"
+    aria-pressed="{% if crm_whatsapp_bot_enabled %}true{% else %}false{% endif %}"
+  >
+    <span class="wa-bot-toggle__track" aria-hidden="true">
+      <span class="wa-bot-toggle__thumb"></span>
+    </span>
+    <span class="wa-bot-toggle__text">
+      <span class="wa-bot-toggle__label">WA Bot</span>
+      <span class="wa-bot-toggle__state">{% if crm_whatsapp_bot_enabled %}ON{% else %}OFF{% endif %}</span>
+    </span>
+  </button>
+</form>

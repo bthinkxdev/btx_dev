@@ -32,6 +32,10 @@ from .models import (
     RenewalReminderLog,
     RenewalTracker,
     Task,
+    WhatsAppBotExcludePhone,
+    WhatsAppConversation,
+    WhatsAppMessage,
+    WhatsAppNumber,
 )
 
 
@@ -95,9 +99,9 @@ class ProjectTicketAdmin(admin.ModelAdmin):
 
 @admin.register(EmployeeProfile)
 class EmployeeProfileAdmin(admin.ModelAdmin):
-    list_display = ('user', 'crm_role', 'target_amount', 'has_profile_photo')
+    list_display = ('user', 'crm_role', 'whatsapp_bot_enabled', 'target_amount', 'has_profile_photo')
     search_fields = ('user__username', 'user__email')
-    fields = ('user', 'crm_role', 'target_amount', 'photo')
+    fields = ('user', 'crm_role', 'whatsapp_bot_enabled', 'target_amount', 'photo')
 
     @admin.display(description='Photo', boolean=True)
     def has_profile_photo(self, obj):
@@ -129,6 +133,60 @@ class LeadAdmin(admin.ModelAdmin):
     list_filter = ('status', 'employee')
     search_fields = ('name', 'phone', 'email')
     inlines = [ActivityInline]
+
+
+@admin.register(WhatsAppNumber)
+class WhatsAppNumberAdmin(admin.ModelAdmin):
+    list_display = (
+        'display_phone_number',
+        'phone_number_id',
+        'executive',
+        'is_active',
+        'updated_at',
+    )
+    list_filter = ('is_active', 'executive')
+    search_fields = ('display_phone_number', 'phone_number_id', 'executive__username', 'executive__email')
+
+
+@admin.register(WhatsAppBotExcludePhone)
+class WhatsAppBotExcludePhoneAdmin(admin.ModelAdmin):
+    list_display = ('phone', 'label', 'executive', 'created_at')
+    list_filter = ('executive',)
+    search_fields = ('phone', 'label', 'executive__username')
+
+
+@admin.register(WhatsAppConversation)
+class WhatsAppConversationAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'wa_number',
+        'executive',
+        'customer_phone',
+        'lead',
+        'bot_enabled',
+        'human_takeover_at',
+        'updated_at',
+    )
+    list_filter = ('bot_enabled', 'executive', 'wa_number')
+    search_fields = ('customer_phone', 'lead__phone', 'lead__name')
+
+
+@admin.register(WhatsAppMessage)
+class WhatsAppMessageAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'created_at',
+        'direction',
+        'status',
+        'source',
+        'wa_number',
+        'executive',
+        'customer_phone',
+        'message_id',
+    )
+    list_filter = ('direction', 'status', 'source', 'wa_number', 'executive')
+    search_fields = ('message_id', 'customer_phone', 'text', 'lead__name', 'lead__phone')
+    readonly_fields = ('created_at', 'updated_at')
 
 
 @admin.register(FollowUp)

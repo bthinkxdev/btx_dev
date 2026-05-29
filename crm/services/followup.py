@@ -4,8 +4,12 @@ from datetime import timedelta
 from django.utils import timezone
 
 from .crm import get_last_followup_sent, get_lead_funnel_data, update_lead_meta
-from .whatsapp import send_whatsapp_message
-from crm.models import Lead
+from .whatsapp import (
+    get_active_wa_number,
+    get_or_create_conversation,
+    send_whatsapp_message,
+)
+from crm.models import Lead, WhatsAppMessage
 
 logger = logging.getLogger(__name__)
 REMINDER_TEXT = 'Are you still interested? We have limited slots today.'
@@ -46,7 +50,21 @@ def check_and_send_followups():
         last_followup_sent = get_last_followup_sent(lead)
         if last_followup_sent and now - last_followup_sent < timedelta(hours=24):
             continue
-        ok = send_whatsapp_message(lead.phone, REMINDER_TEXT)
+        wa_pid = str(meta.get('wa_phone_number_id') or '').strip()
+        wa_number = get_active_wa_number(wa_pid) if wa_pid else None
+        convo = None
+        if wa_number:
+            convo = get_or_create_conversation(
+                wa_number=wa_number, customer_phone=lead.phone, lead=lead
+            )
+        ok = send_whatsapp_message(
+            lead.phone,
+            REMINDER_TEXT,
+            wa_number=wa_number,
+            convo=convo,
+            lead=lead,
+            source=WhatsAppMessage.Source.SYSTEM,
+        )
         if ok:
             sent_count += 1
             update_lead_meta(lead, last_followup_sent=now.isoformat())

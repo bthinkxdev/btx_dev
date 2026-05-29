@@ -292,6 +292,170 @@
       max-width: 200px;
     }
 
+    .wa-bot-toggle-form { margin: 0; }
+    .wa-bot-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--border);
+      background: var(--neutral-50);
+      border-radius: 999px;
+      padding: 4px 10px 4px 4px;
+      cursor: pointer;
+      font: inherit;
+      color: var(--text-muted);
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    .wa-bot-toggle:hover { background: var(--neutral-100); }
+    .wa-bot-toggle--on {
+      border-color: var(--success-500);
+      background: var(--success-50);
+      color: var(--success-600);
+    }
+    .wa-bot-toggle__track {
+      width: 34px;
+      height: 20px;
+      border-radius: 999px;
+      background: var(--neutral-300);
+      position: relative;
+      flex-shrink: 0;
+      transition: background 0.15s;
+    }
+    .wa-bot-toggle--on .wa-bot-toggle__track { background: var(--success-500); }
+    .wa-bot-toggle__thumb {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+      transition: transform 0.15s;
+    }
+    .wa-bot-toggle--on .wa-bot-toggle__thumb { transform: translateX(14px); }
+    .wa-bot-toggle__text {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      line-height: 1.1;
+    }
+    .wa-bot-toggle__label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .wa-bot-toggle__state {
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .wa-bot-panel {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .wa-bot-exclude-dd { position: relative; }
+    .wa-bot-exclude-dd__sum {
+      list-style: none;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      padding: 6px 8px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      white-space: nowrap;
+    }
+    .wa-bot-exclude-dd__sum::-webkit-details-marker { display: none; }
+    .wa-bot-exclude-dd__sum:hover { background: var(--neutral-100); }
+    .wa-bot-exclude-dd__count {
+      display: inline-block;
+      margin-left: 4px;
+      padding: 0 5px;
+      border-radius: 999px;
+      background: var(--neutral-200);
+      font-size: 10px;
+    }
+    .wa-bot-exclude-dd__panel {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 6px);
+      z-index: 200;
+      width: min(300px, 92vw);
+      padding: 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-lg);
+    }
+    .wa-bot-exclude-dd__hint,
+    .wa-bot-exclude-dd__empty {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin: 0 0 8px;
+      line-height: 1.4;
+    }
+    .wa-bot-exclude-dd__err {
+      font-size: 11px;
+      color: var(--danger-600);
+      margin: 0 0 8px;
+    }
+    .wa-bot-exclude-add {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .wa-bot-exclude-add input {
+      font-size: 12px;
+      padding: 6px 8px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      min-width: 0;
+    }
+    .wa-bot-exclude-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      max-height: 180px;
+      overflow-y: auto;
+    }
+    .wa-bot-exclude-list__item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 0;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+    }
+    .wa-bot-exclude-list__phone { font-weight: 600; font-variant-numeric: tabular-nums; }
+    .wa-bot-exclude-list__label {
+      flex: 1;
+      color: var(--text-muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .wa-bot-exclude-list__rm { margin: 0; }
+    .wa-bot-exclude-list__x {
+      border: none;
+      background: var(--neutral-100);
+      color: var(--text-muted);
+      width: 22px;
+      height: 22px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+    }
+    .wa-bot-exclude-list__x:hover {
+      background: var(--danger-50);
+      color: var(--danger-600);
+    }
+
     .header-search-wrap {
       position: relative;
       flex: 1;
@@ -1881,6 +2045,11 @@
     </div>
     {% endif %}
     <div class="header-right">
+      {% if crm_can_access_sales_pipeline %}
+      <div id="wa-bot-toggle-host">
+        {% include "crm/partials/whatsapp_bot_panel.html" %}
+      </div>
+      {% endif %}
       {% if request.user.is_authenticated %}
       <details class="header-dd header-dd--tasks" id="crm-header-task-dd">
         <summary class="header-task-sum" aria-label="Task notifications" title="Tasks due today or overdue">
