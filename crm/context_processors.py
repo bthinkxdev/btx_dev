@@ -8,6 +8,7 @@ from .models import EmployeeProfile, FollowUp, Task, WhatsAppBotExcludePhone
 from .services import project_tickets as ticket_service
 from .rbac import (
     can_access_billing,
+    can_access_finance,
     can_access_sales_pipeline,
     can_view_financial_data,
     is_crm_developer,
@@ -28,6 +29,7 @@ def crm_header(request):
         'crm_can_view_financial_data': True,
         'crm_can_access_sales_pipeline': True,
         'crm_can_access_billing': False,
+        'crm_can_access_finance': False,
     }
     user = getattr(request, 'user', None)
     if not user or not user.is_authenticated:
@@ -78,4 +80,5 @@ def crm_header(request):
     out['crm_can_view_financial_data'] = can_view_financial_data(user)
     out['crm_can_access_sales_pipeline'] = can_access_sales_pipeline(user)
     out['crm_can_access_billing'] = can_access_billing(user)
+    out['crm_can_access_finance'] = can_access_finance(user)
     return out

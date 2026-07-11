@@ -1,0 +1,70 @@
+{% extends "crm/base.html" %}
+{% block title %}Finance Reports{% endblock %}
+{% block page_title %}Finance Reports{% endblock %}
+
+{% block content %}
+<nav class="billing-breadcrumb" aria-label="Breadcrumb">
+  <a href="{% url 'crm:finance_dashboard' %}"
+     hx-get="{% url 'crm:finance_dashboard' %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">Finance</a>
+  <span class="billing-breadcrumb__sep">/</span>
+  <span class="billing-breadcrumb__current">Reports</span>
+</nav>
+
+<div class="page-header">
+  <div>
+    <h1>Finance Reports</h1>
+    <p>Management reports with filters, charts, and CSV / Excel / PDF export.</p>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <a href="{% url 'crm:finance_executive' %}" class="btn btn-primary btn-sm"
+       hx-get="{% url 'crm:finance_executive' %}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">Executive Dashboard</a>
+  </div>
+</div>
+
+<div class="stat-grid" style="margin-bottom:24px;">
+  <a href="{% url 'crm:finance_executive' %}" class="stat-card" style="text-decoration:none;color:inherit;"
+     hx-get="{% url 'crm:finance_executive' %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">
+    <div class="stat-icon indigo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-6"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value" style="font-size:16px;">Executive Dashboard</div>
+      <div class="stat-label">Current month KPIs &amp; growth</div>
+    </div>
+  </a>
+  {% for key, title in report_types.items %}
+  <a href="{% url 'crm:finance_report_run' key %}" class="stat-card" style="text-decoration:none;color:inherit;"
+     hx-get="{% url 'crm:finance_report_run' key %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">
+    <div class="stat-icon {% cycle 'green' 'amber' 'purple' 'indigo' 'green' 'amber' 'purple' 'indigo' 'green' 'amber' %}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value" style="font-size:16px;">{{ title }}</div>
+      <div class="stat-label">Daily · Weekly · Monthly · Yearly</div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+
+{% include "crm/billing/_billing_styles.html" %}
+{% endblock %}

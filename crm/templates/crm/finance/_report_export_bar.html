@@ -1,0 +1,11 @@
+<div class="no-print" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+  <a class="btn btn-outline btn-sm"
+     href="{% url 'crm:finance_report_run' report_type %}?{% for key, value in request.GET.items %}{% if key != 'export' %}{{ key }}={{ value|urlencode }}&amp;{% endif %}{% endfor %}export=csv">CSV</a>
+  <a class="btn btn-outline btn-sm"
+     href="{% url 'crm:finance_report_run' report_type %}?{% for key, value in request.GET.items %}{% if key != 'export' %}{{ key }}={{ value|urlencode }}&amp;{% endif %}{% endfor %}export=xlsx">Excel</a>
+  <a class="btn btn-outline btn-sm"
+     href="{% url 'crm:finance_report_run' report_type %}?{% for key, value in request.GET.items %}{% if key != 'export' %}{{ key }}={{ value|urlencode }}&amp;{% endif %}{% endfor %}export=pdf">PDF</a>
+  <a class="btn btn-outline btn-sm"
+     href="{% url 'crm:finance_report_run' report_type %}?{% for key, value in request.GET.items %}{% if key != 'export' %}{{ key }}={{ value|urlencode }}&amp;{% endif %}{% endfor %}export=print"
+     target="_blank" rel="noopener">Print</a>
+</div>

@@ -312,6 +312,11 @@ def record_opening_advance(
         ContentFile(pdf_bytes),
         save=True,
     )
+
+    from . import finance as finance_service
+
+    finance_service.create_income_from_bill_payment(payment, actor=actor)
+
     return payment, bill
 
 
@@ -559,6 +564,10 @@ def verify_payment(payment: BillPayment, *, actor=None) -> BillPayment:
 
     sync_project_financials(payment.project)
 
+    from . import finance as finance_service
+
+    finance_service.create_income_from_bill_payment(payment, actor=actor)
+
     audit_service.log_event(
         category='billing',
         action='payment_verified',
@@ -669,6 +678,10 @@ def record_payment_with_receipt(
         project=project,
         after_state={'amount': str(amount), 'bill': bill.bill_number},
     )
+
+    from . import finance as finance_service
+
+    finance_service.create_income_from_bill_payment(payment, actor=actor)
 
     if send_email:
         recipient = get_billing_email_for_project(project)

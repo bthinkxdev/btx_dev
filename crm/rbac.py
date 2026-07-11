@@ -10,6 +10,7 @@ ROLE_ADMIN = 'admin'
 ROLE_DEV = 'dev'
 ROLE_SUPPORT = 'support'
 ROLE_SALES = 'sales'
+ROLE_FINANCE = 'finance'
 
 
 def is_crm_developer(user) -> bool:
@@ -133,6 +134,18 @@ def can_send_renewal_reminder_manual(user) -> bool:
 def can_access_billing(user) -> bool:
     """Billing, ledger, statements, and payment recording (admin only)."""
     return user.is_authenticated and (user.is_superuser or get_crm_role(user) == ROLE_ADMIN)
+
+
+def can_access_finance(user) -> bool:
+    """
+    Finance module (income, expense, management reports).
+    Admin, support, and finance roles. Sales and developers excluded.
+    """
+    if not user or not user.is_authenticated:
+        return False
+    if user.is_superuser:
+        return True
+    return get_crm_role(user) in (ROLE_ADMIN, ROLE_SUPPORT, ROLE_FINANCE)
 
 
 def credential_type_is_secret(ct: str) -> bool:

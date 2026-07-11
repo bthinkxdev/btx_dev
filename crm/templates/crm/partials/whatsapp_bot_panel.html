@@ -22,6 +22,19 @@
     </button>
   </form>
 
+  <details class="wa-bot-exclude-dd wa-bot-link-dd">
+    <summary class="wa-bot-exclude-dd__sum" title="Link devices and check routing">WhatsApp lines</summary>
+    <div class="wa-bot-exclude-dd__panel">
+      <ul class="wa-bot-link-list">
+        <li><a href="{% url 'crm:whatsapp_session_health' %}">Line health</a></li>
+        <li><a href="{% url 'crm:whatsapp_qr_list' %}">Scan QR</a></li>
+        <li><a href="{% url 'crm:whatsapp_qr_session' 'admin1' %}">admin1</a></li>
+        <li><a href="{% url 'crm:whatsapp_qr_session' 'admin2' %}">admin2</a></li>
+        <li><a href="{% url 'crm:whatsapp_qr_session' 'admin3' %}">admin3</a></li>
+      </ul>
+    </div>
+  </details>
+
   <details class="wa-bot-exclude-dd">
     <summary class="wa-bot-exclude-dd__sum" title="Team numbers — bot never replies to these">
       Exclude list

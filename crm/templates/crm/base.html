@@ -12,6 +12,12 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/htmx.org@1.9.10"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script>
+    /* Avoid restoring stale main content (open dialogs / broken chart canvases) from HTMX history cache. */
+    if (typeof htmx !== 'undefined') {
+      htmx.config.historyCacheSize = 0;
+    }
+  </script>
   <style>
     /* ─── Design Tokens ─────────────────────────────────────────── */
     :root {
@@ -1971,6 +1977,70 @@
       </a>
       {% endif %}
 
+      {% if crm_can_access_finance %}
+      <span class="nav-section-label">Finance</span>
+      <a href="{% url 'crm:finance_dashboard' %}"
+         hx-get="{% url 'crm:finance_dashboard' %}"
+         hx-target="#crm-main-content"
+         hx-select="#crm-main-content"
+         hx-swap="outerHTML"
+         hx-push-url="true"
+         class="nav-item {% if request.resolver_match.url_name == 'finance_dashboard' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+        </svg>
+        <span>Management Dashboard</span>
+      </a>
+      <a href="{% url 'crm:income_list' %}"
+         hx-get="{% url 'crm:income_list' %}"
+         hx-target="#crm-main-content"
+         hx-select="#crm-main-content"
+         hx-swap="outerHTML"
+         hx-push-url="true"
+         class="nav-item {% if request.resolver_match.url_name == 'income_list' or request.resolver_match.url_name == 'income_create' or request.resolver_match.url_name == 'income_edit' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+        </svg>
+        <span>Income</span>
+      </a>
+      <a href="{% url 'crm:expense_dashboard' %}"
+         hx-get="{% url 'crm:expense_dashboard' %}"
+         hx-target="#crm-main-content"
+         hx-select="#crm-main-content"
+         hx-swap="outerHTML"
+         hx-push-url="true"
+         class="nav-item {% if request.resolver_match.url_name == 'expense_dashboard' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/>
+        </svg>
+        <span>Expense Dashboard</span>
+      </a>
+      <a href="{% url 'crm:expense_list' %}"
+         hx-get="{% url 'crm:expense_list' %}"
+         hx-target="#crm-main-content"
+         hx-select="#crm-main-content"
+         hx-swap="outerHTML"
+         hx-push-url="true"
+         class="nav-item {% if request.resolver_match.url_name == 'expense_list' or request.resolver_match.url_name == 'expense_create' or request.resolver_match.url_name == 'expense_edit' or request.resolver_match.url_name == 'expense_receipt' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/>
+        </svg>
+        <span>Expenses</span>
+      </a>
+      <a href="{% url 'crm:finance_reports' %}"
+         hx-get="{% url 'crm:finance_reports' %}"
+         hx-target="#crm-main-content"
+         hx-select="#crm-main-content"
+         hx-swap="outerHTML"
+         hx-push-url="true"
+         class="nav-item {% if 'report_' in request.resolver_match.url_name or request.resolver_match.url_name == 'finance_reports' or request.resolver_match.url_name == 'finance_report_run' or request.resolver_match.url_name == 'finance_executive' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-6"/>
+        </svg>
+        <span>Reports</span>
+      </a>
+      {% endif %}
+
       {% if crm_can_access_billing %}
       <a href="{% url 'crm:billing_dashboard' %}"
          hx-get="{% url 'crm:billing_dashboard' %}"
@@ -2162,6 +2232,96 @@
     document.body.addEventListener('htmx:afterRequest', function() {
       document.getElementById('htmx-bar').style.opacity = '0';
     });
+
+    /**
+     * HTMX outerHTML swaps can remove an open <dialog> without .close(),
+     * leaving a browser top-layer / ::backdrop that silently blocks all clicks.
+     * Also resets overlays, body scroll lock, and Chart.js canvas registry.
+     */
+    window.crmPrepareMainSwap = function crmPrepareMainSwap() {
+      try {
+        document.querySelectorAll('dialog[open]').forEach(function (d) {
+          try { d.close(); } catch (e) {}
+        });
+      } catch (e) {}
+      try {
+        if (typeof closeSidebar === 'function') closeSidebar();
+      } catch (e) {}
+      var overlay = document.getElementById('sidebar-overlay');
+      if (overlay) overlay.classList.remove('open');
+      var drawerHost = document.getElementById('ticket-drawer-host');
+      if (drawerHost) drawerHost.innerHTML = '';
+      var lightbox = document.getElementById('ticket-lightbox');
+      if (lightbox) {
+        lightbox.hidden = true;
+        var limg = lightbox.querySelector('.ticket-lightbox__img');
+        if (limg) limg.removeAttribute('src');
+      }
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+      try {
+        document.body.removeAttribute('inert');
+        document.documentElement.removeAttribute('inert');
+      } catch (e) {}
+      if (typeof Chart !== 'undefined' && typeof Chart.getChart === 'function') {
+        document.querySelectorAll('canvas').forEach(function (c) {
+          try {
+            var prev = Chart.getChart(c);
+            if (prev) prev.destroy();
+          } catch (e) {}
+        });
+      }
+    };
+
+    /** Safe Chart.js create — destroys any prior chart on the same canvas id. */
+    window.crmMountChart = function crmMountChart(canvasOrId, config) {
+      if (typeof Chart === 'undefined') return null;
+      var el = typeof canvasOrId === 'string'
+        ? document.getElementById(canvasOrId)
+        : canvasOrId;
+      if (!el) return null;
+      try {
+        var prev = Chart.getChart(el);
+        if (prev) prev.destroy();
+      } catch (e) {}
+      return new Chart(el, config);
+    };
+
+    if (!window.__crmMainSwapGuard) {
+      window.__crmMainSwapGuard = true;
+      document.body.addEventListener('htmx:beforeSwap', function (evt) {
+        var t = evt.detail && evt.detail.target;
+        if (!t) return;
+        if (t.id === 'crm-main-content' || (t.querySelector && t.querySelector('#crm-main-content'))) {
+          window.crmPrepareMainSwap();
+        }
+      });
+      document.body.addEventListener('htmx:historyRestore', function () {
+        window.crmPrepareMainSwap();
+      });
+      document.body.addEventListener('htmx:afterSettle', function (evt) {
+        var t = evt.detail && evt.detail.target;
+        if (!t || t.id !== 'crm-main-content') return;
+        // Safety: if a dialog somehow reopened mid-swap, leave billing alone;
+        // clear any leftover inert from aborted modal flows.
+        try {
+          document.body.removeAttribute('inert');
+          document.documentElement.removeAttribute('inert');
+        } catch (e) {}
+        document.body.style.overflow = '';
+      });
+      // Recover if a prior session left the page inert / scroll-locked
+      window.addEventListener('pageshow', function () {
+        if (!document.querySelector('dialog[open]')) {
+          try {
+            document.body.removeAttribute('inert');
+            document.documentElement.removeAttribute('inert');
+          } catch (e) {}
+          document.body.style.overflow = '';
+        }
+      });
+    }
+
 
     (function() {
       var taskDd = document.getElementById('crm-header-task-dd');
@@ -2549,8 +2709,7 @@
         document.body.addEventListener('htmx:beforeSwap', function(evt) {
           if (evt.detail.target && evt.detail.target.id === 'crm-main-content') {
             crmLeadsCleanupInfScroll();
-            var bdlgPre = document.getElementById('billing-payment-modal');
-            if (bdlgPre && bdlgPre.open) bdlgPre.close();
+            // Dialogs / overlays / charts cleared by window.crmPrepareMainSwap
           }
         });
         (function() {

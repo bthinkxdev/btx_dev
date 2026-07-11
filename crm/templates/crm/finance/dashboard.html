@@ -1,0 +1,54 @@
+{% extends "crm/base.html" %}
+{% block title %}Finance Dashboard{% endblock %}
+{% block page_title %}Finance{% endblock %}
+
+{% block content %}
+<nav class="billing-breadcrumb" aria-label="Breadcrumb">
+  <a href="{% url 'crm:finance_dashboard' %}"
+     hx-get="{% url 'crm:finance_dashboard' %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">Finance</a>
+  <span class="billing-breadcrumb__sep">/</span>
+  <span class="billing-breadcrumb__current">Management Dashboard</span>
+</nav>
+
+<div class="page-header">
+  <div>
+    <h1>Management Dashboard</h1>
+    <p>Live revenue, expense, and profit from Income &amp; Expense — updates as entries change.</p>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+    <span class="crm-badge crm-badge--green" title="Auto-refreshes every 45s">Live</span>
+    <a href="{% url 'crm:finance_executive' %}" class="btn btn-outline btn-sm"
+       hx-get="{% url 'crm:finance_executive' %}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">Executive</a>
+    <a href="{% url 'crm:finance_reports' %}" class="btn btn-outline btn-sm"
+       hx-get="{% url 'crm:finance_reports' %}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">Reports</a>
+    <a href="{% url 'crm:income_create' %}" class="btn btn-primary btn-sm"
+       hx-get="{% url 'crm:income_create' %}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">Add Income</a>
+    <a href="{% url 'crm:expense_create' %}" class="btn btn-outline btn-sm"
+       hx-get="{% url 'crm:expense_create' %}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">Add Expense</a>
+  </div>
+</div>
+
+{% include "crm/finance/partials/management_body.html" %}
+
+{% include "crm/billing/_billing_styles.html" %}
+{% endblock %}

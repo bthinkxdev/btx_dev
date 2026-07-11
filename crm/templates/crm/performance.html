@@ -180,6 +180,11 @@
     }
   };
 
+  var mount = window.crmMountChart || function (id, cfg) {
+    var el = document.getElementById(id); if (!el) return;
+    try { var p = Chart.getChart(el); if (p) p.destroy(); } catch (e) {}
+    return new Chart(el, cfg);
+  };
   var pl = {{ perf_labels|safe }}, pc = {{ perf_created|safe }}, pw = {{ perf_won|safe }};
   if (!pl.length) { pl = ['—']; pc = [0]; pw = [0]; }
   var dailyClick = function(evt, els) {
@@ -191,7 +196,7 @@
     if (ds === 0) window.location.href = leadsUrl + '?created_day=' + encodeURIComponent(day);
     else window.location.href = leadsUrl + '?closed_day=' + encodeURIComponent(day);
   };
-  new Chart(document.getElementById('chDaily'), {
+  mount('chDaily', {
     type: 'bar',
     data: {
       labels: pl,
@@ -202,7 +207,7 @@
     },
     options: Object.assign({}, baseOpts, { onClick: dailyClick })
   });
-  document.getElementById('chDaily').style.cursor = 'pointer';
+  if (document.getElementById('chDaily')) document.getElementById('chDaily').style.cursor = 'pointer';
 
   var ml = {{ m_labels|safe }}, mc = {{ m_created|safe }}, mw = {{ m_won|safe }}, mr = {{ m_rev|safe }};
   if (!ml.length) { ml = ['—']; mc = [0]; mw = [0]; mr = [0]; }
@@ -215,7 +220,7 @@
     if (ds === 0) window.location.href = leadsUrl + '?created_month=' + encodeURIComponent(m);
     else window.location.href = leadsUrl + '?closed_month=' + encodeURIComponent(m);
   };
-  new Chart(document.getElementById('chMonthly'), {
+  mount('chMonthly', {
     type: 'line',
     data: {
       labels: ml,
@@ -226,7 +231,7 @@
     },
     options: Object.assign({}, baseOpts, { onClick: monthClick })
   });
-  document.getElementById('chMonthly').style.cursor = 'pointer';
+  if (document.getElementById('chMonthly')) document.getElementById('chMonthly').style.cursor = 'pointer';
 
   var mRevClick = function(evt, els) {
     if (!els.length) return;
@@ -235,7 +240,7 @@
     if (!m || m === '—') return;
     window.location.href = leadsUrl + '?closed_month=' + encodeURIComponent(m);
   };
-  new Chart(document.getElementById('chMRev'), {
+  mount('chMRev', {
     type: 'bar',
     data: {
       labels: ml,
@@ -260,7 +265,7 @@
       }
     }
   });
-  document.getElementById('chMRev').style.cursor = 'pointer';
+  if (document.getElementById('chMRev')) document.getElementById('chMRev').style.cursor = 'pointer';
 })();
 </script>
 {% endblock %}

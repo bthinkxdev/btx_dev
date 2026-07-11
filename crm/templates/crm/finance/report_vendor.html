@@ -1,0 +1,89 @@
+{% extends "crm/base.html" %}
+{% block title %}Vendor Expense Report{% endblock %}
+{% block page_title %}Vendor Expense Report{% endblock %}
+
+{% block content %}
+<nav class="billing-breadcrumb" aria-label="Breadcrumb">
+  <a href="{% url 'crm:finance_reports' %}"
+     hx-get="{% url 'crm:finance_reports' %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">Reports</a>
+  <span class="billing-breadcrumb__sep">/</span>
+  <span class="billing-breadcrumb__current">Vendor</span>
+</nav>
+
+<div class="page-header">
+  <div>
+    <h1>Vendor Expense Report</h1>
+    <p>{{ period_label }} · {{ filter_start|date:"d M Y" }} – {{ filter_end|date:"d M Y" }} · Total Rs. {{ grand_total|floatformat:2 }}</p>
+  </div>
+</div>
+
+{% include "crm/finance/_report_period_filter.html" with action_url_name="crm:report_vendor" %}
+
+<div class="card" style="margin-bottom:24px;">
+  <div class="card-header"><div class="card-title">Top vendors</div></div>
+  <div class="chart-wrap" style="height:260px;"><canvas id="repVendor"></canvas></div>
+</div>
+
+<div class="card">
+  <div class="table-wrap" style="overflow-x:auto;">
+    <table class="crm-table" style="width:100%;font-size:13px;">
+      <thead>
+        <tr>
+          <th>Vendor</th>
+          <th>Count</th>
+          <th style="text-align:right;">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td>{{ row.vendor }}</td>
+          <td>{{ row.count }}</td>
+          <td style="text-align:right;font-weight:700;">Rs. {{ row.total|floatformat:2 }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="3">No expenses in this period.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% include "crm/billing/_billing_styles.html" %}
+<script>
+(function () {
+  if (typeof Chart === 'undefined') return;
+  var labels = {{ chart_labels|safe }}, values = {{ chart_values|safe }};
+  if (!labels.length) { labels = ['—']; values = [0]; }
+  (window.crmMountChart || function (id, cfg) {
+    var el = document.getElementById(id); if (!el) return;
+    try { var p = Chart.getChart(el); if (p) p.destroy(); } catch (e) {}
+    return new Chart(el, cfg);
+  })('repVendor', {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: values,
+        backgroundColor: 'rgba(99,102,241,0.85)',
+        borderRadius: 6,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#64748b', font: { size: 11 } }, grid: { color: '#f1f5f9' } },
+        y: { ticks: { color: '#64748b', font: { size: 11 } }, grid: { color: '#f1f5f9' }, beginAtZero: true }
+      }
+    }
+  });
+})();
+</script>
+{% endblock %}

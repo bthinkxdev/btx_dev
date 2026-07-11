@@ -1,0 +1,55 @@
+{% extends "crm/base.html" %}
+{% block title %}WhatsApp lines health{% endblock %}
+{% block content %}
+<div class="crm-page-head">
+  <h1>WhatsApp lines (production)</h1>
+  <p class="muted">
+    Confirms which phone is <strong>actually linked</strong> to each gateway session.
+    If <strong>Mismatch</strong>, logout that session and re-scan QR with the correct executive phone.
+  </p>
+  <p><a href="{% url 'crm:whatsapp_qr_list' %}">Link / re-link devices (QR)</a></p>
+</div>
+{% if wa_qr_error %}
+<p class="crm-alert crm-alert--error">{{ wa_qr_error }}</p>
+{% endif %}
+<table class="crm-table" style="width:100%;max-width:960px;">
+  <thead>
+    <tr>
+      <th>Session</th>
+      <th>Executive</th>
+      <th>CRM number</th>
+      <th>Linked phone</th>
+      <th>Gateway</th>
+      <th>WA Bot</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in rows %}
+    <tr>
+      <td><code>{{ row.session_id }}</code></td>
+      <td>{{ row.executive }}</td>
+      <td>{{ row.wa.display_phone_number|default:"—" }}</td>
+      <td>{{ row.linked_phone|default:"—" }}</td>
+      <td>{{ row.live_state }}{% if row.has_qr %} (QR){% endif %}</td>
+      <td>{% if row.bot_enabled %}ON{% else %}OFF{% endif %}</td>
+      <td>
+        {% if row.healthy %}
+        <span style="color:#0a0;">OK</span>
+        {% elif row.mismatch %}
+        <strong style="color:#c00;">Mismatch — re-link QR</strong>
+        {% elif not row.bot_enabled %}
+        <span style="color:#a60;">Bot OFF</span>
+        {% elif row.live_state != "ready" %}
+        <span style="color:#a60;">Not ready</span>
+        {% else %}
+        <span style="color:#a60;">Check logs</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="7">No active WhatsApp numbers in CRM.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

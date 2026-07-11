@@ -1,0 +1,156 @@
+{% extends "crm/base.html" %}
+{% block title %}Expenses{% endblock %}
+{% block page_title %}Expenses{% endblock %}
+
+{% block content %}
+<nav class="billing-breadcrumb" aria-label="Breadcrumb">
+  <a href="{% url 'crm:finance_dashboard' %}"
+     hx-get="{% url 'crm:finance_dashboard' %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">Finance</a>
+  <span class="billing-breadcrumb__sep">/</span>
+  <span class="billing-breadcrumb__current">Expenses</span>
+</nav>
+
+<div class="page-header">
+  <div>
+    <h1>Expenses</h1>
+    <p>Track business spend — vendors, categories, receipts, and project links.</p>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <a href="{% url 'crm:expense_create' %}" class="btn btn-primary btn-sm"
+       hx-get="{% url 'crm:expense_create' %}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;">
+        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      Add Expense
+    </a>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:20px;">
+  <form method="get" action="{% url 'crm:expense_list' %}"
+        style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;"
+        hx-get="{% url 'crm:expense_list' %}"
+        hx-target="#crm-main-content"
+        hx-select="#crm-main-content"
+        hx-swap="outerHTML"
+        hx-push-url="true">
+    <div class="form-row">{{ filter_form.q.label_tag }}{{ filter_form.q }}</div>
+    <div class="form-row">{{ filter_form.category.label_tag }}{{ filter_form.category }}</div>
+    <div class="form-row">{{ filter_form.payment_method.label_tag }}{{ filter_form.payment_method }}</div>
+    <div class="form-row">{{ filter_form.project.label_tag }}{{ filter_form.project }}</div>
+    <div class="form-row">{{ filter_form.employee.label_tag }}{{ filter_form.employee }}</div>
+    <div class="form-row">{{ filter_form.period.label_tag }}{{ filter_form.period }}</div>
+    <div class="form-row">{{ filter_form.date_from.label_tag }}{{ filter_form.date_from }}</div>
+    <div class="form-row">{{ filter_form.date_to.label_tag }}{{ filter_form.date_to }}</div>
+    <button type="submit" class="btn btn-primary">Search</button>
+    <a href="{% url 'crm:expense_list' %}" class="btn btn-outline"
+       hx-get="{% url 'crm:expense_list' %}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">Reset</a>
+  </form>
+</div>
+
+<div class="card">
+  <div class="table-wrap" style="overflow-x:auto;">
+    <table class="crm-table" style="width:100%;font-size:13px;">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Category</th>
+          <th>Vendor</th>
+          <th>Project</th>
+          <th>Employee</th>
+          <th>Method</th>
+          <th>Receipt</th>
+          <th style="text-align:right;">Amount</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in page_obj %}
+        <tr>
+          <td>{{ row.expense_date|date:"d M Y" }}</td>
+          <td>{{ row.category.name }}</td>
+          <td>{{ row.vendor|default:"—"|truncatechars:24 }}</td>
+          <td>
+            {% if row.project %}
+            <a href="{% url 'crm:project_detail' row.project_id %}"
+               hx-get="{% url 'crm:project_detail' row.project_id %}"
+               hx-target="#crm-main-content"
+               hx-select="#crm-main-content"
+               hx-swap="outerHTML"
+               hx-push-url="true">#{{ row.project_id }}</a>
+            {% else %}—{% endif %}
+          </td>
+          <td>{% if row.employee %}{{ row.employee.get_full_name|default:row.employee.username }}{% else %}—{% endif %}</td>
+          <td><span class="crm-badge crm-badge--muted">{{ row.get_payment_method_display }}</span></td>
+          <td>
+            {% if row.receipt %}
+            <a href="{% url 'crm:expense_receipt' row.pk %}" class="btn btn-outline btn-sm"
+               hx-get="{% url 'crm:expense_receipt' row.pk %}"
+               hx-target="#crm-main-content"
+               hx-select="#crm-main-content"
+               hx-swap="outerHTML"
+               hx-push-url="true">Preview</a>
+            {% else %}—{% endif %}
+          </td>
+          <td style="text-align:right;font-weight:700;white-space:nowrap;">Rs. {{ row.amount|floatformat:2 }}</td>
+          <td style="white-space:nowrap;">
+            <a href="{% url 'crm:expense_edit' row.pk %}" class="btn btn-outline btn-sm"
+               hx-get="{% url 'crm:expense_edit' row.pk %}"
+               hx-target="#crm-main-content"
+               hx-select="#crm-main-content"
+               hx-swap="outerHTML"
+               hx-push-url="true">Edit</a>
+            <form method="post" action="{% url 'crm:expense_delete' row.pk %}" style="display:inline;margin:0;"
+                  hx-post="{% url 'crm:expense_delete' row.pk %}"
+                  hx-confirm="Delete this expense of Rs. {{ row.amount }}?">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="9">No expenses match your filters.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if page_obj.has_other_pages %}
+  <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+    {% if page_obj.has_previous %}
+    <a class="btn btn-outline btn-sm"
+       href="?page={{ page_obj.previous_page_number }}&amp;q={{ request.GET.q }}&amp;category={{ request.GET.category }}&amp;payment_method={{ request.GET.payment_method }}&amp;project={{ request.GET.project }}&amp;employee={{ request.GET.employee }}&amp;period={{ request.GET.period }}&amp;date_from={{ request.GET.date_from }}&amp;date_to={{ request.GET.date_to }}"
+       hx-get="?page={{ page_obj.previous_page_number }}&amp;q={{ request.GET.q }}&amp;category={{ request.GET.category }}&amp;payment_method={{ request.GET.payment_method }}&amp;project={{ request.GET.project }}&amp;employee={{ request.GET.employee }}&amp;period={{ request.GET.period }}&amp;date_from={{ request.GET.date_from }}&amp;date_to={{ request.GET.date_to }}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">Previous</a>
+    {% endif %}
+    <span style="font-size:13px;color:var(--text-muted);">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+    <a class="btn btn-outline btn-sm"
+       href="?page={{ page_obj.next_page_number }}&amp;q={{ request.GET.q }}&amp;category={{ request.GET.category }}&amp;payment_method={{ request.GET.payment_method }}&amp;project={{ request.GET.project }}&amp;employee={{ request.GET.employee }}&amp;period={{ request.GET.period }}&amp;date_from={{ request.GET.date_from }}&amp;date_to={{ request.GET.date_to }}"
+       hx-get="?page={{ page_obj.next_page_number }}&amp;q={{ request.GET.q }}&amp;category={{ request.GET.category }}&amp;payment_method={{ request.GET.payment_method }}&amp;project={{ request.GET.project }}&amp;employee={{ request.GET.employee }}&amp;period={{ request.GET.period }}&amp;date_from={{ request.GET.date_from }}&amp;date_to={{ request.GET.date_to }}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">Next</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+
+{% include "crm/billing/_billing_styles.html" %}
+{% endblock %}

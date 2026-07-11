@@ -1,0 +1,61 @@
+{% extends "crm/base.html" %}
+{% block title %}Receipt — Expense #{{ expense.pk }}{% endblock %}
+{% block page_title %}Receipt{% endblock %}
+
+{% block content %}
+<nav class="billing-breadcrumb" aria-label="Breadcrumb">
+  <a href="{% url 'crm:finance_dashboard' %}"
+     hx-get="{% url 'crm:finance_dashboard' %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">Finance</a>
+  <span class="billing-breadcrumb__sep">/</span>
+  <a href="{% url 'crm:expense_list' %}"
+     hx-get="{% url 'crm:expense_list' %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">Expenses</a>
+  <span class="billing-breadcrumb__sep">/</span>
+  <span class="billing-breadcrumb__current">Receipt #{{ expense.pk }}</span>
+</nav>
+
+<div class="page-header">
+  <div>
+    <h1>Receipt preview</h1>
+    <p>{{ expense.category.name }} · Rs. {{ expense.amount|floatformat:2 }} · {{ expense.expense_date|date:"d M Y" }}</p>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <a href="{% url 'crm:expense_edit' expense.pk %}" class="btn btn-outline btn-sm"
+       hx-get="{% url 'crm:expense_edit' expense.pk %}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">Edit</a>
+    <a href="{{ expense.receipt.url }}" class="btn btn-primary btn-sm" target="_blank" rel="noopener">Open file</a>
+  </div>
+</div>
+
+<div class="card" style="max-width:900px;">
+  {% if expense.receipt_is_image %}
+  <div style="text-align:center;padding:12px;">
+    <img src="{{ expense.receipt.url }}" alt="Expense receipt"
+         style="max-width:100%;max-height:70vh;border-radius:8px;border:1px solid var(--border);">
+  </div>
+  {% else %}
+  <div style="padding:24px;text-align:center;">
+    <p style="margin:0 0 12px;color:var(--text-muted);font-size:13px;">This receipt is not an image. Open or download the file.</p>
+    <a href="{{ expense.receipt.url }}" class="btn btn-primary" target="_blank" rel="noopener">Download / open receipt</a>
+  </div>
+  {% endif %}
+  <div style="padding:14px 18px;border-top:1px solid var(--border);font-size:13px;color:var(--text-muted);">
+    {% if expense.vendor %}<div><strong>Vendor:</strong> {{ expense.vendor }}</div>{% endif %}
+    {% if expense.paid_from %}<div><strong>Paid from:</strong> {{ expense.paid_from }}</div>{% endif %}
+    <div><strong>Method:</strong> {{ expense.get_payment_method_display }}</div>
+    {% if expense.notes %}<div style="margin-top:6px;">{{ expense.notes }}</div>{% endif %}
+  </div>
+</div>
+
+{% include "crm/billing/_billing_styles.html" %}
+{% endblock %}

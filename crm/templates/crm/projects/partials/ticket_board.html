@@ -156,34 +156,45 @@
     if (host) host.innerHTML = '';
   };
 
-  document.body.addEventListener('click', function (e) {
-    const card = e.target.closest('.ticket-card[data-ticket-id]');
-    if (!card || e.target.closest('a')) return;
-    const url = card.getAttribute('data-detail-url');
-    if (!url) return;
-    fetch(url, { headers: { 'HX-Request': 'true' } })
-      .then(r => r.text())
-      .then(html => {
-        const host = document.getElementById('ticket-drawer-host');
-        if (host) {
-          host.innerHTML = html;
-          initDropzones(host);
-        }
-      });
-  });
+  if (!window.__crmTicketBoardBound) {
+    window.__crmTicketBoardBound = true;
+    document.body.addEventListener('click', function (e) {
+      const card = e.target.closest('.ticket-card[data-ticket-id]');
+      if (!card || e.target.closest('a')) return;
+      const url = card.getAttribute('data-detail-url');
+      if (!url) return;
+      fetch(url, { headers: { 'HX-Request': 'true' } })
+        .then(r => r.text())
+        .then(html => {
+          const host = document.getElementById('ticket-drawer-host');
+          if (host) {
+            host.innerHTML = html;
+            if (typeof htmx !== 'undefined' && typeof htmx.process === 'function') {
+              htmx.process(host);
+            }
+            initDropzones(host);
+          }
+        });
+    });
 
-  document.body.addEventListener('crmCloseTicketDrawer', function () {
-    closeTicketDrawer();
-  });
-  document.body.addEventListener('htmx:afterSwap', function (ev) {
-    if (ev.detail.target && ev.detail.target.id === 'project-ticket-board') {
+    document.body.addEventListener('crmCloseTicketDrawer', function () {
       closeTicketDrawer();
-      initTicketDragDrop();
-    }
-    initDropzones(ev.detail.target || document);
-  });
+    });
+    document.body.addEventListener('htmx:afterSwap', function (ev) {
+      if (ev.detail.target && ev.detail.target.id === 'project-ticket-board') {
+        closeTicketDrawer();
+        if (typeof window.__crmInitTicketDragDrop === 'function') {
+          window.__crmInitTicketDragDrop();
+        }
+      }
+      if (typeof window.__crmInitTicketDropzones === 'function') {
+        window.__crmInitTicketDropzones(ev.detail.target || document);
+      }
+    });
+  }
 
   function initDropzones(root) {
+    if (!root || !root.querySelectorAll) return;
     root.querySelectorAll('.ticket-dropzone').forEach(zone => {
       if (zone.dataset.bound) return;
       zone.dataset.bound = '1';
@@ -201,6 +212,7 @@
       });
     });
   }
+  window.__crmInitTicketDropzones = initDropzones;
 
   function initTicketDragDrop() {
     const board = document.getElementById('ticket-kanban');
@@ -256,5 +268,7 @@
 
   initTicketDragDrop();
   initDropzones(document);
+  window.__crmInitTicketDragDrop = initTicketDragDrop;
+  window.__crmInitTicketDropzones = initDropzones;
 })();
 </script>

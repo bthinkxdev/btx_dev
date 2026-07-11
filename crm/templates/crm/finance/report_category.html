@@ -1,0 +1,86 @@
+{% extends "crm/base.html" %}
+{% block title %}Category Expense Report{% endblock %}
+{% block page_title %}Category Expense Report{% endblock %}
+
+{% block content %}
+<nav class="billing-breadcrumb" aria-label="Breadcrumb">
+  <a href="{% url 'crm:finance_reports' %}"
+     hx-get="{% url 'crm:finance_reports' %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">Reports</a>
+  <span class="billing-breadcrumb__sep">/</span>
+  <span class="billing-breadcrumb__current">Category</span>
+</nav>
+
+<div class="page-header">
+  <div>
+    <h1>Category Expense Report</h1>
+    <p>{{ period_label }} · {{ filter_start|date:"d M Y" }} – {{ filter_end|date:"d M Y" }} · Total Rs. {{ grand_total|floatformat:2 }}</p>
+  </div>
+</div>
+
+{% include "crm/finance/_report_period_filter.html" with action_url_name="crm:report_category" %}
+
+<div class="charts-grid" style="margin-bottom:24px;">
+  <div class="card">
+    <div class="card-header"><div class="card-title">By category</div></div>
+    <div class="chart-wrap" style="height:260px;"><canvas id="repCat"></canvas></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-wrap" style="overflow-x:auto;">
+    <table class="crm-table" style="width:100%;font-size:13px;">
+      <thead>
+        <tr>
+          <th>Category</th>
+          <th>Count</th>
+          <th style="text-align:right;">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td>{{ row.category__name }}</td>
+          <td>{{ row.count }}</td>
+          <td style="text-align:right;font-weight:700;">Rs. {{ row.total|floatformat:2 }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="3">No expenses in this period.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% include "crm/billing/_billing_styles.html" %}
+<script>
+(function () {
+  if (typeof Chart === 'undefined') return;
+  var labels = {{ chart_labels|safe }}, values = {{ chart_values|safe }};
+  if (!labels.length) { labels = ['—']; values = [0]; }
+  (window.crmMountChart || function (id, cfg) {
+    var el = document.getElementById(id); if (!el) return;
+    try { var p = Chart.getChart(el); if (p) p.destroy(); } catch (e) {}
+    return new Chart(el, cfg);
+  })('repCat', {
+    type: 'doughnut',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: values,
+        backgroundColor: ['#f59e0b','#ef4444','#4f46e5','#10b981','#6366f1','#14b8a6','#8b5cf6','#64748b','#ec4899','#0ea5e9','#84cc16'],
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }
+    }
+  });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,186 @@
+{% extends "crm/base.html" %}
+{% block title %}{{ report_title }}{% endblock %}
+{% block page_title %}{{ report_title }}{% endblock %}
+
+{% block content %}
+<nav class="billing-breadcrumb" aria-label="Breadcrumb">
+  <a href="{% url 'crm:finance_dashboard' %}"
+     hx-get="{% url 'crm:finance_dashboard' %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">Finance</a>
+  <span class="billing-breadcrumb__sep">/</span>
+  <a href="{% url 'crm:finance_reports' %}"
+     hx-get="{% url 'crm:finance_reports' %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">Reports</a>
+  <span class="billing-breadcrumb__sep">/</span>
+  <span class="billing-breadcrumb__current">{{ report_title }}</span>
+</nav>
+
+<div class="page-header">
+  <div>
+    <h1>{{ report_title }}</h1>
+    <p>{{ period_label }} · {{ filter_start|date:"d M Y" }} – {{ filter_end|date:"d M Y" }}</p>
+  </div>
+  {% include "crm/finance/_report_export_bar.html" %}
+</div>
+
+{% include "crm/finance/_report_filters.html" %}
+
+<div class="stat-grid" style="margin-bottom:20px;">
+  <div class="stat-card">
+    <div class="stat-icon green">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">Rs. {{ income_total|floatformat:2 }}</div>
+      <div class="stat-label">Revenue</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon amber">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">Rs. {{ expense_total|floatformat:2 }}</div>
+      <div class="stat-label">Expense</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon {% if profit_total >= 0 %}green{% else %}amber{% endif %}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">Rs. {{ profit_total|floatformat:2 }}</div>
+      <div class="stat-label">Profit</div>
+    </div>
+  </div>
+</div>
+
+{% if summary %}
+<div class="card" style="margin-bottom:20px;">
+  <div class="card-header"><div class="card-title">Summary</div></div>
+  <div style="display:flex;flex-wrap:wrap;gap:20px;padding:4px 0 8px;">
+    {% for k, v in summary.items %}
+    <div>
+      <div class="stat-label">{{ k }}</div>
+      <div style="font-weight:700;">{{ v }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<div class="detail-grid" style="margin-bottom:20px;">
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Trend</div>
+        <div class="card-subtitle">Revenue · Expense · Profit</div>
+      </div>
+    </div>
+    <div class="chart-wrap" style="height:260px;"><canvas id="rptTrend"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Breakdown</div>
+        <div class="card-subtitle">By category / method / entity</div>
+      </div>
+    </div>
+    <div class="chart-wrap" style="height:260px;"><canvas id="rptBreak"></canvas></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div>
+      <div class="card-title">Detail</div>
+      {% if detail_note %}<div class="card-subtitle">{{ detail_note }}</div>{% endif %}
+    </div>
+  </div>
+  <div class="table-wrap" style="overflow-x:auto;">
+    <table class="crm-table" style="width:100%;font-size:13px;">
+      <thead>
+        <tr>
+          {% for col in columns %}
+          <th {% if forloop.last %}style="text-align:right;"{% endif %}>{{ col }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          {% for cell in row %}
+          <td {% if forloop.last %}style="text-align:right;font-weight:600;"{% endif %}>{{ cell }}</td>
+          {% endfor %}
+        </tr>
+        {% empty %}
+        <tr><td colspan="{{ columns|length|default:1 }}">No rows for this filter.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+(function () {
+  if (typeof Chart === 'undefined') return;
+  var mount = window.crmMountChart || function (id, cfg) {
+    var el = typeof id === 'string' ? document.getElementById(id) : id;
+    if (!el) return null;
+    try { var p = Chart.getChart(el); if (p) p.destroy(); } catch (e) {}
+    return new Chart(el, cfg);
+  };
+  var baseOpts = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } } },
+    scales: {
+      x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: '#f1f5f9' } },
+      y: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: '#f1f5f9' }, beginAtZero: true }
+    }
+  };
+  var labels = {{ chart_labels|safe }};
+  var rev = {{ chart_revenue|safe }};
+  var exp = {{ chart_expense|safe }};
+  var profit = {{ chart_profit|safe }};
+  if (!labels.length) { labels = ['—']; rev = [0]; exp = [0]; profit = [0]; }
+  mount('rptTrend', {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [
+          { label: 'Revenue', data: rev, backgroundColor: 'rgba(16,185,129,0.8)', borderRadius: 4, borderSkipped: false },
+          { label: 'Expense', data: exp, backgroundColor: 'rgba(245,158,11,0.8)', borderRadius: 4, borderSkipped: false },
+          { label: 'Profit', data: profit, type: 'line', borderColor: '#4f46e5', backgroundColor: 'rgba(79,70,229,0.08)', fill: false, tension: 0.3, borderWidth: 2, pointRadius: 2 }
+        ]
+      },
+      options: baseOpts
+  });
+  var bl = {{ breakdown_labels|default:"[]"|safe }};
+  var bv = {{ breakdown_values|default:"[]"|safe }};
+  if (!bl.length) { bl = ['—']; bv = [0]; }
+  mount('rptBreak', {
+      type: 'doughnut',
+      data: {
+        labels: bl,
+        datasets: [{ data: bv, backgroundColor: ['#10b981','#4f46e5','#f59e0b','#6366f1','#14b8a6','#8b5cf6','#64748b','#ef4444','#0ea5e9','#a855f7'], borderWidth: 0 }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } } }
+  });
+})();
+</script>
+
+{% include "crm/billing/_billing_styles.html" %}
+{% endblock %}

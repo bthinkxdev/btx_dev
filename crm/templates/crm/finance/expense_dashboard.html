@@ -1,0 +1,302 @@
+{% extends "crm/base.html" %}
+{% block title %}Expense Dashboard{% endblock %}
+{% block page_title %}Expense Dashboard{% endblock %}
+
+{% block content %}
+<nav class="billing-breadcrumb" aria-label="Breadcrumb">
+  <a href="{% url 'crm:finance_dashboard' %}"
+     hx-get="{% url 'crm:finance_dashboard' %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">Finance</a>
+  <span class="billing-breadcrumb__sep">/</span>
+  <span class="billing-breadcrumb__current">Expense Dashboard</span>
+</nav>
+
+<div class="page-header">
+  <div>
+    <h1>Expense Dashboard</h1>
+    <p>Current-month spend snapshot. Charts follow the period filter below.</p>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <a href="{% url 'crm:expense_create' %}" class="btn btn-primary btn-sm"
+       hx-get="{% url 'crm:expense_create' %}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;">
+        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      Add Expense
+    </a>
+    <a href="{% url 'crm:expense_list' %}" class="btn btn-outline btn-sm"
+       hx-get="{% url 'crm:expense_list' %}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">All Expenses</a>
+    <a href="{% url 'crm:finance_reports' %}" class="btn btn-outline btn-sm"
+       hx-get="{% url 'crm:finance_reports' %}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">Reports</a>
+  </div>
+</div>
+
+<form method="get" class="filter-bar" style="margin-bottom:20px;"
+      action="{% url 'crm:expense_dashboard' %}"
+      hx-get="{% url 'crm:expense_dashboard' %}"
+      hx-target="#crm-main-content"
+      hx-select="#crm-main-content"
+      hx-swap="outerHTML"
+      hx-push-url="true">
+  <div>
+    <label for="exp-period">Period</label>
+    <select id="exp-period" name="period" onchange="var c=document.getElementById('exp-custom');if(c){c.style.display=this.value==='custom'?'flex':'none';}">
+      <option value="today" {% if period == 'today' %}selected{% endif %}>Today</option>
+      <option value="week" {% if period == 'week' %}selected{% endif %}>This Week</option>
+      <option value="month" {% if period == 'month' %}selected{% endif %}>This Month</option>
+      <option value="custom" {% if period == 'custom' %}selected{% endif %}>Custom Date</option>
+    </select>
+  </div>
+  <div id="exp-custom" style="display:{% if period == 'custom' %}flex{% else %}none{% endif %};gap:12px;flex-wrap:wrap;align-items:flex-end;">
+    <div>
+      <label for="exp-from">From</label>
+      <input id="exp-from" type="date" name="date_from" value="{{ date_from }}">
+    </div>
+    <div>
+      <label for="exp-to">To</label>
+      <input id="exp-to" type="date" name="date_to" value="{{ date_to }}">
+    </div>
+  </div>
+  <div>
+    <label>&nbsp;</label>
+    <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+  </div>
+</form>
+
+<div class="stat-grid" style="margin-bottom:24px;">
+  <div class="stat-card">
+    <div class="stat-icon amber">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">Rs. {{ month_expense|floatformat:2 }}</div>
+      <div class="stat-label">Current Month Expenses</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon indigo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">Rs. {{ today_expense|floatformat:2 }}</div>
+      <div class="stat-label">Today's Expenses</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon purple">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">Rs. {{ period_expense|floatformat:2 }}</div>
+      <div class="stat-label">Period Expenses</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon green">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">Rs. {{ period_income|floatformat:2 }}</div>
+      <div class="stat-label">Period Income</div>
+    </div>
+  </div>
+</div>
+
+<div class="charts-grid" style="margin-bottom:24px;">
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Daily Expense Graph</div>
+        <div class="card-subtitle">{{ period_label }} · {{ filter_start|date:"d M" }} – {{ filter_end|date:"d M Y" }}</div>
+      </div>
+    </div>
+    <div class="chart-wrap" style="height:240px;"><canvas id="expDaily"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Category Breakdown</div>
+        <div class="card-subtitle">{{ period_label }}</div>
+      </div>
+    </div>
+    <div class="chart-wrap" style="height:240px;"><canvas id="expCategory"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Expense vs Income</div>
+        <div class="card-subtitle">{{ period_label }}</div>
+      </div>
+    </div>
+    <div class="chart-wrap" style="height:240px;"><canvas id="expVsIncome"></canvas></div>
+  </div>
+</div>
+
+<div class="detail-grid" style="margin-bottom:24px;">
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Top Expense Categories</div>
+        <div class="card-subtitle">Highest spend in {{ period_label|lower }}</div>
+      </div>
+    </div>
+    <div class="table-wrap" style="overflow-x:auto;">
+      <table class="crm-table" style="width:100%;font-size:13px;">
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>Count</th>
+            <th style="text-align:right;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in top_expense_categories %}
+          <tr>
+            <td>{{ row.category__name }}</td>
+            <td>{{ row.count }}</td>
+            <td style="text-align:right;font-weight:700;">Rs. {{ row.total|floatformat:2 }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="3">No expenses in this period.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Latest Expenses</div>
+        <div class="card-subtitle">{{ period_label }}</div>
+      </div>
+      <a href="{% url 'crm:expense_list' %}" class="btn btn-outline btn-sm"
+         hx-get="{% url 'crm:expense_list' %}"
+         hx-target="#crm-main-content"
+         hx-select="#crm-main-content"
+         hx-swap="outerHTML"
+         hx-push-url="true">View all</a>
+    </div>
+    <div class="table-wrap" style="overflow-x:auto;">
+      <table class="crm-table" style="width:100%;font-size:13px;">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Category</th>
+            <th>Vendor</th>
+            <th style="text-align:right;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in latest_expenses %}
+          <tr>
+            <td>{{ row.expense_date|date:"d M Y" }}</td>
+            <td>{{ row.category.name }}</td>
+            <td>{{ row.vendor|default:"—" }}</td>
+            <td style="text-align:right;font-weight:700;">Rs. {{ row.amount|floatformat:2 }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4">No expenses recorded.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% include "crm/billing/_billing_styles.html" %}
+
+<script>
+(function () {
+  if (typeof Chart === 'undefined') return;
+  var mount = window.crmMountChart || function (id, cfg) {
+    var el = typeof id === 'string' ? document.getElementById(id) : id;
+    if (!el) return null;
+    try { var p = Chart.getChart(el); if (p) p.destroy(); } catch (e) {}
+    return new Chart(el, cfg);
+  };
+  var baseOpts = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { color: '#64748b', font: { size: 11 } }, grid: { color: '#f1f5f9' } },
+      y: { ticks: { color: '#64748b', font: { size: 11 } }, grid: { color: '#f1f5f9' }, beginAtZero: true }
+    }
+  };
+  var dl = {{ daily_labels|safe }}, dv = {{ daily_expense_values|safe }};
+  if (!dl.length) { dl = ['—']; dv = [0]; }
+  mount('expDaily', {
+    type: 'bar',
+    data: {
+      labels: dl,
+      datasets: [{
+        label: 'Expense',
+        data: dv,
+        backgroundColor: 'rgba(245,158,11,0.85)',
+        borderRadius: 6,
+        borderSkipped: false
+      }]
+    },
+    options: baseOpts
+  });
+
+  var cl = {{ expense_category_labels|safe }}, cv = {{ expense_category_values|safe }};
+  if (!cl.length) { cl = ['—']; cv = [0]; }
+  mount('expCategory', {
+    type: 'doughnut',
+    data: {
+      labels: cl,
+      datasets: [{
+        data: cv,
+        backgroundColor: ['#f59e0b','#ef4444','#4f46e5','#10b981','#6366f1','#14b8a6','#8b5cf6','#64748b'],
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }
+    }
+  });
+
+  var vl = {{ vs_income_labels|safe }}, vv = {{ vs_income_values|safe }};
+  mount('expVsIncome', {
+    type: 'bar',
+    data: {
+      labels: vl,
+      datasets: [{
+        data: vv,
+        backgroundColor: ['rgba(16,185,129,0.85)', 'rgba(245,158,11,0.85)'],
+        borderRadius: 6,
+        borderSkipped: false
+      }]
+    },
+    options: baseOpts
+  });
+})();
+</script>
+{% endblock %}

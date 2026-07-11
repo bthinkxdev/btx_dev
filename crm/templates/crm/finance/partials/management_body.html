@@ -1,0 +1,577 @@
+<div id="finance-mgmt-body"
+     hx-get="{% url 'crm:finance_dashboard' %}?partial=1"
+     hx-trigger="every 45s"
+     hx-select="#finance-mgmt-body"
+     hx-target="this"
+     hx-swap="outerHTML">
+{# KPI row 1 — month + today #}
+<div class="stat-grid" style="margin-bottom:16px;">
+  <div class="stat-card">
+    <div class="stat-icon green">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">Rs. {{ month_revenue|floatformat:2 }}</div>
+      <div class="stat-label">Current Month Revenue</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon amber">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">Rs. {{ month_expense|floatformat:2 }}</div>
+      <div class="stat-label">Current Month Expense</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon {% if month_profit >= 0 %}green{% else %}amber{% endif %}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">Rs. {{ month_profit|floatformat:2 }}</div>
+      <div class="stat-label">Current Month Profit</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon indigo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">Rs. {{ today_revenue|floatformat:2 }}</div>
+      <div class="stat-label">Today's Revenue</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon amber">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">Rs. {{ today_expense|floatformat:2 }}</div>
+      <div class="stat-label">Today's Expense</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon {% if today_profit >= 0 %}green{% else %}amber{% endif %}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">Rs. {{ today_profit|floatformat:2 }}</div>
+      <div class="stat-label">Today's Profit</div>
+    </div>
+  </div>
+</div>
+
+{# KPI row 2 — cash, averages, growth, highlights #}
+<div class="stat-grid" style="margin-bottom:24px;">
+  <div class="stat-card">
+    <div class="stat-icon green">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">Rs. {{ cash_in|floatformat:2 }}</div>
+      <div class="stat-label">Cash In (this month)</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon amber">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="6" width="20" height="12" rx="2"/><line x1="6" y1="12" x2="6.01" y2="12"/><line x1="18" y1="12" x2="18.01" y2="12"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">Rs. {{ cash_out|floatformat:2 }}</div>
+      <div class="stat-label">Cash Out (this month)</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon indigo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-6"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">Rs. {{ avg_daily_revenue|floatformat:2 }}</div>
+      <div class="stat-label">Avg Daily Revenue</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon purple">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 3v18h18"/><path d="M18 17l-5-5-4 4-3-3"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">Rs. {{ avg_daily_expense|floatformat:2 }}</div>
+      <div class="stat-label">Avg Daily Expense</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon {% if revenue_growth >= 0 %}green{% else %}amber{% endif %}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">{{ revenue_growth|floatformat:1 }}%</div>
+      <div class="stat-label">Revenue Growth vs last month</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon {% if expense_growth <= 0 %}green{% else %}amber{% endif %}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">{{ expense_growth|floatformat:1 }}%</div>
+      <div class="stat-label">Expense Growth vs last month</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon amber">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">Rs. {{ pending_collections|floatformat:2 }}</div>
+      <div class="stat-label">Pending Collections</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon indigo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value" style="font-size:15px;line-height:1.3;">
+        {% if top_client %}{{ top_client.client__business_name|truncatechars:22 }}{% else %}—{% endif %}
+      </div>
+      <div class="stat-label">Top Client{% if top_client %} · Rs. {{ top_client.total|floatformat:0 }}{% endif %}</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon purple">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value" style="font-size:15px;line-height:1.3;">
+        {% if top_project %}#{{ top_project.project_id }} {{ top_project.project__client__business_name|truncatechars:16 }}{% else %}—{% endif %}
+      </div>
+      <div class="stat-label">Top Project{% if top_project %} · Rs. {{ top_project.total|floatformat:0 }}{% endif %}</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon amber">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value" style="font-size:15px;line-height:1.3;">
+        {% if highest_expense_category %}{{ highest_expense_category.category__name }}{% else %}—{% endif %}
+      </div>
+      <div class="stat-label">Highest Expense Category{% if highest_expense_category %} · Rs. {{ highest_expense_category.total|floatformat:0 }}{% endif %}</div>
+    </div>
+  </div>
+</div>
+
+{# Charts #}
+<div class="charts-grid" style="margin-bottom:24px;">
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Revenue vs Expense</div>
+        <div class="card-subtitle">Daily · {{ month_start|date:"M Y" }}</div>
+      </div>
+    </div>
+    <div class="chart-wrap" style="height:240px;"><canvas id="mgmtRevExp"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Profit Trend</div>
+        <div class="card-subtitle">Daily profit this month</div>
+      </div>
+    </div>
+    <div class="chart-wrap" style="height:240px;"><canvas id="mgmtProfit"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Daily Revenue</div>
+        <div class="card-subtitle">{{ month_start|date:"M Y" }}</div>
+      </div>
+    </div>
+    <div class="chart-wrap" style="height:240px;"><canvas id="mgmtDailyRev"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Daily Expense</div>
+        <div class="card-subtitle">{{ month_start|date:"M Y" }}</div>
+      </div>
+    </div>
+    <div class="chart-wrap" style="height:240px;"><canvas id="mgmtDailyExp"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Monthly Comparison</div>
+        <div class="card-subtitle">Last 6 months</div>
+      </div>
+    </div>
+    <div class="chart-wrap" style="height:240px;"><canvas id="mgmtMonthly"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Client Revenue</div>
+        <div class="card-subtitle">Top clients this month</div>
+      </div>
+    </div>
+    <div class="chart-wrap" style="height:240px;"><canvas id="mgmtClient"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Project Revenue</div>
+        <div class="card-subtitle">Top projects this month</div>
+      </div>
+    </div>
+    <div class="chart-wrap" style="height:240px;"><canvas id="mgmtProject"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Expense Distribution</div>
+        <div class="card-subtitle">By category this month</div>
+      </div>
+    </div>
+    <div class="chart-wrap" style="height:240px;"><canvas id="mgmtExpDist"></canvas></div>
+  </div>
+</div>
+
+{# Tables #}
+<div class="detail-grid" style="margin-bottom:24px;">
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Recent Income</div>
+        <div class="card-subtitle">Latest revenue entries</div>
+      </div>
+      <a href="{% url 'crm:income_list' %}" class="btn btn-outline btn-sm"
+         hx-get="{% url 'crm:income_list' %}"
+         hx-target="#crm-main-content"
+         hx-select="#crm-main-content"
+         hx-swap="outerHTML"
+         hx-push-url="true">View all</a>
+    </div>
+    <div class="table-wrap" style="overflow-x:auto;">
+      <table class="crm-table" style="width:100%;font-size:13px;">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Client</th>
+            <th>Category</th>
+            <th style="text-align:right;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in recent_income %}
+          <tr>
+            <td>{{ row.payment_date|date:"d M" }}</td>
+            <td>{% if row.client %}{{ row.client.business_name|truncatechars:20 }}{% else %}—{% endif %}</td>
+            <td>{{ row.category.name }}</td>
+            <td style="text-align:right;font-weight:700;">Rs. {{ row.amount|floatformat:2 }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4">No income yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Recent Expenses</div>
+        <div class="card-subtitle">Latest spend entries</div>
+      </div>
+      <a href="{% url 'crm:expense_list' %}" class="btn btn-outline btn-sm"
+         hx-get="{% url 'crm:expense_list' %}"
+         hx-target="#crm-main-content"
+         hx-select="#crm-main-content"
+         hx-swap="outerHTML"
+         hx-push-url="true">View all</a>
+    </div>
+    <div class="table-wrap" style="overflow-x:auto;">
+      <table class="crm-table" style="width:100%;font-size:13px;">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Category</th>
+            <th>Vendor</th>
+            <th style="text-align:right;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in recent_expenses %}
+          <tr>
+            <td>{{ row.expense_date|date:"d M" }}</td>
+            <td>{{ row.category.name }}</td>
+            <td>{{ row.vendor|default:"—"|truncatechars:18 }}</td>
+            <td style="text-align:right;font-weight:700;">Rs. {{ row.amount|floatformat:2 }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4">No expenses yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="detail-grid" style="margin-bottom:8px;grid-template-columns:repeat(3,minmax(0,1fr));">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Top Clients</div>
+      <div class="card-subtitle">Revenue this month</div>
+    </div>
+    <div class="table-wrap" style="overflow-x:auto;">
+      <table class="crm-table" style="width:100%;font-size:13px;">
+        <thead>
+          <tr>
+            <th>Client</th>
+            <th>Txns</th>
+            <th style="text-align:right;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in top_clients %}
+          <tr>
+            <td>{{ row.client__business_name }}</td>
+            <td>{{ row.count }}</td>
+            <td style="text-align:right;font-weight:700;">Rs. {{ row.total|floatformat:2 }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="3">No client-linked income.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Top Projects</div>
+      <div class="card-subtitle">Revenue this month</div>
+    </div>
+    <div class="table-wrap" style="overflow-x:auto;">
+      <table class="crm-table" style="width:100%;font-size:13px;">
+        <thead>
+          <tr>
+            <th>Project</th>
+            <th>Txns</th>
+            <th style="text-align:right;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in top_projects %}
+          <tr>
+            <td>
+              <a href="{% url 'crm:project_detail' row.project_id %}">#{{ row.project_id }}</a>
+              {{ row.project__client__business_name|truncatechars:18 }}
+            </td>
+            <td>{{ row.count }}</td>
+            <td style="text-align:right;font-weight:700;">Rs. {{ row.total|floatformat:2 }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="3">No project-linked income.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Top Categories</div>
+      <div class="card-subtitle">Expense this month</div>
+    </div>
+    <div class="table-wrap" style="overflow-x:auto;">
+      <table class="crm-table" style="width:100%;font-size:13px;">
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>Txns</th>
+            <th style="text-align:right;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in top_categories %}
+          <tr>
+            <td>{{ row.category__name }}</td>
+            <td>{{ row.count }}</td>
+            <td style="text-align:right;font-weight:700;">Rs. {{ row.total|floatformat:2 }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="3">No expenses this month.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  if (typeof Chart === 'undefined') return;
+  // Destroy previous charts if HTMX re-swapped this partial
+  function mount(id, config) {
+    if (typeof window.crmMountChart === 'function') {
+      return window.crmMountChart(id, config);
+    }
+    var el = document.getElementById(id);
+    if (!el) return null;
+    try {
+      var prev = Chart.getChart(el);
+      if (prev) prev.destroy();
+    } catch (e) {}
+    return new Chart(el, config);
+  }
+
+  var baseOpts = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: '#f1f5f9' } },
+      y: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: '#f1f5f9' }, beginAtZero: true }
+    }
+  };
+
+  var dl = {{ daily_labels|safe }};
+  var dr = {{ daily_revenue_values|safe }};
+  var de = {{ daily_expense_values|safe }};
+  var dp = {{ daily_profit_values|safe }};
+  if (!dl.length) { dl = ['—']; dr = [0]; de = [0]; dp = [0]; }
+
+  mount('mgmtRevExp', {
+    type: 'bar',
+    data: {
+      labels: dl,
+      datasets: [
+        { label: 'Revenue', data: dr, backgroundColor: 'rgba(16,185,129,0.8)', borderRadius: 4, borderSkipped: false },
+        { label: 'Expense', data: de, backgroundColor: 'rgba(245,158,11,0.8)', borderRadius: 4, borderSkipped: false }
+      ]
+    },
+    options: Object.assign({}, baseOpts, { plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } } } })
+  });
+
+  mount('mgmtProfit', {
+    type: 'line',
+    data: {
+      labels: dl,
+      datasets: [{
+        label: 'Profit',
+        data: dp,
+        borderColor: '#4f46e5',
+        backgroundColor: 'rgba(79,70,229,0.08)',
+        fill: true,
+        tension: 0.3,
+        borderWidth: 2,
+        pointRadius: 2
+      }]
+    },
+    options: baseOpts
+  });
+
+  mount('mgmtDailyRev', {
+    type: 'bar',
+    data: {
+      labels: dl,
+      datasets: [{ data: dr, backgroundColor: 'rgba(16,185,129,0.85)', borderRadius: 4, borderSkipped: false }]
+    },
+    options: baseOpts
+  });
+
+  mount('mgmtDailyExp', {
+    type: 'bar',
+    data: {
+      labels: dl,
+      datasets: [{ data: de, backgroundColor: 'rgba(245,158,11,0.85)', borderRadius: 4, borderSkipped: false }]
+    },
+    options: baseOpts
+  });
+
+  var ml = {{ monthly_labels|safe }};
+  var mr = {{ monthly_revenue_values|safe }};
+  var me = {{ monthly_expense_values|safe }};
+  if (!ml.length) { ml = ['—']; mr = [0]; me = [0]; }
+  mount('mgmtMonthly', {
+    type: 'bar',
+    data: {
+      labels: ml,
+      datasets: [
+        { label: 'Revenue', data: mr, backgroundColor: 'rgba(16,185,129,0.8)', borderRadius: 4, borderSkipped: false },
+        { label: 'Expense', data: me, backgroundColor: 'rgba(245,158,11,0.8)', borderRadius: 4, borderSkipped: false }
+      ]
+    },
+    options: Object.assign({}, baseOpts, { plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } } } })
+  });
+
+  var cl = {{ client_revenue_labels|safe }}, cv = {{ client_revenue_values|safe }};
+  if (!cl.length) { cl = ['—']; cv = [0]; }
+  mount('mgmtClient', {
+    type: 'doughnut',
+    data: {
+      labels: cl,
+      datasets: [{ data: cv, backgroundColor: ['#10b981','#4f46e5','#f59e0b','#6366f1','#14b8a6','#8b5cf6','#64748b','#ef4444'], borderWidth: 0 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } } }
+  });
+
+  var pl = {{ project_revenue_labels|safe }}, pv = {{ project_revenue_values|safe }};
+  if (!pl.length) { pl = ['—']; pv = [0]; }
+  mount('mgmtProject', {
+    type: 'bar',
+    data: {
+      labels: pl,
+      datasets: [{ data: pv, backgroundColor: 'rgba(79,70,229,0.85)', borderRadius: 4, borderSkipped: false }]
+    },
+    options: Object.assign({}, baseOpts, { indexAxis: 'y' })
+  });
+
+  var elab = {{ expense_dist_labels|safe }}, evals = {{ expense_dist_values|safe }};
+  if (!elab.length) { elab = ['—']; evals = [0]; }
+  mount('mgmtExpDist', {
+    type: 'doughnut',
+    data: {
+      labels: elab,
+      datasets: [{ data: evals, backgroundColor: ['#f59e0b','#ef4444','#4f46e5','#10b981','#6366f1','#14b8a6','#8b5cf6','#64748b'], borderWidth: 0 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } } }
+  });
+})();
+</script>
+</div>

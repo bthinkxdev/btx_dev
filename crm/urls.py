@@ -1,7 +1,7 @@
 from django.contrib.auth import views as auth_views
 from django.urls import path
 
-from . import billing_views, views, views_tickets
+from . import billing_views, finance_views, views, views_tickets
 
 app_name = 'crm'
 
@@ -43,6 +43,16 @@ urlpatterns = [
     path('projects/', views.projects_list, name='projects'),
     path('projects/create/', views.project_create, name='project_create'),
     path('projects/<int:pk>/', views.project_detail, name='project_detail'),
+    path(
+        'projects/<int:pk>/finance/',
+        finance_views.project_finance,
+        name='project_finance',
+    ),
+    path(
+        'clients/<int:pk>/finance/',
+        finance_views.client_finance,
+        name='client_finance',
+    ),
     path('tickets/', views_tickets.tickets_hub, name='tickets'),
     path('tickets/board/', views_tickets.tickets_board_partial, name='tickets_board'),
     path('tickets/create/', views_tickets.ticket_create, name='ticket_create'),
@@ -231,6 +241,9 @@ urlpatterns = [
         views.whatsapp_bot_exclude_remove,
         name='whatsapp_bot_exclude_remove',
     ),
+    path('wa/qr/', views.whatsapp_qr_list, name='whatsapp_qr_list'),
+    path('wa/qr/<str:session_id>/', views.whatsapp_qr_session, name='whatsapp_qr_session'),
+    path('wa/health/', views.whatsapp_session_health, name='whatsapp_session_health'),
     path('achievements/', views.achievements_dashboard, name='achievements_dashboard'),
     path('achievements/create/', views.achievement_create, name='achievement_create'),
     path('achievements/<int:pk>/edit/', views.achievement_update, name='achievement_update'),
@@ -284,6 +297,66 @@ urlpatterns = [
         'renewals/<int:pk>/send-reminder/',
         views.renewal_send_reminder_manual,
         name='renewal_send_reminder_manual',
+    ),
+    # Finance — income, expenses, reports
+    path('finance/', finance_views.finance_dashboard, name='finance_dashboard'),
+    path('finance/income/', finance_views.income_list, name='income_list'),
+    path('finance/income/add/', finance_views.income_create, name='income_create'),
+    path('finance/income/<int:pk>/edit/', finance_views.income_edit, name='income_edit'),
+    path('finance/income/<int:pk>/delete/', finance_views.income_delete, name='income_delete'),
+    path('finance/expenses/', finance_views.expense_list, name='expense_list'),
+    path(
+        'finance/expenses/dashboard/',
+        finance_views.expense_dashboard,
+        name='expense_dashboard',
+    ),
+    path('finance/expenses/add/', finance_views.expense_create, name='expense_create'),
+    path(
+        'finance/expenses/<int:pk>/edit/',
+        finance_views.expense_edit,
+        name='expense_edit',
+    ),
+    path(
+        'finance/expenses/<int:pk>/delete/',
+        finance_views.expense_delete,
+        name='expense_delete',
+    ),
+    path(
+        'finance/expenses/<int:pk>/receipt/',
+        finance_views.expense_receipt,
+        name='expense_receipt',
+    ),
+    path('finance/reports/', finance_views.finance_reports, name='finance_reports'),
+    path(
+        'finance/reports/executive/',
+        finance_views.finance_executive,
+        name='finance_executive',
+    ),
+    # Legacy aliases must precede the slug catch-all
+    path(
+        'finance/reports/monthly-expense/',
+        finance_views.report_monthly_expense,
+        name='report_monthly_expense',
+    ),
+    path(
+        'finance/reports/category/',
+        finance_views.report_category,
+        name='report_category',
+    ),
+    path(
+        'finance/reports/vendor/',
+        finance_views.report_vendor,
+        name='report_vendor',
+    ),
+    path(
+        'finance/reports/project/',
+        finance_views.report_project_expense,
+        name='report_project_expense',
+    ),
+    path(
+        'finance/reports/<slug:report_type>/',
+        finance_views.finance_report_run,
+        name='finance_report_run',
     ),
     # Billing & Accounts (admin only)
     path('billing/', billing_views.billing_dashboard, name='billing_dashboard'),

@@ -1,0 +1,187 @@
+{% extends "crm/base.html" %}
+{% block title %}Finance — {{ client.business_name }}{% endblock %}
+{% block page_title %}Client Finance{% endblock %}
+
+{% block content %}
+<nav class="billing-breadcrumb" aria-label="Breadcrumb">
+  <a href="{% url 'crm:projects' %}"
+     hx-get="{% url 'crm:projects' %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">Projects</a>
+  <span class="billing-breadcrumb__sep">/</span>
+  <span class="billing-breadcrumb__current">{{ client.business_name }}</span>
+  <span class="billing-breadcrumb__sep">/</span>
+  <span class="billing-breadcrumb__current">Finance</span>
+</nav>
+
+<div class="page-header">
+  <div>
+    <h1>{{ client.business_name }}</h1>
+    <p>Client finance overview across all projects.</p>
+  </div>
+</div>
+
+<div class="stat-grid" style="margin-bottom:24px;">
+  <div class="stat-card">
+    <div class="stat-icon indigo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">Rs. {{ total_revenue|floatformat:2 }}</div>
+      <div class="stat-label">Total Revenue (deal value)</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon green">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">Rs. {{ total_received|floatformat:2 }}</div>
+      <div class="stat-label">Total Received</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon amber">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">Rs. {{ outstanding|floatformat:2 }}</div>
+      <div class="stat-label">Outstanding</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon purple">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">{{ total_projects }}</div>
+      <div class="stat-label">Total Projects</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon indigo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6v6H9z"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">Rs. {{ average_project_value|floatformat:2 }}</div>
+      <div class="stat-label">Average Project Value</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon green">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value" style="font-size:15px;line-height:1.3;">
+        {% if last_payment %}{{ last_payment.payment_date|date:"d M Y" }}{% else %}—{% endif %}
+      </div>
+      <div class="stat-label">
+        Last Payment{% if last_payment %} · Rs. {{ last_payment.amount|floatformat:0 }}{% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="detail-grid" style="margin-bottom:24px;">
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Payment Timeline</div>
+        <div class="card-subtitle">Income received for this client</div>
+      </div>
+    </div>
+    <div class="table-wrap" style="overflow-x:auto;">
+      <table class="crm-table" style="width:100%;font-size:13px;">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Project</th>
+            <th>Category</th>
+            <th style="text-align:right;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in payment_timeline %}
+          <tr>
+            <td>{{ row.payment_date|date:"d M Y" }}</td>
+            <td>
+              {% if row.project_id %}
+              <a href="{% url 'crm:project_finance' row.project_id %}"
+                 hx-get="{% url 'crm:project_finance' row.project_id %}"
+                 hx-target="#crm-main-content"
+                 hx-select="#crm-main-content"
+                 hx-swap="outerHTML"
+                 hx-push-url="true">#{{ row.project_id }}</a>
+              {% else %}—{% endif %}
+            </td>
+            <td>{{ row.category.name }}</td>
+            <td style="text-align:right;font-weight:700;">Rs. {{ row.amount|floatformat:2 }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4">No payments recorded yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Projects</div>
+        <div class="card-subtitle">Per-project finance snapshot</div>
+      </div>
+    </div>
+    <div class="table-wrap" style="overflow-x:auto;">
+      <table class="crm-table" style="width:100%;font-size:13px;">
+        <thead>
+          <tr>
+            <th>Project</th>
+            <th style="text-align:right;">Revenue</th>
+            <th style="text-align:right;">Expenses</th>
+            <th style="text-align:right;">Profit</th>
+            <th style="text-align:right;">Pending</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in project_rows %}
+          <tr>
+            <td>
+              <a href="{% url 'crm:project_finance' row.project.pk %}"
+                 hx-get="{% url 'crm:project_finance' row.project.pk %}"
+                 hx-target="#crm-main-content"
+                 hx-select="#crm-main-content"
+                 hx-swap="outerHTML"
+                 hx-push-url="true">#{{ row.project.pk }}</a>
+              {% if row.project.package %} · {{ row.project.package.name }}{% endif %}
+            </td>
+            <td style="text-align:right;">Rs. {{ row.revenue|floatformat:2 }}</td>
+            <td style="text-align:right;">Rs. {{ row.expenses|floatformat:2 }}</td>
+            <td style="text-align:right;font-weight:700;">Rs. {{ row.profit|floatformat:2 }}</td>
+            <td style="text-align:right;">Rs. {{ row.pending|floatformat:2 }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5">No projects for this client.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% include "crm/billing/_billing_styles.html" %}
+{% endblock %}

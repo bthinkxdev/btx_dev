@@ -1,0 +1,67 @@
+<form method="get" class="filter-bar" style="margin-bottom:20px;flex-wrap:wrap;gap:12px;"
+      action="{% url 'crm:finance_report_run' report_type %}"
+      hx-get="{% url 'crm:finance_report_run' report_type %}"
+      hx-target="#crm-main-content"
+      hx-select="#crm-main-content"
+      hx-swap="outerHTML"
+      hx-push-url="true"
+      id="finance-report-filters">
+  <div>
+    <label for="id_period">Period</label>
+    {{ filter_form.period }}
+  </div>
+  <div id="rep-custom-dates" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+    <div>
+      <label for="id_date_from">From</label>
+      {{ filter_form.date_from }}
+    </div>
+    <div>
+      <label for="id_date_to">To</label>
+      {{ filter_form.date_to }}
+    </div>
+  </div>
+  <div>
+    <label for="id_project">Project</label>
+    {{ filter_form.project }}
+  </div>
+  <div>
+    <label for="id_client">Client</label>
+    {{ filter_form.client }}
+  </div>
+  <div>
+    <label for="id_category">Category</label>
+    {{ filter_form.category }}
+  </div>
+  <div>
+    <label for="id_employee">Employee</label>
+    {{ filter_form.employee }}
+  </div>
+  <div>
+    <label for="id_payment_method">Payment method</label>
+    {{ filter_form.payment_method }}
+  </div>
+  <div>
+    <label for="id_payment_type">Income type</label>
+    {{ filter_form.payment_type }}
+  </div>
+  <div>
+    <label for="id_payment_status">Payment status</label>
+    {{ filter_form.payment_status }}
+  </div>
+  <div>
+    <label>&nbsp;</label>
+    <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+  </div>
+</form>
+<script>
+(function () {
+  var sel = document.getElementById('id_period');
+  var custom = document.getElementById('rep-custom-dates');
+  if (!sel || !custom) return;
+  function sync() {
+    custom.style.opacity = sel.value === 'custom' ? '1' : '0.55';
+  }
+  sel.addEventListener('change', sync);
+  sync();
+})();
+</script>

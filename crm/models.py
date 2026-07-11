@@ -33,6 +33,7 @@ class EmployeeProfile(models.Model):
             ('dev', 'Developer'),
             ('support', 'Support'),
             ('sales', 'Sales'),
+            ('finance', 'Finance'),
         ),
         default='sales',
         db_index=True,
@@ -197,6 +198,19 @@ class WhatsAppNumber(models.Model):
 
     business_account_id = models.CharField(max_length=100, blank=True)
     is_active = models.BooleanField(default=True, db_index=True)
+
+    # Filled from wa_gateway when a Web.js session reaches "ready" (actual linked device).
+    gateway_linked_phone = models.CharField(
+        max_length=32,
+        blank=True,
+        help_text='Digits-only phone reported by the gateway when this session connected.',
+    )
+    gateway_state = models.CharField(
+        max_length=32,
+        blank=True,
+        help_text='ready, starting, mismatch, disconnected, etc.',
+    )
+    gateway_updated_at = models.DateTimeField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -1507,6 +1521,7 @@ class AuditEntry(models.Model):
         RENEWAL = 'renewal', 'Renewal'
         CHANGE_REQUEST = 'change_request', 'Change Request'
         SCOPE = 'scope', 'Scope'
+        FINANCE = 'finance', 'Finance'
 
     category = models.CharField(
         max_length=20, choices=EventCategory.choices, db_index=True
@@ -1995,3 +2010,191 @@ class LedgerEntry(models.Model):
 
     def __str__(self):
         return f'{self.entry_type} {self.amount} — {self.reference}'
+
+
+class IncomeCategory(models.Model):
+    """Simple revenue category for Finance income tracking (not accounting)."""
+
+    name = models.CharField(max_length=120, unique=True)
+    active = models.BooleanField(default=True, db_index=True)
+
+    class Meta:
+        ordering = ['name']
+        verbose_name_plural = 'Income categories'
+
+    def __str__(self):
+        return self.name
+
+
+class Income(models.Model):
+    """Business revenue entry — not double-entry accounting."""
+
+    class PaymentType(models.TextChoices):
+        CASH = 'cash', 'Cash'
+        BANK = 'bank', 'Bank'
+        UPI = 'upi', 'UPI'
+        CHEQUE = 'cheque', 'Cheque'
+        OTHER = 'other', 'Other'
+
+    class PaymentStatus(models.TextChoices):
+        ADVANCE = 'advance', 'Advance'
+        PARTIAL = 'partial', 'Partial'
+        FULL = 'full', 'Full'
+
+    client = models.ForeignKey(
+        Client,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='incomes',
+    )
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='incomes',
+    )
+    category = models.ForeignKey(
+        IncomeCategory,
+        on_delete=models.PROTECT,
+        related_name='incomes',
+    )
+    amount = models.DecimalField(max_digits=14, decimal_places=2)
+    payment_type = models.CharField(
+        max_length=20,
+        choices=PaymentType.choices,
+        default=PaymentType.UPI,
+        db_index=True,
+    )
+    payment_status = models.CharField(
+        max_length=20,
+        choices=PaymentStatus.choices,
+        default=PaymentStatus.FULL,
+        db_index=True,
+    )
+    payment_date = models.DateField(default=timezone.localdate, db_index=True)
+    bank_account = models.CharField(max_length=120, blank=True)
+    reference = models.CharField(max_length=120, blank=True)
+    notes = models.TextField(blank=True)
+    bill_payment = models.OneToOneField(
+        'BillPayment',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='income_entry',
+        help_text='Set when this income was auto-created from a verified bill payment',
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_incomes',
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-payment_date', '-created_at']
+        indexes = [
+            models.Index(fields=['payment_date', 'payment_status']),
+            models.Index(fields=['payment_type', 'payment_date']),
+            models.Index(fields=['client', 'payment_date']),
+            models.Index(fields=['project', 'payment_date']),
+            models.Index(fields=['category', 'payment_date']),
+        ]
+
+    def __str__(self):
+        return f'{self.amount} — {self.category} ({self.payment_date})'
+
+
+class ExpenseCategory(models.Model):
+    """Simple expense category for Finance tracking (not accounting)."""
+
+    name = models.CharField(max_length=120, unique=True)
+    active = models.BooleanField(default=True, db_index=True)
+
+    class Meta:
+        ordering = ['name']
+        verbose_name_plural = 'Expense categories'
+
+    def __str__(self):
+        return self.name
+
+
+class Expense(models.Model):
+    """Business expense entry — not double-entry accounting."""
+
+    class PaymentMethod(models.TextChoices):
+        CASH = 'cash', 'Cash'
+        BANK = 'bank', 'Bank'
+        UPI = 'upi', 'UPI'
+        CHEQUE = 'cheque', 'Cheque'
+        OTHER = 'other', 'Other'
+
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='expenses',
+    )
+    employee = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='expenses',
+        help_text='Staff member this expense relates to (e.g. salary, travel)',
+    )
+    vendor = models.CharField(max_length=200, blank=True)
+    category = models.ForeignKey(
+        ExpenseCategory,
+        on_delete=models.PROTECT,
+        related_name='expenses',
+    )
+    amount = models.DecimalField(max_digits=14, decimal_places=2)
+    paid_from = models.CharField(
+        max_length=120,
+        blank=True,
+        help_text='Account / wallet the money was paid from',
+    )
+    payment_method = models.CharField(
+        max_length=20,
+        choices=PaymentMethod.choices,
+        default=PaymentMethod.UPI,
+        db_index=True,
+    )
+    expense_date = models.DateField(default=timezone.localdate, db_index=True)
+    receipt = models.FileField(
+        upload_to='finance/expenses/receipts/',
+        blank=True,
+        help_text='Screenshot or PDF of the receipt / bill',
+    )
+    notes = models.TextField(blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_expenses',
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-expense_date', '-created_at']
+        indexes = [
+            models.Index(fields=['expense_date', 'category']),
+            models.Index(fields=['payment_method', 'expense_date']),
+            models.Index(fields=['vendor', 'expense_date']),
+            models.Index(fields=['project', 'expense_date']),
+            models.Index(fields=['employee', 'expense_date']),
+        ]
+
+    def __str__(self):
+        return f'{self.amount} — {self.category} ({self.expense_date})'
+
+    @property
+    def receipt_is_image(self) -> bool:
+        name = (self.receipt.name or '').lower()
+        return name.endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp'))

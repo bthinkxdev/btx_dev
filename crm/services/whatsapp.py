@@ -1001,8 +1001,9 @@ def handle_message(phone, text, *, wa_number: WhatsAppNumber | None = None, mess
 
         if not crm_whatsapp_bot_enabled(executive):
             logger.warning(
-                'CRM WA bot is OFF (toggle in CRM header) — exec=%s lead=%s — '
-                'message saved, no auto-reply. Turn WA Bot ON to respond.',
+                'CRM WA bot is OFF — session=%s exec=%s lead=%s — '
+                'message saved, no auto-reply. Enable bot on that executive profile.',
+                str(wa_number.phone_number_id),
                 getattr(executive, 'username', None) or getattr(executive, 'id', None),
                 lead.id,
             )

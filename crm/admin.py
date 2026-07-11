@@ -12,8 +12,12 @@ from .models import (
     Client,
     CredentialAuditLog,
     EmployeeProfile,
+    Expense,
+    ExpenseCategory,
     FollowUp,
     HandoverPortalAccess,
+    Income,
+    IncomeCategory,
     LedgerEntry,
     Lead,
     MonthlyTarget,
@@ -141,9 +145,12 @@ class WhatsAppNumberAdmin(admin.ModelAdmin):
         'display_phone_number',
         'phone_number_id',
         'executive',
+        'gateway_state',
+        'gateway_linked_phone',
         'is_active',
         'updated_at',
     )
+    readonly_fields = ('gateway_linked_phone', 'gateway_state', 'gateway_updated_at')
     list_filter = ('is_active', 'executive')
     search_fields = ('display_phone_number', 'phone_number_id', 'executive__username', 'executive__email')
 
@@ -389,6 +396,66 @@ class LedgerEntryAdmin(admin.ModelAdmin):
 @admin.register(BillSequence)
 class BillSequenceAdmin(admin.ModelAdmin):
     list_display = ('fiscal_year', 'last_number')
+
+
+@admin.register(IncomeCategory)
+class IncomeCategoryAdmin(admin.ModelAdmin):
+    list_display = ('name', 'active')
+    list_filter = ('active',)
+    search_fields = ('name',)
+
+
+@admin.register(Income)
+class IncomeAdmin(admin.ModelAdmin):
+    list_display = (
+        'payment_date',
+        'amount',
+        'category',
+        'client',
+        'project',
+        'payment_type',
+        'payment_status',
+        'reference',
+        'created_by',
+        'created_at',
+    )
+    list_filter = ('payment_type', 'payment_status', 'category', 'payment_date')
+    search_fields = (
+        'reference',
+        'notes',
+        'bank_account',
+        'client__business_name',
+    )
+    autocomplete_fields = ('client', 'project', 'category', 'created_by', 'bill_payment')
+    date_hierarchy = 'payment_date'
+    readonly_fields = ('bill_payment',)
+
+
+@admin.register(ExpenseCategory)
+class ExpenseCategoryAdmin(admin.ModelAdmin):
+    list_display = ('name', 'active')
+    list_filter = ('active',)
+    search_fields = ('name',)
+
+
+@admin.register(Expense)
+class ExpenseAdmin(admin.ModelAdmin):
+    list_display = (
+        'expense_date',
+        'amount',
+        'category',
+        'vendor',
+        'project',
+        'employee',
+        'payment_method',
+        'paid_from',
+        'created_by',
+        'created_at',
+    )
+    list_filter = ('payment_method', 'category', 'expense_date')
+    search_fields = ('vendor', 'notes', 'paid_from', 'project__client__business_name')
+    autocomplete_fields = ('project', 'employee', 'category', 'created_by')
+    date_hierarchy = 'expense_date'
 
 
 @admin.register(ChangeRequest)

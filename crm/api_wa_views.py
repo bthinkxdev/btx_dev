@@ -23,6 +23,7 @@ from crm.services.whatsapp import (
     handle_voice_message,
     mask_phone,
 )
+from crm.services.wa_gateway_sync import apply_gateway_status, executive_bot_enabled
 from crm.services.whatsapp_bot import record_human_takeover
 
 logger = logging.getLogger(__name__)
@@ -154,6 +155,21 @@ def wa_incoming(request):
     )
 
     wa_number = get_active_wa_number(incoming.session)
+    if wa_number:
+        exec_user = wa_number.executive
+        logger.info(
+            'wa_incoming route session=%s -> exec=%s bot=%s display=%s',
+            incoming.session,
+            getattr(exec_user, 'username', None),
+            executive_bot_enabled(exec_user),
+            wa_number.display_phone_number,
+        )
+    else:
+        logger.error(
+            'wa_incoming unknown session=%s — no active WhatsAppNumber with phone_number_id=%s',
+            incoming.session,
+            incoming.session,
+        )
     provider_dt = None
     if incoming.timestamp:
         try:
@@ -258,6 +274,17 @@ def wa_status(request):
 
     if not session:
         return JsonResponse({"error": "invalid_payload"}, status=400)
+
+    linked_phone = str(data.get("linked_phone") or data.get("linkedPhone") or "").strip()
+    pushname = str(data.get("pushname") or "").strip()
+    reason = str(data.get("reason") or data.get("message") or "").strip()
+    apply_gateway_status(
+        session_id=session,
+        event=event,
+        linked_phone=linked_phone,
+        pushname=pushname,
+        reason=reason,
+    )
 
     cache.set(
         f"wa:webjs:session_status:{session}",

@@ -169,6 +169,13 @@ def crm_can_access_billing(user):
 
 
 @register.filter
+def crm_can_access_finance(user):
+    from ..rbac import can_access_finance
+
+    return bool(user and user.is_authenticated and can_access_finance(user))
+
+
+@register.filter
 def dict_get(mapping, key):
     if not mapping or key is None:
         return key

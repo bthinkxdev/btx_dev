@@ -580,24 +580,43 @@
     document.body.style.overflow = 'hidden';
   }
   function hideLightbox() {
-    box.hidden = true;
-    lbImg.removeAttribute('src');
+    var lb = document.getElementById('ticket-lightbox');
+    if (!lb) { document.body.style.overflow = ''; return; }
+    lb.hidden = true;
+    var img = lb.querySelector('.ticket-lightbox__img');
+    if (img) img.removeAttribute('src');
     document.body.style.overflow = '';
   }
+  window.crmHideTicketLightbox = hideLightbox;
 
-  document.addEventListener('click', function (e) {
-    var thumb = e.target.closest('.ticket-ref-thumb');
-    if (thumb && thumb.dataset.full) {
-      e.preventDefault();
-      e.stopPropagation();
-      showLightbox(thumb.dataset.full, thumb.dataset.name || '');
-      return;
-    }
-    if (e.target.classList.contains('ticket-lightbox__close') || e.target === box) hideLightbox();
-  });
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && !box.hidden) hideLightbox();
-  });
+  if (!window.__crmTicketLightboxBound) {
+    window.__crmTicketLightboxBound = true;
+    document.addEventListener('click', function (e) {
+      var thumb = e.target.closest('.ticket-ref-thumb');
+      if (thumb && thumb.dataset.full) {
+        e.preventDefault();
+        e.stopPropagation();
+        var lb = document.getElementById('ticket-lightbox');
+        if (!lb) return;
+        var img = lb.querySelector('.ticket-lightbox__img');
+        var cap = lb.querySelector('.ticket-lightbox__cap');
+        var open = lb.querySelector('.ticket-lightbox__open');
+        if (img) img.src = thumb.dataset.full;
+        if (cap) cap.textContent = thumb.dataset.name || '';
+        if (open) open.href = thumb.dataset.full;
+        lb.hidden = false;
+        document.body.style.overflow = 'hidden';
+        return;
+      }
+      var lb2 = document.getElementById('ticket-lightbox');
+      if (lb2 && (e.target.classList.contains('ticket-lightbox__close') || e.target === lb2)) {
+        hideLightbox();
+      }
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') hideLightbox();
+    });
+  }
 
   function formatFileNames(fileList) {
     if (!fileList || !fileList.length) return '';

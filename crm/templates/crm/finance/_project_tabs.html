@@ -1,0 +1,38 @@
+<div class="report-tab-group" style="display:flex;gap:6px;margin-bottom:20px;border-bottom:1px solid var(--neutral-200);padding-bottom:0;">
+  <a href="{% url 'crm:project_detail' project.pk %}"
+     class="report-tab {% if active_tab == 'overview' %}report-tab--active{% endif %}"
+     style="padding:10px 16px;font-size:13px;font-weight:600;border:none;background:transparent;text-decoration:none;cursor:pointer;border-bottom:2px solid {% if active_tab == 'overview' %}var(--primary-600){% else %}transparent{% endif %};margin-bottom:-1px;border-radius:8px 8px 0 0;color:{% if active_tab == 'overview' %}var(--primary-600){% else %}var(--text-muted){% endif %};"
+     hx-get="{% url 'crm:project_detail' project.pk %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">Overview</a>
+  {% if crm_can_access_finance or crm_can_view_financial_data %}
+  <a href="{% url 'crm:project_finance' project.pk %}"
+     class="report-tab {% if active_tab == 'finance' %}report-tab--active{% endif %}"
+     style="padding:10px 16px;font-size:13px;font-weight:600;border:none;background:transparent;text-decoration:none;cursor:pointer;border-bottom:2px solid {% if active_tab == 'finance' %}var(--primary-600){% else %}transparent{% endif %};margin-bottom:-1px;border-radius:8px 8px 0 0;color:{% if active_tab == 'finance' %}var(--primary-600){% else %}var(--text-muted){% endif %};"
+     hx-get="{% url 'crm:project_finance' project.pk %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">Finance</a>
+  {% endif %}
+  <a href="{% url 'crm:project_operations' project.pk %}"
+     class="report-tab {% if active_tab == 'operations' %}report-tab--active{% endif %}"
+     style="padding:10px 16px;font-size:13px;font-weight:600;border:none;background:transparent;text-decoration:none;cursor:pointer;border-bottom:2px solid {% if active_tab == 'operations' %}var(--primary-600){% else %}transparent{% endif %};margin-bottom:-1px;border-radius:8px 8px 0 0;color:{% if active_tab == 'operations' %}var(--primary-600){% else %}var(--text-muted){% endif %};"
+     hx-get="{% url 'crm:project_operations' project.pk %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">Operations</a>
+  {% if crm_can_access_billing %}
+  <a href="{% url 'crm:billing_project' project.pk %}"
+     class="report-tab {% if active_tab == 'billing' %}report-tab--active{% endif %}"
+     style="padding:10px 16px;font-size:13px;font-weight:600;border:none;background:transparent;text-decoration:none;cursor:pointer;border-bottom:2px solid {% if active_tab == 'billing' %}var(--primary-600){% else %}transparent{% endif %};margin-bottom:-1px;border-radius:8px 8px 0 0;color:{% if active_tab == 'billing' %}var(--primary-600){% else %}var(--text-muted){% endif %};"
+     hx-get="{% url 'crm:billing_project' project.pk %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">Billing</a>
+  {% endif %}
+</div>

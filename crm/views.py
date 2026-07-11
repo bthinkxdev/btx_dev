@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from functools import wraps
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
@@ -1156,6 +1157,110 @@ def whatsapp_bot_exclude_remove(request, pk):
     )
     _hx_toast(resp, 'Removed from exclude list')
     return resp
+
+
+def _wa_gateway_config():
+    base = str(getattr(settings, 'WHATSAPP_WEBJS_BRIDGE_URL', '') or '').strip().rstrip('/')
+    token = str(getattr(settings, 'WHATSAPP_WEBJS_BRIDGE_TOKEN', '') or '').strip()
+    return base, token
+
+
+def _wa_gateway_sessions():
+    import requests
+
+    base, token = _wa_gateway_config()
+    if not base or not token:
+        return None, 'WhatsApp gateway is not configured (bridge URL or token missing).'
+    try:
+        resp = requests.get(
+            f'{base}/sessions',
+            headers={'Authorization': f'Bearer {token}'},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        return list(data.get('sessions') or []), ''
+    except Exception as exc:
+        logger.exception('WA gateway sessions fetch failed')
+        return None, f'Gateway unreachable: {exc}'
+
+
+def _wa_gateway_qr_html(session_id: str):
+    import requests
+
+    base, token = _wa_gateway_config()
+    if not base or not token:
+        return '', 'WhatsApp gateway is not configured (bridge URL or token missing).'
+    sid = str(session_id or '').strip()
+    if not sid or not re.fullmatch(r'[a-zA-Z0-9_-]+', sid):
+        return '', 'Invalid session id.'
+    try:
+        resp = requests.get(
+            f'{base}/qr/{sid}',
+            params={'token': token},
+            timeout=15,
+        )
+        if resp.status_code == 401:
+            return '', 'Gateway rejected the bridge token. Check WHATSAPP_WEBJS_BRIDGE_TOKEN matches wa_gateway/.env.'
+        resp.raise_for_status()
+        html = resp.text or ''
+        m = re.search(r'<div class="wrap">\s*(.*?)\s*</div>\s*</body>', html, re.S | re.I)
+        body = (m.group(1).strip() if m else '')
+        if not body:
+            return '', 'No QR available — session may already be linked. Refresh in a few seconds.'
+        return body, ''
+    except Exception as exc:
+        logger.exception('WA gateway QR fetch failed session=%s', sid)
+        return '', f'Gateway unreachable: {exc}'
+
+
+@login_required
+@sales_pipeline_required
+@require_http_methods(['GET'])
+def whatsapp_qr_list(request):
+    """Staff CRM page: list WA gateway sessions (login required; bridge token stays server-side)."""
+    sessions, err = _wa_gateway_sessions()
+    return render(
+        request,
+        'crm/wa_qr_list.html',
+        {'sessions': sessions or [], 'wa_qr_error': err},
+    )
+
+
+@login_required
+@sales_pipeline_required
+@require_http_methods(['GET'])
+def whatsapp_qr_session(request, session_id):
+    """Staff CRM page: show QR for one gateway session (admin1, admin2, …)."""
+    qr_html, err = _wa_gateway_qr_html(session_id)
+    return render(
+        request,
+        'crm/wa_qr_session.html',
+        {
+            'session_id': session_id,
+            'qr_html': qr_html,
+            'wa_qr_error': err,
+        },
+    )
+
+
+@login_required
+@sales_pipeline_required
+@require_http_methods(['GET'])
+def whatsapp_session_health(request):
+    """Production dashboard: live gateway session vs CRM mapping + bot toggle."""
+    from crm.services.wa_gateway_sync import build_session_health_rows
+
+    gateway_sessions, err = _wa_gateway_sessions()
+    rows = build_session_health_rows(gateway_sessions)
+    return render(
+        request,
+        'crm/wa_session_health.html',
+        {
+            'rows': rows,
+            'wa_qr_error': err,
+        },
+    )
 
 
 @login_required

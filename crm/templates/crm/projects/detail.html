@@ -15,11 +15,29 @@
   <span style="color:var(--neutral-800);font-weight:600;">{{ project.client.business_name }}</span>
 </div>
 
+{% include "crm/finance/_project_tabs.html" with active_tab="overview" %}
+
 <div class="page-header">
   <div>
     <h1>{{ project.client.business_name }}</h1>
     <p>{% if crm_can_view_financial_data %}{% if project.package %}{{ project.package.name }}{% else %}No package{% endif %} · Deal {{ project.deal_value }} · Balance due {{ project.balance_due }}{% else %}Status: <strong>{{ project.get_status_display }}</strong>{% endif %}</p>
   </div>
+  {% if crm_can_access_finance or crm_can_view_financial_data %}
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <a href="{% url 'crm:project_finance' project.pk %}" class="btn btn-primary btn-sm"
+       hx-get="{% url 'crm:project_finance' project.pk %}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">Project Finance</a>
+    <a href="{% url 'crm:client_finance' client.pk %}" class="btn btn-outline btn-sm"
+       hx-get="{% url 'crm:client_finance' client.pk %}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">Client Finance</a>
+  </div>
+  {% endif %}
 </div>
 
 <div class="detail-grid">
@@ -33,6 +51,16 @@
       <tr><td style="color:var(--text-muted);">GST</td><td>{{ client.gst_number|default:"—" }}</td></tr>
       <tr><td style="color:var(--text-muted);">PAN</td><td>{{ client.pan_number|default:"—" }}</td></tr>
     </table>
+    {% if crm_can_access_finance or crm_can_view_financial_data %}
+    <p style="margin-top:12px;">
+      <a href="{% url 'crm:client_finance' client.pk %}" class="btn btn-outline btn-sm"
+         hx-get="{% url 'crm:client_finance' client.pk %}"
+         hx-target="#crm-main-content"
+         hx-select="#crm-main-content"
+         hx-swap="outerHTML"
+         hx-push-url="true">View client finance</a>
+    </p>
+    {% endif %}
     {% if client.address %}
     <p style="font-size:13px;margin-top:10px;color:var(--neutral-700);white-space:pre-wrap;">{{ client.address }}</p>
     {% endif %}

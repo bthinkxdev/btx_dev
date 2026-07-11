@@ -1,0 +1,238 @@
+{% extends "crm/base.html" %}
+{% block title %}Finance — {{ project.client.business_name }}{% endblock %}
+{% block page_title %}Project Finance{% endblock %}
+
+{% block content %}
+<nav class="billing-breadcrumb" aria-label="Breadcrumb">
+  <a href="{% url 'crm:projects' %}"
+     hx-get="{% url 'crm:projects' %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">Projects</a>
+  <span class="billing-breadcrumb__sep">/</span>
+  <a href="{% url 'crm:project_detail' project.pk %}"
+     hx-get="{% url 'crm:project_detail' project.pk %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">{{ project.client.business_name }}</a>
+  <span class="billing-breadcrumb__sep">/</span>
+  <span class="billing-breadcrumb__current">Finance</span>
+</nav>
+
+{% include "crm/finance/_project_tabs.html" with active_tab="finance" %}
+
+<div class="page-header">
+  <div>
+    <h1>Project Finance</h1>
+    <p>#{{ project.pk }} · {{ project.client.business_name }}{% if project.package %} · {{ project.package.name }}{% endif %}</p>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <a href="{% url 'crm:client_finance' client.pk %}" class="btn btn-outline btn-sm"
+       hx-get="{% url 'crm:client_finance' client.pk %}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">Client Finance</a>
+    <a href="{% url 'crm:income_create' %}?project={{ project.pk }}" class="btn btn-primary btn-sm"
+       hx-get="{% url 'crm:income_create' %}?project={{ project.pk }}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">Add Income</a>
+    <a href="{% url 'crm:expense_create' %}?project={{ project.pk }}" class="btn btn-outline btn-sm"
+       hx-get="{% url 'crm:expense_create' %}?project={{ project.pk }}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">Add Expense</a>
+  </div>
+</div>
+
+<div class="stat-grid" style="margin-bottom:24px;">
+  <div class="stat-card">
+    <div class="stat-icon green">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">Rs. {{ revenue|floatformat:2 }}</div>
+      <div class="stat-label">Revenue</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon amber">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">Rs. {{ expenses|floatformat:2 }}</div>
+      <div class="stat-label">Expenses</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon {% if profit >= 0 %}green{% else %}amber{% endif %}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">Rs. {{ profit|floatformat:2 }}</div>
+      <div class="stat-label">Profit</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon indigo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">{{ profit_margin|floatformat:1 }}%</div>
+      <div class="stat-label">Profit Margin</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon amber">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">Rs. {{ pending_payments|floatformat:2 }}</div>
+      <div class="stat-label">Pending Payments</div>
+    </div>
+  </div>
+</div>
+
+<div class="charts-grid" style="margin-bottom:24px;">
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Expense Breakdown</div>
+        <div class="card-subtitle">By category for this project</div>
+      </div>
+    </div>
+    <div class="chart-wrap" style="height:240px;"><canvas id="projExpBreak"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Timeline</div>
+        <div class="card-subtitle">Income &amp; expense activity</div>
+      </div>
+    </div>
+    <div class="table-wrap" style="overflow-x:auto;max-height:280px;">
+      <table class="crm-table" style="width:100%;font-size:13px;">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Detail</th>
+            <th style="text-align:right;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in timeline %}
+          <tr>
+            <td>{{ row.date|date:"d M Y" }}</td>
+            <td>
+              <span class="crm-badge {% if row.kind == 'income' %}crm-badge--green{% else %}crm-badge--orange{% endif %}">
+                {{ row.kind|title }}
+              </span>
+            </td>
+            <td>{{ row.label }} · {{ row.detail|truncatechars:36 }}</td>
+            <td style="text-align:right;font-weight:700;">Rs. {{ row.amount|floatformat:2 }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4">No finance activity yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="detail-grid">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Recent Income</div>
+      <div class="card-subtitle">{{ income_count }} total</div>
+    </div>
+    <div class="table-wrap" style="overflow-x:auto;">
+      <table class="crm-table" style="width:100%;font-size:13px;">
+        <thead>
+          <tr><th>Date</th><th>Category</th><th style="text-align:right;">Amount</th></tr>
+        </thead>
+        <tbody>
+          {% for row in recent_income %}
+          <tr>
+            <td>{{ row.payment_date|date:"d M Y" }}</td>
+            <td>{{ row.category.name }}</td>
+            <td style="text-align:right;font-weight:700;">Rs. {{ row.amount|floatformat:2 }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="3">No income linked to this project.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Recent Expenses</div>
+      <div class="card-subtitle">{{ expense_count }} total</div>
+    </div>
+    <div class="table-wrap" style="overflow-x:auto;">
+      <table class="crm-table" style="width:100%;font-size:13px;">
+        <thead>
+          <tr><th>Date</th><th>Category</th><th style="text-align:right;">Amount</th></tr>
+        </thead>
+        <tbody>
+          {% for row in recent_expenses %}
+          <tr>
+            <td>{{ row.expense_date|date:"d M Y" }}</td>
+            <td>{{ row.category.name }}</td>
+            <td style="text-align:right;font-weight:700;">Rs. {{ row.amount|floatformat:2 }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="3">No expenses linked to this project.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% include "crm/billing/_billing_styles.html" %}
+<script>
+(function () {
+  if (typeof Chart === 'undefined') return;
+  var labels = {{ breakdown_labels|safe }}, values = {{ breakdown_values|safe }};
+  if (!labels.length) { labels = ['—']; values = [0]; }
+  (window.crmMountChart || function (id, cfg) {
+    var el = document.getElementById(id); if (!el) return;
+    try { var p = Chart.getChart(el); if (p) p.destroy(); } catch (e) {}
+    return new Chart(el, cfg);
+  })('projExpBreak', {
+    type: 'doughnut',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: values,
+        backgroundColor: ['#f59e0b','#ef4444','#4f46e5','#10b981','#6366f1','#14b8a6','#8b5cf6','#64748b'],
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } } }
+    }
+  });
+})();
+</script>
+{% endblock %}
