@@ -1,0 +1,106 @@
+<dialog id="tx-modal-income"
+        class="billing-modal"
+        aria-labelledby="tx-modal-income-title"
+        data-project-client-map="{{ project_client_map }}">
+  <div class="billing-modal__inner">
+    <header class="billing-modal__head">
+      <div class="billing-modal__head-text">
+        <h2 id="tx-modal-income-title">{% if income_edit_pk %}Edit Income{% else %}Add Income{% endif %}</h2>
+        <p>{% if income_edit_pk %}Update this revenue entry.{% else %}Record a payment received — link to client or project when available.{% endif %}</p>
+      </div>
+      <button type="button" class="billing-modal__close" data-tx-modal-close aria-label="Close">&times;</button>
+    </header>
+
+    {% if income_form.errors %}
+    <div class="billing-modal-error" role="alert">
+      <strong>Fix these before saving</strong>
+      <ul>
+        {% for err in income_form.non_field_errors %}<li>{{ err }}</li>{% endfor %}
+        {% for field in income_form %}
+          {% for err in field.errors %}<li>{{ field.label }}: {{ err }}</li>{% endfor %}
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    <form method="post"
+          action="{% if income_edit_pk %}{% url 'crm:income_edit' income_edit_pk %}{% else %}{% url 'crm:income_create' %}{% endif %}"
+          class="billing-modal__form"
+          data-tx-modal-form="income"
+          hx-post="{% if income_edit_pk %}{% url 'crm:income_edit' income_edit_pk %}{% else %}{% url 'crm:income_create' %}{% endif %}"
+          hx-target="#crm-main-content"
+          hx-select="#crm-main-content"
+          hx-swap="outerHTML">
+      {% csrf_token %}
+
+      <div class="billing-modal__grid">
+        <div class="billing-field {% if income_form.client.errors %}billing-field--error{% endif %}">
+          <label for="{{ income_form.client.id_for_label }}">{{ income_form.client.label }}</label>
+          {{ income_form.client }}
+          {% for e in income_form.client.errors %}<span class="billing-field-error">{{ e }}</span>{% endfor %}
+        </div>
+        <div class="billing-field {% if income_form.project.errors %}billing-field--error{% endif %}">
+          <label for="{{ income_form.project.id_for_label }}">{{ income_form.project.label }}</label>
+          {{ income_form.project }}
+          {% for e in income_form.project.errors %}<span class="billing-field-error">{{ e }}</span>{% endfor %}
+        </div>
+        <div class="billing-field {% if income_form.category.errors %}billing-field--error{% endif %}">
+          <label for="{{ income_form.category.id_for_label }}">{{ income_form.category.label }}</label>
+          {{ income_form.category }}
+          {% for e in income_form.category.errors %}<span class="billing-field-error">{{ e }}</span>{% endfor %}
+        </div>
+        <div class="billing-field {% if income_form.amount.errors %}billing-field--error{% endif %}">
+          <label for="{{ income_form.amount.id_for_label }}">{{ income_form.amount.label }}</label>
+          {{ income_form.amount }}
+          {% for e in income_form.amount.errors %}<span class="billing-field-error">{{ e }}</span>{% endfor %}
+        </div>
+        <div class="billing-field {% if income_form.payment_type.errors %}billing-field--error{% endif %}">
+          <label for="{{ income_form.payment_type.id_for_label }}">{{ income_form.payment_type.label }}</label>
+          {{ income_form.payment_type }}
+          {% for e in income_form.payment_type.errors %}<span class="billing-field-error">{{ e }}</span>{% endfor %}
+        </div>
+        <div class="billing-field {% if income_form.payment_status.errors %}billing-field--error{% endif %}">
+          <label for="{{ income_form.payment_status.id_for_label }}">{{ income_form.payment_status.label }}</label>
+          {{ income_form.payment_status }}
+          {% for e in income_form.payment_status.errors %}<span class="billing-field-error">{{ e }}</span>{% endfor %}
+        </div>
+        <div class="billing-field {% if income_form.payment_date.errors %}billing-field--error{% endif %}">
+          <label for="{{ income_form.payment_date.id_for_label }}">{{ income_form.payment_date.label }}</label>
+          {{ income_form.payment_date }}
+          {% for e in income_form.payment_date.errors %}<span class="billing-field-error">{{ e }}</span>{% endfor %}
+        </div>
+        <div class="billing-field {% if income_form.bank_account.errors %}billing-field--error{% endif %}">
+          <label for="{{ income_form.bank_account.id_for_label }}">{{ income_form.bank_account.label }}</label>
+          {{ income_form.bank_account }}
+          {% for e in income_form.bank_account.errors %}<span class="billing-field-error">{{ e }}</span>{% endfor %}
+        </div>
+        <div class="billing-field billing-field--full {% if income_form.reference.errors %}billing-field--error{% endif %}">
+          <label for="{{ income_form.reference.id_for_label }}">{{ income_form.reference.label }}</label>
+          {{ income_form.reference }}
+          {% for e in income_form.reference.errors %}<span class="billing-field-error">{{ e }}</span>{% endfor %}
+        </div>
+        <div class="billing-field billing-field--full {% if income_form.notes.errors %}billing-field--error{% endif %}">
+          <label for="{{ income_form.notes.id_for_label }}">{{ income_form.notes.label }}</label>
+          {{ income_form.notes }}
+          {% for e in income_form.notes.errors %}<span class="billing-field-error">{{ e }}</span>{% endfor %}
+        </div>
+      </div>
+
+      {% if income_edit_pk and income_allocations %}
+      <div class="fund-modal-balance" style="margin-top:4px;">
+        <div class="fund-modal-balance__label">Revenue allocation (updates on save)</div>
+        <div style="width:100%;font-size:12px;line-height:1.5;">
+          {% for a in income_allocations %}
+          <div>{{ a.bucket.name }} · {{ a.percentage }}% · Rs. {{ a.amount|floatformat:2 }}</div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <footer class="billing-modal__foot">
+        <button type="button" class="btn btn-outline" data-tx-modal-close>Cancel</button>
+        <button type="submit" class="btn btn-primary">{% if income_edit_pk %}Save changes{% else %}Record Income{% endif %}</button>
+      </footer>
+    </form>
+  </div>
+</dialog>

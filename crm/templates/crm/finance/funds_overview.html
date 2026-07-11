@@ -1,0 +1,148 @@
+{% extends "crm/base.html" %}
+{% block title %}Funds{% endblock %}
+{% block page_title %}Funds{% endblock %}
+
+{% block content %}
+{% include "crm/finance/partials/_nav_meta.html" with crm_nav="finance-funds" crm_page_title="Funds" %}
+{% if open_fund_modal %}
+<div hidden
+     data-fund-auto-open="{{ open_fund_modal }}"
+     {% if fund_transfer_form.errors or founder_withdrawal_form.errors %}data-fund-form-invalid="true"{% endif %}
+     data-fund-prefill-from="{{ fund_modal_prefill_from }}"
+     data-fund-prefill-founder="{{ fund_modal_prefill_founder }}"></div>
+{% endif %}
+<nav class="billing-breadcrumb" aria-label="Breadcrumb">
+  <a href="{% url 'crm:finance_dashboard' %}"
+     hx-get="{% url 'crm:finance_dashboard' %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">Finance</a>
+  <span class="billing-breadcrumb__sep">/</span>
+  <span class="billing-breadcrumb__current">Funds</span>
+</nav>
+
+<div class="page-header">
+  <div>
+    <h1>Funds</h1>
+    <p>
+      Allocation pots and live remaining balances.
+      Remaining is separate from Profit (Income − Expense).
+    </p>
+  </div>
+  <div class="funds-hub-actions">
+    <button type="button" class="btn btn-primary btn-sm" data-fund-modal-open="transfer">Transfer</button>
+    <button type="button" class="btn btn-outline btn-sm" data-fund-modal-open="withdraw">Founder Withdraw</button>
+    <a href="{% url 'crm:expense_list' %}?modal=expense" class="btn btn-outline btn-sm"
+       hx-get="{% url 'crm:expense_list' %}?modal=expense"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">Add Expense</a>
+    <a href="{% url 'crm:fund_reports_hub' %}" class="btn btn-outline btn-sm"
+       hx-get="{% url 'crm:fund_reports_hub' %}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">Reports</a>
+    <a href="{% url 'crm:allocation_dashboard' %}?export=csv" class="btn btn-outline btn-sm">CSV</a>
+    <a href="{% url 'crm:allocation_dashboard' %}?export=xlsx" class="btn btn-outline btn-sm">Excel</a>
+    <a href="{% url 'crm:allocation_dashboard' %}?export=pdf" class="btn btn-outline btn-sm">PDF</a>
+  </div>
+</div>
+
+<div class="funds-hub-summary">
+  <div class="funds-hub-summary__item">
+    <span class="funds-hub-summary__label">Allocated</span>
+    <span class="funds-hub-summary__value">Rs. {{ funds_total_allocated|floatformat:2 }}</span>
+  </div>
+  <div class="funds-hub-summary__item">
+    <span class="funds-hub-summary__label">Drawn (expenses / withdrawals)</span>
+    <span class="funds-hub-summary__value">Rs. {{ funds_total_used|floatformat:2 }}</span>
+  </div>
+  <div class="funds-hub-summary__item funds-hub-summary__item--accent">
+    <span class="funds-hub-summary__label">Total remaining</span>
+    <span class="funds-hub-summary__value">Rs. {{ funds_total_remaining|floatformat:2 }}</span>
+  </div>
+</div>
+
+<p class="funds-hub-note">
+  <strong>How draws work:</strong> real spend → <em>Expenses</em> with Funding Source.
+  Founder Pool → <em>Founder Withdraw</em> (pick founder account). Move between pots → <em>Transfer</em>.
+</p>
+
+<section class="funds-hub-section" aria-label="Fund balances">
+  <div class="funds-hub-grid">
+    {% for row in fund_rows %}
+    <article class="fund-tile{% if row.is_founder_pool %} fund-tile--founder{% endif %}">
+      <header class="fund-tile__head">
+        <div class="fund-tile__icon" style="background:{{ row.bucket.color }}22;color:{{ row.bucket.color }};">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </div>
+        <div class="fund-tile__title-wrap">
+          <h2 class="fund-tile__title">{{ row.bucket.name }}</h2>
+          <span class="fund-tile__pct">{{ row.bucket.percentage }}% of income</span>
+        </div>
+      </header>
+
+      <div class="fund-tile__remaining">
+        <span class="fund-tile__remaining-label">Remaining</span>
+        <span class="fund-tile__remaining-value">Rs. {{ row.remaining|floatformat:2 }}</span>
+      </div>
+
+      <dl class="fund-tile__meta">
+        <div>
+          <dt>Allocated</dt>
+          <dd>Rs. {{ row.allocated|floatformat:2 }}</dd>
+        </div>
+        <div>
+          <dt>{% if row.is_founder_pool %}Withdrawn / drawn{% else %}Drawn{% endif %}</dt>
+          <dd>Rs. {{ row.drawn|floatformat:2 }}</dd>
+        </div>
+        {% if row.transferred_out %}
+        <div>
+          <dt>Transferred out</dt>
+          <dd>Rs. {{ row.transferred_out|floatformat:2 }}</dd>
+        </div>
+        {% endif %}
+      </dl>
+
+      <footer class="fund-tile__actions">
+        {% if row.slug %}
+        <a href="{% url 'crm:fund_detail' row.slug %}" class="btn btn-outline btn-sm"
+           hx-get="{% url 'crm:fund_detail' row.slug %}"
+           hx-target="#crm-main-content"
+           hx-select="#crm-main-content"
+           hx-swap="outerHTML"
+           hx-push-url="true">Open</a>
+        {% endif %}
+        {% if row.is_founder_pool %}
+        <button type="button" class="btn btn-primary btn-sm"
+                data-fund-modal-open="withdraw">Withdraw</button>
+        {% else %}
+        <a href="{% url 'crm:expense_list' %}?modal=expense&amp;funding={{ row.bucket.pk }}"
+           class="btn btn-primary btn-sm"
+           hx-get="{% url 'crm:expense_list' %}?modal=expense&amp;funding={{ row.bucket.pk }}"
+           hx-target="#crm-main-content"
+           hx-select="#crm-main-content"
+           hx-swap="outerHTML"
+           hx-push-url="true">Add Expense</a>
+        {% endif %}
+        <button type="button" class="btn btn-outline btn-sm"
+                data-fund-modal-open="transfer"
+                data-fund-prefill-from="{{ row.bucket.pk }}">Transfer</button>
+      </footer>
+    </article>
+    {% empty %}
+    <div class="card" style="padding:16px;grid-column:1/-1;">
+      No active funds. Configure Allocation Rules in Settings.
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+{% include "crm/finance/partials/_modal_fund_transfer.html" %}
+{% include "crm/finance/partials/_modal_fund_withdraw.html" %}
+{% include "crm/finance/partials/_fund_modal_styles.html" %}
+{% include "crm/billing/_billing_styles.html" %}
+{% endblock %}

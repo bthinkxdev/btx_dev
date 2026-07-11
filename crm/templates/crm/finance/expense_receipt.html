@@ -3,6 +3,7 @@
 {% block page_title %}Receipt{% endblock %}
 
 {% block content %}
+{% include "crm/finance/partials/_nav_meta.html" with crm_nav="finance-expense" %}
 <nav class="billing-breadcrumb" aria-label="Breadcrumb">
   <a href="{% url 'crm:finance_dashboard' %}"
      hx-get="{% url 'crm:finance_dashboard' %}"

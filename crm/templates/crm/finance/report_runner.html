@@ -3,6 +3,7 @@
 {% block page_title %}{{ report_title }}{% endblock %}
 
 {% block content %}
+{% include "crm/finance/partials/_nav_meta.html" with crm_nav="finance-reports" %}
 <nav class="billing-breadcrumb" aria-label="Breadcrumb">
   <a href="{% url 'crm:finance_dashboard' %}"
      hx-get="{% url 'crm:finance_dashboard' %}"
@@ -24,7 +25,7 @@
 <div class="page-header">
   <div>
     <h1>{{ report_title }}</h1>
-    <p>{{ period_label }} · {{ filter_start|date:"d M Y" }} – {{ filter_end|date:"d M Y" }}</p>
+    <p>{{ period_label }} · {{ filter_start|date:"d M Y" }} – {{ filter_end|date:"d M Y" }}{% if report_type == 'profit' %} · Profit = Income − Expense{% endif %}</p>
   </div>
   {% include "crm/finance/_report_export_bar.html" %}
 </div>
@@ -40,7 +41,7 @@
     </div>
     <div class="stat-body">
       <div class="stat-value">Rs. {{ income_total|floatformat:2 }}</div>
-      <div class="stat-label">Revenue</div>
+      <div class="stat-label">Income</div>
     </div>
   </div>
   <div class="stat-card">

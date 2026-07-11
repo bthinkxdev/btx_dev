@@ -1,0 +1,100 @@
+{% extends "crm/base.html" %}
+{% block title %}Categories{% endblock %}
+{% block page_title %}Categories{% endblock %}
+
+{% block content %}
+{% include "crm/finance/partials/_nav_meta.html" with crm_nav="finance-settings" %}
+<nav class="billing-breadcrumb" aria-label="Breadcrumb">
+  <a href="{% url 'crm:finance_dashboard' %}"
+     hx-get="{% url 'crm:finance_dashboard' %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">Finance</a>
+  <span class="billing-breadcrumb__sep">/</span>
+  <a href="{% url 'crm:finance_settings' %}"
+     hx-get="{% url 'crm:finance_settings' %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">Settings</a>
+  <span class="billing-breadcrumb__sep">/</span>
+  <span class="billing-breadcrumb__current">Categories</span>
+</nav>
+
+<div class="page-header">
+  <div>
+    <h1>Categories</h1>
+    <p>Income and expense categories used across Transactions.</p>
+  </div>
+</div>
+
+<div class="detail-grid">
+  <div class="card">
+    <div class="card-header"><div class="card-title">Income Categories</div></div>
+    <form method="post" action="{% url 'crm:finance_settings_categories' %}" style="margin-bottom:16px;"
+          hx-post="{% url 'crm:finance_settings_categories' %}"
+          hx-target="#crm-main-content"
+          hx-select="#crm-main-content"
+          hx-swap="outerHTML">
+      {% csrf_token %}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+        <div class="form-row">{{ income_form.name.label_tag }}{{ income_form.name }}</div>
+        <div class="form-row">{{ income_form.active.label_tag }}{{ income_form.active }}</div>
+        <button type="submit" name="save_income" value="1" class="btn btn-primary btn-sm">Add</button>
+      </div>
+    </form>
+    <table class="crm-table" style="width:100%;font-size:13px;">
+      <thead><tr><th>Name</th><th>Active</th><th></th></tr></thead>
+      <tbody>
+        {% for c in income_categories %}
+        <tr>
+          <td>{{ c.name }}</td>
+          <td>{% if c.active %}Yes{% else %}No{% endif %}</td>
+          <td>
+            <form method="post" action="{% url 'crm:finance_settings_categories' %}" style="margin:0;">
+              {% csrf_token %}
+              <button type="submit" name="toggle_income" value="{{ c.pk }}" class="btn btn-outline btn-sm">Toggle</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="card">
+    <div class="card-header"><div class="card-title">Expense Categories</div></div>
+    <form method="post" action="{% url 'crm:finance_settings_categories' %}" style="margin-bottom:16px;"
+          hx-post="{% url 'crm:finance_settings_categories' %}"
+          hx-target="#crm-main-content"
+          hx-select="#crm-main-content"
+          hx-swap="outerHTML">
+      {% csrf_token %}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+        <div class="form-row">{{ expense_form.name.label_tag }}{{ expense_form.name }}</div>
+        <div class="form-row">{{ expense_form.active.label_tag }}{{ expense_form.active }}</div>
+        <button type="submit" name="save_expense" value="1" class="btn btn-primary btn-sm">Add</button>
+      </div>
+    </form>
+    <table class="crm-table" style="width:100%;font-size:13px;">
+      <thead><tr><th>Name</th><th>Active</th><th></th></tr></thead>
+      <tbody>
+        {% for c in expense_categories %}
+        <tr>
+          <td>{{ c.name }}</td>
+          <td>{% if c.active %}Yes{% else %}No{% endif %}</td>
+          <td>
+            <form method="post" action="{% url 'crm:finance_settings_categories' %}" style="margin:0;">
+              {% csrf_token %}
+              <button type="submit" name="toggle_expense" value="{{ c.pk }}" class="btn btn-outline btn-sm">Toggle</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% include "crm/billing/_billing_styles.html" %}
+{% endblock %}

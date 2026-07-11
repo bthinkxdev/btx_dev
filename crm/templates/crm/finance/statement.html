@@ -1,0 +1,234 @@
+{% extends "crm/base.html" %}
+{% block title %}Finance Statement{% endblock %}
+{% block page_title %}Statement{% endblock %}
+
+{% block content %}
+{% include "crm/finance/partials/_nav_meta.html" with crm_nav="finance-statement" crm_page_title="Statement" %}
+<nav class="billing-breadcrumb" aria-label="Breadcrumb">
+  <a href="{% url 'crm:finance_dashboard' %}"
+     hx-get="{% url 'crm:finance_dashboard' %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">Finance</a>
+  <span class="billing-breadcrumb__sep">/</span>
+  <span class="billing-breadcrumb__current">Transactions</span>
+  <span class="billing-breadcrumb__sep">/</span>
+  <span class="billing-breadcrumb__current">Statement</span>
+</nav>
+
+<div class="page-header">
+  <div>
+    <h1>Statement</h1>
+    <p>
+      {{ period_label }} · {{ filter_start|date:"d M Y" }} – {{ filter_end|date:"d M Y" }}.
+      Opening + Income − Expense = Closing (same Income/Expense as Dashboard profit).
+    </p>
+  </div>
+  <div class="no-print" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+    <a href="{% url 'crm:income_list' %}" class="btn btn-outline btn-sm"
+       hx-get="{% url 'crm:income_list' %}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">Income</a>
+    <a href="{% url 'crm:expense_list' %}" class="btn btn-outline btn-sm"
+       hx-get="{% url 'crm:expense_list' %}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">Expenses</a>
+    <a class="btn btn-outline btn-sm"
+       href="{% url 'crm:finance_statement' %}?{% for key, value in request.GET.items %}{% if key != 'export' and key != 'page' %}{{ key }}={{ value|urlencode }}&amp;{% endif %}{% endfor %}export=csv">CSV</a>
+    <a class="btn btn-outline btn-sm"
+       href="{% url 'crm:finance_statement' %}?{% for key, value in request.GET.items %}{% if key != 'export' and key != 'page' %}{{ key }}={{ value|urlencode }}&amp;{% endif %}{% endfor %}export=xlsx">Excel</a>
+    <a class="btn btn-outline btn-sm"
+       href="{% url 'crm:finance_statement' %}?{% for key, value in request.GET.items %}{% if key != 'export' and key != 'page' %}{{ key }}={{ value|urlencode }}&amp;{% endif %}{% endfor %}export=pdf">PDF</a>
+    <a class="btn btn-outline btn-sm"
+       href="{% url 'crm:finance_statement' %}?{% for key, value in request.GET.items %}{% if key != 'export' and key != 'page' %}{{ key }}={{ value|urlencode }}&amp;{% endif %}{% endfor %}export=print"
+       target="_blank" rel="noopener">Print</a>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:20px;">
+  <form method="get" action="{% url 'crm:finance_statement' %}"
+        style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;"
+        hx-get="{% url 'crm:finance_statement' %}"
+        hx-target="#crm-main-content"
+        hx-select="#crm-main-content"
+        hx-swap="outerHTML"
+        hx-push-url="true"
+        id="finance-statement-filters">
+    <div class="form-row">{{ filter_form.period.label_tag }}{{ filter_form.period }}</div>
+    <div class="form-row">{{ filter_form.date_from.label_tag }}{{ filter_form.date_from }}</div>
+    <div class="form-row">{{ filter_form.date_to.label_tag }}{{ filter_form.date_to }}</div>
+    <div class="form-row">{{ filter_form.project.label_tag }}{{ filter_form.project }}</div>
+    <div class="form-row">{{ filter_form.client.label_tag }}{{ filter_form.client }}</div>
+    <div class="form-row">{{ filter_form.income_category.label_tag }}{{ filter_form.income_category }}</div>
+    <div class="form-row">{{ filter_form.expense_category.label_tag }}{{ filter_form.expense_category }}</div>
+    <div class="form-row">{{ filter_form.q.label_tag }}{{ filter_form.q }}</div>
+    <div class="form-row">{{ filter_form.sort.label_tag }}{{ filter_form.sort }}</div>
+    <button type="submit" class="btn btn-primary">Apply</button>
+    <a href="{% url 'crm:finance_statement' %}" class="btn btn-outline"
+       hx-get="{% url 'crm:finance_statement' %}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">Reset</a>
+  </form>
+</div>
+
+<div class="stat-grid" style="margin-bottom:20px;">
+  <div class="stat-card">
+    <div class="stat-icon indigo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">Rs. {{ opening_balance|floatformat:2 }}</div>
+      <div class="stat-label">Opening Balance</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon green">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">Rs. {{ income_total|floatformat:2 }}</div>
+      <div class="stat-label">Total Income</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon amber">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">Rs. {{ expense_total|floatformat:2 }}</div>
+      <div class="stat-label">Total Expense</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon {% if net_change >= 0 %}green{% else %}amber{% endif %}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-6"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">Rs. {{ net_change|floatformat:2 }}</div>
+      <div class="stat-label">Net Change</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon {% if closing_balance >= 0 %}green{% else %}amber{% endif %}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+      </svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">Rs. {{ closing_balance|floatformat:2 }}</div>
+      <div class="stat-label">Closing Balance</div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div>
+      <div class="card-title">Transactions</div>
+      <div class="card-subtitle">{{ row_count }} entr{{ row_count|pluralize:"y,ies" }} · Running balance after each line</div>
+    </div>
+  </div>
+  <div class="table-wrap" style="overflow-x:auto;">
+    <table class="crm-table" style="width:100%;font-size:13px;">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Client</th>
+          <th>Project</th>
+          <th>Category</th>
+          <th>Reference</th>
+          <th style="text-align:right;">Credit</th>
+          <th style="text-align:right;">Debit</th>
+          <th style="text-align:right;">Running Balance</th>
+          <th>Created By</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in page_obj %}
+        <tr>
+          <td style="white-space:nowrap;">{{ row.txn_date|date:"d M Y" }}</td>
+          <td>
+            {% if row.txn_type == 'income' %}
+            <span class="crm-badge crm-badge--green">Income</span>
+            {% else %}
+            <span class="crm-badge crm-badge--orange">Expense</span>
+            {% endif %}
+          </td>
+          <td>{{ row.description|truncatechars:40 }}</td>
+          <td>{{ row.client|truncatechars:22 }}</td>
+          <td>
+            {% if row.project_id %}
+            <a href="{% url 'crm:project_detail' row.project_id %}"
+               hx-get="{% url 'crm:project_detail' row.project_id %}"
+               hx-target="#crm-main-content"
+               hx-select="#crm-main-content"
+               hx-swap="outerHTML"
+               hx-push-url="true">#{{ row.project_id }}</a>
+            {% else %}—{% endif %}
+          </td>
+          <td>{{ row.category }}</td>
+          <td>{{ row.reference|truncatechars:20 }}</td>
+          <td style="text-align:right;color:var(--success-600);font-weight:600;white-space:nowrap;">
+            {% if row.credit %}Rs. {{ row.credit|floatformat:2 }}{% else %}—{% endif %}
+          </td>
+          <td style="text-align:right;color:var(--warning-600);font-weight:600;white-space:nowrap;">
+            {% if row.debit %}Rs. {{ row.debit|floatformat:2 }}{% else %}—{% endif %}
+          </td>
+          <td style="text-align:right;font-weight:700;white-space:nowrap;">
+            Rs. {{ row.running_balance|floatformat:2 }}
+          </td>
+          <td>{{ row.created_by }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="11">No transactions match your filters for this period.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if page_obj.paginator.num_pages > 1 %}
+  <div style="display:flex;gap:8px;justify-content:flex-end;padding:12px 0 4px;flex-wrap:wrap;">
+    {% if page_obj.has_previous %}
+    <a class="btn btn-outline btn-sm"
+       href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value|urlencode }}&amp;{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}"
+       hx-get="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value|urlencode }}&amp;{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">Previous</a>
+    {% endif %}
+    <span class="stat-label" style="align-self:center;">
+      Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+    </span>
+    {% if page_obj.has_next %}
+    <a class="btn btn-outline btn-sm"
+       href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value|urlencode }}&amp;{% endif %}{% endfor %}page={{ page_obj.next_page_number }}"
+       hx-get="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value|urlencode }}&amp;{% endif %}{% endfor %}page={{ page_obj.next_page_number }}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">Next</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+
+{% include "crm/billing/_billing_styles.html" %}
+{% endblock %}

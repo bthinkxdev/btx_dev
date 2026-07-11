@@ -1,0 +1,88 @@
+<dialog id="fund-modal-withdraw"
+        class="billing-modal"
+        aria-labelledby="fund-modal-withdraw-title"
+        data-founder-balances="{{ founder_balance_json }}"
+        data-pool-remaining="{{ founder_pool_remaining|default:'0' }}">
+  <div class="billing-modal__inner">
+    <header class="billing-modal__head">
+      <div class="billing-modal__head-text">
+        <h2 id="fund-modal-withdraw-title">Founder Withdrawal</h2>
+        <p>Select a founder account, then withdraw from their Founder Pool share.</p>
+      </div>
+      <button type="button" class="billing-modal__close" data-fund-modal-close aria-label="Close">&times;</button>
+    </header>
+
+    {% if founder_withdrawal_form.errors %}
+    <div class="billing-modal-error" role="alert">
+      <strong>Fix these before saving</strong>
+      <ul>
+        {% for err in founder_withdrawal_form.non_field_errors %}<li>{{ err }}</li>{% endfor %}
+        {% for field in founder_withdrawal_form %}
+          {% for err in field.errors %}<li>{{ field.label }}: {{ err }}</li>{% endfor %}
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    <div class="fund-modal-balance" data-fund-balance-panel>
+      <div>
+        <div class="fund-modal-balance__label">Founder available</div>
+        <div class="fund-modal-balance__value" data-fund-available-display>Rs. —</div>
+      </div>
+      <div>
+        <div class="fund-modal-balance__label">Founder Pool remaining</div>
+        <div class="fund-modal-balance__value" data-pool-remaining-display>Rs. {{ founder_pool_remaining|floatformat:2 }}</div>
+      </div>
+        <p class="fund-modal-balance__hint" data-fund-balance-hint>Select a founder account to see available balance.</p>
+      <p class="fund-modal-balance__hint fund-modal-balance__hint--warn" data-fund-balance-warn hidden>
+        Amount cannot exceed available balance.
+      </p>
+    </div>
+
+    <form method="post"
+          action="{% url 'crm:founder_withdrawal_create' %}"
+          class="billing-modal__form"
+          data-fund-modal-form="withdraw"
+          hx-post="{% url 'crm:founder_withdrawal_create' %}"
+          hx-target="#crm-main-content"
+          hx-select="#crm-main-content"
+          hx-swap="outerHTML">
+      {% csrf_token %}
+      <input type="hidden" name="return_to" value="{{ fund_modal_return_to|default:'detail' }}">
+      <input type="hidden" name="return_slug" value="{{ fund_slug|default:'founder-pool' }}">
+
+      <div class="billing-modal__grid">
+        <div class="billing-field billing-field--full {% if founder_withdrawal_form.founder.errors %}billing-field--error{% endif %}">
+          <label for="{{ founder_withdrawal_form.founder.id_for_label }}">{{ founder_withdrawal_form.founder.label }}</label>
+          {{ founder_withdrawal_form.founder }}
+          {% for e in founder_withdrawal_form.founder.errors %}<span class="billing-field-error">{{ e }}</span>{% endfor %}
+        </div>
+        <div class="billing-field {% if founder_withdrawal_form.amount.errors %}billing-field--error{% endif %}">
+          <label for="{{ founder_withdrawal_form.amount.id_for_label }}">{{ founder_withdrawal_form.amount.label }}</label>
+          {{ founder_withdrawal_form.amount }}
+          {% for e in founder_withdrawal_form.amount.errors %}<span class="billing-field-error">{{ e }}</span>{% endfor %}
+        </div>
+        <div class="billing-field {% if founder_withdrawal_form.withdrawal_date.errors %}billing-field--error{% endif %}">
+          <label for="{{ founder_withdrawal_form.withdrawal_date.id_for_label }}">{{ founder_withdrawal_form.withdrawal_date.label }}</label>
+          {{ founder_withdrawal_form.withdrawal_date }}
+          {% for e in founder_withdrawal_form.withdrawal_date.errors %}<span class="billing-field-error">{{ e }}</span>{% endfor %}
+        </div>
+        <div class="billing-field billing-field--full {% if founder_withdrawal_form.reference.errors %}billing-field--error{% endif %}">
+          <label for="{{ founder_withdrawal_form.reference.id_for_label }}">{{ founder_withdrawal_form.reference.label }}</label>
+          {{ founder_withdrawal_form.reference }}
+          {% for e in founder_withdrawal_form.reference.errors %}<span class="billing-field-error">{{ e }}</span>{% endfor %}
+        </div>
+        <div class="billing-field billing-field--full {% if founder_withdrawal_form.notes.errors %}billing-field--error{% endif %}">
+          <label for="{{ founder_withdrawal_form.notes.id_for_label }}">{{ founder_withdrawal_form.notes.label }}</label>
+          {{ founder_withdrawal_form.notes }}
+          {% for e in founder_withdrawal_form.notes.errors %}<span class="billing-field-error">{{ e }}</span>{% endfor %}
+        </div>
+      </div>
+
+      <footer class="billing-modal__foot">
+        <button type="button" class="btn btn-outline" data-fund-modal-close>Cancel</button>
+        <button type="submit" class="btn btn-primary" data-fund-submit>Save withdrawal</button>
+      </footer>
+    </form>
+  </div>
+</dialog>

@@ -15,8 +15,14 @@ from .models import (
     Expense,
     ExpenseCategory,
     FollowUp,
+    Founder,
+    FounderShareAllocation,
+    FounderWithdrawal,
+    FundTransfer,
+    FundUsage,
     HandoverPortalAccess,
     Income,
+    IncomeAllocation,
     IncomeCategory,
     LedgerEntry,
     Lead,
@@ -35,6 +41,7 @@ from .models import (
     ProvisioningStep,
     RenewalReminderLog,
     RenewalTracker,
+    RevenueAllocationBucket,
     Task,
     WhatsAppBotExcludePhone,
     WhatsAppConversation,
@@ -445,6 +452,7 @@ class ExpenseAdmin(admin.ModelAdmin):
         'amount',
         'category',
         'vendor',
+        'funding_bucket',
         'project',
         'employee',
         'payment_method',
@@ -452,10 +460,82 @@ class ExpenseAdmin(admin.ModelAdmin):
         'created_by',
         'created_at',
     )
-    list_filter = ('payment_method', 'category', 'expense_date')
+    list_filter = ('payment_method', 'category', 'funding_bucket', 'expense_date')
     search_fields = ('vendor', 'notes', 'paid_from', 'project__client__business_name')
-    autocomplete_fields = ('project', 'employee', 'category', 'created_by')
+    autocomplete_fields = ('project', 'employee', 'category', 'funding_bucket', 'created_by')
     date_hierarchy = 'expense_date'
+
+
+@admin.register(RevenueAllocationBucket)
+class RevenueAllocationBucketAdmin(admin.ModelAdmin):
+    list_display = ('name', 'code', 'percentage', 'color', 'display_order', 'active', 'usage_label')
+    list_editable = ('percentage', 'display_order', 'active')
+    list_filter = ('active',)
+    search_fields = ('name', 'code')
+
+
+@admin.register(IncomeAllocation)
+class IncomeAllocationAdmin(admin.ModelAdmin):
+    list_display = ('income', 'bucket', 'percentage', 'amount', 'created_at')
+    list_filter = ('bucket',)
+    search_fields = ('income__reference', 'bucket__name')
+    autocomplete_fields = ('income', 'bucket')
+
+
+@admin.register(FundUsage)
+class FundUsageAdmin(admin.ModelAdmin):
+    """Historical Record Usage rows — create is retired; keep for balance history."""
+    list_display = ('usage_date', 'bucket', 'amount', 'project', 'created_by', 'created_at')
+    list_filter = ('bucket', 'usage_date')
+    search_fields = ('notes',)
+    autocomplete_fields = ('bucket', 'project', 'created_by')
+    date_hierarchy = 'usage_date'
+    readonly_fields = (
+        'bucket', 'amount', 'usage_date', 'notes', 'project', 'created_by', 'created_at',
+    )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(Founder)
+class FounderAdmin(admin.ModelAdmin):
+    list_display = ('name', 'percentage', 'active', 'display_order', 'user')
+    list_editable = ('percentage', 'active', 'display_order')
+    list_filter = ('active',)
+    search_fields = ('name',)
+
+
+@admin.register(FounderShareAllocation)
+class FounderShareAllocationAdmin(admin.ModelAdmin):
+    list_display = ('income', 'founder', 'percentage', 'amount', 'created_at')
+    list_filter = ('founder',)
+    autocomplete_fields = ('income', 'income_allocation', 'founder')
+
+
+@admin.register(FounderWithdrawal)
+class FounderWithdrawalAdmin(admin.ModelAdmin):
+    list_display = (
+        'withdrawal_date', 'founder', 'amount', 'reference', 'created_by', 'created_at'
+    )
+    list_filter = ('founder', 'withdrawal_date')
+    search_fields = ('reference', 'notes')
+    autocomplete_fields = ('founder', 'created_by')
+    date_hierarchy = 'withdrawal_date'
+
+
+@admin.register(FundTransfer)
+class FundTransferAdmin(admin.ModelAdmin):
+    list_display = (
+        'transfer_date', 'from_bucket', 'to_bucket', 'amount', 'reason', 'created_by'
+    )
+    list_filter = ('from_bucket', 'to_bucket', 'transfer_date')
+    search_fields = ('reason',)
+    autocomplete_fields = ('from_bucket', 'to_bucket', 'created_by')
+    date_hierarchy = 'transfer_date'
 
 
 @admin.register(ChangeRequest)

@@ -2159,6 +2159,14 @@ class Expense(models.Model):
         blank=True,
         help_text='Account / wallet the money was paid from',
     )
+    funding_bucket = models.ForeignKey(
+        'RevenueAllocationBucket',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='funded_expenses',
+        help_text='Internal fund this expense draws from (blank = Other)',
+    )
     payment_method = models.CharField(
         max_length=20,
         choices=PaymentMethod.choices,
@@ -2198,3 +2206,276 @@ class Expense(models.Model):
     def receipt_is_image(self) -> bool:
         name = (self.receipt.name or '').lower()
         return name.endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp'))
+
+
+class RevenueAllocationBucket(models.Model):
+    """
+    Configurable revenue split target (management funds — not accounting).
+    Active buckets' percentages must total 100%.
+    """
+
+    class UsageLabel(models.TextChoices):
+        USED = 'used', 'Used'
+        PAID = 'paid', 'Paid'
+        SPENT = 'spent', 'Spent'
+
+    class Code(models.TextChoices):
+        FOUNDER_POOL = 'founder_pool', 'Founder Pool'
+        SALES_COMMISSION = 'sales_commission', 'Sales Commission'
+        OPERATIONS = 'operations', 'Operations'
+        COMPANY_SAVINGS = 'company_savings', 'Company Savings'
+
+    name = models.CharField(max_length=120, unique=True)
+    code = models.CharField(
+        max_length=40,
+        blank=True,
+        db_index=True,
+        help_text='Stable key for funding source / founder pool wiring',
+    )
+    percentage = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        help_text='Share of each income (active buckets must total 100%)',
+    )
+    color = models.CharField(
+        max_length=7,
+        default='#4f46e5',
+        help_text='Hex colour for charts/cards, e.g. #4f46e5',
+    )
+    display_order = models.PositiveIntegerField(default=0, db_index=True)
+    active = models.BooleanField(default=True, db_index=True)
+    usage_label = models.CharField(
+        max_length=10,
+        choices=UsageLabel.choices,
+        default=UsageLabel.USED,
+        help_text='Wording on dashboard: Used / Paid / Spent',
+    )
+
+    class Meta:
+        ordering = ['display_order', 'name']
+        verbose_name = 'Revenue allocation bucket'
+        verbose_name_plural = 'Revenue allocation buckets'
+
+    def __str__(self):
+        return f'{self.name} ({self.percentage}%)'
+
+
+class IncomeAllocation(models.Model):
+    """
+    One split line for an Income into a RevenueAllocationBucket.
+    Recreated when income amount changes; unique per (income, bucket).
+    """
+
+    income = models.ForeignKey(
+        Income,
+        on_delete=models.CASCADE,
+        related_name='allocations',
+    )
+    bucket = models.ForeignKey(
+        RevenueAllocationBucket,
+        on_delete=models.PROTECT,
+        related_name='income_allocations',
+    )
+    percentage = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        help_text='Percentage applied at allocation time (snapshot)',
+    )
+    amount = models.DecimalField(max_digits=14, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['bucket__display_order', 'id']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['income', 'bucket'],
+                name='uniq_income_allocation_bucket',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['bucket', 'created_at']),
+        ]
+
+    def __str__(self):
+        return f'{self.bucket.name}: {self.amount} ← Income #{self.income_id}'
+
+
+class FundUsage(models.Model):
+    """
+    Legacy pot draw (retired for new creates).
+
+    Historical rows still reduce fund remaining via bucket_balance.
+    New draws: Expense.funding_bucket (or FounderWithdrawal for Founder Pool).
+    """
+
+    bucket = models.ForeignKey(
+        RevenueAllocationBucket,
+        on_delete=models.PROTECT,
+        related_name='usages',
+    )
+    amount = models.DecimalField(max_digits=14, decimal_places=2)
+    usage_date = models.DateField(default=timezone.localdate, db_index=True)
+    notes = models.CharField(max_length=255, blank=True)
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='fund_usages',
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_fund_usages',
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-usage_date', '-created_at']
+        indexes = [
+            models.Index(fields=['bucket', 'usage_date']),
+        ]
+
+    def __str__(self):
+        return f'{self.bucket.name}: {self.amount} ({self.usage_date})'
+
+
+class Founder(models.Model):
+    """Business founder — share of the Founder Pool (management, not equity ledger)."""
+
+    name = models.CharField(max_length=120)
+    percentage = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        help_text='Share of Founder Pool (active founders should total 100%)',
+    )
+    active = models.BooleanField(default=True, db_index=True)
+    display_order = models.PositiveIntegerField(default=0)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='founder_profiles',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['display_order', 'name']
+
+    def __str__(self):
+        return f'{self.name} ({self.percentage}%)'
+
+
+class FounderShareAllocation(models.Model):
+    """
+    Founder's slice of an IncomeAllocation into the Founder Pool.
+    Recreated whenever income allocations are synced.
+    """
+
+    income = models.ForeignKey(
+        Income,
+        on_delete=models.CASCADE,
+        related_name='founder_shares',
+    )
+    income_allocation = models.ForeignKey(
+        IncomeAllocation,
+        on_delete=models.CASCADE,
+        related_name='founder_shares',
+    )
+    founder = models.ForeignKey(
+        Founder,
+        on_delete=models.PROTECT,
+        related_name='share_allocations',
+    )
+    percentage = models.DecimalField(max_digits=6, decimal_places=2)
+    amount = models.DecimalField(max_digits=14, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['founder__display_order', 'id']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['income', 'founder'],
+                name='uniq_founder_share_per_income',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['founder', 'created_at']),
+        ]
+
+    def __str__(self):
+        return f'{self.founder.name}: {self.amount} ← Income #{self.income_id}'
+
+
+class FounderWithdrawal(models.Model):
+    """Partial or full withdrawal from a founder's available Founder Pool share."""
+
+    founder = models.ForeignKey(
+        Founder,
+        on_delete=models.PROTECT,
+        related_name='withdrawals',
+    )
+    amount = models.DecimalField(max_digits=14, decimal_places=2)
+    withdrawal_date = models.DateField(default=timezone.localdate, db_index=True)
+    reference = models.CharField(max_length=120, blank=True)
+    notes = models.TextField(blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_founder_withdrawals',
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-withdrawal_date', '-created_at']
+        indexes = [
+            models.Index(fields=['founder', 'withdrawal_date']),
+        ]
+
+    def __str__(self):
+        return f'{self.founder.name} withdrew {self.amount} ({self.withdrawal_date})'
+
+
+class FundTransfer(models.Model):
+    """Internal move between revenue allocation funds (management cashbook)."""
+
+    from_bucket = models.ForeignKey(
+        RevenueAllocationBucket,
+        on_delete=models.PROTECT,
+        related_name='transfers_out',
+    )
+    to_bucket = models.ForeignKey(
+        RevenueAllocationBucket,
+        on_delete=models.PROTECT,
+        related_name='transfers_in',
+    )
+    amount = models.DecimalField(max_digits=14, decimal_places=2)
+    transfer_date = models.DateField(default=timezone.localdate, db_index=True)
+    reason = models.CharField(max_length=255, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_fund_transfers',
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-transfer_date', '-created_at']
+        indexes = [
+            models.Index(fields=['from_bucket', 'transfer_date']),
+            models.Index(fields=['to_bucket', 'transfer_date']),
+        ]
+
+    def __str__(self):
+        return (
+            f'{self.from_bucket.name} → {self.to_bucket.name}: '
+            f'{self.amount} ({self.transfer_date})'
+        )

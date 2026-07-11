@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Finance Statement · {{ filter_start }} – {{ filter_end }}</title>
+  <style>
+    body { font-family: Georgia, 'Times New Roman', serif; color: #0f172a; margin: 24px; font-size: 12px; }
+    h1 { font-size: 20px; margin: 0 0 2px; letter-spacing: -0.02em; }
+    .brand { font-size: 11px; color: #64748b; margin-bottom: 12px; }
+    .meta { color: #64748b; margin-bottom: 16px; }
+    .kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 18px; }
+    .kpi { border: 1px solid #e2e8f0; padding: 10px; border-radius: 4px; }
+    .kpi span { display: block; font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em; }
+    .kpi strong { font-size: 14px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #e2e8f0; padding: 5px 6px; text-align: left; vertical-align: top; }
+    th { background: #0f172a; color: #fff; font-size: 10px; text-transform: uppercase; letter-spacing: 0.03em; }
+    td.num, th.num { text-align: right; white-space: nowrap; }
+    tr:nth-child(even) td { background: #f8fafc; }
+    .foot { margin-top: 14px; color: #64748b; font-size: 10px; }
+    .credit { color: #059669; }
+    .debit { color: #d97706; }
+    @media print {
+      .no-print { display: none !important; }
+      body { margin: 10mm; }
+    }
+  </style>
+</head>
+<body>
+  <div class="no-print" style="margin-bottom:14px;">
+    <button type="button" onclick="window.print()">Print</button>
+    <a href="{% url 'crm:finance_statement' %}">Back to statement</a>
+  </div>
+
+  <div class="brand">BThinkX · Management Finance</div>
+  <h1>Finance Statement</h1>
+  <div class="meta">{{ period_label }} · {{ filter_start|date:"d M Y" }} – {{ filter_end|date:"d M Y" }}</div>
+
+  <div class="kpis">
+    <div class="kpi"><span>Opening</span><strong>Rs. {{ opening_balance|floatformat:2 }}</strong></div>
+    <div class="kpi"><span>Income</span><strong>Rs. {{ income_total|floatformat:2 }}</strong></div>
+    <div class="kpi"><span>Expense</span><strong>Rs. {{ expense_total|floatformat:2 }}</strong></div>
+    <div class="kpi"><span>Net Change</span><strong>Rs. {{ net_change|floatformat:2 }}</strong></div>
+    <div class="kpi"><span>Closing</span><strong>Rs. {{ closing_balance|floatformat:2 }}</strong></div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Type</th>
+        <th>Description</th>
+        <th>Client</th>
+        <th>Project</th>
+        <th>Category</th>
+        <th>Reference</th>
+        <th class="num">Credit</th>
+        <th class="num">Debit</th>
+        <th class="num">Balance</th>
+        <th>By</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in export_rows %}
+      <tr>
+        <td>{{ row.txn_date|date:"d M Y" }}</td>
+        <td>{% if row.txn_type == 'income' %}Income{% else %}Expense{% endif %}</td>
+        <td>{{ row.description }}</td>
+        <td>{{ row.client }}</td>
+        <td>{% if row.project_id %}#{{ row.project_id }}{% else %}—{% endif %}</td>
+        <td>{{ row.category }}</td>
+        <td>{{ row.reference }}</td>
+        <td class="num credit">{% if row.credit %}{{ row.credit|floatformat:2 }}{% endif %}</td>
+        <td class="num debit">{% if row.debit %}{{ row.debit|floatformat:2 }}{% endif %}</td>
+        <td class="num">{{ row.running_balance|floatformat:2 }}</td>
+        <td>{{ row.created_by }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="11">No transactions.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <p class="foot">
+    Opening + Income − Expense = Closing.
+    Running balance is chronological regardless of display sort.
+    {% if detail_note %}{{ detail_note }}{% endif %}
+  </p>
+
+  <script>window.addEventListener('load', function () { window.print(); });</script>
+</body>
+</html>

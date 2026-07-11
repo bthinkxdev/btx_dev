@@ -362,9 +362,13 @@
   }
   .billing-empty-state p { margin: 0 0 14px; }
 
-  /* Payment modal — hide when closed (never use HTML open= without showModal) */
+  /* Payment / finance modals — hide when closed (never use HTML open= without showModal) */
   .billing-modal:not([open]) {
     display: none !important;
+  }
+  .billing-modal[open] {
+    display: flex !important;
+    flex-direction: column;
   }
   .billing-modal {
     border: none;

@@ -3,6 +3,7 @@
 {% block page_title %}Project Finance{% endblock %}
 
 {% block content %}
+{% include "crm/finance/partials/_nav_meta.html" with crm_nav="finance-reports" %}
 <nav class="billing-breadcrumb" aria-label="Breadcrumb">
   <a href="{% url 'crm:projects' %}"
      hx-get="{% url 'crm:projects' %}"
@@ -35,14 +36,14 @@
        hx-select="#crm-main-content"
        hx-swap="outerHTML"
        hx-push-url="true">Client Finance</a>
-    <a href="{% url 'crm:income_create' %}?project={{ project.pk }}" class="btn btn-primary btn-sm"
-       hx-get="{% url 'crm:income_create' %}?project={{ project.pk }}"
+    <a href="{% url 'crm:income_list' %}?modal=income&amp;project={{ project.pk }}" class="btn btn-primary btn-sm"
+       hx-get="{% url 'crm:income_list' %}?modal=income&amp;project={{ project.pk }}"
        hx-target="#crm-main-content"
        hx-select="#crm-main-content"
        hx-swap="outerHTML"
        hx-push-url="true">Add Income</a>
-    <a href="{% url 'crm:expense_create' %}?project={{ project.pk }}" class="btn btn-outline btn-sm"
-       hx-get="{% url 'crm:expense_create' %}?project={{ project.pk }}"
+    <a href="{% url 'crm:expense_list' %}?modal=expense&amp;project={{ project.pk }}" class="btn btn-outline btn-sm"
+       hx-get="{% url 'crm:expense_list' %}?modal=expense&amp;project={{ project.pk }}"
        hx-target="#crm-main-content"
        hx-select="#crm-main-content"
        hx-swap="outerHTML"

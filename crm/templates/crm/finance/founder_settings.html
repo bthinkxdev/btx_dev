@@ -1,0 +1,86 @@
+{% extends "crm/base.html" %}
+{% block title %}Founder Settings{% endblock %}
+{% block page_title %}Founder Settings{% endblock %}
+
+{% block content %}
+{% include "crm/finance/partials/_nav_meta.html" with crm_nav="finance-settings" %}
+<nav class="billing-breadcrumb" aria-label="Breadcrumb">
+  <a href="{% url 'crm:finance_dashboard' %}"
+     hx-get="{% url 'crm:finance_dashboard' %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">Finance</a>
+  <span class="billing-breadcrumb__sep">/</span>
+  <a href="{% url 'crm:finance_settings' %}"
+     hx-get="{% url 'crm:finance_settings' %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">Settings</a>
+  <span class="billing-breadcrumb__sep">/</span>
+  <span class="billing-breadcrumb__current">Founders</span>
+</nav>
+
+<div class="page-header">
+  <div>
+    <h1>Founder Settings</h1>
+    <p>Founder Pool allocations are split by these percentages. Active founders should total <strong>100%</strong>.</p>
+  </div>
+  <div>
+    {% if founders_ok %}
+    <span class="crm-badge crm-badge--green">Active total {{ founders_pct_total }}%</span>
+    {% else %}
+    <span class="crm-badge crm-badge--orange">Active total {{ founders_pct_total }}% — need 100%</span>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <form method="post" action="{% url 'crm:founder_settings' %}"
+        hx-post="{% url 'crm:founder_settings' %}"
+        hx-target="#crm-main-content"
+        hx-select="#crm-main-content"
+        hx-swap="outerHTML">
+    {% csrf_token %}
+    {{ formset.management_form }}
+    <div class="table-wrap" style="overflow-x:auto;">
+      <table class="crm-table" style="width:100%;font-size:13px;">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Percentage</th>
+            <th>Order</th>
+            <th>Active</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for form in formset %}
+          <tr>
+            {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+            <td>{{ form.name }}{{ form.name.errors }}</td>
+            <td>{{ form.percentage }}{{ form.percentage.errors }}</td>
+            <td>{{ form.display_order }}{{ form.display_order.errors }}</td>
+            <td>{{ form.active }}{{ form.active.errors }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if formset.non_form_errors %}
+    <div style="margin-top:12px;color:var(--danger-700);">{{ formset.non_form_errors }}</div>
+    {% endif %}
+    <div style="display:flex;gap:8px;margin-top:16px;">
+      <button type="submit" class="btn btn-primary">Save</button>
+      <a href="{% url 'crm:fund_detail' 'founder-pool' %}" class="btn btn-outline"
+         hx-get="{% url 'crm:fund_detail' 'founder-pool' %}"
+         hx-target="#crm-main-content"
+         hx-select="#crm-main-content"
+         hx-swap="outerHTML"
+         hx-push-url="true">Cancel</a>
+    </div>
+  </form>
+</div>
+
+{% include "crm/billing/_billing_styles.html" %}
+{% endblock %}

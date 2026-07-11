@@ -3,6 +3,7 @@
 {% block page_title %}Client Finance{% endblock %}
 
 {% block content %}
+{% include "crm/finance/partials/_nav_meta.html" with crm_nav="finance-reports" %}
 <nav class="billing-breadcrumb" aria-label="Breadcrumb">
   <a href="{% url 'crm:projects' %}"
      hx-get="{% url 'crm:projects' %}"

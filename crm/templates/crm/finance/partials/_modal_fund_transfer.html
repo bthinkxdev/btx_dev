@@ -1,0 +1,87 @@
+<dialog id="fund-modal-transfer"
+        class="billing-modal"
+        aria-labelledby="fund-modal-transfer-title"
+        data-fund-balances="{{ fund_balance_json }}">
+  <script type="application/json" data-fund-balances-json>{{ fund_balance_json|safe }}</script>
+  <div class="billing-modal__inner">
+    <header class="billing-modal__head">
+      <div class="billing-modal__head-text">
+        <h2 id="fund-modal-transfer-title">Transfer Money</h2>
+        <p>Move money between funds. Source must have enough remaining balance.</p>
+      </div>
+      <button type="button" class="billing-modal__close" data-fund-modal-close aria-label="Close">&times;</button>
+    </header>
+
+    {% if fund_transfer_form.errors %}
+    <div class="billing-modal-error" role="alert">
+      <strong>Fix these before saving</strong>
+      <ul>
+        {% for err in fund_transfer_form.non_field_errors %}<li>{{ err }}</li>{% endfor %}
+        {% for field in fund_transfer_form %}
+          {% for err in field.errors %}<li>{{ field.label }}: {{ err }}</li>{% endfor %}
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    <div class="fund-modal-balance" data-fund-balance-panel>
+      <div>
+        <div class="fund-modal-balance__label">Available in From fund</div>
+        <div class="fund-modal-balance__value" data-fund-available-display>Rs. —</div>
+      </div>
+      <p class="fund-modal-balance__hint" data-fund-balance-hint>Select a source fund to see available balance.</p>
+      <p class="fund-modal-balance__hint fund-modal-balance__hint--warn" data-fund-balance-warn hidden>
+        Amount cannot exceed available balance.
+      </p>
+      <p class="fund-modal-balance__hint fund-modal-balance__hint--warn" data-fund-same-fund-warn hidden>
+        Cannot transfer a fund to itself.
+      </p>
+    </div>
+
+    <form method="post"
+          action="{% url 'crm:fund_transfer_create' %}"
+          class="billing-modal__form"
+          data-fund-modal-form="transfer"
+          hx-post="{% url 'crm:fund_transfer_create' %}"
+          hx-target="#crm-main-content"
+          hx-select="#crm-main-content"
+          hx-swap="outerHTML">
+      {% csrf_token %}
+      <input type="hidden" name="return_to" value="{{ fund_modal_return_to|default:'overview' }}">
+      <input type="hidden" name="return_slug" value="{{ fund_slug|default:'' }}">
+
+      <div class="billing-modal__grid">
+        <div class="billing-field {% if fund_transfer_form.from_bucket.errors %}billing-field--error{% endif %}">
+          <label for="{{ fund_transfer_form.from_bucket.id_for_label }}">{{ fund_transfer_form.from_bucket.label }}</label>
+          {{ fund_transfer_form.from_bucket }}
+          {% for e in fund_transfer_form.from_bucket.errors %}<span class="billing-field-error">{{ e }}</span>{% endfor %}
+        </div>
+        <div class="billing-field {% if fund_transfer_form.to_bucket.errors %}billing-field--error{% endif %}">
+          <label for="{{ fund_transfer_form.to_bucket.id_for_label }}">{{ fund_transfer_form.to_bucket.label }}</label>
+          {{ fund_transfer_form.to_bucket }}
+          {% for e in fund_transfer_form.to_bucket.errors %}<span class="billing-field-error">{{ e }}</span>{% endfor %}
+        </div>
+        <div class="billing-field {% if fund_transfer_form.amount.errors %}billing-field--error{% endif %}">
+          <label for="{{ fund_transfer_form.amount.id_for_label }}">{{ fund_transfer_form.amount.label }}</label>
+          {{ fund_transfer_form.amount }}
+          {% for e in fund_transfer_form.amount.errors %}<span class="billing-field-error">{{ e }}</span>{% endfor %}
+        </div>
+        <div class="billing-field {% if fund_transfer_form.transfer_date.errors %}billing-field--error{% endif %}">
+          <label for="{{ fund_transfer_form.transfer_date.id_for_label }}">{{ fund_transfer_form.transfer_date.label }}</label>
+          {{ fund_transfer_form.transfer_date }}
+          {% for e in fund_transfer_form.transfer_date.errors %}<span class="billing-field-error">{{ e }}</span>{% endfor %}
+        </div>
+        <div class="billing-field billing-field--full {% if fund_transfer_form.reason.errors %}billing-field--error{% endif %}">
+          <label for="{{ fund_transfer_form.reason.id_for_label }}">{{ fund_transfer_form.reason.label }}</label>
+          {{ fund_transfer_form.reason }}
+          {% for e in fund_transfer_form.reason.errors %}<span class="billing-field-error">{{ e }}</span>{% endfor %}
+        </div>
+      </div>
+
+      <footer class="billing-modal__foot">
+        <button type="button" class="btn btn-outline" data-fund-modal-close>Cancel</button>
+        <button type="submit" class="btn btn-primary" data-fund-submit>Transfer</button>
+      </footer>
+    </form>
+  </div>
+</dialog>

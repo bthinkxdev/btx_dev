@@ -1,8 +1,9 @@
 {% extends "crm/base.html" %}
 {% block title %}Finance Reports{% endblock %}
-{% block page_title %}Finance Reports{% endblock %}
+{% block page_title %}Reports{% endblock %}
 
 {% block content %}
+{% include "crm/finance/partials/_nav_meta.html" with crm_nav="finance-reports" crm_page_title="Reports" %}
 <nav class="billing-breadcrumb" aria-label="Breadcrumb">
   <a href="{% url 'crm:finance_dashboard' %}"
      hx-get="{% url 'crm:finance_dashboard' %}"
@@ -16,54 +17,90 @@
 
 <div class="page-header">
   <div>
-    <h1>Finance Reports</h1>
-    <p>Management reports with filters, charts, and CSV / Excel / PDF export.</p>
+    <h1>Reports</h1>
+    <p>
+      Choose a report below.
+      <strong>Profit = Income − Expense</strong> (same as Dashboard and Statement).
+      Fund reports use allocation balances — separate from profit.
+    </p>
   </div>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;">
-    <a href="{% url 'crm:finance_executive' %}" class="btn btn-primary btn-sm"
-       hx-get="{% url 'crm:finance_executive' %}"
-       hx-target="#crm-main-content"
-       hx-select="#crm-main-content"
-       hx-swap="outerHTML"
-       hx-push-url="true">Executive Dashboard</a>
+  <a href="{% url 'crm:finance_dashboard' %}" class="btn btn-outline btn-sm"
+     hx-get="{% url 'crm:finance_dashboard' %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">Dashboard</a>
+</div>
+
+<div class="card" style="margin-bottom:20px;">
+  <div class="card-header">
+    <div class="card-title">Cashbook</div>
+    <div class="card-subtitle">Same Income &amp; Expense totals as Dashboard and Statement</div>
+  </div>
+  <div class="stat-grid">
+    {% for key, title in cashbook_reports.items %}
+    <a href="{% url 'crm:finance_report_run' key %}" class="stat-card" style="text-decoration:none;color:inherit;"
+       hx-get="{% url 'crm:finance_report_run' key %}"
+       hx-target="#crm-main-content" hx-select="#crm-main-content" hx-swap="outerHTML" hx-push-url="true">
+      <div class="stat-body">
+        <div class="stat-value" style="font-size:16px;">{{ title }}</div>
+        <div class="stat-label">{% if key == 'profit' %}Income − Expense{% elif key == 'cash_flow' %}By payment method{% else %}Detail &amp; export{% endif %}</div>
+      </div>
+    </a>
+    {% endfor %}
   </div>
 </div>
 
-<div class="stat-grid" style="margin-bottom:24px;">
-  <a href="{% url 'crm:finance_executive' %}" class="stat-card" style="text-decoration:none;color:inherit;"
-     hx-get="{% url 'crm:finance_executive' %}"
-     hx-target="#crm-main-content"
-     hx-select="#crm-main-content"
-     hx-swap="outerHTML"
-     hx-push-url="true">
-    <div class="stat-icon indigo">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-6"/>
-      </svg>
-    </div>
-    <div class="stat-body">
-      <div class="stat-value" style="font-size:16px;">Executive Dashboard</div>
-      <div class="stat-label">Current month KPIs &amp; growth</div>
-    </div>
-  </a>
-  {% for key, title in report_types.items %}
-  <a href="{% url 'crm:finance_report_run' key %}" class="stat-card" style="text-decoration:none;color:inherit;"
-     hx-get="{% url 'crm:finance_report_run' key %}"
-     hx-target="#crm-main-content"
-     hx-select="#crm-main-content"
-     hx-swap="outerHTML"
-     hx-push-url="true">
-    <div class="stat-icon {% cycle 'green' 'amber' 'purple' 'indigo' 'green' 'amber' 'purple' 'indigo' 'green' 'amber' %}">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
-      </svg>
-    </div>
-    <div class="stat-body">
-      <div class="stat-value" style="font-size:16px;">{{ title }}</div>
-      <div class="stat-label">Daily · Weekly · Monthly · Yearly</div>
-    </div>
-  </a>
-  {% endfor %}
+<div class="card" style="margin-bottom:20px;">
+  <div class="card-header">
+    <div class="card-title">Analysis</div>
+    <div class="card-subtitle">Breakdowns of the same Income / Expense data</div>
+  </div>
+  <div class="stat-grid">
+    {% for key, title in analysis_reports.items %}
+    <a href="{% url 'crm:finance_report_run' key %}" class="stat-card" style="text-decoration:none;color:inherit;"
+       hx-get="{% url 'crm:finance_report_run' key %}"
+       hx-target="#crm-main-content" hx-select="#crm-main-content" hx-swap="outerHTML" hx-push-url="true">
+      <div class="stat-body">
+        <div class="stat-value" style="font-size:16px;">{{ title }}</div>
+        <div class="stat-label">View &amp; export</div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Funds &amp; Founders</div>
+    <div class="card-subtitle">Allocation pots — not included in Profit</div>
+  </div>
+  <div class="stat-grid">
+    <a href="{% url 'crm:fund_reports_hub' %}" class="stat-card" style="text-decoration:none;color:inherit;"
+       hx-get="{% url 'crm:fund_reports_hub' %}"
+       hx-target="#crm-main-content" hx-select="#crm-main-content" hx-swap="outerHTML" hx-push-url="true">
+      <div class="stat-body">
+        <div class="stat-value" style="font-size:16px;">Fund Reports</div>
+        <div class="stat-label">Balances · utilization · transfers</div>
+      </div>
+    </a>
+    <a href="{% url 'crm:fund_report_run' 'founder_statement' %}" class="stat-card" style="text-decoration:none;color:inherit;"
+       hx-get="{% url 'crm:fund_report_run' 'founder_statement' %}"
+       hx-target="#crm-main-content" hx-select="#crm-main-content" hx-swap="outerHTML" hx-push-url="true">
+      <div class="stat-body">
+        <div class="stat-value" style="font-size:16px;">Founder Statement</div>
+        <div class="stat-label">Shares − withdrawals</div>
+      </div>
+    </a>
+    <a href="{% url 'crm:funds_overview' %}" class="stat-card" style="text-decoration:none;color:inherit;"
+       hx-get="{% url 'crm:funds_overview' %}"
+       hx-target="#crm-main-content" hx-select="#crm-main-content" hx-swap="outerHTML" hx-push-url="true">
+      <div class="stat-body">
+        <div class="stat-value" style="font-size:16px;">Funds Overview</div>
+        <div class="stat-label">Live remaining per fund</div>
+      </div>
+    </a>
+  </div>
 </div>
 
 {% include "crm/billing/_billing_styles.html" %}

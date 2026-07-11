@@ -4,8 +4,37 @@
      hx-select="#finance-mgmt-body"
      hx-target="this"
      hx-swap="outerHTML">
-{# KPI row 1 — month + today #}
+
+{# Quick Actions #}
+{% if show_quick_actions %}
+<div class="card" style="margin-bottom:16px;padding:14px 16px;">
+  <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+    <span class="stat-label" style="margin-right:4px;font-weight:600;">Quick actions</span>
+    <a href="{% url 'crm:income_list' %}?modal=income" class="btn btn-primary btn-sm"
+       hx-get="{% url 'crm:income_list' %}?modal=income" hx-target="#crm-main-content" hx-select="#crm-main-content" hx-swap="outerHTML" hx-push-url="true">Add Income</a>
+    <a href="{% url 'crm:expense_list' %}?modal=expense" class="btn btn-outline btn-sm"
+       hx-get="{% url 'crm:expense_list' %}?modal=expense" hx-target="#crm-main-content" hx-select="#crm-main-content" hx-swap="outerHTML" hx-push-url="true">Add Expense</a>
+    <a href="{% url 'crm:finance_statement' %}" class="btn btn-outline btn-sm"
+       hx-get="{% url 'crm:finance_statement' %}" hx-target="#crm-main-content" hx-select="#crm-main-content" hx-swap="outerHTML" hx-push-url="true">Open Statement</a>
+    <a href="{% url 'crm:funds_overview' %}" class="btn btn-outline btn-sm"
+       hx-get="{% url 'crm:funds_overview' %}" hx-target="#crm-main-content" hx-select="#crm-main-content" hx-swap="outerHTML" hx-push-url="true">Open Funds</a>
+    <a href="{% url 'crm:finance_reports' %}" class="btn btn-outline btn-sm"
+       hx-get="{% url 'crm:finance_reports' %}" hx-target="#crm-main-content" hx-select="#crm-main-content" hx-swap="outerHTML" hx-push-url="true">Generate Report</a>
+  </div>
+</div>
+{% endif %}
+
+{# Available balance + core month KPIs #}
 <div class="stat-grid" style="margin-bottom:16px;">
+  <div class="stat-card">
+    <div class="stat-icon indigo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+    </div>
+    <div class="stat-body">
+      <div class="stat-value">Rs. {{ available_balance|default:0|floatformat:2 }}</div>
+      <div class="stat-label">Fund Remaining (all pots)</div>
+    </div>
+  </div>
   <div class="stat-card">
     <div class="stat-icon green">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -14,7 +43,7 @@
     </div>
     <div class="stat-body">
       <div class="stat-value">Rs. {{ month_revenue|floatformat:2 }}</div>
-      <div class="stat-label">Current Month Revenue</div>
+      <div class="stat-label">Current Month Income</div>
     </div>
   </div>
   <div class="stat-card">
@@ -47,7 +76,7 @@
     </div>
     <div class="stat-body">
       <div class="stat-value">Rs. {{ today_revenue|floatformat:2 }}</div>
-      <div class="stat-label">Today's Revenue</div>
+      <div class="stat-label">Today's Income</div>
     </div>
   </div>
   <div class="stat-card">
@@ -59,17 +88,6 @@
     <div class="stat-body">
       <div class="stat-value">Rs. {{ today_expense|floatformat:2 }}</div>
       <div class="stat-label">Today's Expense</div>
-    </div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-icon {% if today_profit >= 0 %}green{% else %}amber{% endif %}">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
-      </svg>
-    </div>
-    <div class="stat-body">
-      <div class="stat-value">Rs. {{ today_profit|floatformat:2 }}</div>
-      <div class="stat-label">Today's Profit</div>
     </div>
   </div>
 </div>
@@ -106,7 +124,7 @@
     </div>
     <div class="stat-body">
       <div class="stat-value">Rs. {{ avg_daily_revenue|floatformat:2 }}</div>
-      <div class="stat-label">Avg Daily Revenue</div>
+      <div class="stat-label">Avg Daily Income</div>
     </div>
   </div>
   <div class="stat-card">
@@ -128,7 +146,7 @@
     </div>
     <div class="stat-body">
       <div class="stat-value">{{ revenue_growth|floatformat:1 }}%</div>
-      <div class="stat-label">Revenue Growth vs last month</div>
+      <div class="stat-label">Income Growth vs last month</div>
     </div>
   </div>
   <div class="stat-card">
@@ -194,12 +212,41 @@
   </div>
 </div>
 
+{# Fund summary #}
+{% if fund_balances %}
+<div class="card" style="margin-bottom:20px;">
+  <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+    <div>
+      <div class="card-title">Fund Summary</div>
+      <div class="card-subtitle">Remaining balances by allocation pot</div>
+    </div>
+    <a href="{% url 'crm:funds_overview' %}" class="btn btn-outline btn-sm"
+       hx-get="{% url 'crm:funds_overview' %}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">Open Funds</a>
+  </div>
+  <div class="stat-grid">
+    {% for row in fund_balances %}
+    <div class="stat-card">
+      <div class="stat-body">
+        <div class="stat-label" style="font-weight:700;">{{ row.bucket.name }}</div>
+        <div class="stat-value" style="font-size:18px;">Rs. {{ row.remaining|floatformat:2 }}</div>
+        <div class="stat-label">Allocated Rs. {{ row.allocated|floatformat:2 }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
 {# Charts #}
 <div class="charts-grid" style="margin-bottom:24px;">
   <div class="card">
     <div class="card-header">
       <div>
-        <div class="card-title">Revenue vs Expense</div>
+        <div class="card-title">Income vs Expense</div>
         <div class="card-subtitle">Daily · {{ month_start|date:"M Y" }}</div>
       </div>
     </div>
@@ -217,7 +264,7 @@
   <div class="card">
     <div class="card-header">
       <div>
-        <div class="card-title">Daily Revenue</div>
+        <div class="card-title">Daily Income</div>
         <div class="card-subtitle">{{ month_start|date:"M Y" }}</div>
       </div>
     </div>
@@ -276,7 +323,7 @@
     <div class="card-header">
       <div>
         <div class="card-title">Recent Income</div>
-        <div class="card-subtitle">Latest revenue entries</div>
+        <div class="card-subtitle">Latest income entries</div>
       </div>
       <a href="{% url 'crm:income_list' %}" class="btn btn-outline btn-sm"
          hx-get="{% url 'crm:income_list' %}"
@@ -355,7 +402,7 @@
   <div class="card">
     <div class="card-header">
       <div class="card-title">Top Clients</div>
-      <div class="card-subtitle">Revenue this month</div>
+      <div class="card-subtitle">Income this month</div>
     </div>
     <div class="table-wrap" style="overflow-x:auto;">
       <table class="crm-table" style="width:100%;font-size:13px;">
@@ -384,7 +431,7 @@
   <div class="card">
     <div class="card-header">
       <div class="card-title">Top Projects</div>
-      <div class="card-subtitle">Revenue this month</div>
+      <div class="card-subtitle">Income this month</div>
     </div>
     <div class="table-wrap" style="overflow-x:auto;">
       <table class="crm-table" style="width:100%;font-size:13px;">
@@ -481,7 +528,7 @@
     data: {
       labels: dl,
       datasets: [
-        { label: 'Revenue', data: dr, backgroundColor: 'rgba(16,185,129,0.8)', borderRadius: 4, borderSkipped: false },
+        { label: 'Income', data: dr, backgroundColor: 'rgba(16,185,129,0.8)', borderRadius: 4, borderSkipped: false },
         { label: 'Expense', data: de, backgroundColor: 'rgba(245,158,11,0.8)', borderRadius: 4, borderSkipped: false }
       ]
     },
@@ -533,7 +580,7 @@
     data: {
       labels: ml,
       datasets: [
-        { label: 'Revenue', data: mr, backgroundColor: 'rgba(16,185,129,0.8)', borderRadius: 4, borderSkipped: false },
+        { label: 'Income', data: mr, backgroundColor: 'rgba(16,185,129,0.8)', borderRadius: 4, borderSkipped: false },
         { label: 'Expense', data: me, backgroundColor: 'rgba(245,158,11,0.8)', borderRadius: 4, borderSkipped: false }
       ]
     },

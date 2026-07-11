@@ -1,0 +1,108 @@
+{% extends "crm/base.html" %}
+{% block title %}{{ report_title }}{% endblock %}
+{% block page_title %}{{ report_title }}{% endblock %}
+
+{% block content %}
+{% include "crm/finance/partials/_nav_meta.html" with crm_nav="finance-funds" %}
+<nav class="billing-breadcrumb" aria-label="Breadcrumb">
+  <a href="{% url 'crm:finance_dashboard' %}"
+     hx-get="{% url 'crm:finance_dashboard' %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">Finance</a>
+  <span class="billing-breadcrumb__sep">/</span>
+  <a href="{% url 'crm:funds_overview' %}"
+     hx-get="{% url 'crm:funds_overview' %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">Funds</a>
+  <span class="billing-breadcrumb__sep">/</span>
+  <a href="{% url 'crm:fund_reports_hub' %}"
+     hx-get="{% url 'crm:fund_reports_hub' %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">Fund Reports</a>
+  <span class="billing-breadcrumb__sep">/</span>
+  <span class="billing-breadcrumb__current">{{ report_title }}</span>
+</nav>
+
+<div class="page-header">
+  <div>
+    <h1>{{ report_title }}</h1>
+    <p>{{ period_label }}{% if filter_start %} · {{ filter_start|date:"d M Y" }} – {{ filter_end|date:"d M Y" }}{% endif %}</p>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <a class="btn btn-outline btn-sm"
+       href="{% url 'crm:fund_report_run' report_type %}?{% for key, value in request.GET.items %}{% if key != 'export' %}{{ key }}={{ value|urlencode }}&amp;{% endif %}{% endfor %}export=csv">CSV</a>
+    <a class="btn btn-outline btn-sm"
+       href="{% url 'crm:fund_report_run' report_type %}?{% for key, value in request.GET.items %}{% if key != 'export' %}{{ key }}={{ value|urlencode }}&amp;{% endif %}{% endfor %}export=xlsx">Excel</a>
+    <a class="btn btn-outline btn-sm"
+       href="{% url 'crm:fund_report_run' report_type %}?{% for key, value in request.GET.items %}{% if key != 'export' %}{{ key }}={{ value|urlencode }}&amp;{% endif %}{% endfor %}export=pdf">PDF</a>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:20px;">
+  <form method="get" action="{% url 'crm:fund_report_run' report_type %}"
+        style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;"
+        hx-get="{% url 'crm:fund_report_run' report_type %}"
+        hx-target="#crm-main-content"
+        hx-select="#crm-main-content"
+        hx-swap="outerHTML"
+        hx-push-url="true">
+    <div class="form-row">{{ filter_form.period.label_tag }}{{ filter_form.period }}</div>
+    <div class="form-row">{{ filter_form.date_from.label_tag }}{{ filter_form.date_from }}</div>
+    <div class="form-row">{{ filter_form.date_to.label_tag }}{{ filter_form.date_to }}</div>
+    {% if report_type == 'founder_statement' %}
+    <div class="form-row">{{ filter_form.founder.label_tag }}{{ filter_form.founder }}</div>
+    {% endif %}
+    <button type="submit" class="btn btn-primary">Apply</button>
+  </form>
+</div>
+
+{% if summary %}
+<div class="stat-grid" style="margin-bottom:20px;">
+  {% for key, value in summary.items %}
+  <div class="stat-card">
+    <div class="stat-body">
+      <div class="stat-value" style="font-size:16px;">
+        {% if value.as_tuple %}Rs. {{ value|floatformat:2 }}{% else %}{{ value }}{% endif %}
+      </div>
+      <div class="stat-label">{{ key }}</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="table-wrap" style="overflow-x:auto;">
+    <table class="crm-table" style="width:100%;font-size:13px;">
+      <thead>
+        <tr>
+          {% for col in columns %}
+          <th{% if forloop.last or forloop.counter > 3 %} style="text-align:right;"{% endif %}>{{ col }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          {% for cell in row %}
+          <td{% if forloop.last or forloop.counter > 3 %} style="text-align:right;"{% endif %}>
+            {% if cell.as_tuple %}Rs. {{ cell|floatformat:2 }}{% elif cell %}{{ cell }}{% else %}—{% endif %}
+          </td>
+          {% endfor %}
+        </tr>
+        {% empty %}
+        <tr><td colspan="{{ columns|length }}">No rows for this period.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% include "crm/billing/_billing_styles.html" %}
+{% endblock %}

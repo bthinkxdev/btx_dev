@@ -1,0 +1,47 @@
+{% if request.GET.saved == '1' %}
+<div class="card" style="margin-bottom:16px;padding:12px 14px;background:var(--primary-50);border:1px solid var(--primary-100);">
+  <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+    <span style="font-size:13px;font-weight:600;color:var(--primary-700);">Next:</span>
+    {% if next_statement %}
+    <a href="{% url 'crm:finance_statement' %}" class="btn btn-outline btn-sm"
+       hx-get="{% url 'crm:finance_statement' %}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">View Statement</a>
+    {% endif %}
+    {% if next_funds %}
+    <a href="{% url 'crm:funds_overview' %}" class="btn btn-outline btn-sm"
+       hx-get="{% url 'crm:funds_overview' %}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">View Funds</a>
+    {% endif %}
+    {% if next_fund_slug %}
+    <a href="{% url 'crm:fund_detail' next_fund_slug %}" class="btn btn-outline btn-sm"
+       hx-get="{% url 'crm:fund_detail' next_fund_slug %}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">View {{ next_fund_label|default:"Fund" }}</a>
+    {% endif %}
+    {% if next_income %}
+    <a href="{% url 'crm:income_list' %}" class="btn btn-outline btn-sm"
+       hx-get="{% url 'crm:income_list' %}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">Income</a>
+    {% endif %}
+    {% if next_expense %}
+    <a href="{% url 'crm:expense_list' %}" class="btn btn-outline btn-sm"
+       hx-get="{% url 'crm:expense_list' %}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">Expenses</a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}

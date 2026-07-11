@@ -1,0 +1,304 @@
+{% extends "crm/base.html" %}
+{% block title %}Finance Settings{% endblock %}
+{% block page_title %}Settings{% endblock %}
+
+{% block content %}
+{% include "crm/finance/partials/_nav_meta.html" with crm_nav="finance-settings" crm_page_title="Settings" %}
+<nav class="billing-breadcrumb" aria-label="Breadcrumb">
+  <a href="{% url 'crm:finance_dashboard' %}"
+     hx-get="{% url 'crm:finance_dashboard' %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">Finance</a>
+  <span class="billing-breadcrumb__sep">/</span>
+  <span class="billing-breadcrumb__current">Settings</span>
+</nav>
+
+<div class="page-header">
+  <div>
+    <h1>Settings</h1>
+    <p>
+      Configure how income and expenses are classified, how money splits into funds,
+      and who shares the Founder Pool.
+    </p>
+  </div>
+  <a href="{% url 'crm:funds_overview' %}" class="btn btn-outline btn-sm"
+     hx-get="{% url 'crm:funds_overview' %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">View Funds</a>
+</div>
+
+<div class="settings-hub-banner" role="note">
+  <div class="settings-hub-banner__label">Suggested setup order</div>
+  <ol class="settings-hub-banner__steps">
+    <li>Categories</li>
+    <li>Allocation Rules</li>
+    <li>Founders</li>
+    <li>Bank Accounts <span>(optional)</span></li>
+  </ol>
+</div>
+
+<section class="settings-hub-section" aria-labelledby="settings-cashbook-title">
+  <header class="settings-hub-section__head">
+    <h2 id="settings-cashbook-title">Cashbook</h2>
+    <p>Labels used on Income, Expenses, and Statement.</p>
+  </header>
+  <div class="settings-hub-grid">
+    <a href="{% url 'crm:finance_settings_categories' %}" class="settings-tile"
+       hx-get="{% url 'crm:finance_settings_categories' %}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">
+      <div class="settings-tile__icon settings-tile__icon--teal" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 7h16M4 12h10M4 17h14"/>
+        </svg>
+      </div>
+      <div class="settings-tile__body">
+        <h3 class="settings-tile__title">Categories</h3>
+        <p class="settings-tile__desc">Income and expense types used when recording transactions.</p>
+        <div class="settings-tile__meta">
+          <span>{{ settings_income_cats }} income</span>
+          <span aria-hidden="true">·</span>
+          <span>{{ settings_expense_cats }} expense</span>
+        </div>
+      </div>
+      <span class="settings-tile__cta">Open <span aria-hidden="true">→</span></span>
+    </a>
+
+    <a href="{% url 'crm:finance_settings_bank_accounts' %}" class="settings-tile"
+       hx-get="{% url 'crm:finance_settings_bank_accounts' %}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">
+      <div class="settings-tile__icon settings-tile__icon--slate" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="6" width="18" height="12" rx="2"/>
+          <path d="M3 10h18M7 14h2"/>
+        </svg>
+      </div>
+      <div class="settings-tile__body">
+        <h3 class="settings-tile__title">Bank Accounts</h3>
+        <p class="settings-tile__desc">Accounts already used on income entries (read-only overview).</p>
+        <div class="settings-tile__meta">
+          <span>{{ settings_banks }} account{{ settings_banks|pluralize }}</span>
+        </div>
+      </div>
+      <span class="settings-tile__cta">Open <span aria-hidden="true">→</span></span>
+    </a>
+  </div>
+</section>
+
+<section class="settings-hub-section" aria-labelledby="settings-funds-title">
+  <header class="settings-hub-section__head">
+    <h2 id="settings-funds-title">Funds &amp; founders</h2>
+    <p>How incoming money is split into pots — separate from Profit.</p>
+  </header>
+  <div class="settings-hub-grid">
+    <a href="{% url 'crm:allocation_settings' %}" class="settings-tile settings-tile--accent"
+       hx-get="{% url 'crm:allocation_settings' %}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">
+      <div class="settings-tile__icon settings-tile__icon--indigo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9"/>
+          <path d="M12 3v18M3 12h18"/>
+          <path d="M12 12 18 7"/>
+        </svg>
+      </div>
+      <div class="settings-tile__body">
+        <h3 class="settings-tile__title">Allocation Rules</h3>
+        <p class="settings-tile__desc">Percentages for Founder Pool, Sales Commission, Operations, and Savings. Active funds must total 100%.</p>
+        <div class="settings-tile__meta">
+          <span>{{ settings_buckets }} active fund{{ settings_buckets|pluralize }}</span>
+        </div>
+      </div>
+      <span class="settings-tile__cta">Configure <span aria-hidden="true">→</span></span>
+    </a>
+
+    <a href="{% url 'crm:founder_settings' %}" class="settings-tile"
+       hx-get="{% url 'crm:founder_settings' %}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">
+      <div class="settings-tile__icon settings-tile__icon--amber" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+      </div>
+      <div class="settings-tile__body">
+        <h3 class="settings-tile__title">Founders</h3>
+        <p class="settings-tile__desc">Who shares the Founder Pool and at what percentage. Used by Founder Withdraw.</p>
+        <div class="settings-tile__meta">
+          <span>{{ settings_founders }} active founder{{ settings_founders|pluralize }}</span>
+        </div>
+      </div>
+      <span class="settings-tile__cta">Configure <span aria-hidden="true">→</span></span>
+    </a>
+  </div>
+</section>
+
+{% include "crm/billing/_billing_styles.html" %}
+<style>
+  .settings-hub-banner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 20px;
+    margin: 0 0 24px;
+    padding: 14px 16px;
+    border-radius: var(--radius, 12px);
+    border: 1px solid var(--border, #e2e8f0);
+    background: linear-gradient(135deg, var(--neutral-50, #f8fafc) 0%, var(--surface, #fff) 70%);
+  }
+  .settings-hub-banner__label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-muted, #64748b);
+  }
+  .settings-hub-banner__steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: setup;
+  }
+  .settings-hub-banner__steps li {
+    counter-increment: setup;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--neutral-800, #1e293b);
+  }
+  .settings-hub-banner__steps li::before {
+    content: counter(setup) ". ";
+    color: var(--primary-600, #4f46e5);
+    font-weight: 750;
+  }
+  .settings-hub-banner__steps li span {
+    font-weight: 500;
+    color: var(--text-muted, #64748b);
+  }
+
+  .settings-hub-section {
+    margin-bottom: 28px;
+  }
+  .settings-hub-section__head {
+    margin-bottom: 12px;
+  }
+  .settings-hub-section__head h2 {
+    margin: 0 0 4px;
+    font-size: 15px;
+    font-weight: 750;
+    color: var(--neutral-900, #0f172a);
+  }
+  .settings-hub-section__head p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-muted, #64748b);
+  }
+
+  .settings-hub-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .settings-tile {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 14px;
+    align-items: start;
+    padding: 18px;
+    text-decoration: none;
+    color: inherit;
+    background: var(--surface, #fff);
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: var(--radius, 12px);
+    box-shadow: var(--shadow, 0 1px 2px rgba(15, 23, 42, 0.04));
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  }
+  .settings-tile:hover {
+    border-color: color-mix(in srgb, var(--primary-600, #4f46e5) 35%, var(--border, #e2e8f0));
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+    transform: translateY(-1px);
+  }
+  .settings-tile:focus-visible {
+    outline: 2px solid var(--primary-500, #6366f1);
+    outline-offset: 2px;
+  }
+  .settings-tile--accent {
+    border-color: color-mix(in srgb, var(--primary-600, #4f46e5) 22%, var(--border, #e2e8f0));
+    background: linear-gradient(160deg, color-mix(in srgb, var(--primary-50, #eef2ff) 75%, #fff) 0%, var(--surface, #fff) 55%);
+  }
+
+  .settings-tile__icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .settings-tile__icon svg { width: 22px; height: 22px; }
+  .settings-tile__icon--teal { background: #ecfdf5; color: #0f766e; }
+  .settings-tile__icon--slate { background: #f1f5f9; color: #475569; }
+  .settings-tile__icon--indigo { background: var(--primary-50, #eef2ff); color: var(--primary-700, #4338ca); }
+  .settings-tile__icon--amber { background: #fffbeb; color: #b45309; }
+
+  .settings-tile__title {
+    margin: 0 0 6px;
+    font-size: 16px;
+    font-weight: 750;
+    color: var(--neutral-900, #0f172a);
+    line-height: 1.25;
+  }
+  .settings-tile__desc {
+    margin: 0 0 10px;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--text-muted, #64748b);
+  }
+  .settings-tile__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 650;
+    color: var(--neutral-700, #334155);
+  }
+  .settings-tile__cta {
+    align-self: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--primary-700, #4338ca);
+    white-space: nowrap;
+  }
+
+  @media (max-width: 900px) {
+    .settings-hub-grid { grid-template-columns: 1fr; }
+    .settings-tile {
+      grid-template-columns: auto 1fr;
+      grid-template-rows: auto auto;
+    }
+    .settings-tile__cta {
+      grid-column: 2;
+      justify-self: start;
+    }
+  }
+</style>
+{% endblock %}

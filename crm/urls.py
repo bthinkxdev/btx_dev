@@ -326,6 +326,88 @@ urlpatterns = [
         finance_views.expense_receipt,
         name='expense_receipt',
     ),
+    path('finance/statement/', finance_views.finance_statement, name='finance_statement'),
+    path(
+        'finance/funds/',
+        finance_views.funds_overview,
+        name='funds_overview',
+    ),
+    path(
+        'finance/funds/transfer/',
+        finance_views.fund_transfer_create,
+        name='fund_transfer_create',
+    ),
+    path(
+        'finance/funds/usage/',
+        finance_views.fund_usage_create,
+        name='fund_usage_create',
+    ),
+    path(
+        'finance/funds/reports/',
+        finance_views.fund_reports_hub,
+        name='fund_reports_hub',
+    ),
+    path(
+        'finance/funds/reports/<slug:report_type>/',
+        finance_views.fund_report_run,
+        name='fund_report_run',
+    ),
+    path(
+        'finance/funds/<slug:fund_slug>/',
+        finance_views.fund_detail,
+        name='fund_detail',
+    ),
+    path(
+        'finance/allocation/',
+        finance_views.allocation_dashboard,
+        name='allocation_dashboard',
+    ),
+    path(
+        'finance/allocation/settings/',
+        finance_views.allocation_settings,
+        name='allocation_settings',
+    ),
+    # Legacy URL — Record Usage retired; same redirect as fund_usage_create
+    path(
+        'finance/allocation/usage/add/',
+        finance_views.fund_usage_create,
+        name='fund_usage_create_legacy',
+    ),
+    path(
+        'finance/allocation/recalculate/',
+        finance_views.allocation_recalculate_all,
+        name='allocation_recalculate',
+    ),
+    path(
+        'finance/founders/',
+        finance_views.founder_dashboard,
+        name='founder_dashboard',
+    ),
+    path(
+        'finance/founders/settings/',
+        finance_views.founder_settings,
+        name='founder_settings',
+    ),
+    path(
+        'finance/founders/withdraw/',
+        finance_views.founder_withdrawal_create,
+        name='founder_withdrawal_create',
+    ),
+    path(
+        'finance/settings/',
+        finance_views.finance_settings,
+        name='finance_settings',
+    ),
+    path(
+        'finance/settings/categories/',
+        finance_views.finance_settings_categories,
+        name='finance_settings_categories',
+    ),
+    path(
+        'finance/settings/bank-accounts/',
+        finance_views.finance_settings_bank_accounts,
+        name='finance_settings_bank_accounts',
+    ),
     path('finance/reports/', finance_views.finance_reports, name='finance_reports'),
     path(
         'finance/reports/executive/',

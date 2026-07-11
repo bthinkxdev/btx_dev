@@ -1,0 +1,258 @@
+{% extends "crm/base.html" %}
+{% block title %}{{ bucket.name }}{% endblock %}
+{% block page_title %}{{ bucket.name }}{% endblock %}
+
+{% block content %}
+{% include "crm/finance/partials/_nav_meta.html" with crm_nav="finance-funds" %}
+{% if open_fund_modal %}
+<div hidden
+     data-fund-auto-open="{{ open_fund_modal }}"
+     {% if fund_transfer_form.errors or founder_withdrawal_form.errors %}data-fund-form-invalid="true"{% endif %}
+     data-fund-prefill-from="{{ fund_modal_prefill_from }}"
+     data-fund-prefill-founder="{{ fund_modal_prefill_founder }}"></div>
+{% endif %}
+<nav class="billing-breadcrumb" aria-label="Breadcrumb">
+  <a href="{% url 'crm:finance_dashboard' %}"
+     hx-get="{% url 'crm:finance_dashboard' %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">Finance</a>
+  <span class="billing-breadcrumb__sep">/</span>
+  <a href="{% url 'crm:funds_overview' %}"
+     hx-get="{% url 'crm:funds_overview' %}"
+     hx-target="#crm-main-content"
+     hx-select="#crm-main-content"
+     hx-swap="outerHTML"
+     hx-push-url="true">Funds</a>
+  <span class="billing-breadcrumb__sep">/</span>
+  <span class="billing-breadcrumb__current">{{ bucket.name }}</span>
+</nav>
+
+<div class="page-header">
+  <div>
+    <h1>{{ bucket.name }}</h1>
+    <p>{% if is_founder_pool %}Founder Pool share, withdrawals, and history.{% else %}Allocation, funded expenses, and transfers for this fund.{% endif %}</p>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <button type="button" class="btn btn-primary btn-sm"
+            data-fund-modal-open="transfer"
+            data-fund-prefill-from="{{ bucket.pk }}">Transfer Money</button>
+    {% if is_founder_pool %}
+    <button type="button" class="btn btn-outline btn-sm" data-fund-modal-open="withdraw">Founder Withdraw</button>
+    {% else %}
+    <a href="{% url 'crm:expense_list' %}?modal=expense&amp;funding={{ bucket.pk }}"
+       class="btn btn-outline btn-sm"
+       hx-get="{% url 'crm:expense_list' %}?modal=expense&amp;funding={{ bucket.pk }}"
+       hx-target="#crm-main-content"
+       hx-select="#crm-main-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">Add Expense</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="stat-grid" style="margin-bottom:20px;">
+  <div class="stat-card">
+    <div class="stat-body">
+      <div class="stat-value">Rs. {{ balance.allocated|floatformat:2 }}</div>
+      <div class="stat-label">Allocated</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-body">
+      <div class="stat-value">Rs. {{ drawn|floatformat:2 }}</div>
+      <div class="stat-label">{% if is_founder_pool %}Withdrawn / Drawn{% else %}Drawn{% endif %}</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-body">
+      <div class="stat-value">Rs. {{ balance.remaining|floatformat:2 }}</div>
+      <div class="stat-label">Remaining Balance</div>
+    </div>
+  </div>
+</div>
+
+{% if is_founder_pool %}
+<div class="stat-grid" style="margin-bottom:20px;">
+  <div class="stat-card">
+    <div class="stat-body">
+      <div class="stat-value">Rs. {{ total_allocated|floatformat:2 }}</div>
+      <div class="stat-label">Total Allocated (Founders)</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-body">
+      <div class="stat-value">Rs. {{ total_withdrawn|floatformat:2 }}</div>
+      <div class="stat-label">Total Withdrawn</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-body">
+      <div class="stat-value">Rs. {{ total_remaining|floatformat:2 }}</div>
+      <div class="stat-label">Remaining</div>
+    </div>
+  </div>
+</div>
+
+<div class="stat-grid" style="margin-bottom:24px;">
+  {% for card in founder_cards %}
+  <div class="stat-card">
+    <div class="stat-body">
+      <div class="stat-label" style="font-weight:700;margin-bottom:6px;">
+        {{ card.founder.name }} · {{ card.founder.percentage }}%
+      </div>
+      <div style="font-size:13px;line-height:1.55;">
+        <div>Allocated <strong>Rs. {{ card.allocated|floatformat:2 }}</strong></div>
+        <div>Withdrawn <strong>Rs. {{ card.withdrawn|floatformat:2 }}</strong></div>
+        <div>Remaining <strong>Rs. {{ card.remaining|floatformat:2 }}</strong></div>
+      </div>
+      <button type="button" class="btn btn-outline btn-sm" style="margin-top:8px;"
+              data-fund-modal-open="withdraw"
+              data-fund-prefill-founder="{{ card.founder.pk }}">Withdraw</button>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="detail-grid" style="margin-bottom:20px;">
+  <div class="card">
+    <div class="card-header"><div class="card-title">Utilization</div></div>
+    <div class="chart-wrap" style="height:220px;"><canvas id="fundUtil"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-header"><div class="card-title">Allocation History</div></div>
+    <div class="table-wrap" style="overflow-x:auto;">
+      <table class="crm-table" style="width:100%;font-size:13px;">
+        <thead><tr><th>Date</th><th>Income</th><th style="text-align:right;">Amount</th></tr></thead>
+        <tbody>
+          {% for a in allocations %}
+          <tr>
+            <td>{{ a.income.payment_date|date:"d M Y" }}</td>
+            <td>#{{ a.income_id }}{% if a.income.client %} · {{ a.income.client.business_name|truncatechars:18 }}{% endif %}</td>
+            <td style="text-align:right;font-weight:700;">Rs. {{ a.amount|floatformat:2 }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="3">No allocations yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="detail-grid" style="margin-bottom:20px;">
+  <div class="card">
+    <div class="card-header"><div class="card-title">{% if is_founder_pool %}Expenses / Draws{% else %}Expenses Paid{% endif %}</div></div>
+    <div class="table-wrap" style="overflow-x:auto;">
+      <table class="crm-table" style="width:100%;font-size:13px;">
+        <thead><tr><th>Date</th><th>Category</th><th style="text-align:right;">Amount</th></tr></thead>
+        <tbody>
+          {% for e in expenses %}
+          <tr>
+            <td>{{ e.expense_date|date:"d M Y" }}</td>
+            <td>{{ e.category.name }}{% if e.vendor %} · {{ e.vendor|truncatechars:16 }}{% endif %}</td>
+            <td style="text-align:right;">Rs. {{ e.amount|floatformat:2 }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="3">No funded expenses.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><div class="card-title">Transfer History</div></div>
+    <div class="table-wrap" style="overflow-x:auto;">
+      <table class="crm-table" style="width:100%;font-size:13px;">
+        <thead><tr><th>Date</th><th>From</th><th>To</th><th style="text-align:right;">Amount</th></tr></thead>
+        <tbody>
+          {% for t in transfers %}
+          <tr>
+            <td>{{ t.transfer_date|date:"d M Y" }}</td>
+            <td>{{ t.from_bucket.name }}</td>
+            <td>{{ t.to_bucket.name }}</td>
+            <td style="text-align:right;">Rs. {{ t.amount|floatformat:2 }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4">No transfers.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% if is_founder_pool %}
+<div class="card" style="margin-bottom:20px;">
+  <div class="card-header"><div class="card-title">Withdrawal History</div></div>
+  <div class="table-wrap" style="overflow-x:auto;">
+    <table class="crm-table" style="width:100%;font-size:13px;">
+      <thead><tr><th>Date</th><th>Founder</th><th style="text-align:right;">Amount</th><th>Reference</th></tr></thead>
+      <tbody>
+        {% for w in founder_withdrawals %}
+        <tr>
+          <td>{{ w.withdrawal_date|date:"d M Y" }}</td>
+          <td>{{ w.founder.name }}</td>
+          <td style="text-align:right;font-weight:700;">Rs. {{ w.amount|floatformat:2 }}</td>
+          <td>{{ w.reference|default:"—" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4">No withdrawals yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if usages %}
+<div class="card" style="margin-bottom:20px;">
+  <div class="card-header"><div class="card-title">Past usage (legacy)</div></div>
+  <p style="padding:0 16px 8px;margin:0;font-size:13px;color:var(--text-muted);">
+    Historical Record Usage rows — new draws use Expenses with Funding Source.
+  </p>
+  <div class="table-wrap" style="overflow-x:auto;">
+    <table class="crm-table" style="width:100%;font-size:13px;">
+      <thead><tr><th>Date</th><th>Notes</th><th style="text-align:right;">Amount</th></tr></thead>
+      <tbody>
+        {% for u in usages %}
+        <tr>
+          <td>{{ u.usage_date|date:"d M Y" }}</td>
+          <td>{{ u.notes|default:"—"|truncatechars:40 }}</td>
+          <td style="text-align:right;">Rs. {{ u.amount|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% include "crm/finance/partials/_modal_fund_transfer.html" %}
+{% if is_founder_pool %}
+{% include "crm/finance/partials/_modal_fund_withdraw.html" %}
+{% endif %}
+{% include "crm/finance/partials/_fund_modal_styles.html" %}
+{% include "crm/billing/_billing_styles.html" %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+  var el = document.getElementById('fundUtil');
+  if (!el || typeof Chart === 'undefined') return;
+  if (el._chart) { el._chart.destroy(); }
+  el._chart = new Chart(el, {
+    type: 'doughnut',
+    data: {
+      labels: ['Remaining', 'Drawn'],
+      datasets: [{
+        data: [{{ chart_remaining }}, {{ chart_used }}],
+        backgroundColor: ['{{ bucket.color|default:"#4f46e5" }}', '#e2e8f0']
+      }]
+    },
+    options: { plugins: { legend: { position: 'bottom' } }, maintainAspectRatio: false }
+  });
+})();
+</script>
+{% endblock %}

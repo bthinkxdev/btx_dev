@@ -197,6 +197,49 @@
       font-weight: 600;
     }
     .nav-item--with-badge { justify-content: flex-start; }
+
+    /* Nested Finance nav groups */
+    .nav-group {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      margin: 2px 0;
+    }
+    .nav-group__label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-light);
+      padding: 8px 12px 2px 14px;
+    }
+    .nav-subitem {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px 7px 28px;
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 500;
+      text-decoration: none;
+      transition: all 0.12s ease;
+    }
+    .nav-subitem:hover {
+      background: var(--neutral-100);
+      color: var(--neutral-800);
+      text-decoration: none;
+    }
+    .nav-subitem.active {
+      background: var(--primary-50);
+      color: var(--primary-700);
+      font-weight: 600;
+    }
+    .nav-subitem svg {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+    }
     .nav-item--with-badge > span:first-of-type { flex: 1; }
     .nav-item .nav-count {
       margin-left: auto;
@@ -1985,60 +2028,91 @@
          hx-select="#crm-main-content"
          hx-swap="outerHTML"
          hx-push-url="true"
+         data-nav="finance-dashboard"
          class="nav-item {% if request.resolver_match.url_name == 'finance_dashboard' %}active{% endif %}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
         </svg>
-        <span>Management Dashboard</span>
+        <span>Dashboard</span>
       </a>
-      <a href="{% url 'crm:income_list' %}"
-         hx-get="{% url 'crm:income_list' %}"
+
+      <div class="nav-group">
+        <div class="nav-group__label">Transactions</div>
+        <a href="{% url 'crm:income_list' %}"
+           hx-get="{% url 'crm:income_list' %}"
+           hx-target="#crm-main-content"
+           hx-select="#crm-main-content"
+           hx-swap="outerHTML"
+           hx-push-url="true"
+           data-nav="finance-income"
+           class="nav-subitem {% if request.resolver_match.url_name == 'income_list' or request.resolver_match.url_name == 'income_create' or request.resolver_match.url_name == 'income_edit' %}active{% endif %}">
+          <span>Income</span>
+        </a>
+        <a href="{% url 'crm:expense_list' %}"
+           hx-get="{% url 'crm:expense_list' %}"
+           hx-target="#crm-main-content"
+           hx-select="#crm-main-content"
+           hx-swap="outerHTML"
+           hx-push-url="true"
+           data-nav="finance-expense"
+           class="nav-subitem {% if request.resolver_match.url_name == 'expense_list' or request.resolver_match.url_name == 'expense_create' or request.resolver_match.url_name == 'expense_edit' or request.resolver_match.url_name == 'expense_receipt' %}active{% endif %}">
+          <span>Expenses</span>
+        </a>
+        <a href="{% url 'crm:finance_statement' %}"
+           hx-get="{% url 'crm:finance_statement' %}"
+           hx-target="#crm-main-content"
+           hx-select="#crm-main-content"
+           hx-swap="outerHTML"
+           hx-push-url="true"
+           data-nav="finance-statement"
+           class="nav-subitem {% if request.resolver_match.url_name == 'finance_statement' %}active{% endif %}">
+          <span>Statement</span>
+        </a>
+      </div>
+
+      <a href="{% url 'crm:funds_overview' %}"
+         hx-get="{% url 'crm:funds_overview' %}"
          hx-target="#crm-main-content"
          hx-select="#crm-main-content"
          hx-swap="outerHTML"
          hx-push-url="true"
-         class="nav-item {% if request.resolver_match.url_name == 'income_list' or request.resolver_match.url_name == 'income_create' or request.resolver_match.url_name == 'income_edit' %}active{% endif %}">
+         data-nav="finance-funds"
+         class="nav-item {% if 'fund' in request.resolver_match.url_name or request.resolver_match.url_name == 'founder_withdrawal_create' or request.resolver_match.url_name == 'allocation_dashboard' %}active{% endif %}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+          <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
         </svg>
-        <span>Income</span>
+        <span>Funds</span>
       </a>
-      <a href="{% url 'crm:expense_dashboard' %}"
-         hx-get="{% url 'crm:expense_dashboard' %}"
-         hx-target="#crm-main-content"
-         hx-select="#crm-main-content"
-         hx-swap="outerHTML"
-         hx-push-url="true"
-         class="nav-item {% if request.resolver_match.url_name == 'expense_dashboard' %}active{% endif %}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/>
-        </svg>
-        <span>Expense Dashboard</span>
-      </a>
-      <a href="{% url 'crm:expense_list' %}"
-         hx-get="{% url 'crm:expense_list' %}"
-         hx-target="#crm-main-content"
-         hx-select="#crm-main-content"
-         hx-swap="outerHTML"
-         hx-push-url="true"
-         class="nav-item {% if request.resolver_match.url_name == 'expense_list' or request.resolver_match.url_name == 'expense_create' or request.resolver_match.url_name == 'expense_edit' or request.resolver_match.url_name == 'expense_receipt' %}active{% endif %}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/>
-        </svg>
-        <span>Expenses</span>
-      </a>
+
       <a href="{% url 'crm:finance_reports' %}"
          hx-get="{% url 'crm:finance_reports' %}"
          hx-target="#crm-main-content"
          hx-select="#crm-main-content"
          hx-swap="outerHTML"
          hx-push-url="true"
-         class="nav-item {% if 'report_' in request.resolver_match.url_name or request.resolver_match.url_name == 'finance_reports' or request.resolver_match.url_name == 'finance_report_run' or request.resolver_match.url_name == 'finance_executive' %}active{% endif %}">
+         data-nav="finance-reports"
+         class="nav-item {% if request.resolver_match.url_name == 'finance_reports' or request.resolver_match.url_name == 'finance_report_run' or request.resolver_match.url_name == 'finance_executive' %}active{% endif %}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-6"/>
         </svg>
         <span>Reports</span>
       </a>
+
+      {% if crm_can_access_billing %}
+      <a href="{% url 'crm:finance_settings' %}"
+         hx-get="{% url 'crm:finance_settings' %}"
+         hx-target="#crm-main-content"
+         hx-select="#crm-main-content"
+         hx-swap="outerHTML"
+         hx-push-url="true"
+         data-nav="finance-settings"
+         class="nav-item {% if request.resolver_match.url_name == 'finance_settings' or request.resolver_match.url_name == 'finance_settings_categories' or request.resolver_match.url_name == 'finance_settings_bank_accounts' or request.resolver_match.url_name == 'allocation_settings' or request.resolver_match.url_name == 'founder_settings' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+        </svg>
+        <span>Settings</span>
+      </a>
+      {% endif %}
       {% endif %}
 
       {% if crm_can_access_billing %}
@@ -2106,7 +2180,7 @@
         <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
       </svg>
     </button>
-    <h1 class="header-title">{% block page_title %}CRM{% endblock %}</h1>
+    <h1 class="header-title" id="crm-page-title">{% block page_title %}CRM{% endblock %}</h1>
     {% if request.user.is_authenticated and crm_can_access_sales_pipeline %}
     <div class="header-search-wrap" id="header-search-root">
       <svg class="header-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -2217,7 +2291,7 @@
       var nav = document.querySelector('.sidebar-nav');
       if (nav) {
         nav.addEventListener('click', function(e) {
-          if (e.target.closest('a.nav-item')) closeSidebar();
+          if (e.target.closest('a.nav-item, a.nav-subitem')) closeSidebar();
         });
       }
     })();
@@ -2757,19 +2831,501 @@
             if (errEl) errEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
           }
         }
-        document.body.addEventListener('htmx:afterSwap', function(evt) {
+
+        function crmFundFmt(n) {
+          var v = Number(n);
+          if (!isFinite(v)) return '—';
+          return 'Rs. ' + v.toLocaleString('en-IN', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          });
+        }
+
+        function crmFundParseBalances(dlg) {
+          if (!dlg) return {};
+          var script = dlg.querySelector('script[type="application/json"][data-fund-balances-json]');
+          if (script && script.textContent) {
+            try {
+              return JSON.parse(script.textContent.trim());
+            } catch (e) {}
+          }
+          var raw = dlg.getAttribute('data-fund-balances') || '';
+          if (raw) {
+            try {
+              return JSON.parse(raw.replace(/&quot;/g, '"'));
+            } catch (e2) {}
+          }
+          return {};
+        }
+
+        function crmFundParseFounderBalances(dlg) {
+          try {
+            return JSON.parse(dlg.getAttribute('data-founder-balances') || '{}');
+          } catch (e) {
+            return {};
+          }
+        }
+
+        function crmCloseFinanceDialog(dlg) {
+          if (!dlg) return;
+          try {
+            if (dlg.open) dlg.close();
+          } catch (e) {}
+          try {
+            dlg.removeAttribute('open');
+          } catch (e2) {}
+        }
+
+        function crmStripFinanceModalQuery() {
+          try {
+            var url = new URL(window.location.href);
+            var changed = false;
+            ['modal', 'edit', 'bucket', 'from', 'founder', 'funding'].forEach(function (k) {
+              if (url.searchParams.has(k)) {
+                url.searchParams.delete(k);
+                changed = true;
+              }
+            });
+            if (changed) {
+              var qs = url.searchParams.toString();
+              window.history.replaceState(
+                window.history.state,
+                '',
+                url.pathname + (qs ? '?' + qs : '') + url.hash
+              );
+            }
+          } catch (e) {}
+        }
+
+        function crmConsumeAutoOpenMarkers(root) {
+          if (!root || !root.querySelectorAll) return;
+          root.querySelectorAll('[data-fund-auto-open], [data-tx-auto-open]').forEach(function (el) {
+            el.removeAttribute('data-fund-auto-open');
+            el.removeAttribute('data-tx-auto-open');
+            el.removeAttribute('data-fund-form-invalid');
+            el.removeAttribute('data-tx-form-invalid');
+          });
+        }
+
+        function crmMarkDialogJustOpened(dlg) {
+          if (!dlg) return;
+          dlg.dataset.financeJustOpened = String(Date.now());
+          window.setTimeout(function () {
+            try {
+              delete dlg.dataset.financeJustOpened;
+            } catch (e) {}
+          }, 400);
+        }
+
+        function crmDialogIgnoreBackdrop(dlg) {
+          if (!dlg || !dlg.dataset.financeJustOpened) return false;
+          var t = Number(dlg.dataset.financeJustOpened);
+          return isFinite(t) && Date.now() - t < 400;
+        }
+
+        function crmSyncFundModalBalance(dlg) {
+          if (!dlg) return;
+          var formEl = dlg.querySelector('[data-fund-modal-form]');
+          var kind = formEl ? formEl.getAttribute('data-fund-modal-form') : '';
+          var display = dlg.querySelector('[data-fund-available-display]');
+          var hint = dlg.querySelector('[data-fund-balance-hint]');
+          var warn = dlg.querySelector('[data-fund-balance-warn]');
+          var sameWarn = dlg.querySelector('[data-fund-same-fund-warn]');
+          var amount = dlg.querySelector('input[name$="-amount"]');
+          var submit = dlg.querySelector('[data-fund-submit]');
+          var available = null;
+
+          if (kind === 'transfer') {
+            var bals = crmFundParseBalances(dlg);
+            var fromSel = dlg.querySelector('select[name$="-from_bucket"]');
+            var toSel = dlg.querySelector('select[name$="-to_bucket"]');
+            var fid = fromSel && fromSel.value;
+            available = fid && bals[fid] != null ? Number(bals[fid]) : null;
+            if (display) display.textContent = available != null ? crmFundFmt(available) : 'Rs. —';
+            if (hint) {
+              hint.textContent = available != null
+                ? 'Source fund remaining balance.'
+                : 'Select a source fund to see available balance.';
+            }
+            if (sameWarn) {
+              sameWarn.hidden = !(fid && toSel && toSel.value && fid === toSel.value);
+            }
+          } else if (kind === 'withdraw') {
+            var fb = crmFundParseFounderBalances(dlg);
+            var founder = dlg.querySelector('select[name$="-founder"]');
+            var foid = founder && founder.value;
+            available = foid && fb[foid] != null ? Number(fb[foid]) : null;
+            var poolRem = Number(dlg.getAttribute('data-pool-remaining') || '0');
+            if (display) display.textContent = available != null ? crmFundFmt(available) : 'Rs. —';
+            var poolDisp = dlg.querySelector('[data-pool-remaining-display]');
+            if (poolDisp) poolDisp.textContent = crmFundFmt(poolRem);
+            if (hint) {
+              hint.textContent = available != null
+                ? 'Limited by founder share and Founder Pool remaining.'
+                : 'Select a founder account to see their available balance.';
+            }
+            if (available != null && isFinite(poolRem)) {
+              available = Math.min(available, poolRem);
+            }
+          }
+
+          var amt = amount ? parseFloat(amount.value) : NaN;
+          var over = available != null && isFinite(amt) && amt > available + 1e-9;
+          var nonpos = isFinite(amt) && amt <= 0;
+          var sameFund = !!(sameWarn && !sameWarn.hidden);
+          var missingSource = available === null && (kind === 'transfer' || kind === 'withdraw');
+          if (warn) warn.hidden = !over;
+          if (amount) {
+            if (available != null && isFinite(available)) amount.setAttribute('max', String(available));
+            else amount.removeAttribute('max');
+          }
+          if (submit) {
+            submit.disabled = !!(over || nonpos || sameFund || missingSource);
+          }
+        }
+
+        function crmSyncExpenseFundingBalance(dlg, opts) {
+          if (!dlg || dlg.id !== 'tx-modal-expense') return;
+          opts = opts || {};
+          var bucket = dlg.querySelector('[data-funding-bucket-select], select[name$="-funding_bucket"]');
+          var amount = dlg.querySelector('input[name$="-amount"]');
+          var submit = dlg.querySelector('[data-tx-submit]');
+          var display = dlg.querySelector('[data-fund-available-display]');
+          var hint = dlg.querySelector('[data-fund-balance-hint]');
+          var warn = dlg.querySelector('[data-fund-balance-warn]');
+          var bid = bucket && bucket.value ? String(bucket.value) : '';
+          var available = null;
+          var bals = crmFundParseBalances(dlg);
+
+          if (bid && bucket.selectedOptions && bucket.selectedOptions[0]) {
+            var remAttr = bucket.selectedOptions[0].getAttribute('data-remaining');
+            if (remAttr !== null && String(remAttr).trim() !== '') {
+              available = Number(String(remAttr).replace(/,/g, ''));
+            }
+          }
+          if ((available == null || !isFinite(available)) && bid) {
+            if (bals[bid] != null) available = Number(bals[bid]);
+            else if (bals[Number(bid)] != null) available = Number(bals[Number(bid)]);
+            else available = null;
+          }
+          if (available != null && !isFinite(available)) available = null;
+
+          if (display) display.textContent = available != null ? crmFundFmt(available) : 'Rs. —';
+          if (hint) {
+            hint.textContent = available != null
+              ? 'Expense from this fund cannot exceed remaining balance.'
+              : 'Optional — select a funding fund to see remaining balance.';
+          }
+          var amt = amount ? parseFloat(String(amount.value || '').replace(/,/g, '')) : NaN;
+          var over = available != null && isFinite(amt) && amt > available + 1e-9;
+          // Cap when funding source changes (or caller asks), not on every keystroke
+          if (over && opts.clamp && amount) {
+            amount.value = String(available);
+            amt = available;
+            over = false;
+          }
+          var nonpos = isFinite(amt) && amt <= 0;
+          if (warn) warn.hidden = !over;
+          if (amount) {
+            if (available != null) amount.setAttribute('max', String(available));
+            else amount.removeAttribute('max');
+          }
+          if (submit) submit.disabled = !!(over || nonpos);
+        }
+
+        function crmBindIncomeProjectClient(dlg) {
+          if (!dlg || dlg.id !== 'tx-modal-income') return;
+          var project = dlg.querySelector('select[name$="-project"]');
+          var client = dlg.querySelector('select[name$="-client"]');
+          if (!project || !client) return;
+          if (project.dataset.txPcBound === '1') return;
+          project.dataset.txPcBound = '1';
+          var map = {};
+          try {
+            map = JSON.parse(dlg.getAttribute('data-project-client-map') || '{}');
+          } catch (e) {}
+          project.addEventListener('change', function () {
+            var cid = map[this.value];
+            if (cid) client.value = String(cid);
+          });
+        }
+
+        function crmBindFinanceDialog(dlg) {
+          if (!dlg || dlg.dataset.financeBound === '1') return;
+          dlg.dataset.financeBound = '1';
+          dlg.addEventListener('change', function () {
+            crmSyncFundModalBalance(dlg);
+            crmSyncExpenseFundingBalance(dlg);
+          });
+          dlg.addEventListener('input', function () {
+            crmSyncFundModalBalance(dlg);
+            crmSyncExpenseFundingBalance(dlg);
+          });
+          var fundingSel = dlg.querySelector('[data-funding-bucket-select]');
+          if (fundingSel && fundingSel.dataset.fundingBound !== '1') {
+            fundingSel.dataset.fundingBound = '1';
+            fundingSel.addEventListener('change', function () {
+              crmSyncExpenseFundingBalance(dlg, { clamp: true });
+            });
+          }
+          var formEl = dlg.querySelector('[data-tx-modal-form="expense"]');
+          if (formEl && formEl.dataset.fundingSubmitBound !== '1') {
+            formEl.dataset.fundingSubmitBound = '1';
+            formEl.addEventListener('submit', function (e) {
+              crmSyncExpenseFundingBalance(dlg);
+              var submit = dlg.querySelector('[data-tx-submit]');
+              if (submit && submit.disabled) {
+                e.preventDefault();
+                e.stopPropagation();
+              }
+            });
+          }
+          dlg.addEventListener('click', function (e) {
+            if (e.target !== dlg) return;
+            if (crmDialogIgnoreBackdrop(dlg)) return;
+            crmCloseFinanceDialog(dlg);
+            crmStripFinanceModalQuery();
+          });
+          dlg.addEventListener('cancel', function (e) {
+            // Esc — allow close, then strip query in 'close' handler
+            if (crmDialogIgnoreBackdrop(dlg)) {
+              e.preventDefault();
+            }
+          });
+          dlg.addEventListener('close', function () {
+            crmStripFinanceModalQuery();
+          });
+          crmBindIncomeProjectClient(dlg);
+          crmSyncFundModalBalance(dlg);
+          crmSyncExpenseFundingBalance(dlg);
+        }
+
+        function crmShowFinanceDialog(dlg) {
+          if (!dlg || typeof dlg.showModal !== 'function') return false;
+          // Reset stuck open= without top-layer (common after HTMX outerHTML)
+          if (dlg.open) {
+            try {
+              dlg.close();
+            } catch (e) {}
+            try {
+              dlg.removeAttribute('open');
+            } catch (e2) {}
+          }
+          try {
+            dlg.showModal();
+            crmMarkDialogJustOpened(dlg);
+            return !!dlg.open;
+          } catch (e3) {
+            try {
+              dlg.showModal();
+              crmMarkDialogJustOpened(dlg);
+              return !!dlg.open;
+            } catch (e4) {
+              return false;
+            }
+          }
+        }
+
+        function crmOpenFundModal(kind, prefill) {
+          var idMap = {
+            transfer: 'fund-modal-transfer',
+            withdraw: 'fund-modal-withdraw',
+          };
+          if (kind === 'usage') {
+            var q = 'modal=expense';
+            if (prefill && prefill.bucket) q += '&funding=' + encodeURIComponent(prefill.bucket);
+            if (typeof htmx !== 'undefined') {
+              htmx.ajax('GET', '{% url "crm:expense_list" %}?' + q, {
+                target: '#crm-main-content',
+                select: '#crm-main-content',
+                swap: 'outerHTML',
+                pushUrl: true,
+              });
+            } else {
+              window.location.href = '{% url "crm:expense_list" %}?' + q;
+            }
+            return;
+          }
+          var dlg = document.getElementById(idMap[kind]);
+          if (!dlg) return;
+          crmBindFinanceDialog(dlg);
+          prefill = prefill || {};
+          if (kind === 'transfer' && prefill.from) {
+            var f = dlg.querySelector('select[name$="-from_bucket"]');
+            if (f) f.value = String(prefill.from);
+          }
+          if (kind === 'withdraw' && prefill.founder) {
+            var fo = dlg.querySelector('select[name$="-founder"]');
+            if (fo) fo.value = String(prefill.founder);
+          }
+          // Defer past the opening click so backdrop doesn't receive the same event
+          window.setTimeout(function () {
+            crmShowFinanceDialog(dlg);
+            crmSyncFundModalBalance(dlg);
+          }, 0);
+        }
+
+        function crmOpenTxModal(kind) {
+          var idMap = { income: 'tx-modal-income', expense: 'tx-modal-expense' };
+          var dlg = document.getElementById(idMap[kind]);
+          if (!dlg) return;
+          crmBindFinanceDialog(dlg);
+          window.setTimeout(function () {
+            crmShowFinanceDialog(dlg);
+            crmBindIncomeProjectClient(dlg);
+            crmSyncExpenseFundingBalance(dlg);
+          }, 0);
+        }
+
+        function crmAutoOpenFinanceModals(root) {
+          if (!root || !root.querySelector) return;
+          var fundAuto = root.querySelector('[data-fund-auto-open]');
+          var txAuto = root.querySelector('[data-tx-auto-open]');
+          if (!fundAuto && !txAuto) return;
+
+          var kindFund = fundAuto ? fundAuto.getAttribute('data-fund-auto-open') : '';
+          var prefill = fundAuto
+            ? {
+                bucket: fundAuto.getAttribute('data-fund-prefill-bucket') || '',
+                from: fundAuto.getAttribute('data-fund-prefill-from') || '',
+                founder: fundAuto.getAttribute('data-fund-prefill-founder') || '',
+              }
+            : null;
+          var kindTx = txAuto ? txAuto.getAttribute('data-tx-auto-open') : '';
+          crmConsumeAutoOpenMarkers(root);
+
+          var openNow = function () {
+            if (kindFund === 'transfer' || kindFund === 'withdraw') {
+              var dlg = document.getElementById(
+                kindFund === 'transfer' ? 'fund-modal-transfer' : 'fund-modal-withdraw'
+              );
+              if (dlg && !dlg.open) {
+                crmBindFinanceDialog(dlg);
+                if (kindFund === 'transfer' && prefill && prefill.from) {
+                  var f = dlg.querySelector('select[name$="-from_bucket"]');
+                  if (f) f.value = String(prefill.from);
+                }
+                if (kindFund === 'withdraw' && prefill && prefill.founder) {
+                  var fo = dlg.querySelector('select[name$="-founder"]');
+                  if (fo) fo.value = String(prefill.founder);
+                }
+                crmShowFinanceDialog(dlg);
+                crmSyncFundModalBalance(dlg);
+              }
+            }
+            if (kindTx === 'income' || kindTx === 'expense') {
+              var txDlg = document.getElementById(
+                kindTx === 'income' ? 'tx-modal-income' : 'tx-modal-expense'
+              );
+              if (txDlg && !txDlg.open) {
+                crmBindFinanceDialog(txDlg);
+                crmShowFinanceDialog(txDlg);
+                crmBindIncomeProjectClient(txDlg);
+                crmSyncExpenseFundingBalance(txDlg);
+              }
+            }
+          };
+
+          var isOpen = function () {
+            if (kindFund === 'transfer') {
+              var d1 = document.getElementById('fund-modal-transfer');
+              if (!d1 || !d1.open) return false;
+            }
+            if (kindFund === 'withdraw') {
+              var d2 = document.getElementById('fund-modal-withdraw');
+              if (!d2 || !d2.open) return false;
+            }
+            if (kindTx === 'income') {
+              var d3 = document.getElementById('tx-modal-income');
+              if (!d3 || !d3.open) return false;
+            }
+            if (kindTx === 'expense') {
+              var d4 = document.getElementById('tx-modal-expense');
+              if (!d4 || !d4.open) return false;
+            }
+            return true;
+          };
+
+          var attempts = 0;
+          var tick = function () {
+            openNow();
+            attempts += 1;
+            if (!isOpen() && attempts < 10) {
+              window.setTimeout(tick, 30 + attempts * 25);
+            }
+          };
+
+          requestAnimationFrame(function () {
+            requestAnimationFrame(tick);
+          });
+        }
+
+        function crmInitFinanceModals(root) {
+          root = root || document.getElementById('crm-main-content');
+          if (!root || !root.querySelectorAll) return;
+          // Prefer live document dialogs (root may be stale after outerHTML swap)
+          document
+            .querySelectorAll(
+              '#crm-main-content dialog.billing-modal[id^="fund-modal-"], #crm-main-content dialog.billing-modal[id^="tx-modal-"]'
+            )
+            .forEach(crmBindFinanceDialog);
+          crmAutoOpenFinanceModals(document.getElementById('crm-main-content') || root);
+        }
+
+        if (!window.__financeModalBound) {
+          window.__financeModalBound = true;
+          document.body.addEventListener('click', function (e) {
+            var openFund = e.target.closest('[data-fund-modal-open]');
+            if (openFund && openFund.tagName !== 'DIALOG') {
+              e.preventDefault();
+              e.stopPropagation();
+              crmOpenFundModal(openFund.getAttribute('data-fund-modal-open'), {
+                bucket: openFund.getAttribute('data-fund-prefill-bucket') || '',
+                from: openFund.getAttribute('data-fund-prefill-from') || '',
+                founder: openFund.getAttribute('data-fund-prefill-founder') || '',
+              });
+              return;
+            }
+            var openTx = e.target.closest('[data-tx-modal-open]');
+            if (openTx && openTx.tagName !== 'DIALOG') {
+              e.preventDefault();
+              e.stopPropagation();
+              crmOpenTxModal(openTx.getAttribute('data-tx-modal-open'));
+              return;
+            }
+            var closeBtn = e.target.closest('[data-fund-modal-close], [data-tx-modal-close]');
+            if (closeBtn) {
+              e.preventDefault();
+              var d = closeBtn.closest('dialog');
+              crmCloseFinanceDialog(d);
+              crmStripFinanceModalQuery();
+              crmConsumeAutoOpenMarkers(document.getElementById('crm-main-content'));
+            }
+          });
+        }
+
+        document.body.addEventListener('htmx:afterSettle', function (evt) {
+          if (!evt.detail.target || evt.detail.target.id !== 'crm-main-content') return;
+          crmInitFinanceModals(evt.detail.target);
+        });
+        document.body.addEventListener('htmx:afterSwap', function (evt) {
           if (!evt.detail.target || evt.detail.target.id !== 'crm-main-content') return;
           crmInitLeadsPage();
           crmInitBillingPage(evt.detail.target);
         });
+        document.body.addEventListener('htmx:historyRestore', function () {
+          crmInitFinanceModals(document.getElementById('crm-main-content'));
+        });
         if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', function() {
+          document.addEventListener('DOMContentLoaded', function () {
             crmInitLeadsPage();
             crmInitBillingPage(document.getElementById('crm-main-content'));
+            crmInitFinanceModals(document.getElementById('crm-main-content'));
           });
         } else {
           crmInitLeadsPage();
           crmInitBillingPage(document.getElementById('crm-main-content'));
+          crmInitFinanceModals(document.getElementById('crm-main-content'));
         }
       })();
 
@@ -2827,17 +3383,77 @@
       }
     })();
 
-    /* ── Sidebar active-class: update after HTMX nav swaps ─────── */
+    /* ── Chrome sync: header title + sidebar active after HTMX ─── */
     (function () {
-      function updateSidebarActive() {
-        var path = window.location.pathname.replace(/\/$/, '') || '/';
-        document.querySelectorAll('.sidebar-nav .nav-item').forEach(function (a) {
-          var href = (a.getAttribute('href') || '').replace(/\/$/, '') || '/';
-          var isActive = href === path || (href !== '/crm' && path.indexOf(href) === 0);
-          a.classList.toggle('active', isActive);
-        });
+      function normalizePath(p) {
+        if (!p) return '/';
+        p = String(p).split('?')[0].split('#')[0];
+        p = p.replace(/\/+$/, '');
+        return p || '/';
       }
-      document.addEventListener('htmx:afterSettle', updateSidebarActive);
+
+      function resolveFinanceNav(path) {
+        path = normalizePath(path);
+        if (path === '/crm/finance') return 'finance-dashboard';
+        if (path.indexOf('/crm/finance/income') === 0) return 'finance-income';
+        if (path.indexOf('/crm/finance/expenses') === 0) return 'finance-expense';
+        if (path.indexOf('/crm/finance/statement') === 0) return 'finance-statement';
+        if (path.indexOf('/crm/finance/settings') === 0) return 'finance-settings';
+        if (path.indexOf('/crm/finance/allocation/settings') === 0) return 'finance-settings';
+        if (path.indexOf('/crm/finance/founders/settings') === 0) return 'finance-settings';
+        if (path.indexOf('/crm/finance/funds') === 0) return 'finance-funds';
+        if (path.indexOf('/crm/finance/allocation') === 0) return 'finance-funds';
+        if (path.indexOf('/crm/finance/founders') === 0) return 'finance-funds';
+        if (path.indexOf('/crm/finance/reports') === 0) return 'finance-reports';
+        if (path.indexOf('/crm/finance/executive') === 0) return 'finance-reports';
+        return null;
+      }
+
+      function syncCrmChrome() {
+        var main = document.getElementById('crm-main-content');
+        var path = normalizePath(window.location.pathname);
+        var meta = main && main.querySelector('[data-crm-nav]');
+        var financeNav = (meta && meta.getAttribute('data-crm-nav')) || resolveFinanceNav(path);
+
+        var titleEl = document.getElementById('crm-page-title');
+        if (titleEl) {
+          var h1 = main && main.querySelector('.page-header h1');
+          var title = (meta && meta.getAttribute('data-crm-page-title')) ||
+            (h1 && h1.textContent.trim()) || '';
+          if (title) titleEl.textContent = title;
+        }
+
+        document.querySelectorAll('.sidebar-nav [data-nav]').forEach(function (a) {
+          a.classList.toggle('active', !!financeNav && a.getAttribute('data-nav') === financeNav);
+        });
+
+        var otherLinks = document.querySelectorAll(
+          '.sidebar-nav a.nav-item:not([data-nav]), .sidebar-nav a.nav-subitem:not([data-nav])'
+        );
+        var best = null;
+        var bestLen = -1;
+        otherLinks.forEach(function (a) {
+          a.classList.remove('active');
+          if (financeNav) return;
+          var href = normalizePath(a.getAttribute('href') || '');
+          if (!href || href === '#') return;
+          var matches = path === href || (href.length > 1 && path.indexOf(href + '/') === 0);
+          if (matches && href.length > bestLen) {
+            best = a;
+            bestLen = href.length;
+          }
+        });
+        if (best && !financeNav) best.classList.add('active');
+      }
+
+      document.addEventListener('htmx:afterSettle', syncCrmChrome);
+      document.addEventListener('htmx:historyRestore', syncCrmChrome);
+      window.addEventListener('popstate', syncCrmChrome);
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', syncCrmChrome);
+      } else {
+        syncCrmChrome();
+      }
     })();
 
   </script>

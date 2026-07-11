@@ -487,46 +487,7 @@ def get_chart_payload(start: date, end: date) -> dict[str, Any]:
     }
 
 
-def get_expense_dashboard_payload(
-    start: date, end: date, *, ref: date | None = None
-) -> dict[str, Any]:
-    """Expense-focused dashboard metrics + charts for the selected period."""
-    today = ref or timezone.localdate()
-    month_start, month_end = month_bounds(today)
-    month_qs = expenses_between(month_start, month_end)
-    period_qs = expenses_between(start, end)
 
-    daily_labels, daily_values = _daily_series(period_qs, 'expense_date', start, end)
-    by_category = list(
-        period_qs.values('category__name')
-        .annotate(total=Sum('amount'), count=Count('id'))
-        .order_by('-total')
-    )
-    income_period = sum_amount(incomes_between(start, end))
-    expense_period = sum_amount(period_qs)
-
-    return {
-        'month_expense': sum_amount(month_qs),
-        'today_expense': sum_amount(expenses_between(today, today)),
-        'period_expense': expense_period,
-        'period_income': income_period,
-        'category_rows': by_category,
-        'top_expense_categories': by_category[:8],
-        'daily_labels': json.dumps(daily_labels),
-        'daily_expense_values': json.dumps(daily_values),
-        'expense_category_labels': json.dumps(
-            [r['category__name'] or '—' for r in by_category]
-        ),
-        'expense_category_values': json.dumps(
-            [float(_money(r['total'])) for r in by_category]
-        ),
-        'vs_income_labels': json.dumps(['Income', 'Expense']),
-        'vs_income_values': json.dumps([float(income_period), float(expense_period)]),
-        'latest_expenses': (
-            period_qs.select_related('category', 'project', 'employee', 'created_by')
-            .order_by('-expense_date', '-created_at')[:12]
-        ),
-    }
 
 
 def income_snapshot(income: Income) -> dict[str, Any]:
@@ -553,6 +514,10 @@ def expense_snapshot(expense: Expense) -> dict[str, Any]:
         'vendor': expense.vendor,
         'payment_method': expense.payment_method,
         'paid_from': expense.paid_from,
+        'funding_bucket_id': expense.funding_bucket_id,
+        'funding_bucket': (
+            expense.funding_bucket.name if expense.funding_bucket_id else 'Other'
+        ),
         'expense_date': expense.expense_date.isoformat() if expense.expense_date else None,
         'project_id': expense.project_id,
         'employee_id': expense.employee_id,
@@ -612,6 +577,8 @@ def log_expense_event(
 
 
 def create_income(*, actor, ip_address: str | None = None, **fields) -> Income:
+    from . import revenue_allocation as alloc_service
+
     income = Income.objects.create(created_by=actor, **fields)
     log_income_event(
         action='income_created',
@@ -619,6 +586,9 @@ def create_income(*, actor, ip_address: str | None = None, **fields) -> Income:
         actor=actor,
         after_state=income_snapshot(income),
         ip_address=ip_address,
+    )
+    alloc_service.sync_income_allocations(
+        income, actor=actor, ip_address=ip_address, note='Auto-allocate on create'
     )
     return income
 
@@ -630,6 +600,8 @@ def update_income(
     ip_address: str | None = None,
     **fields,
 ) -> Income:
+    from . import revenue_allocation as alloc_service
+
     before = income_snapshot(income)
     for key, value in fields.items():
         setattr(income, key, value)
@@ -642,6 +614,9 @@ def update_income(
         after_state=income_snapshot(income),
         ip_address=ip_address,
     )
+    alloc_service.sync_income_allocations(
+        income, actor=actor, ip_address=ip_address, note='Recalculate on income update'
+    )
     return income
 
 
@@ -651,10 +626,29 @@ def delete_income(
     actor,
     ip_address: str | None = None,
 ) -> None:
+    from . import revenue_allocation as alloc_service
+
     before = income_snapshot(income)
     pk = income.pk
     project = income.project
     repr_ = str(income)[:200]
+    alloc_before = [
+        {
+            'bucket_id': a.bucket_id,
+            'bucket': a.bucket.name,
+            'amount': str(a.amount),
+            'percentage': str(a.percentage),
+        }
+        for a in income.allocations.select_related('bucket')
+    ]
+    alloc_service.clear_income_allocations(
+        pk,
+        actor=actor,
+        project=project,
+        income_repr=repr_,
+        before_state={'allocations': alloc_before},
+        ip_address=ip_address,
+    )
     income.delete()
     audit_service.log_event(
         category=AuditEntry.EventCategory.FINANCE,
@@ -670,6 +664,24 @@ def delete_income(
 
 
 def create_expense(*, actor, ip_address: str | None = None, **fields) -> Expense:
+    from django.core.exceptions import ValidationError
+
+    from .fund_management import available_bucket_balance, _money
+
+    amount = _money(fields.get('amount'))
+    bucket = fields.get('funding_bucket')
+    if bucket and (getattr(bucket, 'code', None) == 'founder_pool' or getattr(bucket, 'name', None) == 'Founder Pool'):
+        raise ValidationError(
+            'Founder Pool payouts require a founder account. '
+            'Use Funds → Founder Withdraw instead.'
+        )
+    if bucket:
+        available = available_bucket_balance(bucket)
+        if amount > available:
+            raise ValidationError(
+                f'Insufficient balance in {bucket.name}. '
+                f'Available Rs. {available:.2f}, requested Rs. {amount:.2f}.'
+            )
     expense = Expense.objects.create(created_by=actor, **fields)
     log_expense_event(
         action='expense_created',
@@ -688,7 +700,28 @@ def update_expense(
     ip_address: str | None = None,
     **fields,
 ) -> Expense:
+    from django.core.exceptions import ValidationError
+
+    from .fund_management import available_bucket_balance, _money
+
     before = expense_snapshot(expense)
+    new_amount = _money(fields.get('amount', expense.amount))
+    new_bucket = fields.get('funding_bucket', expense.funding_bucket)
+    if new_bucket and (
+        getattr(new_bucket, 'code', None) == 'founder_pool'
+        or getattr(new_bucket, 'name', None) == 'Founder Pool'
+    ):
+        raise ValidationError(
+            'Founder Pool payouts require a founder account. '
+            'Use Funds → Founder Withdraw instead.'
+        )
+    if new_bucket:
+        available = available_bucket_balance(new_bucket, exclude_expense=expense)
+        if new_amount > available:
+            raise ValidationError(
+                f'Insufficient balance in {new_bucket.name}. '
+                f'Available Rs. {available:.2f}, requested Rs. {new_amount:.2f}.'
+            )
     for key, value in fields.items():
         setattr(expense, key, value)
     expense.save()
@@ -727,32 +760,6 @@ def delete_expense(
         before_state=before,
         ip_address=ip_address,
     )
-
-
-def report_monthly_expense(*, year: int | None = None, ref: date | None = None) -> dict[str, Any]:
-    today = ref or timezone.localdate()
-    year = year or today.year
-    start = date(year, 1, 1)
-    end = date(year, 12, 31)
-    qs = expenses_between(start, end)
-    rows = []
-    for month in range(1, 13):
-        m_start = date(year, month, 1)
-        m_end = date(year, month, calendar.monthrange(year, month)[1])
-        month_qs = qs.filter(expense_date__gte=m_start, expense_date__lte=m_end)
-        rows.append({
-            'month': m_start,
-            'label': m_start.strftime('%b %Y'),
-            'total': sum_amount(month_qs),
-            'count': month_qs.count(),
-        })
-    return {
-        'year': year,
-        'rows': rows,
-        'grand_total': sum_amount(qs),
-        'chart_labels': json.dumps([r['label'] for r in rows]),
-        'chart_values': json.dumps([float(r['total']) for r in rows]),
-    }
 
 
 def report_by_category(start: date, end: date) -> dict[str, Any]:
@@ -912,6 +919,13 @@ def create_income_from_bill_payment(payment, *, actor=None) -> Income | None:
             'bill_payment_id': payment.pk,
         },
         note=f'Synced from BillPayment #{payment.pk}',
+    )
+    from . import revenue_allocation as alloc_service
+
+    alloc_service.sync_income_allocations(
+        income,
+        actor=actor or payment.verified_by,
+        note='Auto-allocate from bill payment income',
     )
     return income
 

@@ -34,13 +34,17 @@ REPORT_TYPES = {
     'income': 'Income Report',
     'expense': 'Expense Report',
     'profit': 'Profit Report',
-    'cash_flow': 'Cash Flow',
+    'cash_flow': 'Cash Flow by Method',
     'project_profitability': 'Project Profitability',
     'client_revenue': 'Client Revenue',
-    'expense_category': 'Expense Category Report',
-    'payment_method': 'Payment Method Report',
-    'top_customers': 'Top Customers',
-    'top_projects': 'Top Projects',
+    'expense_category': 'Expense by Category',
+    'payment_method': 'Expense by Payment Method',
+}
+
+# Legacy slugs still accepted via redirect (not listed in hubs)
+REPORT_REDIRECTS = {
+    'top_customers': 'client_revenue',
+    'top_projects': 'project_profitability',
 }
 
 
@@ -287,8 +291,6 @@ def run_report(report_type: str, f: ReportFilters) -> dict[str, Any]:
         'client_revenue': _report_client_revenue,
         'expense_category': _report_expense_category,
         'payment_method': _report_payment_method,
-        'top_customers': _report_top_customers,
-        'top_projects': _report_top_projects,
     }
     builder = builders.get(report_type, _report_profit)
     extra = builder(f, income_total, expense_total, profit_total)
@@ -374,14 +376,14 @@ def _report_profit(f, income_total, expense_total, profit_total) -> dict:
         for i in range(len(series['labels']))
     ]
     return {
-        'columns': ['Period', 'Revenue', 'Expense', 'Profit'],
+        'columns': ['Period', 'Income', 'Expense', 'Profit'],
         'rows': rows,
         'summary': {
-            'Revenue': income_total,
+            'Income': income_total,
             'Expense': expense_total,
             'Profit': profit_total,
         },
-        'breakdown_labels': json.dumps(['Revenue', 'Expense', 'Profit']),
+        'breakdown_labels': json.dumps(['Income', 'Expense', 'Profit']),
         'breakdown_values': json.dumps([
             float(income_total), float(expense_total), float(profit_total),
         ]),
@@ -602,65 +604,6 @@ def _report_top_projects(f, income_total, expense_total, profit_total) -> dict:
             for r in rows_raw[:12]
         ]),
         'breakdown_values': json.dumps([float(_money(r['total'])) for r in rows_raw[:12]]),
-    }
-
-
-def get_executive_dashboard(*, ref: date | None = None) -> dict[str, Any]:
-    """Current-month executive KPIs + growth vs previous month."""
-    today = ref or timezone.localdate()
-    start = today.replace(day=1)
-    end = today.replace(day=monthrange(today.year, today.month)[1])
-    prev_end = start - timedelta(days=1)
-    prev_start = prev_end.replace(day=1)
-
-    def rng(a, b):
-        return ReportFilters(start=a, end=b, period='month', label='Monthly')
-
-    cur = rng(start, end)
-    prev = rng(prev_start, prev_end)
-
-    revenue = _sum(_income_qs(cur))
-    expense = _sum(_expense_qs(cur))
-    profit = revenue - expense
-    prev_rev = _sum(_income_qs(prev))
-    prev_exp = _sum(_expense_qs(prev))
-
-    collections = revenue  # received this month
-    pending = _money(
-        Project.objects.filter(balance_due__gt=0).aggregate(t=Sum('balance_due'))['t']
-    )
-    days = max(today.day, 1)
-    avg_rev = (revenue / days).quantize(Decimal('0.01'))
-    avg_exp = (expense / days).quantize(Decimal('0.01'))
-
-    series = build_time_series(cur)
-    top_clients = _report_top_customers(cur, revenue, expense, profit)
-    top_projects = _report_top_projects(cur, revenue, expense, profit)
-
-    return {
-        'today': today,
-        'month_start': start,
-        'month_end': end,
-        'revenue': revenue,
-        'expense': expense,
-        'profit': profit,
-        'collections': collections,
-        'pending': pending,
-        'growth': _growth_pct(revenue, prev_rev),
-        'expense_growth': _growth_pct(expense, prev_exp),
-        'avg_revenue': avg_rev,
-        'avg_expense': avg_exp,
-        'prev_revenue': prev_rev,
-        'prev_expense': prev_exp,
-        'labels': series['labels'],
-        'chart_labels': series['chart_labels'],
-        'chart_revenue': series['chart_revenue'],
-        'chart_expense': series['chart_expense'],
-        'chart_profit': series['chart_profit'],
-        'top_customers_rows': top_clients['rows'][:8],
-        'top_projects_rows': top_projects['rows'][:8],
-        'breakdown_labels': top_clients.get('breakdown_labels', '[]'),
-        'breakdown_values': top_clients.get('breakdown_values', '[]'),
     }
 
 
