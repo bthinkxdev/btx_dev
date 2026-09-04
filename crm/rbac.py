@@ -44,6 +44,25 @@ def can_view_financial_data(user) -> bool:
     return get_crm_role(user) != ROLE_DEV
 
 
+def is_sales_manager(user) -> bool:
+    """Sales manager flag (EmployeeProfile.is_sales_manager) — not superuser, not a separate crm_role."""
+    if not user or not user.is_authenticated or user.is_superuser:
+        return False
+    try:
+        return bool(user.crm_profile.is_sales_manager)
+    except EmployeeProfile.DoesNotExist:
+        return False
+
+
+def can_view_all_sales_data(user) -> bool:
+    """Sales managers (and admins) see/edit the whole sales team's leads, follow-ups, achievements."""
+    if not user or not user.is_authenticated:
+        return False
+    if user.is_superuser:
+        return True
+    return get_crm_role(user) == ROLE_ADMIN or is_sales_manager(user)
+
+
 def get_crm_role(user) -> str:
     if not user or not user.is_authenticated:
         return ROLE_SALES

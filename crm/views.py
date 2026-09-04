@@ -113,9 +113,12 @@ from .rbac import (
     can_manage_portal,
     can_manage_provisioning,
     can_send_renewal_reminder_manual,
+    can_view_all_sales_data,
     can_view_credential_audit,
     credential_allowed_for_role,
     get_crm_role,
+    is_sales_manager,
+    ROLE_SALES,
 )
 from .services.project import (
     convert_lead_to_project,
@@ -155,6 +158,79 @@ def sales_pipeline_required(view_fn):
 
 def _profile(user):
     return EmployeeProfile.objects.get_or_create(user=user)[0]
+
+
+def _sales_team_users_qs():
+    """Active users on the sales team (crm_role='sales'), for manager scoping + dropdowns."""
+    return (
+        User.objects.filter(
+            is_active=True, crm_profile__crm_role=ROLE_SALES
+        )
+        .order_by('username')
+    )
+
+
+def _sales_scope_user_ids(user):
+    """User ids a sales manager (or admin) may view/edit sales data for — the sales team + self."""
+    ids = set(_sales_team_users_qs().values_list('id', flat=True))
+    ids.add(user.id)
+    return ids
+
+
+def _sales_scope_context(request, user):
+    """
+    Shared employee-scope state for leads / follow-ups / achievements list views.
+    Returns manager_mode, the employee ids in scope, the selected employee (None = "all"),
+    and the queryset of employees to show in the picker.
+    """
+    manager_mode = can_view_all_sales_data(user)
+    if not manager_mode:
+        return {
+            'manager_mode': False,
+            'scope_ids': {user.id},
+            'selected_employee': None,
+            'scope_employees': None,
+        }
+    scope_employees = _sales_team_users_qs()
+    scope_ids = _sales_scope_user_ids(user)
+    emp_param = (request.GET.get('employee') or '').strip()
+    selected_employee = None
+    if emp_param.isdigit():
+        selected_employee = next(
+            (e for e in scope_employees if e.id == int(emp_param)), None
+        )
+    return {
+        'manager_mode': True,
+        'scope_ids': {selected_employee.id} if selected_employee else scope_ids,
+        'selected_employee': selected_employee,
+        'scope_employees': scope_employees,
+    }
+
+
+def _lead_scope_qs(user):
+    """Leads a user may view/edit — own leads, or (sales managers/admins) the whole sales team."""
+    if can_view_all_sales_data(user):
+        return Lead.objects.filter(employee_id__in=_sales_scope_user_ids(user))
+    return Lead.objects.filter(employee=user)
+
+
+def _followup_scope_qs(user):
+    if can_view_all_sales_data(user):
+        return FollowUp.objects.filter(employee_id__in=_sales_scope_user_ids(user))
+    return FollowUp.objects.filter(employee=user)
+
+
+def _task_scope_qs(user):
+    if can_view_all_sales_data(user):
+        return Task.objects.filter(employee_id__in=_sales_scope_user_ids(user))
+    return Task.objects.filter(employee=user)
+
+
+def _can_manage_employee_data(user, target_employee_id):
+    """Superuser, the employee themself, or a sales manager acting within their team."""
+    if user.is_superuser or target_employee_id == user.id:
+        return True
+    return is_sales_manager(user) and target_employee_id in _sales_scope_user_ids(user)
 
 
 def _local_today_bounds():
@@ -233,9 +309,13 @@ def _hx_toast(response, message):
     return response
 
 
-def _followups_queue_context(user):
+def _followups_queue_context(user, scope_ids=None):
     start, end, _ = _local_today_bounds()
-    base = FollowUp.objects.filter(employee=user).select_related('lead')
+    if scope_ids is None:
+        scope_ids = (
+            _sales_scope_user_ids(user) if can_view_all_sales_data(user) else {user.id}
+        )
+    base = FollowUp.objects.filter(employee_id__in=scope_ids).select_related('lead', 'employee')
     today = list(
         base.filter(is_done=False, datetime__gte=start, datetime__lt=end).order_by(
             'datetime'
@@ -401,8 +481,8 @@ def _lead_for_exec(user, pk):
     start, end, local_date = _local_today_bounds()
     latest = ActivityLog.objects.filter(lead_id=OuterRef('pk')).order_by('-created_at')
     return (
-        Lead.objects.filter(pk=pk, employee=user)
-        .select_related('package')
+        _lead_scope_qs(user).filter(pk=pk)
+        .select_related('package', 'employee')
         .annotate(
             last_act=Subquery(latest.values('action')[:1]),
             last_act_at=Subquery(latest.values('created_at')[:1]),
@@ -428,10 +508,11 @@ def _exec_board_ctx(lead, user, **extra):
     ctx = {
         'lead': lead,
         'status_choices': Lead.Status.choices,
-        'packages': Package.objects.filter(employee=user),
+        'packages': Package.objects.filter(employee_id=lead.employee_id),
         'fu_start': start,
         'fu_end': end,
         'fu_bounds': (start, end),
+        'manager_mode': can_view_all_sales_data(user),
     }
     ctx.update(extra)
     return ctx
@@ -453,7 +534,7 @@ def _patch_lead_from_post(lead, user, request):
         if pid == '':
             lead.package = None
         else:
-            pkg = Package.objects.filter(pk=pid, employee=user).first()
+            pkg = Package.objects.filter(pk=pid, employee_id=lead.employee_id).first()
             if pkg:
                 lead.package = pkg
         if old_pkg_id != lead.package_id:
@@ -568,11 +649,12 @@ def _leads_list_qs_and_meta(request, user):
     """
     start, end, local_date = _local_today_bounds()
     active_q = ~Q(status__in=TERMINAL_STATUSES)
+    scope = _sales_scope_context(request, user)
 
     latest = ActivityLog.objects.filter(lead_id=OuterRef('pk')).order_by('-created_at')
     qs = (
-        Lead.objects.filter(employee=user)
-        .select_related('package')
+        Lead.objects.filter(employee_id__in=scope['scope_ids'])
+        .select_related('package', 'employee')
         .annotate(
             last_act=Subquery(latest.values('action')[:1]),
             last_act_at=Subquery(latest.values('created_at')[:1]),
@@ -733,6 +815,7 @@ def _leads_list_qs_and_meta(request, user):
         'date_end': date_end_s,
         'has_tasks': has_tasks_filter,
         'min_deal': min_deal_s,
+        'employee': str(scope['selected_employee'].id) if scope['selected_employee'] else '',
     }
 
     has_active_filters = bool(
@@ -761,6 +844,10 @@ def _leads_list_qs_and_meta(request, user):
         'package_filter': package_filter,
         'has_active_filters': has_active_filters,
         'pkg': pkg,
+        'manager_mode': scope['manager_mode'],
+        'scope_employees': scope['scope_employees'],
+        'selected_employee': scope['selected_employee'],
+        'scope_ids': scope['scope_ids'],
     }
 
 
@@ -775,8 +862,12 @@ def leads_list(request):
     filters_ctx = meta['filters_ctx']
     package_filter = meta['package_filter']
     has_active_filters = meta['has_active_filters']
+    manager_mode = meta['manager_mode']
+    scope_employees = meta['scope_employees']
+    selected_employee = meta['selected_employee']
+    scope_ids = meta['scope_ids']
 
-    packages = Package.objects.filter(employee=user)
+    packages = Package.objects.filter(employee_id__in=scope_ids)
 
     # Full document always starts at batch 1 (ignore ?page=). Infinite scroll uses /leads/more/?page=…
     page_raw = '1'
@@ -817,8 +908,18 @@ def leads_list(request):
     for _sv, _sl in Lead.Status.choices:
         status_pills.append({'val': _sv, 'label': _sl, 'qs': _lq(status=_sv)})
 
-    # Global summary strip counts (always reflect full pipeline, not current filters)
-    _all_leads = Lead.objects.filter(employee=user)
+    employee_pills = []
+    if manager_mode and scope_employees:
+        employee_pills = [{'id': None, 'label': 'All leads', 'qs': _lq(employee='')}]
+        for e in scope_employees:
+            employee_pills.append({
+                'id': e.id,
+                'label': e.get_full_name() or e.username,
+                'qs': _lq(employee=e.id),
+            })
+
+    # Global summary strip counts (always reflect full pipeline, not current filters, but honor employee scope)
+    _all_leads = Lead.objects.filter(employee_id__in=scope_ids)
     all_leads_total = _all_leads.count()
     _active_q = ~Q(status__in=TERMINAL_STATUSES)
     overdue_count = _all_leads.filter(
@@ -827,7 +928,7 @@ def leads_list(request):
     today_fu_count = _all_leads.filter(
         _active_q, next_followup__gte=start, next_followup__lt=end
     ).count()
-    pending_tasks_count = Task.objects.filter(employee=user, is_completed=False).count()
+    pending_tasks_count = Task.objects.filter(employee_id__in=scope_ids, is_completed=False).count()
     hot_leads_count = _all_leads.filter(
         _active_q,
         # Exclude brand-new leads, keep active pipeline + deal value.
@@ -874,6 +975,10 @@ def leads_list(request):
             'today_fu_count': today_fu_count,
             'pending_tasks_count': pending_tasks_count,
             'hot_leads_count': hot_leads_count,
+            'manager_mode': manager_mode,
+            'scope_employees': scope_employees,
+            'selected_employee': selected_employee,
+            'employee_pills': employee_pills,
         },
     )
 
@@ -905,13 +1010,14 @@ def leads_more_json(request):
         )
 
     leads_page = list(page_obj.object_list)
-    packages = Package.objects.filter(employee=user)
+    packages = Package.objects.filter(employee_id__in=meta['scope_ids'])
     base_ctx = {
         'fu_start': start,
         'fu_end': end,
         'fu_bounds': (start, end),
         'status_choices': Lead.Status.choices,
         'packages': packages,
+        'manager_mode': meta['manager_mode'],
     }
     desk_parts = []
     mob_parts = []
@@ -948,7 +1054,7 @@ def lead_search(request):
     if len(q) < 1:
         return JsonResponse({'results': []})
     rows = (
-        Lead.objects.filter(employee=request.user)
+        _lead_scope_qs(request.user)
         .filter(Q(name__icontains=q) | Q(phone__icontains=q))
         .order_by('-updated_at')[:15]
     )
@@ -1032,7 +1138,7 @@ def lead_create(request):
 @require_POST
 def lead_patch(request, pk):
     user = request.user
-    lead = get_object_or_404(Lead, pk=pk, employee=user)
+    lead = get_object_or_404(_lead_scope_qs(user), pk=pk)
     _patch_lead_from_post(lead, user, request)
     lead.refresh_from_db()
 
@@ -1061,7 +1167,7 @@ def lead_high_hope_toggle(request, pk):
     Toggle lead.high_hope and return the matching partial for HTMX targets.
     """
     user = request.user
-    lead = get_object_or_404(Lead, pk=pk, employee=user)
+    lead = get_object_or_404(_lead_scope_qs(user), pk=pk)
     lead.high_hope = not lead.high_hope
     lead.save(update_fields=['high_hope'])
 
@@ -1268,7 +1374,7 @@ def whatsapp_session_health(request):
 @require_POST
 def lead_quick_followup(request, pk):
     user = request.user
-    lead = get_object_or_404(Lead, pk=pk, employee=user)
+    lead = get_object_or_404(_lead_scope_qs(user), pk=pk)
     form = QuickFollowUpForm(request.POST)
     err = None
     if form.is_valid():
@@ -1277,7 +1383,7 @@ def lead_quick_followup(request, pk):
             dt = timezone.make_aware(dt)
         fu = FollowUp.objects.create(
             lead=lead,
-            employee=user,
+            employee=lead.employee,
             datetime=dt,
             note=form.cleaned_data.get('fu_note') or '',
         )
@@ -1308,7 +1414,7 @@ def lead_quick_followup(request, pk):
 @require_POST
 def lead_quick_note(request, pk):
     user = request.user
-    lead = get_object_or_404(Lead, pk=pk, employee=user)
+    lead = get_object_or_404(_lead_scope_qs(user), pk=pk)
     form = QuickNoteForm(request.POST)
     err = None
     if form.is_valid():
@@ -1343,7 +1449,7 @@ def lead_quick_note(request, pk):
 @require_POST
 def lead_notes_save(request, pk):
     user = request.user
-    lead = get_object_or_404(Lead, pk=pk, employee=user)
+    lead = get_object_or_404(_lead_scope_qs(user), pk=pk)
     lead.notes = request.POST.get('notes', '')[:10000]
     lead.save(update_fields=['notes', 'updated_at'])
     log_activity(lead, 'notes_updated', '')
@@ -1361,7 +1467,7 @@ def lead_notes_save(request, pk):
 @require_POST
 def lead_contact_save(request, pk):
     user = request.user
-    lead = get_object_or_404(Lead, pk=pk, employee=user)
+    lead = get_object_or_404(_lead_scope_qs(user), pk=pk)
     name = (request.POST.get('name') or '').strip()[:200]
     phone = (request.POST.get('phone') or '').strip()[:40]
     email = (request.POST.get('email') or '').strip()[:254]
@@ -1389,7 +1495,7 @@ def lead_contact_save(request, pk):
     ctx = {
         'lead': lead,
         'status_choices': Lead.Status.choices,
-        'packages': Package.objects.filter(employee=user),
+        'packages': Package.objects.filter(employee_id=lead.employee_id),
         'fu_start': start,
         'fu_end': end,
         'contact_save_error': err,
@@ -1412,7 +1518,7 @@ def lead_contact_save(request, pk):
 def lead_detail(request, pk):
     user = request.user
     lead = get_object_or_404(
-        Lead.objects.filter(employee=user).select_related('package'), pk=pk
+        _lead_scope_qs(user).select_related('package', 'employee'), pk=pk
     )
     activities = lead.activities.all()[:100]
     followups = lead.followups.all().order_by('-datetime')[:50]
@@ -1429,7 +1535,7 @@ def lead_detail(request, pk):
         lead.status == Lead.Status.ADVANCE_RECEIVED_PROJECT_STARTED or not has_client
     )
     convert_form = (
-        LeadConvertForm(employee=user)
+        LeadConvertForm(employee=lead.employee)
         if show_convert_to_project and not has_client
         else None
     )
@@ -1444,13 +1550,14 @@ def lead_detail(request, pk):
             'fu_form': fu_form,
             'task_form': task_form,
             'status_choices': Lead.Status.choices,
-            'packages': Package.objects.filter(employee=user),
+            'packages': Package.objects.filter(employee_id=lead.employee_id),
             'fu_start': start,
             'fu_end': end,
             'show_convert_to_project': show_convert_to_project,
             'convert_form': convert_form,
             'lead_has_client': has_client,
             'linked_project': linked_project,
+            'manager_mode': can_view_all_sales_data(user),
         },
     )
 
@@ -1460,7 +1567,7 @@ def lead_detail(request, pk):
 @require_POST
 def lead_status_detail(request, pk):
     user = request.user
-    lead = get_object_or_404(Lead, pk=pk, employee=user)
+    lead = get_object_or_404(_lead_scope_qs(user), pk=pk)
     old = lead.status
     st = request.POST.get('status')
     if st in dict(Lead.Status.choices):
@@ -1475,7 +1582,7 @@ def lead_status_detail(request, pk):
             {
                 'lead': lead,
                 'status_choices': Lead.Status.choices,
-                'packages': Package.objects.filter(employee=user),
+                'packages': Package.objects.filter(employee_id=lead.employee_id),
                 'fu_start': _local_today_bounds()[0],
                 'fu_end': _local_today_bounds()[1],
             },
@@ -1490,13 +1597,13 @@ def lead_status_detail(request, pk):
 @require_POST
 def followup_add(request, lead_pk):
     user = request.user
-    lead = get_object_or_404(Lead, pk=lead_pk, employee=user)
+    lead = get_object_or_404(_lead_scope_qs(user), pk=lead_pk)
     form = FollowUpForm(request.POST)
     fu_error = None
     if form.is_valid():
         fu = form.save(commit=False)
         fu.lead = lead
-        fu.employee = user
+        fu.employee = lead.employee
         if timezone.is_naive(fu.datetime):
             fu.datetime = timezone.make_aware(fu.datetime)
         fu.save()
@@ -1519,7 +1626,7 @@ def followup_add(request, lead_pk):
                 'fu_error': fu_error,
                 'task_error': None,
                 'status_choices': Lead.Status.choices,
-                'packages': Package.objects.filter(employee=user),
+                'packages': Package.objects.filter(employee_id=lead.employee_id),
             },
         )
         if not fu_error:
@@ -1532,7 +1639,7 @@ def _tasks_panel_ctx(user, lead_pk):
     _, _, local_date = _local_today_bounds()
     lead_ann = _lead_for_exec(user, lead_pk)
     tasks = (
-        Task.objects.filter(lead_id=lead_pk, employee=user)
+        Task.objects.filter(lead_id=lead_pk)
         .order_by('is_completed', 'due_date', 'id')
     )
     return {
@@ -1548,7 +1655,7 @@ def _tasks_panel_ctx(user, lead_pk):
 @sales_pipeline_required
 def lead_tasks_panel(request, pk):
     user = request.user
-    get_object_or_404(Lead, pk=pk, employee=user)
+    get_object_or_404(_lead_scope_qs(user), pk=pk)
     return render(
         request,
         'crm/partials/lead_tasks_panel_inner.html',
@@ -1561,13 +1668,13 @@ def lead_tasks_panel(request, pk):
 @require_POST
 def task_add(request, lead_pk):
     user = request.user
-    lead = get_object_or_404(Lead, pk=lead_pk, employee=user)
+    lead = get_object_or_404(_lead_scope_qs(user), pk=lead_pk)
     form = TaskForm(request.POST)
     task_error = None
     if form.is_valid():
         t = form.save(commit=False)
         t.lead = lead
-        t.employee = user
+        t.employee = lead.employee
         t.save()
         log_activity(lead, 'task_added', t.title)
     else:
@@ -1632,7 +1739,7 @@ def task_add(request, lead_pk):
                 'fu_error': None,
                 'task_error': task_error,
                 'status_choices': Lead.Status.choices,
-                'packages': Package.objects.filter(employee=user),
+                'packages': Package.objects.filter(employee_id=lead.employee_id),
             },
         )
     return HttpResponse(status=204)
@@ -1643,7 +1750,7 @@ def task_add(request, lead_pk):
 @require_POST
 def task_update(request, pk):
     user = request.user
-    task = get_object_or_404(Task, pk=pk, employee=user)
+    task = get_object_or_404(_task_scope_qs(user), pk=pk)
     title = (request.POST.get('title') or '').strip()[:300]
     due = (request.POST.get('due_date') or '').strip()
     if title:
@@ -1683,7 +1790,7 @@ def task_update(request, pk):
 @require_POST
 def task_toggle(request, pk):
     user = request.user
-    task = get_object_or_404(Task, pk=pk, employee=user)
+    task = get_object_or_404(_task_scope_qs(user), pk=pk)
     task.is_completed = not task.is_completed
     task.save(update_fields=['is_completed'])
     log_activity(
@@ -1735,7 +1842,7 @@ def task_toggle(request, pk):
 @require_POST
 def lead_log_call(request, pk):
     user = request.user
-    lead = get_object_or_404(Lead, pk=pk, employee=user)
+    lead = get_object_or_404(_lead_scope_qs(user), pk=pk)
     log_activity(lead, 'call', '')
     if request.headers.get('HX-Request'):
         r = HttpResponse(status=204)
@@ -1749,7 +1856,7 @@ def lead_log_call(request, pk):
 @require_POST
 def lead_log_whatsapp(request, pk):
     user = request.user
-    lead = get_object_or_404(Lead, pk=pk, employee=user)
+    lead = get_object_or_404(_lead_scope_qs(user), pk=pk)
     log_activity(lead, 'whatsapp', '')
     if request.headers.get('HX-Request'):
         r = HttpResponse(status=204)
@@ -1835,7 +1942,11 @@ def tasks_header_badges(request):
 @sales_pipeline_required
 def followups_page(request):
     user = request.user
-    ctx = _followups_queue_context(user)
+    scope = _sales_scope_context(request, user)
+    ctx = _followups_queue_context(user, scope_ids=scope['scope_ids'])
+    ctx['manager_mode'] = scope['manager_mode']
+    ctx['scope_employees'] = scope['scope_employees']
+    ctx['selected_employee'] = scope['selected_employee']
     return render(request, 'crm/followups.html', ctx)
 
 
@@ -1844,7 +1955,7 @@ def followups_page(request):
 @require_POST
 def followup_done(request, pk):
     user = request.user
-    fu = get_object_or_404(FollowUp, pk=pk, employee=user)
+    fu = get_object_or_404(_followup_scope_qs(user), pk=pk)
     fu.is_done = True
     fu.save(update_fields=['is_done'])
     recalc_lead_next_followup(fu.lead)
@@ -1854,6 +1965,7 @@ def followup_done(request, pk):
         if from_queue:
             ctx = _followups_queue_context(user)
             ctx['hx_oob'] = True
+            ctx['manager_mode'] = can_view_all_sales_data(user)
             resp = render(request, 'crm/partials/followups_list.html', ctx)
             _hx_toast(resp, 'Done')
             return resp
@@ -1869,7 +1981,7 @@ def followup_done(request, pk):
 def followup_reschedule(request, pk):
     user = request.user
     fu = get_object_or_404(
-        FollowUp.objects.filter(employee=user).select_related('lead'), pk=pk
+        _followup_scope_qs(user).select_related('lead'), pk=pk
     )
     form = RescheduleFollowUpForm(request.POST)
     if form.is_valid():
@@ -1884,6 +1996,7 @@ def followup_reschedule(request, pk):
         if request.headers.get('HX-Request'):
             ctx = _followups_queue_context(user)
             ctx['hx_oob'] = True
+            ctx['manager_mode'] = can_view_all_sales_data(user)
             resp = render(request, 'crm/partials/followups_list.html', ctx)
             _hx_toast(resp, 'Rescheduled')
             return resp
@@ -1908,6 +2021,7 @@ def followup_reschedule(request, pk):
                 'bucket': bucket,
                 'reschedule_error': reschedule_error,
                 'hx_oob': True,
+                'manager_mode': can_view_all_sales_data(user),
             },
         )
     return HttpResponse(status=204)
@@ -2124,18 +2238,25 @@ def achievements_dashboard(request):
         month_date = today.replace(day=1)
 
     # Employee scope
+    can_scope_employees = can_view_all_sales_data(user)
     if user.is_superuser:
         emp_id_s = (request.GET.get('employee') or '').strip()
-        from django.contrib.auth import get_user_model
-
-        UserModel = get_user_model()
         if emp_id_s.isdigit():
-            employee = UserModel.objects.filter(pk=int(emp_id_s), is_active=True).first()
+            employee = User.objects.filter(pk=int(emp_id_s), is_active=True).first()
         else:
             employee = user
         if not employee:
             employee = user
-        available_employees = UserModel.objects.filter(is_active=True).order_by('username')
+        available_employees = User.objects.filter(is_active=True).order_by('username')
+    elif can_scope_employees:
+        emp_id_s = (request.GET.get('employee') or '').strip()
+        available_employees = _sales_team_users_qs()
+        if emp_id_s.isdigit():
+            employee = next(
+                (e for e in available_employees if e.id == int(emp_id_s)), user
+            )
+        else:
+            employee = user
     else:
         employee = user
         available_employees = None
@@ -2173,12 +2294,13 @@ def achievements_dashboard(request):
         .first()
     )
 
-    form_employee = employee if user.is_superuser else user
+    form_employee = employee if can_scope_employees else user
     form = AchievementForm(employee=form_employee, initial={'achieved_date': today})
 
     ctx = {
         'scope_employee': employee,
         'is_admin': user.is_superuser,
+        'can_scope_employees': can_scope_employees,
         'employees': available_employees,
         'current_month': month_date,
         'package_filter': package_obj,
@@ -2200,12 +2322,13 @@ def achievement_create(request):
     if user.is_superuser:
         emp_id = (request.POST.get('employee') or '').strip()
         if emp_id.isdigit():
-            from django.contrib.auth import get_user_model
-
-            UserModel = get_user_model()
             target_employee = (
-                UserModel.objects.filter(pk=int(emp_id), is_active=True).first() or user
+                User.objects.filter(pk=int(emp_id), is_active=True).first() or user
             )
+    elif is_sales_manager(user):
+        emp_id = (request.POST.get('employee') or '').strip()
+        if emp_id.isdigit() and int(emp_id) in _sales_scope_user_ids(user):
+            target_employee = User.objects.filter(pk=int(emp_id), is_active=True).first() or user
 
     form = AchievementForm(request.POST or None, employee=target_employee)
     if form.is_valid():
@@ -2231,6 +2354,7 @@ def achievement_create(request):
             'form': form,
             'scope_employee': target_employee,
             'is_admin': user.is_superuser,
+            'can_scope_employees': can_view_all_sales_data(user),
             'current_month': month_date,
             'package_filter': None,
             'packages': packages,
@@ -2245,7 +2369,7 @@ def achievement_create(request):
 def achievement_update(request, pk):
     user = request.user
     ach = get_object_or_404(Achievement, pk=pk)
-    if not (user.is_superuser or ach.employee_id == user.id):
+    if not _can_manage_employee_data(user, ach.employee_id):
         return HttpResponse(status=403)
 
     if request.method == 'POST':
@@ -2278,7 +2402,7 @@ def achievement_update(request, pk):
 def achievement_delete(request, pk):
     user = request.user
     ach = get_object_or_404(Achievement, pk=pk)
-    if not user.is_superuser:
+    if not _can_manage_employee_data(user, ach.employee_id):
         return HttpResponse(status=403)
     ach.delete()
     if request.headers.get('HX-Request'):
@@ -2442,19 +2566,19 @@ def project_status_update(request, pk):
 @require_POST
 def lead_convert_to_project(request, lead_pk):
     user = request.user
-    lead = get_object_or_404(Lead, pk=lead_pk, employee=user)
+    lead = get_object_or_404(_lead_scope_qs(user), pk=lead_pk)
     if Client.objects.filter(lead=lead).exists():
         msg = 'This lead already has a client.'
         if request.headers.get('HX-Request'):
             return render(
                 request,
                 'crm/partials/lead_convert_feedback.html',
-                {'error': msg, 'form': LeadConvertForm(employee=user)},
+                {'error': msg, 'form': LeadConvertForm(employee=lead.employee)},
             )
         messages.error(request, msg)
         return redirect('crm:lead_detail', pk=lead_pk)
 
-    form = LeadConvertForm(request.POST, employee=user)
+    form = LeadConvertForm(request.POST, employee=lead.employee)
     if not form.is_valid():
         if request.headers.get('HX-Request'):
             return render(
@@ -2466,13 +2590,13 @@ def lead_convert_to_project(request, lead_pk):
         return redirect('crm:lead_detail', pk=lead_pk)
 
     pkg = form.cleaned_data['package']
-    if pkg.employee_id != user.id:
+    if pkg.employee_id != lead.employee_id:
         msg = 'Invalid package for this account.'
         if request.headers.get('HX-Request'):
             return render(
                 request,
                 'crm/partials/lead_convert_feedback.html',
-                {'error': msg, 'form': LeadConvertForm(employee=user)},
+                {'error': msg, 'form': LeadConvertForm(employee=lead.employee)},
             )
         messages.error(request, msg)
         return redirect('crm:lead_detail', pk=lead_pk)
@@ -2493,7 +2617,7 @@ def lead_convert_to_project(request, lead_pk):
             return render(
                 request,
                 'crm/partials/lead_convert_feedback.html',
-                {'error': msg, 'form': LeadConvertForm(employee=user)},
+                {'error': msg, 'form': LeadConvertForm(employee=lead.employee)},
             )
         messages.error(request, msg)
         return redirect('crm:lead_detail', pk=lead_pk)

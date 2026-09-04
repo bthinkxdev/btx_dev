@@ -40,7 +40,7 @@
           <td>{{ a.created_by.get_full_name|default:a.created_by.username }}</td>
           <td style="white-space:nowrap;text-align:right;">
             <a href="{% url 'crm:achievement_update' a.pk %}" class="btn btn-outline btn-sm">Edit</a>
-            {% if is_admin %}
+            {% if can_scope_employees %}
             <form method="post" action="{% url 'crm:achievement_delete' a.pk %}" style="display:inline;">
               {% csrf_token %}
               <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete this achievement?');">Delete</button>

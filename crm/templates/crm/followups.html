@@ -20,5 +20,14 @@
   </div>
 </div>
 
+{% if manager_mode %}
+<div class="leads-pill-row leads-pill-row--wrap" style="margin-bottom:16px;">
+  <a class="pill {% if not selected_employee %}on{% endif %}" href="{% url 'crm:followups' %}">All follow-ups</a>
+  {% for e in scope_employees %}
+  <a class="pill {% if selected_employee.id == e.id %}on{% endif %}" href="{% url 'crm:followups' %}?employee={{ e.id }}">{{ e.get_full_name|default:e.username }}</a>
+  {% endfor %}
+</div>
+{% endif %}
+
 {% include "crm/partials/followups_list.html" %}
 {% endblock %}

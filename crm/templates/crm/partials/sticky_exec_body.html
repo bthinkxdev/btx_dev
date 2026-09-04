@@ -1,7 +1,12 @@
 {% load crm_extras %}
 <div class="lead-info-top">
   <div>
-    <div class="lead-info-name">{{ lead.name }}</div>
+    <div class="lead-info-name">
+      {{ lead.name }}
+      {% if manager_mode %}
+      <span class="owner-badge" title="Lead owner">{{ lead.employee.get_full_name|default:lead.employee.username }}</span>
+      {% endif %}
+    </div>
     <div class="lead-info-contact">
       {% if lead.phone %}
       <span class="lead-contact-item">
@@ -130,6 +135,7 @@
   >
     {% csrf_token %}
     <input type="hidden" name="lead" value="{{ lead.id }}">
+    <input type="hidden" name="employee" value="{{ lead.employee_id }}">
     {% if lead.package_id %}
     <input type="hidden" name="package" value="{{ lead.package_id }}">
     {% endif %}

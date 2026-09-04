@@ -110,9 +110,10 @@ class ProjectTicketAdmin(admin.ModelAdmin):
 
 @admin.register(EmployeeProfile)
 class EmployeeProfileAdmin(admin.ModelAdmin):
-    list_display = ('user', 'crm_role', 'whatsapp_bot_enabled', 'target_amount', 'has_profile_photo')
+    list_display = ('user', 'crm_role', 'is_sales_manager', 'whatsapp_bot_enabled', 'target_amount', 'has_profile_photo')
+    list_filter = ('crm_role', 'is_sales_manager')
     search_fields = ('user__username', 'user__email')
-    fields = ('user', 'crm_role', 'whatsapp_bot_enabled', 'target_amount', 'photo')
+    fields = ('user', 'crm_role', 'is_sales_manager', 'whatsapp_bot_enabled', 'target_amount', 'photo')
 
     @admin.display(description='Photo', boolean=True)
     def has_profile_photo(self, obj):

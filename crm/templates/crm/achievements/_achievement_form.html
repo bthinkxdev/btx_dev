@@ -5,7 +5,7 @@
   method="post"
 >
   {% csrf_token %}
-  {% if is_admin %}
+  {% if can_scope_employees %}
     <input type="hidden" name="employee" value="{{ scope_employee.id }}">
   {% endif %}
   <div class="form-grid" style="margin-bottom:12px;">

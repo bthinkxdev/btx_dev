@@ -44,6 +44,12 @@ class EmployeeProfile(models.Model):
         db_index=True,
         help_text='When on, WhatsApp auto-replies and qualification run for this executive.',
     )
+    is_sales_manager = models.BooleanField(
+        default=False,
+        blank=True,
+        db_index=True,
+        help_text='Sales manager: can view and edit every sales rep’s leads, follow-ups, and achievements.',
+    )
 
     class Meta:
         verbose_name = 'Employee profile'

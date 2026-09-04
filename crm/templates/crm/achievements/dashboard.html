@@ -32,7 +32,7 @@
       {% endfor %}
     </select>
   </div>
-  {% if is_admin %}
+  {% if can_scope_employees %}
   <div>
     <label for="flt-employee">Employee</label>
     <select id="flt-employee" name="employee">
@@ -148,7 +148,7 @@
       <button type="button" class="crm-add-task-dialog__x" onclick="this.closest('dialog').close()" aria-label="Close">&times;</button>
     </div>
     <p class="crm-add-task-dialog__lead" style="margin-bottom:14px;">
-      {% if is_admin %}
+      {% if can_scope_employees %}
         Employee: <strong>{{ scope_employee.get_full_name|default:scope_employee.username }}</strong>
       {% else %}
         Log revenue for <strong>{{ current_month|date:"F Y" }}</strong>

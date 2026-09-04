@@ -2,6 +2,9 @@
 <div class="fu-exec-card fu-exec--{{ bucket }}" id="fu-exec-{{ fu.pk }}"{% if hx_oob %} hx-swap-oob="outerHTML"{% endif %}>
   <div class="fu-exec-card__main">
     <a href="{% url 'crm:lead_detail' fu.lead_id %}" class="fu-exec-name">{{ fu.lead.name }}</a>
+    {% if manager_mode %}
+    <span class="owner-badge" title="Lead owner">{{ fu.employee.get_full_name|default:fu.employee.username }}</span>
+    {% endif %}
     {% if fu.lead.phone %}
     <a href="tel:{{ fu.lead.phone }}" class="fu-exec-phone">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;display:inline;vertical-align:middle;">

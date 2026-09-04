@@ -165,6 +165,24 @@
       </div>
     </div>
 
+    {# ── OWNER FILTER (sales manager only) ──────────────────── #}
+    {% if manager_mode %}
+    <div class="cmd-l2 cmd-l2--owner">
+      <div class="cmd-l2__group cmd-l2__group--owner">
+        <div class="cmd-l2__group-header">
+          <span class="cmd-l2__lbl">Owner</span>
+          <span class="cmd-l2__hint">Whose leads to show</span>
+        </div>
+        <div class="leads-pill-row leads-pill-row--wrap">
+          {% for pill in employee_pills %}
+          <a class="pill {% if pill.id == selected_employee.id %}on{% elif not pill.id and not selected_employee %}on{% endif %}"
+             href="{{ leads_base }}?{{ pill.qs }}">{{ pill.label }}</a>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
     {# ── ADVANCED FILTERS — collapsible ───────────────────── #}
     <div class="cmd-l3">
       <button type="button" class="cmd-l3__toggle" id="cmd-more-btn" aria-expanded="false" aria-controls="cmd-more-panel">
