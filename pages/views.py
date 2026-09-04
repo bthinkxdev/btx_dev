@@ -20,6 +20,7 @@ from .models import (
     TeamSection,
 )
 from .services.quotation_pdf import PACKAGES, render_quote_pdf
+from .static_blog import get_static_post, get_static_posts
 
 logger = logging.getLogger(__name__)
 
@@ -81,18 +82,21 @@ def about(request):
 
 def blog(request):
     blog_settings = BlogPageSettings.objects.first()
-    posts = list(
+    static_posts = get_static_posts()
+    static_slugs = {p.slug for p in static_posts}
+    dynamic_posts = list(
         BlogPost.objects.filter(is_published=True)
         .filter(featured_image__isnull=False)
         .exclude(featured_image='')
-        .order_by('-published_at')
+        .exclude(slug__in=static_slugs)
     )
+    posts = sorted(static_posts + dynamic_posts, key=lambda p: p.published_at, reverse=True)
     featured_post = None
     sidebar_posts = []
     grid_posts = []
     if posts:
         featured_post = next((p for p in posts if p.is_featured), None) or posts[0]
-        rest = [p for p in posts if p.pk != featured_post.pk]
+        rest = [p for p in posts if p.slug != featured_post.slug]
         sidebar_posts = rest[:3]
         grid_posts = rest[3:]
 
@@ -147,6 +151,9 @@ def newsletter_unsubscribe(request, token):
 
 
 def blog_post(request, slug):
+    static_post = get_static_post(slug)
+    if static_post:
+        return render(request, 'pages/blog_post.html', {'post': static_post})
     post = get_object_or_404(
         BlogPost.objects.filter(is_published=True),
         slug=slug,

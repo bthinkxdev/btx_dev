@@ -2,6 +2,7 @@ from django.contrib.sitemaps import Sitemap
 from django.urls import reverse
 
 from .models import BlogPost
+from .static_blog import get_static_posts
 
 
 class StaticViewSitemap(Sitemap):
@@ -46,7 +47,22 @@ class BlogPostSitemap(Sitemap):
         return reverse('pages:blog_post', args=[obj.slug])
 
 
+class StaticBlogSitemap(Sitemap):
+    changefreq = 'monthly'
+    priority = 0.5
+
+    def items(self):
+        return get_static_posts()
+
+    def lastmod(self, obj):
+        return obj.updated_at
+
+    def location(self, obj):
+        return reverse('pages:blog_post', args=[obj.slug])
+
+
 sitemaps = {
     'static': StaticViewSitemap,
     'blog': BlogPostSitemap,
+    'static-blog': StaticBlogSitemap,
 }

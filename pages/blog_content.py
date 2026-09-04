@@ -1,10 +1,16 @@
-"""Phase 3 seed content: the first topical-authority batch for the two
+"""Phase 3 content: the first topical-authority batch for the two
 confirmed commercial services (Ecommerce Development, Digital Marketing).
 
 Every fact in these articles is grounded in what's already published
 elsewhere on the site (services.html pricing, the CRM onboarding KYC
-copy, the contact-page FAQ) — nothing here is fabricated. See
-pages/management/commands/seed_blog_posts.py for how this is loaded.
+copy, the contact-page FAQ) — nothing here is fabricated.
+
+This is the shared source of truth for both delivery paths:
+- pages/static_blog.py renders these as static, git-deployable pages
+  (the current live batch — no database dependency).
+- pages/management/commands/seed_blog_posts.py loads the same content
+  into the database instead, as a reference for adding future posts the
+  dynamic way (BlogPost model + /admin/).
 """
 
 ARTICLES = [
