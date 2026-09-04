@@ -128,12 +128,11 @@
       <span class="lf-sep" aria-hidden="true"></span>
       <div class="lf-grp">
         <span class="lf-grp__lbl">Package</span>
-        <div class="leads-pill-row">
+        <select class="lf-select" aria-label="Filter by package" onchange="if(this.value) window.location.href=this.value;">
           {% for pill in package_pills %}
-          <a class="pill {% if pill.id == package_filter %}on{% elif not pill.id and not package_filter %}on{% endif %}"
-             href="{{ leads_base }}?{{ pill.qs }}">{{ pill.label }}</a>
+          <option value="{{ leads_base }}?{{ pill.qs }}" {% if pill.id == package_filter %}selected{% elif not pill.id and not package_filter %}selected{% endif %}>{{ pill.label }}</option>
           {% endfor %}
-        </div>
+        </select>
       </div>
       {% endif %}
 
@@ -590,6 +589,11 @@ dialog::backdrop { background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); }
 .lf-sep { width: 1px; align-self: stretch; background: var(--border); flex-shrink: 0; }
 .leads-pill-row { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 .lf-compact .pill { padding: 4px 9px; font-size: 11px; }
+.lf-select {
+  padding: 4px 8px; font-size: 11px; font-weight: 600; font-family: inherit;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface); color: var(--neutral-700); max-width: 180px;
+}
 
 .lf-row--form { padding-top: 6px; border-top: 1px solid var(--border); }
 .lf-input { padding: 5px 9px; font-size: 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-family: inherit; }
@@ -606,6 +610,7 @@ dialog::backdrop { background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); }
   .lf-sep { display: none; }
   .lf-grp__lbl { flex: 0 0 100%; }
   .lf-compact .pill { padding: 6px 11px; font-size: 12px; }
+  .lf-select { max-width: none; width: 100%; padding: 8px 9px; font-size: 13px; }
 
   .lf-row--form { gap: 8px; }
   .lf-input--search { flex: 1 1 100%; font-size: 14px; padding: 9px 10px; }
