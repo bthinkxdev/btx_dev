@@ -419,61 +419,10 @@ def whatsapp_webhook(request):
     return JsonResponse({'status': 'ok', 'processed': 1, 'duplicates': 0})
 
 
-# GET ?sort=… for leads list (validated keys)
-LEAD_SORT_EXEC = 'exec'
-LEAD_SORT_DEFAULT = 'created_new'  # Newest created first unless ?sort=…
-LEAD_SORT_CHOICES = (
-    ('created_new', 'Created: newest first'),
-    (LEAD_SORT_EXEC, 'Execution priority (FU)'),
-    ('fu_soon', 'Follow-up: soonest first'),
-    ('fu_late', 'Follow-up: latest first'),
-    ('created_old', 'Created: oldest'),
-    ('updated_new', 'Updated: newest'),
-    ('updated_old', 'Updated: oldest'),
-    ('status_az', 'Status A→Z'),
-    ('status_za', 'Status Z→A'),
-    ('deal_high', 'Deal value: high → low'),
-    ('deal_low', 'Deal value: low → high'),
-    ('name_az', 'Name A→Z'),
-    ('name_za', 'Name Z→A'),
-)
-_LEAD_SORT_DB = {
-    'created_new': ('-created_at', '-id'),
-    'created_old': ('created_at', 'id'),
-    'updated_new': ('-updated_at', '-id'),
-    'updated_old': ('updated_at', 'id'),
-    'status_az': ('status', 'name'),
-    'status_za': ('-status', 'name'),
-    'deal_high': ('-deal_value', '-updated_at'),
-    'deal_low': ('deal_value', '-updated_at'),
-    'name_az': ('name', 'id'),
-    'name_za': ('-name', 'id'),
-}
+# Fixed leads-list order (newest created first) — no user-facing sort picker.
+LEAD_DEFAULT_ORDER = ('-created_at', '-id')
 
 LEADS_PER_PAGE = 20
-
-
-def _exec_bucket_expression(fu_start, fu_end):
-    """
-    Execution-priority bucket for ordering (mirrors _sales_sort_leads tiers).
-    Tie-break: next_followup (nulls first), then updated_at desc.
-    """
-    return Case(
-        When(status__in=TERMINAL_STATUSES, then=Value(5)),
-        When(
-            ~Q(status__in=TERMINAL_STATUSES)
-            & (Q(next_followup__lt=fu_start) | Q(next_followup__isnull=True)),
-            then=Value(0),
-        ),
-        When(
-            ~Q(status__in=TERMINAL_STATUSES)
-            & Q(next_followup__gte=fu_start, next_followup__lt=fu_end),
-            then=Value(1),
-        ),
-        When(status__in=INTERESTED_SORT_STATUSES, then=Value(2)),
-        default=Value(3),
-        output_field=IntegerField(),
-    )
 
 
 def _lead_for_exec(user, pk):
@@ -507,8 +456,10 @@ def _exec_board_ctx(lead, user, **extra):
     start, end, _ = _local_today_bounds()
     ctx = {
         'lead': lead,
-        'status_choices': Lead.Status.choices,
-        'packages': Package.objects.filter(employee_id=lead.employee_id),
+        'status_choices': Lead.PRIMARY_STATUS_CHOICES,
+            'status_to_stage': Lead.STATUS_TO_STAGE,
+        'detailed_status_choices': Lead.Status.choices,
+        'packages': Package.objects.all(),
         'fu_start': start,
         'fu_end': end,
         'fu_bounds': (start, end),
@@ -677,9 +628,9 @@ def _leads_list_qs_and_meta(request, user):
     if q:
         qs = qs.filter(Q(name__icontains=q) | Q(phone__icontains=q))
 
-    st = request.GET.get('status')
-    if st in dict(Lead.Status.choices):
-        qs = qs.filter(status=st)
+    stage = request.GET.get('stage', '').strip()
+    if stage in Lead.STAGE_TO_STATUSES:
+        qs = qs.filter(status__in=Lead.STAGE_TO_STATUSES[stage])
 
     high_hope_filter = request.GET.get('high_hope', '').strip()
     if high_hope_filter == '1':
@@ -704,19 +655,6 @@ def _leads_list_qs_and_meta(request, user):
     if package_filter:
         qs = qs.filter(package_id=package_filter)
 
-    has_tasks_filter = request.GET.get('has_tasks', '').strip()
-    if has_tasks_filter == '1':
-        qs = qs.filter(task_open_count__gt=0)
-
-    min_deal_s = request.GET.get('min_deal', '').strip()
-    if min_deal_s:
-        try:
-            _min_deal = Decimal(str(min_deal_s))
-            if _min_deal > 0:
-                qs = qs.filter(deal_value__gte=_min_deal)
-        except Exception:
-            min_deal_s = ''
-
     created_day = request.GET.get('created_day', '').strip()
     if created_day:
         try:
@@ -725,11 +663,13 @@ def _leads_list_qs_and_meta(request, user):
         except ValueError:
             pass
 
+    closed_statuses = Lead.STAGE_TO_STATUSES['closed']
+
     closed_day = request.GET.get('closed_day', '').strip()
     if closed_day:
         try:
             d = datetime.strptime(closed_day, '%Y-%m-%d').date()
-            qs = qs.filter(status=STATUS_CLOSED, updated_at__date=d)
+            qs = qs.filter(status__in=closed_statuses, updated_at__date=d)
         except ValueError:
             pass
 
@@ -746,17 +686,12 @@ def _leads_list_qs_and_meta(request, user):
         try:
             y, m = int(closed_month[:4]), int(closed_month[5:7])
             qs = qs.filter(
-                status=STATUS_CLOSED, updated_at__year=y, updated_at__month=m
+                status__in=closed_statuses, updated_at__year=y, updated_at__month=m
             )
         except ValueError:
             pass
 
     date_scope = request.GET.get('date_scope', '').strip()
-    date_basis = request.GET.get('date_basis', 'created').strip()
-    if date_basis not in ('fu', 'created'):
-        date_basis = 'created'
-    if not date_scope and date_basis == 'fu':
-        date_basis = 'created'
     date_start_s = request.GET.get('date_start', '').strip()
     date_end_s = request.GET.get('date_end', '').strip()
     if date_scope in (
@@ -769,38 +704,13 @@ def _leads_list_qs_and_meta(request, user):
         bounds = _date_scope_bounds(date_scope, date_start_s, date_end_s)
         if bounds:
             ds, de = bounds
-            if date_basis == 'created':
-                qs = qs.filter(created_at__gte=ds, created_at__lt=de)
-            else:
-                qs = qs.filter(
-                    next_followup__isnull=False,
-                    next_followup__gte=ds,
-                    next_followup__lt=de,
-                )
+            qs = qs.filter(created_at__gte=ds, created_at__lt=de)
 
-    sort_key = request.GET.get('sort', LEAD_SORT_DEFAULT).strip()
-    valid_sorts = {k for k, _ in LEAD_SORT_CHOICES}
-    if sort_key not in valid_sorts:
-        sort_key = LEAD_SORT_DEFAULT
-
-    if sort_key == LEAD_SORT_EXEC:
-        qs = qs.annotate(_exec_b=_exec_bucket_expression(start, end))
-        qs = qs.order_by(
-            '_exec_b',
-            F('next_followup').asc(nulls_first=True),
-            '-updated_at',
-            '-id',
-        )
-    elif sort_key == 'fu_soon':
-        qs = qs.order_by(F('next_followup').asc(nulls_last=True), '-updated_at', '-id')
-    elif sort_key == 'fu_late':
-        qs = qs.order_by(F('next_followup').desc(nulls_last=True), '-updated_at', '-id')
-    else:
-        qs = qs.order_by(*_LEAD_SORT_DB[sort_key])
+    qs = qs.order_by(*LEAD_DEFAULT_ORDER)
 
     filters_ctx = {
         'q': q,
-        'status': st or '',
+        'stage': stage,
         'high_hope': high_hope_filter,
         'fu': fu_filter,
         'package': pkg or '',
@@ -808,19 +718,15 @@ def _leads_list_qs_and_meta(request, user):
         'closed_day': closed_day,
         'created_month': created_month,
         'closed_month': closed_month,
-        'sort': sort_key,
         'date_scope': date_scope,
-        'date_basis': date_basis,
         'date_start': date_start_s,
         'date_end': date_end_s,
-        'has_tasks': has_tasks_filter,
-        'min_deal': min_deal_s,
         'employee': str(scope['selected_employee'].id) if scope['selected_employee'] else '',
     }
 
     has_active_filters = bool(
         q
-        or st
+        or stage
         or high_hope_filter
         or fu_filter
         or package_filter
@@ -829,9 +735,6 @@ def _leads_list_qs_and_meta(request, user):
         or created_month
         or closed_month
         or date_scope
-        or sort_key != LEAD_SORT_DEFAULT
-        or has_tasks_filter
-        or min_deal_s,
     )
 
     return {
@@ -839,7 +742,6 @@ def _leads_list_qs_and_meta(request, user):
         'start': start,
         'end': end,
         'local_date': local_date,
-        'sort_key': sort_key,
         'filters_ctx': filters_ctx,
         'package_filter': package_filter,
         'has_active_filters': has_active_filters,
@@ -858,7 +760,6 @@ def leads_list(request):
     meta = _leads_list_qs_and_meta(request, user)
     qs = meta['qs']
     start, end = meta['start'], meta['end']
-    sort_key = meta['sort_key']
     filters_ctx = meta['filters_ctx']
     package_filter = meta['package_filter']
     has_active_filters = meta['has_active_filters']
@@ -867,7 +768,7 @@ def leads_list(request):
     selected_employee = meta['selected_employee']
     scope_ids = meta['scope_ids']
 
-    packages = Package.objects.filter(employee_id__in=scope_ids)
+    packages = Package.objects.all()
 
     # Full document always starts at batch 1 (ignore ?page=). Infinite scroll uses /leads/more/?page=…
     page_raw = '1'
@@ -888,25 +789,18 @@ def leads_list(request):
     _lq = lambda **kw: _leads_url_query(filters_ctx, **kw)
     leads_base = reverse('crm:leads')
     lqs = {
-        'basis_fu': _lq(date_basis='fu'),
-        'basis_created': _lq(date_basis='created'),
         'date_all': _lq(date_scope='', date_start='', date_end=''),
         'date_today': _lq(date_scope='today', date_start='', date_end=''),
         'date_yesterday': _lq(date_scope='yesterday', date_start='', date_end=''),
         'date_week': _lq(date_scope='this_week', date_start='', date_end=''),
         'date_month': _lq(date_scope='this_month', date_start='', date_end=''),
-        'fu_all': _lq(fu='', has_tasks=''),
-        'fu_overdue': _lq(fu='overdue', has_tasks=''),
-        'fu_today': _lq(fu='today', has_tasks=''),
-        'fu_hot': _lq(fu='hot', has_tasks=''),
-        'has_tasks_on': _lq(fu='', has_tasks='1'),
-        'has_tasks_off': _lq(has_tasks=''),
+        'fu_all': _lq(fu=''),
+        'fu_overdue': _lq(fu='overdue'),
+        'fu_today': _lq(fu='today'),
+        'fu_hot': _lq(fu='hot'),
         'high_hope_all': _lq(high_hope=''),
         'high_hope_on': _lq(high_hope='1'),
     }
-    status_pills = [{'val': '', 'label': 'All statuses', 'qs': _lq(status='')}]
-    for _sv, _sl in Lead.Status.choices:
-        status_pills.append({'val': _sv, 'label': _sl, 'qs': _lq(status=_sv)})
 
     employee_pills = []
     if manager_mode and scope_employees:
@@ -918,9 +812,24 @@ def leads_list(request):
                 'qs': _lq(employee=e.id),
             })
 
+    package_pills = [{'id': None, 'label': 'All packages', 'qs': _lq(package='')}]
+    for p in packages:
+        package_pills.append({'id': p.id, 'label': p.name, 'qs': _lq(package=p.id)})
+
     # Global summary strip counts (always reflect full pipeline, not current filters, but honor employee scope)
     _all_leads = Lead.objects.filter(employee_id__in=scope_ids)
     all_leads_total = _all_leads.count()
+
+    # Pipeline stage tabs, each with a live count of the full scoped pipeline.
+    stage_pills = [{'key': '', 'label': 'All', 'count': all_leads_total, 'qs': _lq(stage='')}]
+    for _stage_key, _stage_label in Lead.PIPELINE_STAGES:
+        stage_pills.append({
+            'key': _stage_key,
+            'label': _stage_label,
+            'count': _all_leads.filter(status__in=Lead.STAGE_TO_STATUSES[_stage_key]).count(),
+            'qs': _lq(stage=_stage_key),
+        })
+
     _active_q = ~Q(status__in=TERMINAL_STATUSES)
     overdue_count = _all_leads.filter(
         _active_q & (Q(next_followup__lt=start) | Q(next_followup__isnull=True))
@@ -954,7 +863,8 @@ def leads_list(request):
             'leads_more_url': leads_more_url,
             'pagination_next_qs': pagination_next_qs,
             'packages': packages,
-            'status_choices': Lead.Status.choices,
+            'status_choices': Lead.PRIMARY_STATUS_CHOICES,
+            'status_to_stage': Lead.STATUS_TO_STAGE,
             'form': form,
             'import_form': import_form,
             'fu_start': start,
@@ -963,14 +873,9 @@ def leads_list(request):
             'filters': filters_ctx,
             'leads_base': leads_base,
             'lqs': lqs,
-            'status_pills': status_pills,
+            'stage_pills': stage_pills,
             'package_filter': package_filter,
             'has_active_filters': has_active_filters,
-            'sort_choices': LEAD_SORT_CHOICES,
-            'sort_current': sort_key,
-            'sort_label': dict(LEAD_SORT_CHOICES).get(
-                sort_key, dict(LEAD_SORT_CHOICES)[LEAD_SORT_DEFAULT]
-            ),
             'overdue_count': overdue_count,
             'today_fu_count': today_fu_count,
             'pending_tasks_count': pending_tasks_count,
@@ -979,6 +884,7 @@ def leads_list(request):
             'scope_employees': scope_employees,
             'selected_employee': selected_employee,
             'employee_pills': employee_pills,
+            'package_pills': package_pills,
         },
     )
 
@@ -1010,12 +916,13 @@ def leads_more_json(request):
         )
 
     leads_page = list(page_obj.object_list)
-    packages = Package.objects.filter(employee_id__in=meta['scope_ids'])
+    packages = Package.objects.all()
     base_ctx = {
         'fu_start': start,
         'fu_end': end,
         'fu_bounds': (start, end),
-        'status_choices': Lead.Status.choices,
+        'status_choices': Lead.PRIMARY_STATUS_CHOICES,
+            'status_to_stage': Lead.STATUS_TO_STAGE,
         'packages': packages,
         'manager_mode': meta['manager_mode'],
     }
@@ -1403,8 +1310,11 @@ def lead_quick_followup(request, pk):
             else 'crm/partials/lead_exec_board.html'
         )
         resp = render(request, tmpl, ctx)
-        if not err:
-            _hx_toast(resp, 'Scheduled')
+        # Scheduled via the global "Schedule Followup" modal (desktop + mobile).
+        if err:
+            resp['HX-Trigger'] = json.dumps({'crmFuModalError': err})
+        else:
+            resp['HX-Trigger'] = json.dumps({'crmToast': 'Scheduled', 'crmCloseFuModal': True})
         return resp
     return HttpResponse(status=204)
 
@@ -1494,8 +1404,10 @@ def lead_contact_save(request, pk):
     start, end, _ = _local_today_bounds()
     ctx = {
         'lead': lead,
-        'status_choices': Lead.Status.choices,
-        'packages': Package.objects.filter(employee_id=lead.employee_id),
+        'status_choices': Lead.PRIMARY_STATUS_CHOICES,
+            'status_to_stage': Lead.STATUS_TO_STAGE,
+        'detailed_status_choices': Lead.Status.choices,
+        'packages': Package.objects.all(),
         'fu_start': start,
         'fu_end': end,
         'contact_save_error': err,
@@ -1549,8 +1461,10 @@ def lead_detail(request, pk):
             'tasks': tasks,
             'fu_form': fu_form,
             'task_form': task_form,
-            'status_choices': Lead.Status.choices,
-            'packages': Package.objects.filter(employee_id=lead.employee_id),
+            'status_choices': Lead.PRIMARY_STATUS_CHOICES,
+            'status_to_stage': Lead.STATUS_TO_STAGE,
+            'detailed_status_choices': Lead.Status.choices,
+            'packages': Package.objects.all(),
             'fu_start': start,
             'fu_end': end,
             'show_convert_to_project': show_convert_to_project,
@@ -1581,8 +1495,10 @@ def lead_status_detail(request, pk):
             'crm/partials/lead_detail_sticky.html',
             {
                 'lead': lead,
-                'status_choices': Lead.Status.choices,
-                'packages': Package.objects.filter(employee_id=lead.employee_id),
+                'status_choices': Lead.PRIMARY_STATUS_CHOICES,
+            'status_to_stage': Lead.STATUS_TO_STAGE,
+                'detailed_status_choices': Lead.Status.choices,
+                'packages': Package.objects.all(),
                 'fu_start': _local_today_bounds()[0],
                 'fu_end': _local_today_bounds()[1],
             },
@@ -1625,8 +1541,9 @@ def followup_add(request, lead_pk):
                 'task_form': TaskForm(),
                 'fu_error': fu_error,
                 'task_error': None,
-                'status_choices': Lead.Status.choices,
-                'packages': Package.objects.filter(employee_id=lead.employee_id),
+                'status_choices': Lead.PRIMARY_STATUS_CHOICES,
+            'status_to_stage': Lead.STATUS_TO_STAGE,
+                'packages': Package.objects.all(),
             },
         )
         if not fu_error:
@@ -1738,8 +1655,9 @@ def task_add(request, lead_pk):
                 'task_form': TaskForm(),
                 'fu_error': None,
                 'task_error': task_error,
-                'status_choices': Lead.Status.choices,
-                'packages': Package.objects.filter(employee_id=lead.employee_id),
+                'status_choices': Lead.PRIMARY_STATUS_CHOICES,
+            'status_to_stage': Lead.STATUS_TO_STAGE,
+                'packages': Package.objects.all(),
             },
         )
     return HttpResponse(status=204)
@@ -2031,12 +1949,14 @@ def followup_reschedule(request, pk):
 @sales_pipeline_required
 def packages_page(request):
     user = request.user
-    packages = Package.objects.filter(employee=user)
+    can_manage = can_view_all_sales_data(user)
+    packages = Package.objects.all().order_by('name')
     form = PackageForm()
-    edit_id = request.GET.get('edit')
     edit_obj = None
-    if edit_id and edit_id.isdigit():
-        edit_obj = Package.objects.filter(pk=int(edit_id), employee=user).first()
+    if can_manage:
+        edit_id = request.GET.get('edit')
+        if edit_id and edit_id.isdigit():
+            edit_obj = Package.objects.filter(pk=int(edit_id)).first()
     edit_form = PackageForm(instance=edit_obj) if edit_obj else None
     return render(
         request,
@@ -2046,6 +1966,7 @@ def packages_page(request):
             'form': form,
             'edit_obj': edit_obj,
             'edit_form': edit_form,
+            'can_manage_packages': can_manage,
         },
     )
 
@@ -2055,6 +1976,8 @@ def packages_page(request):
 @require_http_methods(['GET', 'POST'])
 def package_create(request):
     user = request.user
+    if not can_view_all_sales_data(user):
+        return HttpResponse(status=403)
     if request.method == 'POST':
         form = PackageForm(request.POST)
         if form.is_valid():
@@ -2079,7 +2002,9 @@ def package_create(request):
 @require_POST
 def package_update(request, pk):
     user = request.user
-    pkg = get_object_or_404(Package, pk=pk, employee=user)
+    if not can_view_all_sales_data(user):
+        return HttpResponse(status=403)
+    pkg = get_object_or_404(Package, pk=pk)
     form = PackageForm(request.POST, instance=pkg)
     if form.is_valid():
         form.save()
@@ -2100,7 +2025,9 @@ def package_update(request, pk):
 @require_POST
 def package_delete(request, pk):
     user = request.user
-    Package.objects.filter(pk=pk, employee=user).delete()
+    if not can_view_all_sales_data(user):
+        return HttpResponse(status=403)
+    Package.objects.filter(pk=pk).delete()
     if request.headers.get('HX-Request'):
         r = HttpResponse()
         r['HX-Location'] = json.dumps({
@@ -2265,7 +2192,7 @@ def achievements_dashboard(request):
     pkg_id_s = (request.GET.get('package') or '').strip()
     package_obj = None
     if pkg_id_s.isdigit():
-        package_obj = Package.objects.filter(pk=int(pkg_id_s), employee=employee).first()
+        package_obj = Package.objects.filter(pk=int(pkg_id_s)).first()
 
     perf = get_monthly_performance(employee, month_date, package=package_obj)
     month_start, month_end = month_date.replace(day=1), (
@@ -2286,7 +2213,7 @@ def achievements_dashboard(request):
     if package_obj:
         achievements = achievements.filter(package=package_obj)
 
-    packages = Package.objects.filter(employee=employee).order_by('name')
+    packages = Package.objects.all().order_by('name')
     # Latest / upcoming monthly target for info
     mt = (
         MonthlyTarget.objects.filter(employee=employee, month=month_start)
@@ -2349,7 +2276,7 @@ def achievement_create(request):
     if request.headers.get('HX-Request'):
         # On error, re-render the small form area.
         month_date = timezone.localdate().replace(day=1)
-        packages = Package.objects.filter(employee=target_employee).order_by('name')
+        packages = Package.objects.all().order_by('name')
         ctx = {
             'form': form,
             'scope_employee': target_employee,
@@ -2590,16 +2517,6 @@ def lead_convert_to_project(request, lead_pk):
         return redirect('crm:lead_detail', pk=lead_pk)
 
     pkg = form.cleaned_data['package']
-    if pkg.employee_id != lead.employee_id:
-        msg = 'Invalid package for this account.'
-        if request.headers.get('HX-Request'):
-            return render(
-                request,
-                'crm/partials/lead_convert_feedback.html',
-                {'error': msg, 'form': LeadConvertForm(employee=lead.employee)},
-            )
-        messages.error(request, msg)
-        return redirect('crm:lead_detail', pk=lead_pk)
 
     try:
         _, project = convert_lead_to_project(
@@ -3934,10 +3851,7 @@ def change_request_complete(request, pk):
 def package_scope_edit(request, pk):
     if not can_edit_package_scope(request.user):
         return HttpResponse(status=403)
-    if request.user.is_superuser:
-        package = get_object_or_404(Package, pk=pk)
-    else:
-        package = get_object_or_404(Package, pk=pk, employee=request.user)
+    package = get_object_or_404(Package, pk=pk)
     try:
         scope = package.scope
     except Exception:

@@ -57,18 +57,8 @@
       aria-label="Toggle High Hope">
       High Hope
     </button>
-    <details class="lead-mcard__fu-pop">
-      <summary class="lead-mcard__act lead-mcard__act--fu">Followup</summary>
-      <div class="lead-mcard__fu-popbody">
-        <form class="lead-mcard__fu-form" hx-post="{% url 'crm:lead_quick_fu' lead.pk %}" hx-target="#lead-mcard-{{ lead.pk }}" hx-swap="outerHTML">
-          {% csrf_token %}
-          <input type="hidden" name="_tpl" value="mobile_card">
-          <input type="datetime-local" name="fu_datetime" required class="lead-mcard__fu-input" aria-label="Follow-up date and time">
-          <button type="submit" class="btn btn-primary btn-sm">Save</button>
-        </form>
-        {% if quick_fu_error %}<p class="exec-err">{{ quick_fu_error }}</p>{% endif %}
-      </div>
-    </details>
+    <button type="button" class="lead-mcard__act lead-mcard__act--fu crm-open-fu-modal"
+      data-lead-pk="{{ lead.pk }}" data-lead-name="{{ lead.name }}">Followup</button>
     <a href="{% url 'crm:lead_detail' lead.pk %}" class="lead-mcard__act lead-mcard__act--link">View</a>
   </nav>
 </article>

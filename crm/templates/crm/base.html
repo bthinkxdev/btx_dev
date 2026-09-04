@@ -718,7 +718,8 @@
     .crm-add-task-field label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); margin-bottom: 6px; }
     .crm-add-task-optional { font-weight: 500; text-transform: none; letter-spacing: 0; }
     .crm-add-task-field input[type="text"],
-    .crm-add-task-field input[type="date"] {
+    .crm-add-task-field input[type="date"],
+    .crm-add-task-field input[type="datetime-local"] {
       width: 100%; padding: 10px 12px; font-size: 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-family: inherit;
     }
     .crm-add-task-dialog__foot { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
@@ -2291,6 +2292,33 @@
     </div>
   </dialog>
 
+  <dialog id="crm-fu-modal" class="crm-add-task-dialog">
+    <div class="crm-add-task-dialog__inner">
+      <div class="crm-add-task-dialog__head">
+        <h2>Schedule follow-up</h2>
+        <button type="button" class="crm-add-task-dialog__x" onclick="this.closest('dialog').close()" aria-label="Close">&times;</button>
+      </div>
+      <p class="crm-add-task-dialog__lead" id="crm-fu-modal-lead-name"></p>
+      <div id="crm-fu-modal-err" class="crm-task-modal-err" role="alert"></div>
+      <form id="crm-fu-form" hx-post="" hx-swap="none" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="_tpl" id="crm-fu-tpl" value="exec_row">
+        <div class="crm-add-task-field">
+          <label for="crm-fu-datetime">Date &amp; time</label>
+          <input id="crm-fu-datetime" type="datetime-local" name="fu_datetime" required>
+        </div>
+        <div class="crm-add-task-field">
+          <label for="crm-fu-note">Note <span class="crm-add-task-optional">(optional)</span></label>
+          <input id="crm-fu-note" type="text" name="fu_note" maxlength="500" placeholder="What's this follow-up about?" autocomplete="off">
+        </div>
+        <div class="crm-add-task-dialog__foot">
+          <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('crm-fu-modal').close()">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm" id="crm-fu-modal-submit">Schedule</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
   {% block scripts %}{% endblock %}
   <script>
     function toggleSidebar() {
@@ -2446,6 +2474,18 @@
         try {
           var j = JSON.parse(raw);
           if (j.crmToast) crmShowToast(j.crmToast);
+          if (j.crmCloseFuModal) {
+            var fuDlg = document.getElementById('crm-fu-modal');
+            var fuForm = document.getElementById('crm-fu-form');
+            if (fuForm) fuForm.reset();
+            var fuErrEl = document.getElementById('crm-fu-modal-err');
+            if (fuErrEl) fuErrEl.textContent = '';
+            if (fuDlg) fuDlg.close();
+          }
+          if (j.crmFuModalError) {
+            var fuErrEl2 = document.getElementById('crm-fu-modal-err');
+            if (fuErrEl2) fuErrEl2.textContent = j.crmFuModalError;
+          }
           if (j.crmFuDone) {
             var id = j.crmFuDone;
             var row = document.getElementById('dash-fu-' + id);
@@ -2534,6 +2574,43 @@
         }, true);
       })();
 
+      (function() {
+        var fuAddTpl = '{% url "crm:lead_quick_fu" pk=888888 %}'.replace('888888', '__PK__');
+        function fuAddUrl(pk) { return fuAddTpl.replace('__PK__', String(pk)); }
+        document.body.addEventListener('click', function(e) {
+          var openBtn = e.target.closest && e.target.closest('.crm-open-fu-modal');
+          if (!openBtn) return;
+          e.preventDefault();
+          var pk = openBtn.getAttribute('data-lead-pk');
+          if (!pk) return;
+          var dlg = document.getElementById('crm-fu-modal');
+          var form = document.getElementById('crm-fu-form');
+          var errEl = document.getElementById('crm-fu-modal-err');
+          var nameEl = document.getElementById('crm-fu-modal-lead-name');
+          if (!dlg || !form) return;
+          if (errEl) errEl.textContent = '';
+          form.reset();
+          var isMobileCard = !!(openBtn.closest && openBtn.closest('.lead-mcard'));
+          var tplField = document.getElementById('crm-fu-tpl');
+          if (isMobileCard) {
+            form.setAttribute('hx-target', '#lead-mcard-' + pk);
+            if (tplField) tplField.value = 'mobile_card';
+          } else {
+            form.setAttribute('hx-target', '#lead-exec-' + pk);
+            if (tplField) tplField.value = 'exec_row';
+          }
+          form.setAttribute('hx-post', fuAddUrl(pk));
+          form.setAttribute('hx-swap', 'outerHTML');
+          if (typeof htmx !== 'undefined') htmx.process(form);
+          if (nameEl) nameEl.textContent = openBtn.getAttribute('data-lead-name') || ('Lead #' + pk);
+          dlg.showModal();
+          setTimeout(function() {
+            var di = document.getElementById('crm-fu-datetime');
+            if (di) di.focus();
+          }, 80);
+        }, true);
+      })();
+
       document.body.addEventListener('click', function(e) {
         var b = e.target.closest && e.target.closest('.exec-call-btn');
         if (b) {
@@ -2574,15 +2651,6 @@
             var el = d.querySelector('#id_name') || d.querySelector('input[name="name"]');
             if (el) { el.focus(); try { el.select(); } catch (ex) {} }
           }, 100);
-        }
-        function crmLeadsSetMoreOpen(open) {
-          var morePanel = document.getElementById('cmd-more-panel');
-          var moreBtn = document.getElementById('cmd-more-btn');
-          var moreArrow = document.getElementById('cmd-more-arrow');
-          if (!morePanel) return;
-          morePanel.hidden = !open;
-          if (moreBtn) moreBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
-          if (moreArrow) moreArrow.style.transform = open ? 'rotate(180deg)' : '';
         }
         function crmLeadsCleanupInfScroll() {
           if (typeof window.__crmLeadsInfCleanup === 'function') {
@@ -2749,10 +2817,6 @@
         }
         function crmInitLeadsPage() {
           if (!document.getElementById('leads-desktop-list')) return;
-          var flags = document.getElementById('leads-page-flags');
-          if (flags && flags.getAttribute('data-auto-more') === '1') {
-            crmLeadsSetMoreOpen(true);
-          }
           crmLeadsMountInfScroll();
         }
         if (!window.__crmLeadsDelegated) {
@@ -2779,21 +2843,6 @@
               if (f) f.submit();
               return;
             }
-            if (t.closest && t.closest('#cmd-more-btn')) {
-              var morePanel = document.getElementById('cmd-more-panel');
-              if (morePanel) crmLeadsSetMoreOpen(morePanel.hidden);
-            }
-          }, true);
-        }
-        if (!window.__crmExecBoardToggle) {
-          window.__crmExecBoardToggle = true;
-          document.body.addEventListener('toggle', function(e) {
-            var menu = e.target;
-            if (!menu || !menu.classList || !menu.classList.contains('exec-actions-menu')) return;
-            var card = menu.closest('.exec-board');
-            if (!card) return;
-            if (menu.open) card.classList.add('exec-board--menu-open');
-            else card.classList.remove('exec-board--menu-open');
           }, true);
         }
         document.body.addEventListener('htmx:beforeSwap', function(evt) {

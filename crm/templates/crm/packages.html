@@ -7,11 +7,11 @@
 <div class="page-header">
   <div>
     <h1>Packages</h1>
-    <p>Assign packages to leads for deal tracking.</p>
+    <p>{% if can_manage_packages %}Shared catalog — used across the whole sales team.{% else %}Shared catalog. Assign packages to leads for deal tracking.{% endif %}</p>
   </div>
 </div>
 
-<div style="display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:24px;align-items:start;" class="pkg-layout">
+<div style="display:grid;grid-template-columns:{% if can_manage_packages %}minmax(0,1fr) 320px{% else %}minmax(0,1fr){% endif %};gap:24px;align-items:start;" class="pkg-layout">
 
   <!-- Left: Package grid -->
   <div>
@@ -23,6 +23,7 @@
           <div class="pkg-card-name">{{ p.name }}</div>
           <div class="pkg-card-price">{{ p.price }}</div>
         </div>
+        {% if can_manage_packages %}
         <div class="pkg-card-actions">
           <a href="{% url 'crm:package_scope_edit' p.pk %}" class="btn btn-outline btn-sm">Scope</a>
           <a href="{% url 'crm:packages' %}?edit={{ p.pk }}" class="btn btn-outline btn-sm">
@@ -43,17 +44,19 @@
             </button>
           </form>
         </div>
+        {% endif %}
       </div>
       {% endfor %}
     </div>
     {% else %}
     <div class="empty-state">
       <strong>No packages yet</strong>
-      Add your first package using the form on the right.
+      {% if can_manage_packages %}Add your first package using the form on the right.{% else %}Ask a sales manager to add one.{% endif %}
     </div>
     {% endif %}
   </div>
 
+  {% if can_manage_packages %}
   <!-- Right: Add / Edit form -->
   <div style="display:flex;flex-direction:column;gap:16px;">
 
@@ -97,6 +100,7 @@
     </div>
 
   </div>
+  {% endif %}
 </div>
 {% endblock %}
 

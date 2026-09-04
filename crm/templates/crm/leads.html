@@ -4,9 +4,6 @@
 
 {% block content %}
 
-<div id="leads-page-flags" hidden
-     data-auto-more="{% if filters.q or package_filter or filters.min_deal %}1{% else %}0{% endif %}"></div>
-
 <div class="page-header exec-page-head exec-page-head--leads">
   <div class="exec-page-head__intro">
     <h1>Daily execution</h1>
@@ -19,7 +16,6 @@
       {% else %}
       <strong>0</strong> matching leads
       {% endif %}
-      · {{ sort_label }}
     </p>
   </div>
 
@@ -46,16 +42,6 @@
     <span class="cmd-strip__lbl">Today</span>
     <span class="cmd-strip__hint">Follow-ups due today</span>
   </a>
-  <a href="{{ leads_base }}?{{ lqs.has_tasks_on }}"
-     class="cmd-strip__card cmd-strip__card--tasks{% if filters.has_tasks == '1' %} cmd-strip__card--on{% endif %}"
-     title="Click to see leads that have at least one task not yet completed">
-    <span class="cmd-strip__icon">
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
-    </span>
-    <span class="cmd-strip__num">{{ pending_tasks_count }}</span>
-    <span class="cmd-strip__lbl">Tasks</span>
-    <span class="cmd-strip__hint">Pending tasks</span>
-  </a>
   <a href="{{ leads_base }}?{{ lqs.fu_hot }}"
      class="cmd-strip__card cmd-strip__card--hot{% if filters.fu == 'hot' %} cmd-strip__card--on{% endif %}"
      title="Interested, Negotiation, Qualified, or Proposal leads with a deal value">
@@ -67,7 +53,7 @@
     <span class="cmd-strip__hint">Pipeline + deal value</span>
   </a>
   <a href="{{ leads_base }}?{{ lqs.fu_all }}"
-     class="cmd-strip__card cmd-strip__card--all{% if not filters.fu and not filters.has_tasks %} cmd-strip__card--on{% endif %}"
+     class="cmd-strip__card cmd-strip__card--all{% if not filters.fu %} cmd-strip__card--on{% endif %}"
      title="Click to see all leads with no filter">
     <span class="cmd-strip__icon">
       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
@@ -93,6 +79,18 @@
   </div>
 </div>
 
+{# ── SALES PIPELINE — 5 primary stage tabs, each with a live count ── #}
+<div class="pipeline-tabs" role="tablist" aria-label="Sales pipeline stage">
+  {% for pill in stage_pills %}
+  <a href="{{ leads_base }}?{{ pill.qs }}"
+     class="pipeline-tab pipeline-tab--{{ pill.key|default:'all' }}{% if filters.stage == pill.key %} pipeline-tab--on{% endif %}"
+     role="tab" aria-selected="{% if filters.stage == pill.key %}true{% else %}false{% endif %}">
+    <span class="pipeline-tab__num">{{ pill.count }}</span>
+    <span class="pipeline-tab__lbl">{{ pill.label }}</span>
+  </a>
+  {% endfor %}
+</div>
+
 {# ── STICKY FILTER PANEL ─────────────────────────────────── #}
 <div class="leads-filter-sticky">
 
@@ -103,161 +101,78 @@
     Filters{% if has_active_filters %} <span class="leads-filter-mob-btn__dot" aria-hidden="true">●</span>{% endif %}
   </button>
 
-  <div class="leads-filter-panel leads-filter-inner" id="leads-filter-panel">
+  <div class="leads-filter-panel leads-filter-inner lf-compact" id="leads-filter-panel">
 
-    {# ── DATE RANGE FILTER ────────────────────────────────── #}
-    <div class="cmd-l2">
-      <div class="cmd-l2__inner">
-        <div class="cmd-l2__group">
-          <div class="cmd-l2__group-header">
-            <span class="cmd-l2__lbl">Show leads from</span>
-            <span class="cmd-l2__hint">Narrow down by time period</span>
-          </div>
-          <div class="leads-pill-row leads-pill-row--wrap">
-            <a class="pill {% if not filters.date_scope %}on{% endif %}" href="{{ leads_base }}?{{ lqs.date_all }}">All time</a>
-            <a class="pill {% if filters.date_scope == 'today' %}on{% endif %}" href="{{ leads_base }}?{{ lqs.date_today }}">Today</a>
-            <a class="pill {% if filters.date_scope == 'yesterday' %}on{% endif %}" href="{{ leads_base }}?{{ lqs.date_yesterday }}">Yesterday</a>
-            <a class="pill {% if filters.date_scope == 'this_week' %}on{% endif %}" href="{{ leads_base }}?{{ lqs.date_week }}">This week</a>
-            <a class="pill {% if filters.date_scope == 'this_month' %}on{% endif %}" href="{{ leads_base }}?{{ lqs.date_month }}">This month</a>
-          </div>
-        </div>
-        <div class="cmd-l2__sep" aria-hidden="true"></div>
-        <div class="cmd-l2__group">
-          <div class="cmd-l2__group-header">
-            <span class="cmd-l2__lbl">Date field</span>
-            <span class="cmd-l2__hint">Which date to apply the period to</span>
-          </div>
-          <div class="leads-pill-row">
-            <a class="pill {% if filters.date_basis == 'fu' or not filters.date_basis %}on{% endif %}" href="{{ leads_base }}?{{ lqs.basis_fu }}" title="Filter using the Next Follow-up date">Follow-up date</a>
-            <a class="pill {% if filters.date_basis == 'created' %}on{% endif %}" href="{{ leads_base }}?{{ lqs.basis_created }}" title="Filter using the date the lead was created">Lead created date</a>
-          </div>
+    <div class="lf-row">
+      <div class="lf-grp">
+        <span class="lf-grp__lbl">From</span>
+        <div class="leads-pill-row">
+          <a class="pill {% if not filters.date_scope %}on{% endif %}" href="{{ leads_base }}?{{ lqs.date_all }}">All time</a>
+          <a class="pill {% if filters.date_scope == 'today' %}on{% endif %}" href="{{ leads_base }}?{{ lqs.date_today }}">Today</a>
+          <a class="pill {% if filters.date_scope == 'yesterday' %}on{% endif %}" href="{{ leads_base }}?{{ lqs.date_yesterday }}">Yesterday</a>
+          <a class="pill {% if filters.date_scope == 'this_week' %}on{% endif %}" href="{{ leads_base }}?{{ lqs.date_week }}">This week</a>
+          <a class="pill {% if filters.date_scope == 'this_month' %}on{% endif %}" href="{{ leads_base }}?{{ lqs.date_month }}">This month</a>
         </div>
       </div>
-    </div>
 
-    {# ── STATUS FILTER (second bar) ───────────────────────── #}
-    <div class="cmd-l2 cmd-l2--status">
-      <div class="cmd-l2__group cmd-l2__group--status">
-        <div class="cmd-l2__group-header">
-          <span class="cmd-l2__lbl">Status</span>
-          <span class="cmd-l2__hint">Filter by pipeline stage</span>
-        </div>
-        <div class="leads-pill-row leads-pill-row--wrap leads-pill-row--status">
-          {% for pill in status_pills %}
-          <a class="pill {% if pill.val == '' %}{% if not filters.status %}on{% endif %}{% elif filters.status == pill.val %}on{% endif %}"
-             href="{{ leads_base }}?{{ pill.qs }}">{{ pill.label }}</a>
-          {% endfor %}
-        </div>
-      </div>
-    </div>
-
-    {# ── HIGH HOPE FILTER (third bar) ──────────────────────── #}
-    <div class="cmd-l2 cmd-l2--high-hope">
-      <div class="cmd-l2__group cmd-l2__group--high-hope">
-        <div class="cmd-l2__group-header">
-          <span class="cmd-l2__lbl">High Hope</span>
-          <span class="cmd-l2__hint">Priority leads</span>
-        </div>
-        <div class="leads-pill-row leads-pill-row--wrap">
+      <span class="lf-sep" aria-hidden="true"></span>
+      <div class="lf-grp">
+        <span class="lf-grp__lbl">Hope</span>
+        <div class="leads-pill-row">
           <a class="pill {% if not filters.high_hope %}on{% endif %}" href="{{ leads_base }}?{{ lqs.high_hope_all }}">All</a>
           <a class="pill {% if filters.high_hope == '1' %}on{% endif %}" href="{{ leads_base }}?{{ lqs.high_hope_on }}">High Hope</a>
         </div>
       </div>
-    </div>
 
-    {# ── OWNER FILTER (sales manager only) ──────────────────── #}
-    {% if manager_mode %}
-    <div class="cmd-l2 cmd-l2--owner">
-      <div class="cmd-l2__group cmd-l2__group--owner">
-        <div class="cmd-l2__group-header">
-          <span class="cmd-l2__lbl">Owner</span>
-          <span class="cmd-l2__hint">Whose leads to show</span>
+      {% if package_pills|length > 1 %}
+      <span class="lf-sep" aria-hidden="true"></span>
+      <div class="lf-grp">
+        <span class="lf-grp__lbl">Package</span>
+        <div class="leads-pill-row">
+          {% for pill in package_pills %}
+          <a class="pill {% if pill.id == package_filter %}on{% elif not pill.id and not package_filter %}on{% endif %}"
+             href="{{ leads_base }}?{{ pill.qs }}">{{ pill.label }}</a>
+          {% endfor %}
         </div>
-        <div class="leads-pill-row leads-pill-row--wrap">
+      </div>
+      {% endif %}
+
+      {% if manager_mode %}
+      <span class="lf-sep" aria-hidden="true"></span>
+      <div class="lf-grp">
+        <span class="lf-grp__lbl">Owner</span>
+        <div class="leads-pill-row">
           {% for pill in employee_pills %}
           <a class="pill {% if pill.id == selected_employee.id %}on{% elif not pill.id and not selected_employee %}on{% endif %}"
              href="{{ leads_base }}?{{ pill.qs }}">{{ pill.label }}</a>
           {% endfor %}
         </div>
       </div>
+      {% endif %}
     </div>
-    {% endif %}
 
-    {# ── ADVANCED FILTERS — collapsible ───────────────────── #}
-    <div class="cmd-l3">
-      <button type="button" class="cmd-l3__toggle" id="cmd-more-btn" aria-expanded="false" aria-controls="cmd-more-panel">
-        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="9" y2="18"/></svg>
-        More filters{% if filters.q or package_filter or filters.min_deal %}<span class="cmd-l3__dot">●</span>{% endif %}
-        <svg class="cmd-l3__arrow" id="cmd-more-arrow" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
-      </button>
-      <div class="cmd-l3__panel" id="cmd-more-panel" hidden>
-        <p class="cmd-l3__note">Use these filters to narrow down leads further. Click <strong>Apply filters</strong> when done.</p>
-        <form method="get" action="" id="leads-filter-form">
-          <div class="cmd-l3__grid">
-            <div class="cmd-l3__field">
-              <label for="lf-q">
-                Search by name or phone
-              </label>
-              <input id="lf-q" type="search" name="q" placeholder="Type name or phone number…" value="{{ filters.q }}">
-            </div>
-            <div class="cmd-l3__field">
-              <label for="lf-pkg">
-                Package
-              </label>
-              <select id="lf-pkg" name="package">
-                <option value="">All packages</option>
-                {% for p in packages %}
-                <option value="{{ p.pk }}" {% if package_filter == p.pk %}selected{% endif %}>{{ p.name }}</option>
-                {% endfor %}
-              </select>
-            </div>
-            <div class="cmd-l3__field">
-              <label for="lf-sort">
-                Sort order
-              </label>
-              <select id="lf-sort" name="sort">
-                {% for k, label in sort_choices %}
-                <option value="{{ k }}" {% if filters.sort == k %}selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-              </select>
-            </div>
-            <div class="cmd-l3__field">
-              <label for="lf-min-deal">
-                Min deal value
-                <span class="cmd-l3__field-hint">Only show leads with deal ≥ this amount</span>
-              </label>
-              <input id="lf-min-deal" type="number" step="0.01" name="min_deal" placeholder="e.g. 1000" value="{{ filters.min_deal }}" min="0">
-            </div>
-          </div>
-          <div class="cmd-l3__daterange">
-            <span class="cmd-l3__dr-lbl">Custom date range <span class="cmd-l3__field-hint">Pick exact start and end dates</span></span>
-            <div class="cmd-l3__dr-row">
-              <input type="date" name="date_start" value="{{ filters.date_start }}" aria-label="Start date">
-              <span class="cmd-l3__dr-sep">→</span>
-              <input type="date" name="date_end" value="{{ filters.date_end }}" aria-label="End date">
-              <button type="button" class="btn btn-outline btn-sm" id="leads-apply-custom-range">Apply range</button>
-            </div>
-          </div>
-          {# Preserve strip / date / status (status = status bar pills) #}
-          <input type="hidden" name="status" value="{{ filters.status }}">
-          <input type="hidden" name="high_hope" value="{{ filters.high_hope }}">
-          <input type="hidden" name="fu" value="{{ filters.fu }}">
-          <input type="hidden" name="has_tasks" value="{{ filters.has_tasks }}">
-          <input type="hidden" name="date_scope" id="leads-h-date-scope" value="{{ filters.date_scope }}">
-          <input type="hidden" name="date_basis" value="{{ filters.date_basis }}">
-          <input type="hidden" name="created_day" value="{{ filters.created_day }}">
-          <input type="hidden" name="closed_day" value="{{ filters.closed_day }}">
-          <input type="hidden" name="created_month" value="{{ filters.created_month }}">
-          <input type="hidden" name="closed_month" value="{{ filters.closed_month }}">
-          <div class="cmd-l3__actions">
-            <button type="submit" class="btn btn-primary btn-sm">Apply filters</button>
-            {% if has_active_filters %}
-            <a href="{% url 'crm:leads' %}" class="btn btn-outline btn-sm leads-filter-clear">Clear all filters</a>
-            {% endif %}
-          </div>
-        </form>
-      </div>
-    </div>
+    <form method="get" action="" id="leads-filter-form" class="lf-row lf-row--form">
+      <input id="lf-q" type="search" name="q" placeholder="Search name or phone…" value="{{ filters.q }}" class="lf-input lf-input--search">
+      <input type="date" name="date_start" value="{{ filters.date_start }}" aria-label="Start date" class="lf-input lf-input--date">
+      <span class="lf-arrow" aria-hidden="true">→</span>
+      <input type="date" name="date_end" value="{{ filters.date_end }}" aria-label="End date" class="lf-input lf-input--date">
+      <button type="button" class="btn btn-outline btn-sm" id="leads-apply-custom-range">Apply range</button>
+      {# Preserve strip / date / pipeline-stage state when this form submits #}
+      <input type="hidden" name="stage" value="{{ filters.stage }}">
+      <input type="hidden" name="high_hope" value="{{ filters.high_hope }}">
+      <input type="hidden" name="fu" value="{{ filters.fu }}">
+      <input type="hidden" name="date_scope" id="leads-h-date-scope" value="{{ filters.date_scope }}">
+      <input type="hidden" name="created_day" value="{{ filters.created_day }}">
+      <input type="hidden" name="closed_day" value="{{ filters.closed_day }}">
+      <input type="hidden" name="created_month" value="{{ filters.created_month }}">
+      <input type="hidden" name="closed_month" value="{{ filters.closed_month }}">
+      <input type="hidden" name="employee" value="{{ filters.employee }}">
+      <input type="hidden" name="package" value="{{ filters.package }}">
+      <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+      {% if has_active_filters %}
+      <a href="{% url 'crm:leads' %}" class="btn btn-outline btn-sm leads-filter-clear">Clear</a>
+      {% endif %}
+    </form>
 
   </div>{# end .leads-filter-panel #}
 </div>
@@ -486,10 +401,10 @@ dialog::backdrop { background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); }
   box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
 }
 
-/* ── Command Strip — 5 filter shortcuts ──────────────── */
+/* ── Command Strip — follow-up shortcuts ──────────────── */
 .cmd-strip {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
   margin-bottom: 0px;
 }
@@ -540,16 +455,6 @@ dialog::backdrop { background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); }
 .cmd-strip__card--warning.cmd-strip__card--on .cmd-strip__hint,
 .cmd-strip__card--warning.cmd-strip__card--on .cmd-strip__icon { color: #fff; }
 
-.cmd-strip__card--tasks  { border-color: var(--primary-200); }
-.cmd-strip__card--tasks  .cmd-strip__num  { color: var(--primary-600); }
-.cmd-strip__card--tasks  .cmd-strip__icon { color: var(--primary-400); }
-.cmd-strip__card--tasks:hover             { border-color: var(--primary-400); background: var(--primary-50); }
-.cmd-strip__card--tasks.cmd-strip__card--on  { background: var(--primary-600); border-color: var(--primary-600); box-shadow: 0 2px 8px rgba(79,70,229,0.2); }
-.cmd-strip__card--tasks.cmd-strip__card--on  .cmd-strip__num,
-.cmd-strip__card--tasks.cmd-strip__card--on  .cmd-strip__lbl,
-.cmd-strip__card--tasks.cmd-strip__card--on  .cmd-strip__hint,
-.cmd-strip__card--tasks.cmd-strip__card--on  .cmd-strip__icon { color: #fff; }
-
 .cmd-strip__card--hot  { border-color: #fde68a; }
 .cmd-strip__card--hot  .cmd-strip__num  { color: #b45309; }
 .cmd-strip__card--hot  .cmd-strip__icon { color: #d97706; }
@@ -570,16 +475,58 @@ dialog::backdrop { background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); }
 .cmd-strip__card--all.cmd-strip__card--on .cmd-strip__hint,
 .cmd-strip__card--all.cmd-strip__card--on .cmd-strip__icon { color: #fff; }
 
-@media (max-width: 860px) {
-  .cmd-strip { grid-template-columns: repeat(3, 1fr); }
-  .cmd-strip__card:nth-child(4),
-  .cmd-strip__card:nth-child(5) { grid-column: span 1; }
-}
 @media (max-width: 560px) {
   .cmd-strip { grid-template-columns: repeat(2, 1fr); gap: 6px; margin-bottom: 12px; }
   .cmd-strip__card { padding: 9px 6px 7px; min-height: 62px; }
   .cmd-strip__num  { font-size: 20px; }
   .cmd-strip__hint { display: none; }
+}
+
+/* ── Sales pipeline tabs — 5 primary stages + All ─────── */
+.pipeline-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0 20px;
+}
+.pipeline-tab {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 9px 16px;
+  border-radius: 999px;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  text-decoration: none !important;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.12s, box-shadow 0.15s, border-color 0.15s, background 0.15s;
+}
+.pipeline-tab:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); text-decoration: none !important; }
+.pipeline-tab__num { font-size: 16px; font-weight: 900; letter-spacing: -0.02em; color: var(--neutral-800); }
+.pipeline-tab__lbl { font-size: 12px; font-weight: 700; color: var(--neutral-700); white-space: nowrap; }
+
+.pipeline-tab--all           { border-color: var(--neutral-200); }
+.pipeline-tab--new           { border-color: var(--primary-200); }
+.pipeline-tab--closing_ongoing { border-color: #fde68a; }
+.pipeline-tab--proposal_sent { border-color: #a5f3fc; }
+.pipeline-tab--closed        { border-color: var(--success-100); }
+.pipeline-tab--lost          { border-color: var(--danger-100); }
+
+.pipeline-tab--all.pipeline-tab--on           { background: var(--neutral-700); border-color: var(--neutral-700); }
+.pipeline-tab--new.pipeline-tab--on           { background: var(--primary-600); border-color: var(--primary-600); }
+.pipeline-tab--closing_ongoing.pipeline-tab--on { background: #d97706; border-color: #d97706; }
+.pipeline-tab--proposal_sent.pipeline-tab--on { background: #0e7490; border-color: #0e7490; }
+.pipeline-tab--closed.pipeline-tab--on        { background: var(--success-600); border-color: var(--success-600); }
+.pipeline-tab--lost.pipeline-tab--on          { background: var(--danger-600); border-color: var(--danger-600); }
+.pipeline-tab--on .pipeline-tab__num,
+.pipeline-tab--on .pipeline-tab__lbl { color: #fff; }
+
+@media (max-width: 560px) {
+  .pipeline-tabs { gap: 6px; margin: 10px 0 16px; }
+  .pipeline-tab { padding: 7px 12px; }
+  .pipeline-tab__num { font-size: 14px; }
+  .pipeline-tab__lbl { font-size: 11px; }
 }
 
 /* ── Sticky Filter Bar ────────────────────────────────── */
@@ -606,12 +553,12 @@ dialog::backdrop { background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); }
 .leads-filter-inner {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px;
-  box-shadow: var(--shadow-md);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 6px;
 }
 @media (max-width: 768px) {
   .leads-filter-mob-btn { display: inline-flex; }
@@ -623,110 +570,50 @@ dialog::backdrop { background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); }
   .leads-filter-panel { display: flex !important; flex-direction: column; }
 }
 
-/* ── Level 2 Date Filters ─────────────────────────────── */
-.cmd-l2 { padding-top: 12px; border-top: 1px solid var(--border); }
-.cmd-l2--status {
-  padding-top: 14px; margin-top: 2px; border-top: 1px solid var(--border);
-}
-.cmd-l2__group--status { width: 100%; min-width: 0; }
-.leads-pill-row--status { gap: 5px 6px; }
-.leads-pill-row--status .pill { font-size: 11px; font-weight: 600; padding: 5px 10px; }
-.cmd-l2__inner {
+/* ── Compact filter bar — one wrapping row of pill groups,
+   then one wrapping row for search + custom date range ── */
+.lf-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px 28px;
-  align-items: flex-start;
+  align-items: center;
+  gap: 6px 14px;
 }
-.cmd-l2__group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.cmd-l2__group-header { display: flex; align-items: baseline; gap: 8px; }
-.cmd-l2__lbl {
-  font-size: 11px;
+.lf-grp { display: flex; align-items: center; gap: 6px; }
+.lf-grp__lbl {
+  font-size: 10px;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--neutral-700);
-  white-space: nowrap;
-}
-.cmd-l2__hint {
-  font-size: 11px;
-  font-weight: 500;
+  letter-spacing: 0.04em;
   color: var(--text-muted);
   white-space: nowrap;
 }
-.cmd-l2__sep {
-  width: 1px;
-  align-self: stretch;
-  background: var(--border);
-  flex-shrink: 0;
-}
-.leads-pill-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.lf-sep { width: 1px; align-self: stretch; background: var(--border); flex-shrink: 0; }
+.leads-pill-row { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.lf-compact .pill { padding: 4px 9px; font-size: 11px; }
 
-/* ── Level 3 Advanced Collapsible ────────────────────── */
-.cmd-l3 { padding-top: 10px; border-top: 1px dashed var(--border); }
-.cmd-l3__toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  border: 1px solid var(--border);
-  background: var(--neutral-50);
-  border-radius: var(--radius-sm);
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--neutral-600);
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-}
-.cmd-l3__toggle:hover { background: var(--neutral-100); border-color: var(--neutral-300); }
-.cmd-l3__dot { color: var(--primary-500); font-size: 9px; margin-left: 2px; }
-.cmd-l3__arrow { transition: transform 0.2s ease; flex-shrink: 0; color: var(--text-muted); }
-
-.cmd-l3__panel {
-  margin-top: 12px;
-  padding: 16px;
-  background: var(--neutral-50);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-}
-.cmd-l3__panel[hidden] { display: none !important; }
-.cmd-l3__note {
-  font-size: 12px;
-  color: var(--text-muted);
-  margin-bottom: 14px;
-  padding: 8px 12px;
-  background: var(--primary-50);
-  border-left: 3px solid var(--primary-500);
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-}
-
-.cmd-l3__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
-  gap: 12px 14px;
-  margin-bottom: 14px;
-}
-.cmd-l3__field { display: flex; flex-direction: column; gap: 4px; }
-.cmd-l3__field label {
-  font-size: 11px; font-weight: 700; color: var(--neutral-700);
-  display: flex; flex-direction: column; gap: 1px;
-}
-.cmd-l3__field-hint {
-  font-size: 10px; font-weight: 500; color: var(--text-muted);
-  text-transform: none; letter-spacing: 0; display: block;
-}
-
-.cmd-l3__daterange { padding-top: 12px; border-top: 1px solid var(--border); margin-bottom: 14px; }
-.cmd-l3__dr-lbl { font-size: 11px; font-weight: 700; color: var(--neutral-700); display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
-.cmd-l3__dr-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.cmd-l3__dr-row input[type="date"] { flex: 1 1 130px; min-width: 0; }
-.cmd-l3__dr-sep { color: var(--text-muted); font-size: 16px; font-weight: 600; }
-
-.cmd-l3__actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding-top: 12px; border-top: 1px solid var(--border); }
+.lf-row--form { padding-top: 6px; border-top: 1px solid var(--border); }
+.lf-input { padding: 5px 9px; font-size: 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-family: inherit; }
+.lf-input--search { flex: 1 1 180px; min-width: 140px; }
+.lf-input--date { flex: 0 1 130px; min-width: 0; }
+.lf-arrow { color: var(--text-muted); font-size: 13px; }
 .leads-filter-clear { color: var(--danger-600) !important; }
+
+/* ── Compact filter bar on mobile ─────────────────────── */
+@media (max-width: 640px) {
+  .leads-filter-inner { padding: 10px; gap: 10px; }
+  .lf-row { gap: 8px 0; }
+  .lf-grp { width: 100%; flex-wrap: wrap; gap: 6px; }
+  .lf-sep { display: none; }
+  .lf-grp__lbl { flex: 0 0 100%; }
+  .lf-compact .pill { padding: 6px 11px; font-size: 12px; }
+
+  .lf-row--form { gap: 8px; }
+  .lf-input--search { flex: 1 1 100%; font-size: 14px; padding: 9px 10px; }
+  .lf-input--date { flex: 1 1 auto; font-size: 13px; padding: 8px; }
+  #leads-apply-custom-range { flex: 1 1 100%; justify-content: center; min-height: 38px; }
+  .lf-row--form button[type="submit"],
+  .leads-filter-clear { flex: 1 1 auto; justify-content: center; text-align: center; min-height: 38px; }
+}
 
 /* ── Hot Lead Badge ───────────────────────────────────── */
 .hot-badge {
@@ -916,25 +803,14 @@ dialog::backdrop { background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); }
 .lead-mcard__act--wa-na { padding: 0 !important; }
 .lead-mcard__act--wa-na .lead-mcard__wa-ico { opacity: 0.28; color: var(--neutral-500); }
 .lead-mcard__act--fu {
-  background: var(--primary-600) !important; border-color: var(--primary-600) !important; color: #fff !important; list-style: none;
+  background: var(--primary-600) !important; border-color: var(--primary-600) !important; color: #fff !important;
   font-size: 9px !important; line-height: 1.2 !important; padding: 0 2px !important; text-align: center;
 }
-.lead-mcard__act--fu::-webkit-details-marker { display: none; }
 .lead-mcard__act--link { color: var(--primary-600) !important; border-color: var(--primary-200); background: var(--primary-50); }
 .lead-mcard__act--na {
   background: var(--neutral-100) !important; color: var(--neutral-400) !important; border-color: var(--neutral-200);
   cursor: default; pointer-events: none; font-weight: 700 !important;
 }
-
-.lead-mcard__fu-pop { position: relative; min-width: 0; }
-.lead-mcard__fu-pop[open] .lead-mcard__act--fu { filter: brightness(0.92); }
-.lead-mcard__fu-popbody {
-  position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(100% + 6px); z-index: 70;
-  width: min(280px, 88vw); background: var(--surface); border: 1px solid var(--border);
-  border-radius: 8px; box-shadow: var(--shadow-lg); padding: 10px;
-}
-.lead-mcard__fu-form { display: flex; flex-direction: column; gap: 6px; }
-.lead-mcard__fu-input { width: 100%; font-size: 13px !important; padding: 8px !important; }
 
 /* ═══════════════════════════════════════════════════════
    EXEC BOARD -- Professional 3-column card v2
@@ -948,7 +824,6 @@ dialog::backdrop { background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); }
   border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.05); position: relative;
   transition: box-shadow .15s;
 }
-.exec-board--menu-open { z-index: 120; }
 .exec-board:hover { box-shadow: 0 3px 10px rgba(0,0,0,.10); }
 .exec-board--closed       { opacity: .82; }
 .exec-board--prio-overdue { border-left: 3px solid var(--danger-500); }
@@ -1110,24 +985,18 @@ dialog::backdrop { background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); }
 .exec-board__pending-ico { flex-shrink: 0; }
 .exec-task-ind__txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 
-/* Actions <details> */
-.exec-actions-menu {
-  position: relative;
-  height: 30px !important;
-  max-height: 30px;
-  overflow: visible !important;
-  z-index: 60;
+/* Row 2 now only has 3 items (+ Task, task indicator, View detail) */
+.exec-board__toolbar-row.exec-board__toolbar-row--r2 { grid-template-columns: repeat(3, 1fr); }
+
+/* Row 3: big, full-width Schedule Followup button */
+.exec-board__toolbar-row--r3 { grid-template-columns: 1fr; }
+.exec-schedule-fu-btn {
+  height: 36px !important; min-height: 36px !important; max-height: none !important;
+  font-size: 12px !important; font-weight: 800 !important; letter-spacing: 0.01em;
+  background: var(--primary-600) !important; border: none !important; color: #fff !important;
+  border-radius: 6px !important; box-shadow: 0 1px 4px rgba(79,70,229,0.25);
 }
-.exec-actions-sum {
-  width: 100%; height: 30px !important; list-style: none;
-  display: flex !important; align-items: center; justify-content: center;
-  font-size: 11px !important; font-weight: 700 !important;
-  background: var(--primary-600) !important; color: #fff !important;
-  border: none !important; border-radius: 6px !important;
-  cursor: pointer; padding: 0 !important;
-}
-.exec-actions-sum:hover { background: var(--primary-700) !important; }
-.exec-actions-sum::-webkit-details-marker { display: none; }
+.exec-schedule-fu-btn:hover { background: var(--primary-700) !important; }
 
 /* View detail link */
 .exec-board__hub {
@@ -1138,20 +1007,6 @@ dialog::backdrop { background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); }
   background: var(--primary-600) !important; border-color: var(--primary-600) !important;
   color: #fff !important; text-decoration: none;
 }
-
-/* Actions dropdown panel */
-.exec-actions-body {
-  position: absolute; right: 0; top: calc(100% + 6px); z-index: 50;
-  width: min(340px, calc(100vw - 48px)); background: var(--surface);
-  border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-lg); padding: 14px;
-}
-.exec-actions-block  { margin-bottom: 14px; }
-.exec-actions-block:last-child { margin-bottom: 0; }
-.exec-actions-label  { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); display: block; margin-bottom: 8px; }
-.exec-actions-form   { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.exec-actions-dt     { font-size: 12px !important; padding: 6px 8px !important; flex: 1; min-width: 160px; }
-.exec-actions-note   { font-size: 12px !important; padding: 6px 8px !important; flex: 1; min-width: 120px; }
-.exec-actions-hint   { font-size: 12px; color: var(--text-muted); margin: 0; }
 
 
 .exec-page-head__actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }

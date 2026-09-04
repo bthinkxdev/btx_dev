@@ -37,8 +37,8 @@ class LeadForm(forms.ModelForm):
 
     def __init__(self, *args, employee=None, **kwargs):
         super().__init__(*args, **kwargs)
-        if employee:
-            self.fields['package'].queryset = Package.objects.filter(employee=employee)
+        self.fields['package'].queryset = Package.objects.all().order_by('name')
+        self.fields['status'].choices = Lead.PRIMARY_STATUS_CHOICES
 
 
 class FollowUpForm(forms.ModelForm):
@@ -131,7 +131,7 @@ class AchievementForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if employee is not None:
             self.fields['lead'].queryset = Lead.objects.filter(employee=employee)
-            self.fields['package'].queryset = Package.objects.filter(employee=employee)
+        self.fields['package'].queryset = Package.objects.all().order_by('name')
 
 
 class ClientForm(forms.ModelForm):
@@ -202,12 +202,10 @@ class ProjectForm(forms.ModelForm):
             )
             if user.is_superuser or user.is_staff:
                 lead_qs = Lead.objects.filter(eligible)
-                pkg_qs = Package.objects.all()
             else:
                 lead_qs = Lead.objects.filter(eligible, employee=user)
-                pkg_qs = Package.objects.filter(employee=user)
             self.fields['lead'].queryset = lead_qs.order_by('-updated_at')
-            self.fields['package'].queryset = pkg_qs.order_by('name')
+            self.fields['package'].queryset = Package.objects.all().order_by('name')
             self.fields['assignees'].queryset = _active_dev_users_qs()
 
     def clean_lead(self):
@@ -532,10 +530,7 @@ class LeadConvertForm(forms.Form):
 
     def __init__(self, *args, employee=None, **kwargs):
         super().__init__(*args, **kwargs)
-        if employee is not None:
-            self.fields['package'].queryset = Package.objects.filter(
-                employee=employee
-            ).order_by('name')
+        self.fields['package'].queryset = Package.objects.all().order_by('name')
         self.fields['assignees'].queryset = _active_dev_users_qs()
 
     def clean(self):

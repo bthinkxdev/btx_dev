@@ -45,7 +45,7 @@
 <!-- Controls row -->
 <div class="lead-info-controls">
   <div class="lead-ctrl-group">
-    <label>Status</label>
+    <label>Pipeline stage</label>
     <select name="status" class="sticky-select"
       hx-post="{% url 'crm:lead_patch' lead.pk %}"
       hx-vals='{"_tpl":"sticky"}'
@@ -53,6 +53,20 @@
       hx-swap="outerHTML"
       hx-include="this">
       {% for val, lbl in status_choices %}
+      <option value="{{ val }}" {% if status_to_stage|dict_get:val == lead.pipeline_stage %}selected{% endif %}>{{ lbl }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="lead-ctrl-group">
+    <label>Detailed status</label>
+    <select name="status" class="sticky-select"
+      hx-post="{% url 'crm:lead_status_detail' lead.pk %}"
+      hx-target="#lead-sticky"
+      hx-swap="outerHTML"
+      hx-include="this"
+      title="Finer-grained status — only affects internal tracking, not the pipeline stage shown in the leads list">
+      {% for val, lbl in detailed_status_choices %}
       <option value="{{ val }}" {% if lead.status == val %}selected{% endif %}>{{ lbl }}</option>
       {% endfor %}
     </select>

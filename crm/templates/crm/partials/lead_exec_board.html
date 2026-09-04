@@ -64,7 +64,7 @@
           <span class="exec-board__fu-sub">{{ lead.next_followup|fu_relative_phrase }}</span>
           {% else %}
           <span class="exec-board__fu-main exec-board__fu-main--empty">Not set</span>
-          <span class="exec-board__fu-sub">Use Actions →</span>
+          <span class="exec-board__fu-sub">Use Schedule Followup →</span>
           {% endif %}
         </div>
       </div>
@@ -81,7 +81,7 @@
             hx-swap="outerHTML"
             hx-include="this">
             {% for val, label in status_choices %}
-            <option value="{{ val }}" {% if lead.status == val %}selected{% endif %}>{{ label }}</option>
+            <option value="{{ val }}" {% if status_to_stage|dict_get:val == lead.pipeline_stage %}selected{% endif %}>{{ label }}</option>
             {% endfor %}
           </select>
 
@@ -116,42 +116,20 @@
           {% endif %}
         </div>
 
-        {# Row 2: + Task + counts + actions + view detail #}
+        {# Row 2: + Task + counts + view detail #}
         <div class="exec-board__toolbar-row exec-board__toolbar-row--r2 exec-board__task-line">
           <button type="button" class="btn btn-sm btn-outline crm-open-task-modal exec-add-task-btn" data-lead-pk="{{ lead.pk }}" data-lead-name="{{ lead.name }}" title="Add task">+ Task</button>
           <span id="exec-task-badge-desk-{{ lead.pk }}" class="exec-task-ind-wrap exec-task-ind--desk" aria-live="polite">{% if lead.task_open_count %}<span class="exec-board__pending-ico" title="Open tasks"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg></span>{% endif %}<span class="exec-task-ind__txt">{% include "crm/partials/lead_task_ind_text.html" %}</span></span>
 
-          <details class="exec-actions-menu">
-            <summary class="btn btn-sm btn-primary exec-actions-sum">Actions</summary>
-            <div class="exec-actions-body">
-              <div class="exec-actions-block">
-                <span class="exec-actions-label">Add follow-up</span>
-                <form class="exec-actions-form" hx-post="{% url 'crm:lead_quick_fu' lead.pk %}" hx-target="#lead-exec-{{ lead.pk }}" hx-swap="outerHTML">
-                  {% csrf_token %}
-                  <input type="datetime-local" name="fu_datetime" required class="exec-actions-dt" aria-label="Follow-up date and time">
-                  <input type="text" name="fu_note" placeholder="Note (optional)" maxlength="500" class="exec-actions-note">
-                  <button type="submit" class="btn btn-sm btn-outline">Schedule</button>
-                </form>
-                {% if quick_fu_error %}<div class="exec-err">{{ quick_fu_error }}</div>{% endif %}
-              </div>
-              <div class="exec-actions-block">
-                <span class="exec-actions-label">Task</span>
-                <p class="exec-actions-hint" style="margin:0 0 8px;">Use <strong>+ Task</strong> for a quick add, or open <strong>Tasks</strong> to list and complete.</p>
-                <button type="button" class="btn btn-sm btn-primary crm-open-task-modal" data-lead-pk="{{ lead.pk }}" data-lead-name="{{ lead.name }}">Add task…</button>
-              </div>
-              <div class="exec-actions-block">
-                <span class="exec-actions-label">Quick note</span>
-                <form class="exec-actions-form" hx-post="{% url 'crm:lead_quick_note' lead.pk %}" hx-target="#lead-exec-{{ lead.pk }}" hx-swap="outerHTML">
-                  {% csrf_token %}
-                  <input type="text" name="quick_note" placeholder="Note…" maxlength="500" required class="exec-actions-note" aria-label="Quick note">
-                  <button type="submit" class="btn btn-sm btn-outline">Save</button>
-                </form>
-                {% if quick_note_error %}<div class="exec-err">{{ quick_note_error }}</div>{% endif %}
-              </div>
-            </div>
-          </details>
-
           <a href="{% url 'crm:lead_detail' lead.pk %}" class="btn btn-sm btn-ghost exec-board__hub">View detail</a>
+        </div>
+
+        {# Row 3: big Schedule Followup button #}
+        <div class="exec-board__toolbar-row exec-board__toolbar-row--r3">
+          <button type="button" class="btn btn-primary crm-open-fu-modal exec-schedule-fu-btn"
+            data-lead-pk="{{ lead.pk }}" data-lead-name="{{ lead.name }}" title="Schedule a follow-up">
+            Schedule Followup
+          </button>
         </div>
       </div>
 

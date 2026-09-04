@@ -100,6 +100,61 @@ class Lead(models.Model):
         BALANCE_PAID_PROJECT_COMPLETED = 'balance_paid_project_completed', 'Balance Paid & Project Completed'
         ISSUE_PAYMENT_COLLECTION = 'issue_payment_collection', 'Issue in Payment Collection'
 
+    # ── Sales pipeline (5 primary stages) ──────────────────────────────
+    # The full Status list above stays as-is (nothing removed, nothing
+    # migrated) — these just group it for the simplified pipeline UI.
+    # Detailed status is still the same `status` field; the pipeline
+    # tabs/quick-picker only ever show/set these 5 canonical values.
+    PIPELINE_STAGES = (
+        ('new', 'New'),
+        ('closing_ongoing', 'Closing Ongoing'),
+        ('proposal_sent', 'Proposal Sent'),
+        ('closed', 'Closed (Advance Received)'),
+        ('lost', 'Lost'),
+    )
+
+    PRIMARY_STATUS_CHOICES = (
+        (Status.NEW, 'New'),
+        (Status.CLOSING_ONGOING, 'Closing Ongoing'),
+        (Status.PROPOSAL_SENT, 'Proposal Sent'),
+        (Status.ADVANCE_RECEIVED_PROJECT_STARTED, 'Closed (Advance Received)'),
+        (Status.LOST, 'Lost'),
+    )
+
+    # Every detailed status maps to exactly one primary pipeline stage.
+    STATUS_TO_STAGE = {
+        Status.NEW: 'new',
+        Status.WHATSAPP_CONNECTED: 'new',
+        Status.CALL_CONNECTED: 'new',
+        Status.CLOSING_ONGOING: 'closing_ongoing',
+        Status.FAILED_RETRY: 'closing_ongoing',
+        Status.CLOSED: 'closed',
+        Status.LOST: 'lost',
+        Status.PROPOSAL_SENT: 'proposal_sent',
+        Status.NEGOTIATION_AFTER_PROPOSAL: 'proposal_sent',
+        Status.LOST_AFTER_PROPOSAL: 'lost',
+        Status.ADVANCE_RECEIVED_PROJECT_STARTED: 'closed',
+        Status.PROJECT_HANDED: 'closed',
+        Status.TRAINING_COMPLETED: 'closed',
+        Status.BALANCE_PAID_PROJECT_COMPLETED: 'closed',
+        Status.ISSUE_PAYMENT_COLLECTION: 'closed',
+    }
+
+    # The canonical status value used when a stage tab/quick-picker sets
+    # the coarse pipeline stage directly (reverse of STAGE mapping above).
+    STAGE_PRIMARY_STATUS = {
+        'new': Status.NEW,
+        'closing_ongoing': Status.CLOSING_ONGOING,
+        'proposal_sent': Status.PROPOSAL_SENT,
+        'closed': Status.ADVANCE_RECEIVED_PROJECT_STARTED,
+        'lost': Status.LOST,
+    }
+
+    STAGE_TO_STATUSES = {}
+    for _status_val, _stage_key in STATUS_TO_STAGE.items():
+        STAGE_TO_STATUSES.setdefault(_stage_key, []).append(_status_val)
+    del _status_val, _stage_key
+
     employee = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -142,6 +197,14 @@ class Lead(models.Model):
 
     def __str__(self):
         return self.name
+
+    @property
+    def pipeline_stage(self):
+        return self.STATUS_TO_STAGE.get(self.status, 'new')
+
+    @property
+    def pipeline_stage_label(self):
+        return dict(self.PIPELINE_STAGES).get(self.pipeline_stage, 'New')
 
 
 class WhatsAppBotExcludePhone(models.Model):
