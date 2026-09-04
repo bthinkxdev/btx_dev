@@ -183,20 +183,23 @@
   const filterBtns = document.querySelectorAll('.filter-btn');
   const projectCards = document.querySelectorAll('.project-card[data-category]');
   if (filterBtns.length && projectCards.length) {
-    filterBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        filterBtns.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        const filter = btn.dataset.filter;
-        projectCards.forEach(card => {
-          const show = filter === 'all' || card.dataset.category === filter;
-          card.style.display = show ? '' : 'none';
-          if (show) {
-            card.style.gridColumn = card.classList.contains('featured') && filter === 'all' ? 'span 2' : '';
-          }
-        });
+    const applyFilter = (filter) => {
+      filterBtns.forEach(b => b.classList.toggle('active', b.dataset.filter === filter));
+      projectCards.forEach(card => {
+        const show = filter === 'all' || card.dataset.category === filter;
+        card.style.display = show ? '' : 'none';
+        if (show) {
+          card.style.gridColumn = card.classList.contains('featured') && filter === 'all' ? 'span 2' : '';
+        }
       });
+    };
+    filterBtns.forEach(btn => {
+      btn.addEventListener('click', () => applyFilter(btn.dataset.filter));
     });
+    const requestedCategory = new URLSearchParams(location.search).get('category');
+    if (requestedCategory && Array.from(filterBtns).some(b => b.dataset.filter === requestedCategory)) {
+      applyFilter(requestedCategory);
+    }
   }
 
   /* Close menu after clicking a Services submenu link (still jumps to #section) */
@@ -245,64 +248,14 @@
     });
   }
 
-  /* ── Ultimate package popup — session: max 2/day, 12hr gap ── */
-  const btxBackdrop = document.getElementById('btxUltimateBackdrop');
-  const btxToast = document.getElementById('btxUltimateToast');
-  const btxForm = document.getElementById('btxUltimateForm');
-  const BTX_POPUP_DAY = 'btx_popup_day';
-  const BTX_POPUP_COUNT = 'btx_popup_count';
-  const BTX_POPUP_LAST = 'btx_popup_last';
-  const BTX_GAP_MS = 12 * 60 * 60 * 1000;
-  const BTX_MAX_PER_DAY = 2;
-  const WA_BASE = 'https://wa.me/917736094292?text=';
-
-  function btxTodayKey() {
-    return new Date().toDateString();
-  }
-
-  function btxStore() {
-    try {
-      return window.localStorage;
-    } catch (e) {
-      return null;
-    }
-  }
-
-  function btxResetDayIfNeeded() {
-    var store = btxStore();
-    if (!store) return;
-    var today = btxTodayKey();
-    if (store.getItem(BTX_POPUP_DAY) !== today) {
-      store.setItem(BTX_POPUP_DAY, today);
-      store.setItem(BTX_POPUP_COUNT, '0');
-    }
-  }
-
-  function btxCanShowPromo() {
-    var store = btxStore();
-    if (!store) return true;
-    try {
-      btxResetDayIfNeeded();
-      var count = parseInt(store.getItem(BTX_POPUP_COUNT) || '0', 10);
-      var last = parseInt(store.getItem(BTX_POPUP_LAST) || '0', 10);
-      if (count >= BTX_MAX_PER_DAY) return false;
-      if (last && Date.now() - last < BTX_GAP_MS) return false;
-      return true;
-    } catch (e) {
-      return true;
-    }
-  }
-
-  function btxRecordPromoShow() {
-    var store = btxStore();
-    if (!store) return;
-    try {
-      btxResetDayIfNeeded();
-      var count = parseInt(store.getItem(BTX_POPUP_COUNT) || '0', 10);
-      store.setItem(BTX_POPUP_COUNT, String(count + 1));
-      store.setItem(BTX_POPUP_LAST, String(Date.now()));
-    } catch (e) {}
-  }
+  /* ── Quotation download popup — opens only on explicit trigger clicks ── */
+  const btxBackdrop = document.getElementById('btxQuoteBackdrop');
+  const btxForm = document.getElementById('btxQuoteForm');
+  const btxPackageInput = document.getElementById('btxQuotePackageInput');
+  const btxPackageLabel = document.getElementById('btxQuotePackageLabel');
+  const btxErrorEl = document.getElementById('btxQuoteError');
+  const btxSuccessEl = document.getElementById('btxQuoteSuccess');
+  const btxSubmitBtn = document.getElementById('btxQuoteSubmit');
 
   function btxOpenModal() {
     if (!btxBackdrop) return;
@@ -314,7 +267,7 @@
     document.body.style.overflow = 'hidden';
   }
 
-  function btxCloseModal(showToastAfter) {
+  function btxCloseModal() {
     if (!btxBackdrop) return;
     btxBackdrop.classList.remove('is-open');
     btxBackdrop.setAttribute('aria-hidden', 'true');
@@ -322,58 +275,29 @@
     setTimeout(function () {
       btxBackdrop.setAttribute('hidden', '');
     }, 320);
-    if (showToastAfter && btxToast) {
-      btxShowToast();
-    }
-  }
-
-  function btxShowToast() {
-    if (!btxToast) return;
-    btxToast.removeAttribute('hidden');
-    requestAnimationFrame(function () {
-      btxToast.classList.add('is-visible');
-    });
-    clearTimeout(btxToast._hideTimer);
-    btxToast._hideTimer = setTimeout(btxHideToast, 12000);
-  }
-
-  function btxHideToast() {
-    if (!btxToast) return;
-    btxToast.classList.remove('is-visible');
-    setTimeout(function () {
-      btxToast.setAttribute('hidden', '');
-    }, 400);
-  }
-
-  function btxBuildWaText(name, phone, business, message) {
-    var parts = [
-      'Hi BThinkX, I want the Ultimate Package (₹99,999).',
-      name ? 'Name: ' + name : '',
-      phone ? 'Phone: ' + phone : '',
-      business ? 'Business: ' + business : '',
-      message ? 'Message: ' + message : ''
-    ].filter(Boolean);
-    return encodeURIComponent(parts.join(' '));
   }
 
   if (btxBackdrop) {
-    var btxCloseBtn = document.getElementById('btxUltimateClose');
+    var btxCloseBtn = document.getElementById('btxQuoteClose');
     if (btxCloseBtn) {
-      btxCloseBtn.addEventListener('click', function () {
-        btxCloseModal(true);
-      });
+      btxCloseBtn.addEventListener('click', btxCloseModal);
     }
     btxBackdrop.addEventListener('click', function (e) {
-      if (e.target === btxBackdrop) btxCloseModal(true);
+      if (e.target === btxBackdrop) btxCloseModal();
     });
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && btxBackdrop.classList.contains('is-open')) {
-        btxCloseModal(true);
+        btxCloseModal();
       }
     });
 
-    document.querySelectorAll('[data-open-ultimate-popup]').forEach(function (btn) {
+    document.querySelectorAll('[data-open-quote-popup]').forEach(function (btn) {
       btn.addEventListener('click', function () {
+        if (btxPackageInput) btxPackageInput.value = btn.getAttribute('data-package') || '';
+        if (btxPackageLabel) btxPackageLabel.textContent = btn.getAttribute('data-package-label') || '';
+        if (btxErrorEl) btxErrorEl.hidden = true;
+        if (btxSuccessEl) btxSuccessEl.hidden = true;
+        if (btxForm) btxForm.hidden = false;
         btxOpenModal();
       });
     });
@@ -381,30 +305,48 @@
     if (btxForm) {
       btxForm.addEventListener('submit', function (e) {
         e.preventDefault();
-        var name = (document.getElementById('btxEnqName') || {}).value || '';
-        var phone = (document.getElementById('btxEnqPhone') || {}).value || '';
-        var business = (document.getElementById('btxEnqBusiness') || {}).value || '';
-        var message = (document.getElementById('btxEnqMessage') || {}).value || '';
-        if (!name.trim() || !phone.trim()) {
-          if (!name.trim()) document.getElementById('btxEnqName')?.focus();
-          else document.getElementById('btxEnqPhone')?.focus();
+        var name = (document.getElementById('btxQuoteName') || {}).value || '';
+        var phone = (document.getElementById('btxQuotePhone') || {}).value || '';
+        var business = (document.getElementById('btxQuoteBusiness') || {}).value || '';
+        var businessType = (document.getElementById('btxQuoteBusinessType') || {}).value || '';
+        if (!name.trim() || !phone.trim() || !business.trim() || !businessType) {
+          if (btxErrorEl) {
+            btxErrorEl.textContent = 'Please fill in all fields to continue.';
+            btxErrorEl.hidden = false;
+          }
           return;
         }
-        window.open(WA_BASE + btxBuildWaText(name.trim(), phone.trim(), business.trim(), message.trim()), '_blank', 'noopener,noreferrer');
-        btxCloseModal(false);
+        if (btxErrorEl) btxErrorEl.hidden = true;
+        if (btxSubmitBtn) { btxSubmitBtn.disabled = true; btxSubmitBtn.textContent = 'Preparing your PDF...'; }
+
+        var fd = new FormData(btxForm);
+        fetch(btxForm.action, {
+          method: 'POST',
+          body: fd,
+          credentials: 'same-origin',
+          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        }).then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+          .then(function (result) {
+            if (result.ok && result.data.success) {
+              if (btxSuccessEl) btxSuccessEl.hidden = false;
+              btxForm.hidden = true;
+              window.location.href = result.data.pdf_url;
+              setTimeout(btxCloseModal, 1600);
+            } else {
+              if (btxErrorEl) {
+                btxErrorEl.textContent = result.data.errors ? Object.values(result.data.errors).join(' ') : 'Something went wrong. Please try again.';
+                btxErrorEl.hidden = false;
+              }
+            }
+          }).catch(function () {
+            if (btxErrorEl) {
+              btxErrorEl.textContent = 'Network error. Please try again.';
+              btxErrorEl.hidden = false;
+            }
+          }).finally(function () {
+            if (btxSubmitBtn) { btxSubmitBtn.disabled = false; btxSubmitBtn.textContent = 'Download Quotation PDF'; }
+          });
       });
-    }
-
-    var toastClose = document.getElementById('btxUltimateToastClose');
-    if (toastClose) toastClose.addEventListener('click', btxHideToast);
-
-    if (btxCanShowPromo()) {
-      setTimeout(function () {
-        if (btxCanShowPromo()) {
-          btxRecordPromoShow();
-          btxOpenModal();
-        }
-      }, 2800);
     }
   }
 })();

@@ -8,7 +8,6 @@
 
 {% block extra_head %}
 <style>
-  :root { --font-display: "Inter Tight", "Inter", system-ui, sans-serif; }
   .contact-grid { display: grid; grid-template-columns: 1fr 1.6fr; gap: 60px; align-items: flex-start; }
   .contact-info h2 { margin-bottom: 16px; }
   .contact-info > p { margin-bottom: 40px; font-size: 1rem; }
@@ -33,18 +32,9 @@
   .form-success .success-icon { width: 64px; height: 64px; background: rgba(52, 211, 153, 0.12); border: 2px solid rgba(52, 211, 153, 0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-size: 1.6rem; }
   .form-success h3 { margin-bottom: 10px; }
   .form-success p { font-size: 0.9rem; }
-  .faq-section { background: var(--bg-secondary); }
-  .faq-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
-  .faq-item { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 24px; cursor: pointer; transition: all var(--t); }
-  .faq-item:hover { border-color: var(--accent-border); }
-  .faq-question { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; font-size: 0.95rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0; }
-  .faq-answer { display: none; font-size: 0.88rem; color: var(--text-secondary); margin-top: 14px; line-height: 1.65; }
-  .faq-item.open .faq-answer { display: block; }
-  .faq-toggle { flex-shrink: 0; color: var(--accent); font-size: 1.2rem; line-height: 1; margin-top: -2px; transition: transform var(--t); }
-  .faq-item.open .faq-toggle { transform: rotate(45deg); }
-  @media(max-width:1024px){ .contact-grid{grid-template-columns:1fr;gap:36px} .faq-grid{grid-template-columns:1fr} }
-  @media(max-width:768px){ .form-row{grid-template-columns:1fr !important;gap:0} .contact-form-wrap{padding:24px 20px} .faq-grid{grid-template-columns:1fr} }
-  @media(max-width:480px){ .contact-form-wrap{padding:20px 14px} .contact-form-wrap h3{font-size:1.1rem} .contact-method{padding:12px 14px;gap:12px} .contact-method-icon{width:36px;height:36px} .form-submit{flex-direction:column;align-items:stretch} .form-submit .btn{justify-content:center} .form-submit .form-note{font-size:.76rem} .contact-availability{padding:16px} .faq-question{font-size:.88rem} }
+  @media(max-width:1024px){ .contact-grid{grid-template-columns:1fr;gap:36px} }
+  @media(max-width:768px){ .form-row{grid-template-columns:1fr !important;gap:0} .contact-form-wrap{padding:24px 20px} }
+  @media(max-width:480px){ .contact-form-wrap{padding:20px 14px} .contact-form-wrap h3{font-size:1.1rem} .contact-method{padding:12px 14px;gap:12px} .contact-method-icon{width:36px;height:36px} .form-submit{flex-direction:column;align-items:stretch} .form-submit .btn{justify-content:center} .form-submit .form-note{font-size:.76rem} .contact-availability{padding:16px} }
   @media(max-width:375px){ .contact-form-wrap{padding:16px 12px} }
 </style>
 {% endblock %}
@@ -128,10 +118,10 @@
               <label class="form-label" for="projectType">Partnership Focus *</label>
               <select class="form-control" id="projectType" name="project_type" required>
                 <option value="">How can we partner with you?</option>
-                <option value="ultimate">Ultimate Package (₹99,999)</option>
-                <option value="ecommerce">E-commerce Website &amp; Mobile App</option>
+                <option value="online-store">Online Store (₹34,999)</option>
+                <option value="online-store-marketing">Online Store + Marketing (₹49,999)</option>
+                <option value="complete-growth">Complete Growth Package (₹74,999)</option>
                 <option value="marketing">Digital Marketing &amp; All-India Ads</option>
-                <option value="complete">Complete Package (Website + Marketing)</option>
                 <option value="partner">Long-term Digital Partnership</option>
                 <option value="other">Not sure yet / Discuss on call</option>
               </select>

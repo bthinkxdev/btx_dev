@@ -1,0 +1,45 @@
+<div id="btxQuoteBackdrop" class="btx-quote-backdrop" hidden aria-hidden="true">
+  <div class="btx-quote-modal" role="dialog" aria-labelledby="btxQuoteTitle" aria-modal="true">
+    <button type="button" class="btx-quote-close" id="btxQuoteClose" aria-label="Close">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+
+    <div class="btx-quote-modal__hero">
+      <span class="btx-quote-modal__tag">Get Your Quotation</span>
+      <h2 id="btxQuoteTitle">Download Your Package Quotation</h2>
+      <p class="btx-quote-modal__tagline">Tell us a little about your business and we'll send your PDF quotation instantly.</p>
+      <p class="btx-quote-modal__package-line">Package: <strong id="btxQuotePackageLabel">—</strong></p>
+    </div>
+
+    <form class="btx-quote-form" id="btxQuoteForm" action="{% url 'pages:quote_request' %}" method="post" novalidate>
+      {% csrf_token %}
+      <input type="hidden" name="package" id="btxQuotePackageInput" value="">
+
+      <div class="btx-quote-form__row">
+        <input type="text" name="name" id="btxQuoteName" placeholder="Your name *" required autocomplete="name">
+        <input type="tel" name="phone" id="btxQuotePhone" placeholder="Phone / WhatsApp *" required autocomplete="tel">
+      </div>
+      <div class="btx-quote-form__row">
+        <input type="text" name="business_name" id="btxQuoteBusiness" placeholder="Business / brand name *" required autocomplete="organization">
+        <select name="business_type" id="btxQuoteBusinessType" required>
+          <option value="">Business type *</option>
+          <option value="fashion-apparel">Fashion &amp; Apparel</option>
+          <option value="grocery-fmcg">Grocery &amp; FMCG</option>
+          <option value="electronics">Electronics</option>
+          <option value="beauty-wellness">Beauty &amp; Wellness</option>
+          <option value="food-beverage">Food &amp; Beverage</option>
+          <option value="home-furniture">Home &amp; Furniture</option>
+          <option value="handicrafts-jewellery">Handicrafts &amp; Jewellery</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+
+      <p class="btx-quote-form__error" id="btxQuoteError" hidden></p>
+      <p class="btx-quote-form__success" id="btxQuoteSuccess" hidden>Thanks! Your download is starting.</p>
+
+      <div class="btx-quote-form__actions">
+        <button type="submit" class="btn btn-primary" id="btxQuoteSubmit">Download Quotation PDF</button>
+      </div>
+    </form>
+  </div>
+</div>

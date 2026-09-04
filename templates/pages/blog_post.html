@@ -8,11 +8,35 @@
 {% block og_description %}{{ post.get_meta_description }}{% endblock %}
 {% block og_image %}{% if post.featured_image %}{{ request.scheme }}://{{ request.get_host }}{{ post.featured_image.url }}{% else %}{{ block.super }}{% endif %}{% endblock %}
 {% block og_image_alt %}{{ post.title }}{% endblock %}
-{% block og_extra %}{% if post.published_at %}<meta property="article:published_time" content="{{ post.published_at|date:'c' }}">{% endif %}{% endblock %}
+{% block og_extra %}{% if post.published_at %}<meta property="article:published_time" content="{{ post.published_at|date:'c' }}">{% endif %}{% if post.updated_at %}<meta property="article:modified_time" content="{{ post.updated_at|date:'c' }}">{% endif %}{% endblock %}
 
 {% block extra_head %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "{{ post.title|escapejs }}",
+  "description": "{{ post.get_meta_description|escapejs }}",
+  {% if post.featured_image %}"image": "{{ request.scheme }}://{{ request.get_host }}{{ post.featured_image.url }}",{% endif %}
+  "datePublished": "{{ post.published_at|date:'c' }}",
+  "dateModified": "{{ post.updated_at|date:'c' }}",
+  "author": {"@type": "Organization", "name": "BThinkX"},
+  "publisher": {"@type": "Organization", "name": "BThinkX", "logo": {"@type": "ImageObject", "url": "{{ request.scheme }}://{{ request.get_host }}{% static 'assets/images/logo.jpg' %}"}},
+  "mainEntityOfPage": "{{ canonical_url }}"
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {"@type": "ListItem", "position": 1, "name": "Home", "item": "{{ request.scheme }}://{{ request.get_host }}/"},
+    {"@type": "ListItem", "position": 2, "name": "Blog", "item": "{{ request.scheme }}://{{ request.get_host }}{% url 'pages:blog' %}"},
+    {"@type": "ListItem", "position": 3, "name": "{{ post.title|escapejs }}", "item": "{{ canonical_url }}"}
+  ]
+}
+</script>
 <style>
-:root { --font-display: "Inter Tight", "Inter", system-ui, sans-serif; }
     .blog-article-hero { padding-bottom: 32px; border-bottom: 1px solid var(--border); margin-bottom: 40px; }
     .blog-article-hero .blog-tag { display: inline-block; margin-bottom: 14px; }
     .blog-article-hero h1 { font-size: clamp(1.5rem, 4vw, 2.1rem); margin-bottom: 16px; line-height: 1.2; }
@@ -34,6 +58,14 @@
       color: var(--text-secondary);
     }
     .blog-article-body p { margin-bottom: 1.25em; }
+    .blog-article-body h2 { font-size: 1.4rem; margin: 2em 0 0.7em; }
+    .blog-article-body h3 { font-size: 1.15rem; margin: 1.6em 0 0.6em; }
+    .blog-article-body ul, .blog-article-body ol { margin: 0 0 1.25em; padding-left: 1.4em; }
+    .blog-article-body li { margin-bottom: 0.5em; }
+    .blog-article-body a { color: var(--accent); }
+    .blog-article-body a:hover { text-decoration: underline; }
+    .blog-article-body strong { color: var(--text-primary); }
+    .blog-article-body .faq-item { margin-bottom: 12px; }
     .blog-back { margin-top: 48px; text-align: center; }
     @media(max-width:768px){
       .blog-article-thumb{aspect-ratio:16/9;max-height:none}
@@ -45,7 +77,13 @@
 <article class="page-hero" style="padding-bottom: 0;">
   <div class="container">
     <div class="blog-article-hero animate-up">
-      <a href="{% url 'pages:blog' %}" class="blog-read-more" style="margin-bottom:20px;display:inline-flex;">← Back to Blog</a>
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <ol>
+          <li><a href="{% url 'pages:index' %}">Home</a></li>
+          <li><a href="{% url 'pages:blog' %}">Blog</a></li>
+          <li aria-current="page">{{ post.title }}</li>
+        </ol>
+      </nav>
       <span class="blog-tag">{{ post.category }}</span>
       <h1>{{ post.title }}</h1>
       <div class="blog-article-meta">
@@ -59,7 +97,7 @@
       {% endif %}
     </div>
     <div class="blog-article-body animate-up delay-1">
-      {{ post.body|linebreaks }}
+      {{ post.body|safe }}
     </div>
     <div class="blog-back animate-up">
       <a href="{% url 'pages:blog' %}" class="btn btn-secondary">More articles</a>

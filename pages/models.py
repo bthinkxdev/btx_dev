@@ -28,6 +28,43 @@ class ContactSubmission(models.Model):
         return f"{self.name} ({self.email}) @ {self.created_at:%Y-%m-%d %H:%M}"
 
 
+class QuoteRequest(models.Model):
+    """Lead captured before a pricing-package PDF quotation download."""
+
+    PACKAGE_CHOICES = [
+        ('online-store', 'Online Store · ₹34,999'),
+        ('online-store-marketing', 'Online Store + Marketing · ₹49,999'),
+        ('complete-growth', 'Complete Growth · ₹74,999'),
+    ]
+
+    BUSINESS_TYPE_CHOICES = [
+        ('fashion-apparel', 'Fashion & Apparel'),
+        ('grocery-fmcg', 'Grocery & FMCG'),
+        ('electronics', 'Electronics'),
+        ('beauty-wellness', 'Beauty & Wellness'),
+        ('food-beverage', 'Food & Beverage'),
+        ('home-furniture', 'Home & Furniture'),
+        ('handicrafts-jewellery', 'Handicrafts & Jewellery'),
+        ('other', 'Other'),
+    ]
+
+    name = models.CharField(max_length=200)
+    phone = models.CharField(max_length=30)
+    business_name = models.CharField(max_length=200)
+    business_type = models.CharField(max_length=40, choices=BUSINESS_TYPE_CHOICES)
+    package = models.CharField(max_length=40, choices=PACKAGE_CHOICES)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Quote request'
+        verbose_name_plural = 'Quote requests'
+
+    def __str__(self):
+        return f"{self.name} · {self.get_package_display()} @ {self.created_at:%Y-%m-%d %H:%M}"
+
+
 class TechTag(models.Model):
     """Technology tags used to describe project stacks (e.g. Django, React)."""
 

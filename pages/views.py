@@ -3,11 +3,12 @@ import logging
 from django.conf import settings
 from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404, render
-from django.http import JsonResponse
-from django.views.decorators.http import require_http_methods
+from django.http import Http404, HttpResponse, JsonResponse
+from django.urls import reverse
+from django.views.decorators.http import require_GET, require_http_methods
 from django.views.decorators.csrf import ensure_csrf_cookie
 
-from .forms import ContactForm, JobApplicationForm, NewsletterSubscribeForm
+from .forms import ContactForm, JobApplicationForm, NewsletterSubscribeForm, QuoteRequestForm
 from .models import (
     BlogPageSettings,
     BlogPost,
@@ -18,6 +19,7 @@ from .models import (
     TeamMember,
     TeamSection,
 )
+from .services.quotation_pdf import PACKAGES, render_quote_pdf
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +34,14 @@ def index(request):
 
 def services(request):
     return render(request, 'pages/services.html')
+
+
+def service_ecommerce(request):
+    return render(request, 'pages/service_ecommerce.html')
+
+
+def service_digital_marketing(request):
+    return render(request, 'pages/service_digital_marketing.html')
 
 def portfolio(request):
     with_image = Project.objects.filter(image__isnull=False).exclude(image='')
@@ -252,5 +262,72 @@ def _send_contact_notification(submission):
     )
 
 
+@require_http_methods(['POST'])
+def quote_request(request):
+    """Save a pricing-package lead and hand back the PDF quotation URL."""
+    form = QuoteRequestForm(request.POST)
+    if form.is_valid():
+        lead = form.save()
+        _send_quote_notification(lead)
+        return JsonResponse({
+            'success': True,
+            'pdf_url': reverse('pages:quote_pdf', args=[lead.package]),
+        })
+    errors = {k: v[0] for k, v in form.errors.items()}
+    logger.warning('Quote request validation failed: %s', errors)
+    return JsonResponse({'success': False, 'errors': errors}, status=400)
+
+
+def _send_quote_notification(lead):
+    to_email = getattr(settings, 'CONTACT_EMAIL_TO', 'hr@bthinkx.com')
+    subject = f'[BThinkX] Quote download: {lead.name} | {lead.get_package_display()}'
+    body = (
+        f"A visitor downloaded a pricing package quotation from the website.\n\n"
+        f"Name: {lead.name}\n"
+        f"Phone: {lead.phone}\n"
+        f"Business: {lead.business_name}\n"
+        f"Business type: {lead.get_business_type_display()}\n"
+        f"Package: {lead.get_package_display()}\n"
+        f"Submitted: {lead.created_at.strftime('%Y-%m-%d %H:%M')} UTC"
+    )
+    try:
+        send_mail(
+            subject=subject,
+            message=body,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[to_email],
+            fail_silently=False,
+        )
+    except Exception as e:
+        logger.exception('Quote notification email failed: %s', e)
+
+
+@require_GET
+def quote_pdf(request, package):
+    """Public download of a clean branded PDF quotation for one pricing package."""
+    if package not in PACKAGES:
+        raise Http404('Unknown package')
+    pdf_bytes = render_quote_pdf(package)
+    filename = f'BThinkX-{PACKAGES[package]["name"].replace(" ", "-")}-Quotation.pdf'
+    response = HttpResponse(pdf_bytes, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
 def page_404(request, exception=None):
     return render(request, 'pages/404.html', status=404)
+
+
+def robots_txt(request):
+    lines = [
+        'User-agent: *',
+        'Disallow: /admin/',
+        'Disallow: /crm/',
+        'Disallow: /contact/submit/',
+        'Disallow: /careers/apply/',
+        'Disallow: /newsletter/subscribe/',
+        'Disallow: /services/quote/',
+        '',
+        f"Sitemap: {request.build_absolute_uri('/sitemap.xml')}",
+    ]
+    return HttpResponse('\n'.join(lines), content_type='text/plain')

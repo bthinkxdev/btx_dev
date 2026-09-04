@@ -1,7 +1,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
 
-from .models import ContactSubmission, JobApplication, JobPosting, NewsletterSubscriber
+from .models import ContactSubmission, JobApplication, JobPosting, NewsletterSubscriber, QuoteRequest
 
 MAX_RESUME_BYTES = 5 * 1024 * 1024
 
@@ -60,6 +60,21 @@ class JobApplicationForm(forms.ModelForm):
         if f.size > MAX_RESUME_BYTES:
             raise ValidationError('Resume must be 5MB or smaller.')
         return f
+
+
+class QuoteRequestForm(forms.ModelForm):
+    """Lead-capture gate before a pricing-package PDF quotation download."""
+
+    class Meta:
+        model = QuoteRequest
+        fields = ['name', 'phone', 'business_name', 'business_type', 'package']
+        widgets = {
+            'name': forms.TextInput(attrs={'placeholder': 'Your name', 'id': 'btxQuoteName'}),
+            'phone': forms.TextInput(attrs={'placeholder': 'Phone / WhatsApp', 'id': 'btxQuotePhone'}),
+            'business_name': forms.TextInput(attrs={'placeholder': 'Business / brand name', 'id': 'btxQuoteBusiness'}),
+            'business_type': forms.Select(attrs={'id': 'btxQuoteBusinessType'}),
+            'package': forms.HiddenInput(attrs={'id': 'btxQuotePackage'}),
+        }
 
 
 class NewsletterSubscribeForm(forms.ModelForm):

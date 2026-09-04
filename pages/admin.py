@@ -9,6 +9,7 @@ from .models import (
     JobPosting,
     NewsletterSubscriber,
     Project,
+    QuoteRequest,
     TeamMember,
     TeamSection,
     TechTag,
@@ -20,6 +21,15 @@ class ContactSubmissionAdmin(admin.ModelAdmin):
     list_display = ('name', 'email', 'project_type', 'created_at')
     list_filter = ('project_type', 'created_at')
     search_fields = ('name', 'email', 'company', 'message')
+    readonly_fields = ('created_at',)
+    date_hierarchy = 'created_at'
+
+
+@admin.register(QuoteRequest)
+class QuoteRequestAdmin(admin.ModelAdmin):
+    list_display = ('name', 'phone', 'business_name', 'package', 'created_at')
+    list_filter = ('package', 'business_type', 'created_at')
+    search_fields = ('name', 'phone', 'business_name')
     readonly_fields = ('created_at',)
     date_hierarchy = 'created_at'
 
