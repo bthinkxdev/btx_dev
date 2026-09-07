@@ -8,6 +8,7 @@ from pages.views import page_404, robots_txt
 from pages.sitemaps import sitemaps
 from crm.views import whatsapp_webhook
 from crm import api_wa_views
+from crm import api_places_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -16,6 +17,8 @@ urlpatterns = [
     path('api/wa/incoming/', api_wa_views.wa_incoming, name='wa_incoming'),
     path('api/wa/status/', api_wa_views.wa_status, name='wa_status'),
     path('api/wa/outgoing/', api_wa_views.wa_outgoing, name='wa_outgoing'),
+    path('api/places/search/', api_places_views.places_search, name='places_search'),
+    path('api/places/<str:place_id>/', api_places_views.place_details, name='place_details'),
     path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='sitemap'),
     path('robots.txt', robots_txt, name='robots_txt'),
     path('', include('pages.urls')),

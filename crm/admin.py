@@ -14,6 +14,8 @@ from .models import (
     EmployeeProfile,
     Expense,
     ExpenseCategory,
+    ExtractionLead,
+    ExtractionRun,
     FollowUp,
     Founder,
     FounderShareAllocation,
@@ -30,6 +32,7 @@ from .models import (
     OnboardingSubmission,
     Package,
     PackageScope,
+    Place,
     Project,
     ProjectCredential,
     ProjectMember,
@@ -48,6 +51,45 @@ from .models import (
     WhatsAppMessage,
     WhatsAppNumber,
 )
+
+
+@admin.register(Place)
+class PlaceAdmin(admin.ModelAdmin):
+    list_display = (
+        'name', 'primary_type', 'address', 'phone', 'rating', 'review_count',
+        'business_status', 'created_at',
+    )
+    list_filter = ('business_status',)
+    search_fields = ('name', 'address', 'google_place_id', 'phone')
+    readonly_fields = ('google_place_id', 'created_at', 'updated_at')
+
+
+class ExtractionLeadInline(admin.TabularInline):
+    model = ExtractionLead
+    extra = 0
+    fields = (
+        'business_name', 'qualification_status', 'website_status', 'social_presence_type',
+        'business_quality_score', 'website_opportunity_label', 'meta_opportunity_label',
+        'overall_score', 'assigned_to', 'lead',
+    )
+    readonly_fields = fields
+    can_delete = False
+
+
+@admin.register(ExtractionRun)
+class ExtractionRunAdmin(admin.ModelAdmin):
+    inlines = [ExtractionLeadInline]
+    list_display = (
+        'id', 'location', 'category', 'status', 'discovered_count', 'duplicate_count',
+        'invalid_count', 'qualified_count', 'assigned_count', 'target_count',
+        'created_by', 'created_at',
+    )
+    list_filter = ('status',)
+    search_fields = ('location', 'category')
+    readonly_fields = (
+        'discovered_count', 'duplicate_count', 'invalid_count', 'qualified_count',
+        'assigned_count', 'started_at', 'stopped_at', 'completed_at', 'created_at',
+    )
 
 
 @admin.register(Client)
@@ -110,10 +152,16 @@ class ProjectTicketAdmin(admin.ModelAdmin):
 
 @admin.register(EmployeeProfile)
 class EmployeeProfileAdmin(admin.ModelAdmin):
-    list_display = ('user', 'crm_role', 'is_sales_manager', 'whatsapp_bot_enabled', 'target_amount', 'has_profile_photo')
-    list_filter = ('crm_role', 'is_sales_manager')
+    list_display = (
+        'user', 'crm_role', 'is_sales_manager', 'eligible_for_leads',
+        'whatsapp_bot_enabled', 'target_amount', 'has_profile_photo',
+    )
+    list_filter = ('crm_role', 'is_sales_manager', 'eligible_for_leads')
     search_fields = ('user__username', 'user__email')
-    fields = ('user', 'crm_role', 'is_sales_manager', 'whatsapp_bot_enabled', 'target_amount', 'photo')
+    fields = (
+        'user', 'crm_role', 'is_sales_manager', 'eligible_for_leads',
+        'whatsapp_bot_enabled', 'target_amount', 'photo',
+    )
 
     @admin.display(description='Photo', boolean=True)
     def has_profile_photo(self, obj):

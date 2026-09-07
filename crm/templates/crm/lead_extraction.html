@@ -1,0 +1,414 @@
+{% extends "crm/base.html" %}
+{% block title %}Lead Extraction{% endblock %}
+{% block page_title %}Lead Extraction{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Lead Extraction</h1>
+    <p>Find businesses with real commercial standing but weak digital presence — website + Meta marketing opportunities, auto-assigned to your sales team.</p>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:20px;">
+  <div class="lx-form-row">
+    <div class="form-row" style="flex:2;min-width:180px;margin-bottom:0;">
+      <label for="lx-location">Location</label>
+      <input type="text" id="lx-location" placeholder="Thiruvananthapuram" autocomplete="off">
+    </div>
+    <div class="form-row" style="flex:2;min-width:180px;margin-bottom:0;">
+      <label for="lx-category">Category</label>
+      <input type="text" id="lx-category" placeholder="Boutique" autocomplete="off">
+    </div>
+    <div class="form-row" style="flex:1;min-width:100px;margin-bottom:0;">
+      <label for="lx-target">Target / executive</label>
+      <input type="number" id="lx-target" min="1" max="{{ max_target }}" value="{{ default_target }}">
+    </div>
+    <div class="lx-btn-row">
+      <button type="button" id="lx-start-btn" class="btn btn-primary">Start Extraction</button>
+      <button type="button" id="lx-stop-btn" class="btn btn-danger" disabled>Stop Extraction</button>
+    </div>
+  </div>
+  <p id="lx-error" class="lx-error" hidden></p>
+  <p id="lx-eligible-hint" class="lx-hint">
+    {{ eligible_count }} sales executive{{ eligible_count|pluralize }} eligible to receive leads.
+    Target is <strong>per executive</strong> (max {{ max_target }}) — each eligible executive gets up to that many leads, so the run's total is target × eligible executives.
+  </p>
+  <div class="lx-status-row">
+    <span class="lx-status-label">Status:</span>
+    <span id="lx-status" class="lx-status-badge lx-status-idle">Idle</span>
+  </div>
+</div>
+
+<div class="lx-progress-groups">
+  <div class="lx-progress-group">
+    <div class="lx-progress-group__label">Discovery</div>
+    <div class="stat-grid lx-stat-grid">
+      <div class="stat-card"><div class="stat-body"><div class="stat-value" id="lx-c-discovered">0</div><div class="stat-label">Discovered</div></div></div>
+      <div class="stat-card"><div class="stat-body"><div class="stat-value" id="lx-c-duplicates">0</div><div class="stat-label">Already Exists</div></div></div>
+      <div class="stat-card"><div class="stat-body"><div class="stat-value" id="lx-c-invalid">0</div><div class="stat-label">Invalid</div></div></div>
+    </div>
+  </div>
+  <div class="lx-progress-group">
+    <div class="lx-progress-group__label">Qualification</div>
+    <div class="stat-grid lx-stat-grid">
+      <div class="stat-card"><div class="stat-body"><div class="stat-value" id="lx-c-qualified">0</div><div class="stat-label">Qualified</div></div></div>
+      <div class="stat-card"><div class="stat-body"><div class="stat-value" id="lx-c-remaining">{{ default_total_target }}</div><div class="stat-label">Remaining Target</div></div></div>
+    </div>
+  </div>
+  <div class="lx-progress-group">
+    <div class="lx-progress-group__label">Assignment</div>
+    <div class="stat-grid lx-stat-grid">
+      <div class="stat-card"><div class="stat-body"><div class="stat-value" id="lx-c-assigned">0</div><div class="stat-label">Assigned</div></div></div>
+    </div>
+  </div>
+</div>
+
+<div id="lx-viewing-banner" class="lx-viewing-banner" hidden>
+  Showing results for <strong id="lx-viewing-label"></strong>
+  <button type="button" id="lx-back-to-live-btn" class="btn btn-outline btn-sm">Back to current run</button>
+</div>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Business</th>
+        <th>Category</th>
+        <th>Phone</th>
+        <th>Website</th>
+        <th>Website Status</th>
+        <th>Instagram</th>
+        <th>Facebook</th>
+        <th>Rating</th>
+        <th>Reviews</th>
+        <th>Business Status</th>
+        <th>Website Opportunity</th>
+        <th>Meta Opportunity</th>
+        <th>Overall Score</th>
+        <th>Validation</th>
+        <th>Executive</th>
+      </tr>
+    </thead>
+    <tbody id="lx-table-body">
+      <tr id="lx-empty-row"><td colspan="15" class="lx-empty-cell">Start an extraction to see results here.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+{% if recent_runs %}
+<h2 class="lx-section-title">Recent Runs</h2>
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Run</th><th>Location</th><th>Category</th><th>Status</th>
+        <th>Discovered</th><th>Duplicates</th><th>Invalid</th><th>Qualified</th><th>Assigned</th>
+        <th>Started</th><th>Completed</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for run in recent_runs %}
+      <tr>
+        <td><a href="#" class="lx-run-link" data-run-id="{{ run.pk }}" data-run-label="Run #{{ run.pk }} — {{ run.location }} / {{ run.category }}">#{{ run.pk }}</a></td>
+        <td>{{ run.location }}</td>
+        <td>{{ run.category }}</td>
+        <td><span class="lx-status-badge lx-status-{{ run.status }}">{{ run.get_status_display }}</span></td>
+        <td>{{ run.discovered_count }}</td>
+        <td>{{ run.duplicate_count }}</td>
+        <td>{{ run.invalid_count }}</td>
+        <td>{{ run.qualified_count }}</td>
+        <td>{{ run.assigned_count }}</td>
+        <td>{{ run.started_at|default:"—" }}</td>
+        <td>{{ run.completed_at|default:"—" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<script>
+(function () {
+  var startBtn = document.getElementById('lx-start-btn');
+  var stopBtn = document.getElementById('lx-stop-btn');
+  var locationInput = document.getElementById('lx-location');
+  var categoryInput = document.getElementById('lx-category');
+  var targetInput = document.getElementById('lx-target');
+  var errorEl = document.getElementById('lx-error');
+  var statusEl = document.getElementById('lx-status');
+  var tbody = document.getElementById('lx-table-body');
+  var viewingBanner = document.getElementById('lx-viewing-banner');
+  var viewingLabel = document.getElementById('lx-viewing-label');
+  var backToLiveBtn = document.getElementById('lx-back-to-live-btn');
+
+  if (!startBtn) return; // page not mounted (e.g. a different route swapped in)
+
+  var ELIGIBLE_COUNT = {{ eligible_count }};
+  var activeRunId = null;   // run Start/Stop control, and that poll() keeps advancing
+  var viewingRunId = null;  // run currently rendered in the table (may differ from active)
+  var lastItemId = 0;       // poll cursor — only ever tracks the active run
+  var pollTimer = null;
+  var POLL_MS = 1500;
+
+  function csrfToken() {
+    var el = document.querySelector('[name=csrfmiddlewaretoken]');
+    return el ? el.value : '';
+  }
+
+  function runStatusUrl(id, afterId) {
+    return "{% url 'crm:lead_extraction_status' 999999999 %}".replace('999999999', id) + '?after=' + afterId;
+  }
+  function stopUrl(id) {
+    return "{% url 'crm:lead_extraction_stop' 999999999 %}".replace('999999999', id);
+  }
+
+  function showError(msg) {
+    errorEl.textContent = msg;
+    errorEl.hidden = !msg;
+  }
+
+  function setCounters(d) {
+    document.getElementById('lx-c-discovered').textContent = d.discovered;
+    document.getElementById('lx-c-duplicates').textContent = d.duplicates;
+    document.getElementById('lx-c-invalid').textContent = d.invalid;
+    document.getElementById('lx-c-qualified').textContent = d.qualified;
+    document.getElementById('lx-c-assigned').textContent = d.assigned;
+    document.getElementById('lx-c-remaining').textContent = d.remaining;
+  }
+
+  function setStatus(status) {
+    var labels = {
+      idle: 'Idle', pending: 'Starting…', running: 'Running', stopping: 'Stopping…',
+      stopped: 'Stopped', completed: 'Completed', failed: 'Failed',
+    };
+    statusEl.textContent = labels[status] || status;
+    statusEl.className = 'lx-status-badge lx-status-' + status;
+  }
+
+  function qualBadgeClass(q) { return 'lx-qual-badge lx-qual-' + q; }
+  function oppBadgeClass(o) { return 'lx-opp-badge lx-opp-' + (o || 'unknown'); }
+  function oppLabelText(o) {
+    var labels = { very_high: 'Very High', high: 'High', medium: 'Medium', low: 'Low', unknown: 'Unknown' };
+    return labels[o] || 'Unknown';
+  }
+  function esc(s) { return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function linkOrDash(url, label) {
+    return url ? '<a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(label || url) + '</a>' : 'Not found';
+  }
+
+  function makeRow(it) {
+    var tr = document.createElement('tr');
+    var website = it.website ? linkOrDash(it.website, it.website) : 'No website';
+    tr.innerHTML =
+      '<td>' + esc(it.business) + '</td>' +
+      '<td>' + esc(it.category) + '</td>' +
+      '<td>' + (it.phone ? esc(it.phone) : 'Unknown') + '</td>' +
+      '<td>' + website + '</td>' +
+      '<td>' + esc(it.websiteStatus || 'Unknown') + '</td>' +
+      '<td>' + linkOrDash(it.instagram, 'Instagram') + '</td>' +
+      '<td>' + linkOrDash(it.facebook, 'Facebook') + '</td>' +
+      '<td>' + (it.rating != null ? it.rating : 'Not rated') + '</td>' +
+      '<td>' + (it.reviews != null ? it.reviews : '0') + '</td>' +
+      '<td>' + esc(it.businessStatus || 'Unknown') + '</td>' +
+      '<td><span class="' + oppBadgeClass(it.websiteOpportunity) + '">' + oppLabelText(it.websiteOpportunity) + '</span></td>' +
+      '<td><span class="' + oppBadgeClass(it.metaOpportunity) + '">' + oppLabelText(it.metaOpportunity) + '</span></td>' +
+      '<td>' + (it.overallScore != null ? it.overallScore : '—') + '</td>' +
+      '<td><span class="' + qualBadgeClass(it.qualification) + '" title="' + esc(it.reason) + '">' + esc(it.qualification) + '</span></td>' +
+      '<td>' + (it.executive ? esc(it.executive) : '—') + '</td>';
+    return tr;
+  }
+
+  function clearTable() {
+    tbody.innerHTML = '';
+  }
+
+  function showEmptyRow(msg) {
+    var tr = document.createElement('tr');
+    tr.innerHTML = '<td colspan="15" class="lx-empty-cell">' + esc(msg) + '</td>';
+    tbody.appendChild(tr);
+  }
+
+  function appendItems(items) {
+    if (!items || !items.length) return;
+    var placeholder = tbody.querySelector('.lx-empty-cell');
+    if (placeholder) clearTable();
+    items.forEach(function (it) { tbody.appendChild(makeRow(it)); });
+  }
+
+  function renderFullSnapshot(d) {
+    setCounters(d);
+    setStatus(d.status);
+    clearTable();
+    if (d.new_leads && d.new_leads.length) {
+      appendItems(d.new_leads);
+    } else {
+      showEmptyRow('No businesses recorded for this run.');
+    }
+  }
+
+  function setRunning(isRunning) {
+    startBtn.disabled = isRunning;
+    stopBtn.disabled = !isRunning;
+    locationInput.disabled = isRunning;
+    categoryInput.disabled = isRunning;
+    targetInput.disabled = isRunning;
+  }
+
+  function poll() {
+    fetch(runStatusUrl(activeRunId, lastItemId), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        (d.new_leads || []).forEach(function (it) { lastItemId = Math.max(lastItemId, it.id); });
+        if (viewingRunId === activeRunId) {
+          setCounters(d);
+          setStatus(d.status);
+          appendItems(d.new_leads);
+          if (d.status === 'failed' && d.errorMessage) showError(d.errorMessage);
+        }
+        if (d.status === 'running' || d.status === 'pending' || d.status === 'stopping') {
+          pollTimer = setTimeout(poll, POLL_MS);
+        } else {
+          setRunning(false);
+        }
+      })
+      .catch(function () {
+        pollTimer = setTimeout(poll, POLL_MS);
+      });
+  }
+
+  function viewRun(id, label) {
+    showError('');
+    viewingRunId = id;
+    viewingBanner.hidden = (id === activeRunId);
+    if (id !== activeRunId) viewingLabel.textContent = label || ('Run #' + id);
+    fetch(runStatusUrl(id, 0), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (viewingRunId !== id) return; // user navigated elsewhere before this resolved
+        renderFullSnapshot(d);
+      })
+      .catch(function () { showError('Could not load that run.'); });
+  }
+
+  document.querySelectorAll('.lx-run-link').forEach(function (a) {
+    a.addEventListener('click', function (e) {
+      e.preventDefault();
+      viewRun(parseInt(a.dataset.runId, 10), a.dataset.runLabel);
+    });
+  });
+
+  backToLiveBtn.addEventListener('click', function () {
+    if (activeRunId) {
+      viewRun(activeRunId, null);
+      return;
+    }
+    viewingRunId = null;
+    viewingBanner.hidden = true;
+    clearTable();
+    showEmptyRow('Start an extraction to see results here.');
+    var totalTarget = (parseInt(targetInput.value, 10) || 0) * ELIGIBLE_COUNT;
+    setCounters({ discovered: 0, duplicates: 0, invalid: 0, qualified: 0, assigned: 0, remaining: totalTarget });
+    setStatus('idle');
+  });
+
+  startBtn.addEventListener('click', function () {
+    showError('');
+    var location = locationInput.value.trim();
+    var category = categoryInput.value.trim();
+    var target = parseInt(targetInput.value, 10) || {{ default_target }};
+    if (!location || !category) {
+      showError('Enter both a location and a category.');
+      return;
+    }
+    setRunning(true);
+    fetch("{% url 'crm:lead_extraction_start' %}", {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken() },
+      body: JSON.stringify({ location: location, category: category, target: target }),
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+      .then(function (res) {
+        if (!res.ok) {
+          showError(res.data.error || 'Could not start extraction.');
+          setRunning(false);
+          return;
+        }
+        activeRunId = res.data.id;
+        viewingRunId = activeRunId;
+        lastItemId = 0;
+        viewingBanner.hidden = true;
+        clearTable();
+        setCounters(res.data);
+        setStatus(res.data.status);
+        poll();
+      })
+      .catch(function () {
+        showError('Could not start extraction.');
+        setRunning(false);
+      });
+  });
+
+  stopBtn.addEventListener('click', function () {
+    if (!activeRunId) return;
+    stopBtn.disabled = true;
+    if (viewingRunId === activeRunId) setStatus('stopping');
+    fetch(stopUrl(activeRunId), {
+      method: 'POST',
+      headers: { 'X-CSRFToken': csrfToken() },
+    }).catch(function () {});
+  });
+
+  document.body.addEventListener('htmx:beforeSwap', function () {
+    if (pollTimer) clearTimeout(pollTimer);
+  });
+})();
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .lx-form-row { display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end; }
+  .lx-btn-row { display:flex; gap:8px; align-self:flex-end; }
+  .lx-hint { font-size:12px; color:var(--text-muted); margin:10px 0 0; }
+  .lx-error { font-size:12px; color:var(--danger-600, #dc2626); margin:10px 0 0; font-weight:600; }
+  .lx-status-row { display:flex; align-items:center; gap:8px; margin-top:14px; }
+  .lx-status-label { font-size:12px; color:var(--text-muted); font-weight:600; }
+  .lx-status-badge { display:inline-flex; align-items:center; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:700; }
+  .lx-status-idle { background:var(--neutral-100, #f1f5f9); color:var(--neutral-600, #475569); }
+  .lx-status-running { background:var(--primary-50); color:var(--primary-600); }
+  .lx-status-stopping { background:var(--warning-50); color:var(--warning-600); }
+  .lx-status-stopped { background:var(--neutral-100, #f1f5f9); color:var(--neutral-600, #475569); }
+  .lx-status-completed { background:var(--success-50); color:var(--success-600); }
+  .lx-status-failed { background:var(--danger-50); color:var(--danger-600, #dc2626); }
+  .lx-empty-cell { text-align:center; color:var(--text-muted); padding:28px 14px !important; }
+  .lx-section-title { font-size:14px; font-weight:700; margin:24px 0 10px; color:var(--neutral-900, #0f172a); }
+  .lx-viewing-banner { display:flex; align-items:center; gap:10px; padding:10px 14px; margin-bottom:10px; background:var(--primary-50); color:var(--primary-600); border-radius:var(--radius-sm); font-size:13px; }
+  .lx-run-link { font-weight:700; text-decoration:none; }
+  .lx-run-link:hover { text-decoration:underline; }
+
+  .lx-progress-groups { display:grid; grid-template-columns:repeat(3, 1fr); gap:16px; margin-bottom:20px; align-items:start; }
+  .lx-progress-group__label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); margin-bottom:8px; }
+  .lx-stat-grid { margin-bottom:0; }
+  .lx-progress-groups .stat-value { font-size:20px; }
+
+  .lx-qual-badge { display:inline-flex; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:700; white-space:nowrap; }
+  .lx-qual-qualified { background:var(--success-50); color:var(--success-600); }
+  .lx-qual-duplicate { background:var(--neutral-100, #f1f5f9); color:var(--neutral-600, #475569); }
+  .lx-qual-invalid, .lx-qual-rejected { background:var(--danger-50); color:var(--danger-600, #dc2626); }
+
+  .lx-opp-badge { display:inline-flex; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:700; white-space:nowrap; }
+  .lx-opp-very_high { background:var(--danger-50); color:var(--danger-600, #dc2626); }
+  .lx-opp-high { background:var(--warning-50); color:var(--warning-600); }
+  .lx-opp-medium { background:var(--primary-50); color:var(--primary-600); }
+  .lx-opp-low { background:var(--neutral-100, #f1f5f9); color:var(--neutral-600, #475569); }
+  .lx-opp-unknown { background:var(--neutral-100, #f1f5f9); color:var(--neutral-600, #475569); }
+
+  @media (max-width: 640px) {
+    .lx-form-row { flex-direction:column; align-items:stretch; }
+    .lx-btn-row { align-self:stretch; }
+    .lx-btn-row .btn { flex:1; justify-content:center; }
+    .lx-progress-groups { grid-template-columns:1fr; }
+  }
+</style>
+{% endblock %}

@@ -197,6 +197,11 @@ WHATSAPP_HUMAN_TAKEOVER_COOLDOWN_MINUTES = int(
     os.environ.get('WHATSAPP_HUMAN_TAKEOVER_COOLDOWN_MINUTES', '30')
 )
 
+# Google Places API (New) — business search for lead generation. Server-side only,
+# never sent to the frontend.
+GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY', '').strip()
+GOOGLE_PLACES_REQUEST_TIMEOUT = int(os.environ.get('GOOGLE_PLACES_REQUEST_TIMEOUT', '15'))
+
 # WhatsApp Web.js reply buttons are DEPRECATED by Meta — often invisible on phones.
 # Keep false; use numbered text menus (reliable). Set true only if buttons work on your account.
 WHATSAPP_USE_REPLY_BUTTONS = os.environ.get('WHATSAPP_USE_REPLY_BUTTONS', 'false').lower() in (

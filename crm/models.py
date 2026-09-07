@@ -50,6 +50,12 @@ class EmployeeProfile(models.Model):
         db_index=True,
         help_text='Sales manager: can view and edit every sales rep’s leads, follow-ups, and achievements.',
     )
+    eligible_for_leads = models.BooleanField(
+        default=False,
+        blank=True,
+        db_index=True,
+        help_text='Can receive leads auto-assigned by the Google Places lead-extraction tool.',
+    )
 
     class Meta:
         verbose_name = 'Employee profile'
@@ -161,7 +167,7 @@ class Lead(models.Model):
         related_name='crm_leads',
     )
     name = models.CharField(max_length=200)
-    phone = models.CharField(max_length=40, blank=True)
+    phone = models.CharField(max_length=40, blank=True, db_index=True)
     email = models.EmailField(blank=True)
     source = models.CharField(max_length=120, blank=True)
     status = models.CharField(
@@ -189,6 +195,16 @@ class Lead(models.Model):
     )
     notes = models.TextField(blank=True)
     next_followup = models.DateTimeField(null=True, blank=True, db_index=True)
+    # Set only for leads created by the Google Places extraction tool.
+    # OneToOne enforces at the DB level that a given place is never turned
+    # into more than one lead, even under concurrent extraction runs.
+    place = models.OneToOneField(
+        'Place',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='lead',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -2548,3 +2564,185 @@ class FundTransfer(models.Model):
             f'{self.from_bucket.name} → {self.to_bucket.name}: '
             f'{self.amount} ({self.transfer_date})'
         )
+
+
+class Place(models.Model):
+    """
+    A business discovered via Google Places API (New), for lead generation.
+    google_place_id is the dedup key — one row per real-world place.
+    """
+
+    google_place_id = models.CharField(max_length=255, unique=True, db_index=True)
+    name = models.CharField(max_length=255, blank=True)
+    primary_type = models.CharField(max_length=100, blank=True)
+    address = models.CharField(max_length=500, blank=True)
+    latitude = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
+    phone = models.CharField(max_length=40, blank=True)
+    website = models.URLField(max_length=500, blank=True)
+    maps_uri = models.URLField(max_length=500, blank=True)
+    rating = models.DecimalField(max_digits=2, decimal_places=1, null=True, blank=True)
+    review_count = models.PositiveIntegerField(null=True, blank=True)
+    business_status = models.CharField(max_length=40, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.name or self.google_place_id
+
+
+class ExtractionRun(models.Model):
+    """
+    One 'Start Extraction' click — Places search + qualify + assign.
+
+    target_count is PER ELIGIBLE EXECUTIVE (e.g. target=50 with 5 eligible
+    reps means each rep gets up to 50, 250 total). total_target_count is
+    that per-executive figure multiplied by however many executives were
+    eligible when the run started — it's what the run loop and the
+    "Remaining Target" counter actually count down against.
+    """
+
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        RUNNING = 'running', 'Running'
+        STOPPING = 'stopping', 'Stopping'
+        STOPPED = 'stopped', 'Stopped'
+        COMPLETED = 'completed', 'Completed'
+        FAILED = 'failed', 'Failed'
+
+    location = models.CharField(max_length=200)
+    category = models.CharField(max_length=200)
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.PENDING, db_index=True
+    )
+    target_count = models.PositiveIntegerField(default=50, help_text='Per-executive target.')
+    total_target_count = models.PositiveIntegerField(
+        default=0, help_text='target_count × eligible executives at run start.'
+    )
+    discovered_count = models.PositiveIntegerField(default=0)
+    duplicate_count = models.PositiveIntegerField(default=0)
+    invalid_count = models.PositiveIntegerField(default=0)
+    qualified_count = models.PositiveIntegerField(default=0)
+    assigned_count = models.PositiveIntegerField(default=0)
+    stop_requested = models.BooleanField(default=False)
+    error_message = models.CharField(max_length=255, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='extraction_runs',
+    )
+    started_at = models.DateTimeField(null=True, blank=True)
+    stopped_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.category} @ {self.location} ({self.status})'
+
+    @property
+    def remaining_target(self):
+        return max(self.total_target_count - self.qualified_count, 0)
+
+
+class ExtractionLead(models.Model):
+    """
+    One discovered-business row for the live extraction table.
+
+    Denormalizes just enough of the place snapshot to render the table even
+    for candidates that never became a Lead (duplicate/invalid/rejected).
+    """
+
+    class QualificationStatus(models.TextChoices):
+        QUALIFIED = 'qualified', 'Qualified'
+        DUPLICATE = 'duplicate', 'Duplicate'
+        INVALID = 'invalid', 'Invalid'
+        REJECTED = 'rejected', 'Rejected'
+
+    class WebsiteStatus(models.TextChoices):
+        NONE = 'none', 'No website'
+        REACHABLE = 'reachable', 'Reachable'
+        UNREACHABLE = 'unreachable', 'Unreachable'
+        INVALID = 'invalid', 'Invalid URL'
+        TIMEOUT = 'timeout', 'Timeout'
+
+    class OpportunityLevel(models.TextChoices):
+        VERY_HIGH = 'very_high', 'Very High'
+        HIGH = 'high', 'High'
+        MEDIUM = 'medium', 'Medium'
+        LOW = 'low', 'Low'
+        UNKNOWN = 'unknown', 'Unknown'
+
+    class SocialPresenceType(models.TextChoices):
+        NONE = 'none', 'Not found'
+        INSTAGRAM = 'instagram', 'Instagram'
+        FACEBOOK = 'facebook', 'Facebook'
+        INSTAGRAM_AND_FACEBOOK = 'instagram_and_facebook', 'Instagram & Facebook'
+        OTHER = 'other', 'Other'
+        MULTIPLE = 'multiple', 'Multiple'
+
+    class SocialActivity(models.TextChoices):
+        UNKNOWN = 'unknown', 'Unknown'
+        ACTIVE = 'active', 'Active'
+        INACTIVE = 'inactive', 'Inactive'
+
+    run = models.ForeignKey(ExtractionRun, on_delete=models.CASCADE, related_name='items')
+    place = models.ForeignKey(
+        Place, on_delete=models.SET_NULL, null=True, blank=True, related_name='extraction_items'
+    )
+    lead = models.OneToOneField(
+        Lead, on_delete=models.SET_NULL, null=True, blank=True, related_name='extraction_item'
+    )
+    business_name = models.CharField(max_length=255, blank=True)
+    phone = models.CharField(max_length=40, blank=True)
+    website = models.URLField(max_length=500, blank=True)
+    rating = models.DecimalField(max_digits=2, decimal_places=1, null=True, blank=True)
+    review_count = models.PositiveIntegerField(null=True, blank=True)
+    business_status = models.CharField(max_length=40, blank=True)
+
+    website_status = models.CharField(
+        max_length=20, choices=WebsiteStatus.choices, default=WebsiteStatus.NONE
+    )
+    instagram_url = models.URLField(max_length=500, blank=True)
+    facebook_url = models.URLField(max_length=500, blank=True)
+    social_presence_type = models.CharField(
+        max_length=30, choices=SocialPresenceType.choices, default=SocialPresenceType.NONE
+    )
+    social_activity = models.CharField(
+        max_length=10, choices=SocialActivity.choices, default=SocialActivity.UNKNOWN
+    )
+
+    qualification_status = models.CharField(max_length=20, choices=QualificationStatus.choices)
+    business_quality_score = models.PositiveSmallIntegerField(null=True, blank=True)
+    website_opportunity_score = models.PositiveSmallIntegerField(null=True, blank=True)
+    website_opportunity_label = models.CharField(
+        max_length=10, choices=OpportunityLevel.choices, default=OpportunityLevel.UNKNOWN
+    )
+    meta_opportunity_score = models.PositiveSmallIntegerField(null=True, blank=True)
+    meta_opportunity_label = models.CharField(
+        max_length=10, choices=OpportunityLevel.choices, default=OpportunityLevel.UNKNOWN
+    )
+    overall_score = models.PositiveSmallIntegerField(null=True, blank=True)
+    reason = models.CharField(max_length=255, blank=True)
+
+    assigned_to = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='extraction_leads_assigned',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['id']
+
+    def __str__(self):
+        return f'{self.business_name} ({self.qualification_status})'

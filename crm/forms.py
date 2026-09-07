@@ -40,6 +40,23 @@ class LeadForm(forms.ModelForm):
         self.fields['package'].queryset = Package.objects.all().order_by('name')
         self.fields['status'].choices = Lead.PRIMARY_STATUS_CHOICES
 
+    def clean_phone(self):
+        phone = (self.cleaned_data.get('phone') or '').strip()
+        if phone:
+            dup = Lead.objects.filter(phone=phone)
+            if self.instance.pk:
+                dup = dup.exclude(pk=self.instance.pk)
+            existing = dup.select_related('employee').first()
+            if existing:
+                owner = (
+                    (existing.employee.get_full_name() or existing.employee.get_username())
+                    if existing.employee_id else 'unassigned'
+                )
+                raise forms.ValidationError(
+                    f'A lead with this phone number already exists: "{existing.name}" (owner: {owner}).'
+                )
+        return phone
+
 
 class FollowUpForm(forms.ModelForm):
     class Meta:

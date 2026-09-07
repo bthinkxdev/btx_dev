@@ -150,6 +150,11 @@ def can_send_renewal_reminder_manual(user) -> bool:
     return user.is_authenticated and (user.is_superuser or get_crm_role(user) == ROLE_ADMIN)
 
 
+def can_access_lead_extraction(user) -> bool:
+    """Google Places lead-extraction tool — admin only, not sales managers."""
+    return user.is_authenticated and (user.is_superuser or get_crm_role(user) == ROLE_ADMIN)
+
+
 def can_access_billing(user) -> bool:
     """Billing, ledger, statements, and payment recording (admin only)."""
     return user.is_authenticated and (user.is_superuser or get_crm_role(user) == ROLE_ADMIN)

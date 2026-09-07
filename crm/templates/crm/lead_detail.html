@@ -81,6 +81,31 @@
       <p style="font-size:11px;color:var(--text-light);margin-top:6px;">Auto-saves on blur or after 800ms of no typing</p>
     </div>
 
+    {% if lead.place %}
+    <!-- Google Places data — real fields, real clickable links (not parsed out of notes text) -->
+    <div class="panel-block">
+      <div class="panel-h">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;color:var(--primary-500);">
+          <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+        </svg>
+        Google Places
+      </div>
+      <div class="lx-places-grid">
+        <div><span class="lx-places-label">Website</span>{% if lead.place.website %}<a href="{{ lead.place.website }}" target="_blank" rel="noopener">{{ lead.place.website }}</a>{% else %}No website{% endif %}</div>
+        <div><span class="lx-places-label">Instagram</span>{% if lead.extraction_item.instagram_url %}<a href="{{ lead.extraction_item.instagram_url }}" target="_blank" rel="noopener">{{ lead.extraction_item.instagram_url }}</a>{% else %}Not found{% endif %}</div>
+        <div><span class="lx-places-label">Facebook</span>{% if lead.extraction_item.facebook_url %}<a href="{{ lead.extraction_item.facebook_url }}" target="_blank" rel="noopener">{{ lead.extraction_item.facebook_url }}</a>{% else %}Not found{% endif %}</div>
+        <div><span class="lx-places-label">Google Maps</span>{% if lead.place.maps_uri %}<a href="{{ lead.place.maps_uri }}" target="_blank" rel="noopener">View listing</a>{% else %}Unknown{% endif %}</div>
+        <div><span class="lx-places-label">Rating</span>{{ lead.place.rating|default:"Not rated" }}{% if lead.place.review_count %} ({{ lead.place.review_count }} reviews){% endif %}</div>
+        <div><span class="lx-places-label">Business status</span>{{ lead.place.business_status|default:"Unknown" }}</div>
+        {% if lead.extraction_item %}
+        <div><span class="lx-places-label">Website opportunity</span>{{ lead.extraction_item.get_website_opportunity_label_display }}</div>
+        <div><span class="lx-places-label">Meta opportunity</span>{{ lead.extraction_item.get_meta_opportunity_label_display }}</div>
+        <div><span class="lx-places-label">Overall score</span>{{ lead.extraction_item.overall_score|default:"—" }}</div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
     <!-- Contact Info (editable) -->
     <div class="panel-block" id="lead-contact-panel">
       <div id="lead-contact-host">
@@ -128,6 +153,10 @@
 .lead-contact-grid { display: grid; grid-template-columns: 90px 1fr; gap: 8px 14px; align-items: center; }
 .lead-contact-lbl { font-size: 12px; font-weight: 600; color: var(--text-muted); margin: 0 !important; }
 .lead-contact-in { width: 100%; font-size: 13px; padding: 8px 10px; }
+
+.lx-places-grid { display: grid; grid-template-columns: 140px 1fr; gap: 8px 14px; font-size: 13px; }
+.lx-places-label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
+.lx-places-grid a { word-break: break-all; }
 
 /* High Hope toggle (used in sticky controls) */
 .high-hope-toggle {

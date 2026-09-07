@@ -1430,7 +1430,7 @@ def lead_contact_save(request, pk):
 def lead_detail(request, pk):
     user = request.user
     lead = get_object_or_404(
-        _lead_scope_qs(user).select_related('package', 'employee'), pk=pk
+        _lead_scope_qs(user).select_related('package', 'employee', 'place', 'extraction_item'), pk=pk
     )
     activities = lead.activities.all()[:100]
     followups = lead.followups.all().order_by('-datetime')[:50]

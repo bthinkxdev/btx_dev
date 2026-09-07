@@ -1,7 +1,7 @@
 from django.contrib.auth import views as auth_views
 from django.urls import path
 
-from . import billing_views, finance_views, views, views_tickets
+from . import billing_views, finance_views, lead_extraction_views, views, views_tickets
 
 app_name = 'crm'
 
@@ -248,6 +248,22 @@ urlpatterns = [
     path('achievements/create/', views.achievement_create, name='achievement_create'),
     path('achievements/<int:pk>/edit/', views.achievement_update, name='achievement_update'),
     path('achievements/<int:pk>/delete/', views.achievement_delete, name='achievement_delete'),
+    path('lead-extraction/', lead_extraction_views.lead_extraction_page, name='lead_extraction'),
+    path(
+        'lead-extraction/start/',
+        lead_extraction_views.lead_extraction_start,
+        name='lead_extraction_start',
+    ),
+    path(
+        'lead-extraction/<int:run_id>/stop/',
+        lead_extraction_views.lead_extraction_stop,
+        name='lead_extraction_stop',
+    ),
+    path(
+        'lead-extraction/<int:run_id>/status/',
+        lead_extraction_views.lead_extraction_status,
+        name='lead_extraction_status',
+    ),
     path('audit/', views.audit_trail, name='audit_trail'),
     path('projects/<int:pk>/audit/', views.project_audit_trail, name='project_audit_trail'),
     path(
