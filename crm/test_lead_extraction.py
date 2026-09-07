@@ -250,8 +250,15 @@ class LeadExtractionCoreTests(TestCase):
         EmployeeProfile.objects.filter(user=self.admin_role_rep).update(crm_role='admin', eligible_for_leads=True)
 
     def _run_with_mocks(self, run, candidates, details_map, website_status='none', social_presence='none'):
+        call_count = {'n': 0}
+
         def fake_search_page(query, page_token=''):
-            return {'results': candidates, 'nextPageToken': ''}
+            # Only the first query variation returns real results — later
+            # rewordings legitimately find nothing new for this small fixture.
+            call_count['n'] += 1
+            if call_count['n'] == 1:
+                return {'results': candidates, 'nextPageToken': ''}
+            return {'results': [], 'nextPageToken': ''}
 
         def fake_details(place_id):
             return details_map[place_id]
@@ -285,7 +292,15 @@ class LeadExtractionCoreTests(TestCase):
                 raise google_places.GooglePlacesAPIError('boom', status_code=500)
             return make_details('A2', rating=4.5, reviews=50)
 
-        with mock.patch.object(google_places, 'search_text_page', return_value={'results': candidates, 'nextPageToken': ''}), \
+        call_count = {'n': 0}
+
+        def fake_search_page(query, page_token=''):
+            call_count['n'] += 1
+            if call_count['n'] == 1:
+                return {'results': candidates, 'nextPageToken': ''}
+            return {'results': [], 'nextPageToken': ''}
+
+        with mock.patch.object(google_places, 'search_text_page', side_effect=fake_search_page), \
              mock.patch.object(google_places, 'get_place_details', side_effect=fake_details), \
              mock.patch.object(website_check, 'check_website', return_value=make_website_result('none')), \
              mock.patch.object(online_presence, 'detect', return_value=make_social_result('none')):
@@ -504,6 +519,41 @@ class LeadExtractionCoreTests(TestCase):
         run.refresh_from_db()
         self.assertEqual(run.discovered_count, 5)
         self.assertEqual(run.status, ExtractionRun.Status.COMPLETED)
+
+
+    def test_query_variations_tried_when_base_query_exhausted(self):
+        # target=5 x 2 execs = 10 total. Base query alone only offers 6 -> the run
+        # must fall back to a reworded query to source the rest, not stop at 6.
+        run = ExtractionRun.objects.create(location='X', category='Y', created_by=self.admin, target_count=5)
+        queries = lead_extraction._query_variations('Y', 'X')
+        self.assertGreaterEqual(len(queries), 2)
+
+        v1 = [{'placeId': f'V1_{i}'} for i in range(6)]
+        v2 = [{'placeId': f'V2_{i}'} for i in range(6)]
+        details = {c['placeId']: make_details(c['placeId'], rating=4.8, reviews=90) for c in v1 + v2}
+
+        def fake_search_page(query, page_token=''):
+            if query == queries[0]:
+                return {'results': v1, 'nextPageToken': ''}
+            if query == queries[1]:
+                return {'results': v2, 'nextPageToken': ''}
+            return {'results': [], 'nextPageToken': ''}
+
+        def fake_details(place_id):
+            return details[place_id]
+
+        with mock.patch.object(google_places, 'search_text_page', side_effect=fake_search_page), \
+             mock.patch.object(google_places, 'get_place_details', side_effect=fake_details), \
+             mock.patch.object(website_check, 'check_website', return_value=make_website_result('none')), \
+             mock.patch.object(online_presence, 'detect', return_value=make_social_result('none')), \
+             mock.patch('crm.services.lead_extraction.time.sleep'):
+            lead_extraction._run(run.pk)
+        run.refresh_from_db()
+
+        self.assertEqual(run.total_target_count, 10)
+        self.assertEqual(run.qualified_count, 10)  # 6 from the base phrasing + 4 from the reworded one
+        self.assertEqual(run.status, ExtractionRun.Status.COMPLETED)
+        self.assertTrue(Lead.objects.filter(place__google_place_id__startswith='V2_').exists())
 
 
 class GooglePlacesPaginationTests(SimpleTestCase):

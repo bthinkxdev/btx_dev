@@ -30,11 +30,37 @@ logger = logging.getLogger(__name__)
 
 # Hard ceiling on candidates scanned in one run, independent of target_count —
 # without this, a run whose target massively exceeds what a location/category
-# can realistically supply would keep paging Google forever.
+# can realistically supply would keep paging/varying the query forever.
 MAX_CANDIDATES_PER_RUN = 200
 
 # Google requires a brief pause before a nextPageToken becomes valid.
 NEXT_PAGE_DELAY_SECONDS = 2
+
+# Natural rewordings of the same search, tried in order once pagination for an
+# earlier phrasing is exhausted. Google Text Search caps out around ~60
+# results per exact query regardless of pagination, so a target well above
+# that needs a differently-worded query to surface more of the same area —
+# this is still one location/category, not real district/locality
+# partitioning (still deferred), just enough breadth to approach a target a
+# single phrasing can't reach on its own. Results overlap heavily across
+# variations; the existing google_place_id dedup collapses that automatically.
+_QUERY_VARIATION_TEMPLATES = (
+    '{category} in {location}',
+    'best {category} in {location}',
+    '{category} shop in {location}',
+    'top {category} in {location}',
+)
+
+
+def _query_variations(category: str, location: str) -> list[str]:
+    seen = set()
+    queries = []
+    for template in _QUERY_VARIATION_TEMPLATES:
+        q = template.format(category=category, location=location).strip()
+        if q and q.lower() not in seen:
+            seen.add(q.lower())
+            queries.append(q)
+    return queries
 
 LEAD_SOURCE = 'Google Places'
 
@@ -329,64 +355,76 @@ def _run(run_id: int):
     run.total_target_count = per_exec_target * len(executive_ids)
     run.save(update_fields=['status', 'started_at', 'total_target_count'])
 
-    query = f'{run.category} in {run.location}'.strip()
-    page_token = ''
+    queries = _query_variations(run.category, run.location)
     candidates_processed = 0
-    first_page = True
+    last_error = None
 
-    while True:
+    for query in queries:
+        if run.qualified_count >= run.total_target_count or candidates_processed >= MAX_CANDIDATES_PER_RUN:
+            break
         if _stop_requested(run.pk):
             run.status = ExtractionRun.Status.STOPPED
             run.stopped_at = timezone.now()
             run.save(update_fields=['status', 'stopped_at'])
             return
 
-        try:
-            page = google_places.search_text_page(query, page_token=page_token)
-        except google_places.GooglePlacesError as exc:
-            if first_page:
-                # No results at all yet — the whole run failed, not just this page.
-                run.status = ExtractionRun.Status.FAILED
-                run.error_message = _safe_places_error(exc)
-                run.completed_at = timezone.now()
-                run.save(update_fields=['status', 'error_message', 'completed_at'])
-                return
-            # We already have real results from earlier pages — stop paging and
-            # complete with what we've got rather than discarding a partial success.
-            logger.info('Extraction run %s: page fetch failed after %s candidates: %s', run.pk, candidates_processed, exc)
-            break
-        first_page = False
-
-        page_candidates = page['results']
-        if not page_candidates:
-            break
-
-        for candidate in page_candidates:
-            if candidates_processed >= MAX_CANDIDATES_PER_RUN:
-                break
+        page_token = ''
+        while True:
             if _stop_requested(run.pk):
                 run.status = ExtractionRun.Status.STOPPED
                 run.stopped_at = timezone.now()
                 run.save(update_fields=['status', 'stopped_at'])
                 return
-            if run.qualified_count >= run.total_target_count:
+
+            try:
+                page = google_places.search_text_page(query, page_token=page_token)
+            except google_places.GooglePlacesError as exc:
+                # Isolated to this query variation — try the next one rather than
+                # failing the whole run over one bad/rate-limited phrasing.
+                last_error = exc
+                logger.info('Extraction run %s: search failed for %r: %s', run.pk, query, exc)
                 break
 
-            keep_going = _process_candidate(run, candidate, executive_cycle, per_exec_counts, per_exec_target)
-            candidates_processed += 1
-            if not keep_going:
-                break  # every executive is at quota — nothing left to assign
+            page_candidates = page['results']
+            if not page_candidates:
+                break
 
-        if run.qualified_count >= run.total_target_count:
-            break
-        if candidates_processed >= MAX_CANDIDATES_PER_RUN:
-            break
+            for candidate in page_candidates:
+                if candidates_processed >= MAX_CANDIDATES_PER_RUN:
+                    break
+                if _stop_requested(run.pk):
+                    run.status = ExtractionRun.Status.STOPPED
+                    run.stopped_at = timezone.now()
+                    run.save(update_fields=['status', 'stopped_at'])
+                    return
+                if run.qualified_count >= run.total_target_count:
+                    break
 
-        next_token = page['nextPageToken']
-        if not next_token:
-            break  # Google has no more results for this query
-        page_token = next_token
-        time.sleep(NEXT_PAGE_DELAY_SECONDS)
+                keep_going = _process_candidate(run, candidate, executive_cycle, per_exec_counts, per_exec_target)
+                candidates_processed += 1
+                if not keep_going:
+                    break  # every executive is at quota — nothing left to assign
+
+            if run.qualified_count >= run.total_target_count:
+                break
+            if candidates_processed >= MAX_CANDIDATES_PER_RUN:
+                break
+
+            next_token = page['nextPageToken']
+            if not next_token:
+                break  # Google has no more results for this phrasing
+            page_token = next_token
+            time.sleep(NEXT_PAGE_DELAY_SECONDS)
+
+    if run.discovered_count == 0 and last_error is not None:
+        # Every query variation failed and we never got a single result — a real failure,
+        # not just "this location/category is small." Otherwise, even a partial/empty
+        # result set is a legitimate completed run (nothing qualified is not the same as broken).
+        run.status = ExtractionRun.Status.FAILED
+        run.error_message = _safe_places_error(last_error)
+        run.completed_at = timezone.now()
+        run.save(update_fields=['status', 'error_message', 'completed_at'])
+        return
 
     run.status = ExtractionRun.Status.COMPLETED
     run.completed_at = timezone.now()
