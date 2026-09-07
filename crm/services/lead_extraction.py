@@ -17,6 +17,7 @@ from __future__ import annotations
 import itertools
 import logging
 import threading
+import time
 
 from django.db import IntegrityError, close_old_connections, transaction
 from django.utils import timezone
@@ -28,8 +29,12 @@ from . import google_places, lead_qualification, online_presence, website_check
 logger = logging.getLogger(__name__)
 
 # Hard ceiling on candidates scanned in one run, independent of target_count —
-# a future query-variation/pagination pass could otherwise loop unbounded.
+# without this, a run whose target massively exceeds what a location/category
+# can realistically supply would keep paging Google forever.
 MAX_CANDIDATES_PER_RUN = 200
+
+# Google requires a brief pause before a nextPageToken becomes valid.
+NEXT_PAGE_DELAY_SECONDS = 2
 
 LEAD_SOURCE = 'Google Places'
 
@@ -176,6 +181,96 @@ def _build_lead_notes(details, evaluation, website_result, social_result) -> str
     )
 
 
+def _process_candidate(run, candidate, executive_cycle, per_exec_counts, per_exec_target) -> bool:
+    """
+    Dedup -> details -> qualify -> assign for one discovered place.
+    Returns False only when every executive has hit their per-executive quota
+    (nothing left to assign) — the caller should stop the whole run then.
+    """
+    place_id = (candidate.get('placeId') or '').strip()
+    if not place_id:
+        return True
+
+    run.discovered_count += 1
+
+    existing = Place.objects.filter(google_place_id=place_id).first()
+    if existing is not None and Lead.objects.filter(place=existing).exists():
+        run.duplicate_count += 1
+        _record_item(
+            run, existing,
+            qualification_status=ExtractionLead.QualificationStatus.DUPLICATE,
+            reason='Already extracted and assigned in a previous run.',
+        )
+        run.save(update_fields=['discovered_count', 'duplicate_count'])
+        return True
+
+    try:
+        details = google_places.get_place_details(place_id)
+    except google_places.GooglePlacesError as exc:
+        run.invalid_count += 1
+        _record_item(
+            run, existing,
+            qualification_status=ExtractionLead.QualificationStatus.INVALID,
+            reason='Could not retrieve business details from Google.',
+            details={'name': candidate.get('name', '')},
+        )
+        run.save(update_fields=['discovered_count', 'invalid_count'])
+        logger.info('Extraction run %s: details fetch failed for %s: %s', run.pk, place_id, exc)
+        return True
+
+    place = google_places.upsert_place(
+        details, latitude=candidate.get('latitude'), longitude=candidate.get('longitude'),
+    )
+
+    # Website + social analysis (bounded timeouts — one slow/broken site never stalls the run).
+    website_result = website_check.check_website(details.get('website') or '')
+    social_result = online_presence.detect(
+        google_website_url=details.get('website') or '',
+        website_html=website_result.get('html', ''),
+    )
+
+    evaluation = lead_qualification.evaluate_business(
+        details, website_result=website_result, social_result=social_result, category=run.category,
+    )
+
+    if not evaluation['qualified']:
+        run.invalid_count += 1
+        _record_item(
+            run, place, details=details, website_result=website_result, social_result=social_result,
+            evaluation=evaluation, qualification_status=ExtractionLead.QualificationStatus.REJECTED,
+            reason=evaluation['reason'],
+        )
+        run.save(update_fields=['discovered_count', 'invalid_count'])
+        return True
+
+    executive_id = _next_available_executive(executive_cycle, per_exec_counts, per_exec_target)
+    if executive_id is None:
+        return False
+
+    notes = _build_lead_notes(details, evaluation, website_result, social_result)
+    lead = _create_and_assign_lead(place, details, executive_id, evaluation, notes)
+    if lead is None:
+        run.duplicate_count += 1
+        _record_item(
+            run, place,
+            qualification_status=ExtractionLead.QualificationStatus.DUPLICATE,
+            reason='Already extracted and assigned in a previous run.',
+        )
+        run.save(update_fields=['discovered_count', 'duplicate_count'])
+        return True
+
+    per_exec_counts[executive_id] += 1
+    run.qualified_count += 1
+    run.assigned_count += 1
+    _record_item(
+        run, place, details=details, website_result=website_result, social_result=social_result,
+        evaluation=evaluation, qualification_status=ExtractionLead.QualificationStatus.QUALIFIED,
+        reason=evaluation['reason'], lead=lead, assigned_to_id=executive_id,
+    )
+    run.save(update_fields=['discovered_count', 'qualified_count', 'assigned_count'])
+    return True
+
+
 def _create_and_assign_lead(place, details, executive_id, evaluation, notes):
     """Atomic create — the OneToOne on Lead.place is the DB-level duplicate guard."""
     try:
@@ -235,107 +330,63 @@ def _run(run_id: int):
     run.save(update_fields=['status', 'started_at', 'total_target_count'])
 
     query = f'{run.category} in {run.location}'.strip()
-    try:
-        candidates = google_places.search_text(query)
-    except google_places.GooglePlacesError as exc:
-        run.status = ExtractionRun.Status.FAILED
-        run.error_message = _safe_places_error(exc)
-        run.completed_at = timezone.now()
-        run.save(update_fields=['status', 'error_message', 'completed_at'])
-        return
+    page_token = ''
+    candidates_processed = 0
+    first_page = True
 
-    for candidate in candidates[:MAX_CANDIDATES_PER_RUN]:
+    while True:
         if _stop_requested(run.pk):
             run.status = ExtractionRun.Status.STOPPED
             run.stopped_at = timezone.now()
             run.save(update_fields=['status', 'stopped_at'])
             return
 
+        try:
+            page = google_places.search_text_page(query, page_token=page_token)
+        except google_places.GooglePlacesError as exc:
+            if first_page:
+                # No results at all yet — the whole run failed, not just this page.
+                run.status = ExtractionRun.Status.FAILED
+                run.error_message = _safe_places_error(exc)
+                run.completed_at = timezone.now()
+                run.save(update_fields=['status', 'error_message', 'completed_at'])
+                return
+            # We already have real results from earlier pages — stop paging and
+            # complete with what we've got rather than discarding a partial success.
+            logger.info('Extraction run %s: page fetch failed after %s candidates: %s', run.pk, candidates_processed, exc)
+            break
+        first_page = False
+
+        page_candidates = page['results']
+        if not page_candidates:
+            break
+
+        for candidate in page_candidates:
+            if candidates_processed >= MAX_CANDIDATES_PER_RUN:
+                break
+            if _stop_requested(run.pk):
+                run.status = ExtractionRun.Status.STOPPED
+                run.stopped_at = timezone.now()
+                run.save(update_fields=['status', 'stopped_at'])
+                return
+            if run.qualified_count >= run.total_target_count:
+                break
+
+            keep_going = _process_candidate(run, candidate, executive_cycle, per_exec_counts, per_exec_target)
+            candidates_processed += 1
+            if not keep_going:
+                break  # every executive is at quota — nothing left to assign
+
         if run.qualified_count >= run.total_target_count:
             break
-
-        place_id = (candidate.get('placeId') or '').strip()
-        if not place_id:
-            continue
-
-        run.discovered_count += 1
-
-        existing = Place.objects.filter(google_place_id=place_id).first()
-        if existing is not None and Lead.objects.filter(place=existing).exists():
-            run.duplicate_count += 1
-            _record_item(
-                run, existing,
-                qualification_status=ExtractionLead.QualificationStatus.DUPLICATE,
-                reason='Already extracted and assigned in a previous run.',
-            )
-            run.save(update_fields=['discovered_count', 'duplicate_count'])
-            continue
-
-        try:
-            details = google_places.get_place_details(place_id)
-        except google_places.GooglePlacesError as exc:
-            run.invalid_count += 1
-            _record_item(
-                run, existing,
-                qualification_status=ExtractionLead.QualificationStatus.INVALID,
-                reason='Could not retrieve business details from Google.',
-                details={'name': candidate.get('name', '')},
-            )
-            run.save(update_fields=['discovered_count', 'invalid_count'])
-            logger.info('Extraction run %s: details fetch failed for %s: %s', run.pk, place_id, exc)
-            continue
-
-        place = google_places.upsert_place(
-            details, latitude=candidate.get('latitude'), longitude=candidate.get('longitude'),
-        )
-
-        # Website + social analysis (bounded timeouts — one slow/broken site never stalls the run).
-        website_result = website_check.check_website(details.get('website') or '')
-        social_result = online_presence.detect(
-            google_website_url=details.get('website') or '',
-            website_html=website_result.get('html', ''),
-        )
-
-        evaluation = lead_qualification.evaluate_business(
-            details, website_result=website_result, social_result=social_result, category=run.category,
-        )
-
-        if not evaluation['qualified']:
-            run.invalid_count += 1
-            _record_item(
-                run, place, details=details, website_result=website_result, social_result=social_result,
-                evaluation=evaluation, qualification_status=ExtractionLead.QualificationStatus.REJECTED,
-                reason=evaluation['reason'],
-            )
-            run.save(update_fields=['discovered_count', 'invalid_count'])
-            continue
-
-        executive_id = _next_available_executive(executive_cycle, per_exec_counts, per_exec_target)
-        if executive_id is None:
-            # Every executive has hit their per-executive quota — nothing left to assign.
+        if candidates_processed >= MAX_CANDIDATES_PER_RUN:
             break
 
-        notes = _build_lead_notes(details, evaluation, website_result, social_result)
-        lead = _create_and_assign_lead(place, details, executive_id, evaluation, notes)
-        if lead is None:
-            run.duplicate_count += 1
-            _record_item(
-                run, place,
-                qualification_status=ExtractionLead.QualificationStatus.DUPLICATE,
-                reason='Already extracted and assigned in a previous run.',
-            )
-            run.save(update_fields=['discovered_count', 'duplicate_count'])
-            continue
-
-        per_exec_counts[executive_id] += 1
-        run.qualified_count += 1
-        run.assigned_count += 1
-        _record_item(
-            run, place, details=details, website_result=website_result, social_result=social_result,
-            evaluation=evaluation, qualification_status=ExtractionLead.QualificationStatus.QUALIFIED,
-            reason=evaluation['reason'], lead=lead, assigned_to_id=executive_id,
-        )
-        run.save(update_fields=['discovered_count', 'qualified_count', 'assigned_count'])
+        next_token = page['nextPageToken']
+        if not next_token:
+            break  # Google has no more results for this query
+        page_token = next_token
+        time.sleep(NEXT_PAGE_DELAY_SECONDS)
 
     run.status = ExtractionRun.Status.COMPLETED
     run.completed_at = timezone.now()

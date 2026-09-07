@@ -259,7 +259,11 @@
       </fieldset>
       <div class="crm-dialog__foot crm-dialog__foot--sticky">
         <button type="button" onclick="document.getElementById('add-lead-modal').close()" class="btn btn-outline">Cancel</button>
-        <button type="submit" class="btn btn-primary add-lead-submit">Create lead</button>
+        <button type="submit" id="add-lead-submit-btn" class="btn btn-primary add-lead-submit"
+                hx-indicator="#add-lead-submit-btn" hx-disabled-elt="this">
+          <span class="add-lead-submit__label">Create lead</span>
+          <span class="add-lead-submit__loading"><span class="add-lead-spinner"></span> Creating…</span>
+        </button>
       </div>
     </form>
   </div>
@@ -297,6 +301,22 @@ dialog::backdrop { background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); }
 .crm-dialog__head h2 { font-size: 18px; font-weight: 800; }
 .crm-dialog__x { background: none; border: none; font-size: 22px; color: var(--text-muted); cursor: pointer; line-height: 1; }
 .crm-dialog__foot { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+
+/* Add-lead submit: htmx toggles .htmx-request on this button (hx-indicator="#add-lead-submit-btn")
+   while the create-lead request is in flight; hx-disabled-elt also disables it, so a double
+   click/tap can't fire a second request and create a duplicate lead. */
+.add-lead-submit__loading { display: none; align-items: center; gap: 7px; }
+.add-lead-submit.htmx-request .add-lead-submit__label { display: none; }
+.add-lead-submit.htmx-request .add-lead-submit__loading { display: inline-flex; }
+.add-lead-submit:disabled { opacity: 0.85; cursor: not-allowed; }
+.add-lead-spinner {
+  width: 13px; height: 13px;
+  border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: add-lead-spin 0.7s linear infinite;
+}
+@keyframes add-lead-spin { to { transform: rotate(360deg); } }
 
 /* ── Leads page: focused Add CTA + add-lead modal ─────── */
 .exec-page-head--leads {

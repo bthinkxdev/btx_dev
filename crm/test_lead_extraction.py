@@ -250,13 +250,13 @@ class LeadExtractionCoreTests(TestCase):
         EmployeeProfile.objects.filter(user=self.admin_role_rep).update(crm_role='admin', eligible_for_leads=True)
 
     def _run_with_mocks(self, run, candidates, details_map, website_status='none', social_presence='none'):
-        def fake_search(query):
-            return candidates
+        def fake_search_page(query, page_token=''):
+            return {'results': candidates, 'nextPageToken': ''}
 
         def fake_details(place_id):
             return details_map[place_id]
 
-        with mock.patch.object(google_places, 'search_text', side_effect=fake_search), \
+        with mock.patch.object(google_places, 'search_text_page', side_effect=fake_search_page), \
              mock.patch.object(google_places, 'get_place_details', side_effect=fake_details), \
              mock.patch.object(website_check, 'check_website', return_value=make_website_result(website_status)), \
              mock.patch.object(online_presence, 'detect', return_value=make_social_result(social_presence)):
@@ -267,7 +267,7 @@ class LeadExtractionCoreTests(TestCase):
     def test_google_search_failure_fails_safely(self):
         run = ExtractionRun.objects.create(location='X', category='Y', created_by=self.admin)
         with mock.patch.object(
-            google_places, 'search_text',
+            google_places, 'search_text_page',
             side_effect=google_places.GooglePlacesRateLimitError('rate limited', status_code=429),
         ):
             lead_extraction._run(run.pk)
@@ -285,7 +285,7 @@ class LeadExtractionCoreTests(TestCase):
                 raise google_places.GooglePlacesAPIError('boom', status_code=500)
             return make_details('A2', rating=4.5, reviews=50)
 
-        with mock.patch.object(google_places, 'search_text', return_value=candidates), \
+        with mock.patch.object(google_places, 'search_text_page', return_value={'results': candidates, 'nextPageToken': ''}), \
              mock.patch.object(google_places, 'get_place_details', side_effect=fake_details), \
              mock.patch.object(website_check, 'check_website', return_value=make_website_result('none')), \
              mock.patch.object(online_presence, 'detect', return_value=make_social_result('none')):
@@ -362,7 +362,7 @@ class LeadExtractionCoreTests(TestCase):
     def test_zero_eligible_employees_creates_no_orphan_leads(self):
         EmployeeProfile.objects.filter(user__in=[self.rep1, self.rep2]).update(eligible_for_leads=False)
         run = ExtractionRun.objects.create(location='X', category='Y', created_by=self.admin)
-        with mock.patch.object(google_places, 'search_text') as mocked_search:
+        with mock.patch.object(google_places, 'search_text_page') as mocked_search:
             lead_extraction._run(run.pk)
             mocked_search.assert_not_called()  # must bail before even calling Google
         run.refresh_from_db()
@@ -424,6 +424,112 @@ class LeadExtractionCoreTests(TestCase):
         self.assertEqual(counts.get(self.rep1.id), 2)
         self.assertEqual(counts.get(self.rep2.id), 2)
         self.assertEqual(counts.get(rep3.id), 2)
+
+    def test_pagination_fetches_next_page_when_target_not_yet_reached(self):
+        # 2 eligible reps x target_count=8 -> total_target=16, needs both pages (10 each).
+        run = ExtractionRun.objects.create(location='X', category='Y', created_by=self.admin, target_count=8)
+        page1 = [{'placeId': f'PG{i}'} for i in range(10)]
+        page2 = [{'placeId': f'PG{i}'} for i in range(10, 20)]
+        details = {f'PG{i}': make_details(f'PG{i}', rating=4.8, reviews=90) for i in range(20)}
+        page_tokens_requested = []
+
+        def fake_search_page(query, page_token=''):
+            page_tokens_requested.append(page_token)
+            if not page_token:
+                return {'results': page1, 'nextPageToken': 'TOKEN2'}
+            return {'results': page2, 'nextPageToken': ''}
+
+        def fake_details(place_id):
+            return details[place_id]
+
+        with mock.patch.object(google_places, 'search_text_page', side_effect=fake_search_page), \
+             mock.patch.object(google_places, 'get_place_details', side_effect=fake_details), \
+             mock.patch.object(website_check, 'check_website', return_value=make_website_result('none')), \
+             mock.patch.object(online_presence, 'detect', return_value=make_social_result('none')), \
+             mock.patch('crm.services.lead_extraction.time.sleep'):
+            lead_extraction._run(run.pk)
+        run.refresh_from_db()
+        self.assertEqual(page_tokens_requested, ['', 'TOKEN2'])
+        self.assertEqual(run.total_target_count, 16)
+        self.assertEqual(run.qualified_count, 16)
+        self.assertEqual(run.status, ExtractionRun.Status.COMPLETED)
+
+    def test_page_fetch_failure_after_first_page_completes_gracefully(self):
+        # Page 1 succeeds and creates real leads; page 2 blows up — the run must
+        # keep those leads and complete, not discard them by failing the whole run.
+        run = ExtractionRun.objects.create(location='X', category='Y', created_by=self.admin, target_count=50)
+        page1 = [{'placeId': f'PF{i}'} for i in range(3)]
+        details = {f'PF{i}': make_details(f'PF{i}', rating=4.8, reviews=90) for i in range(3)}
+
+        def fake_search_page(query, page_token=''):
+            if not page_token:
+                return {'results': page1, 'nextPageToken': 'TOKEN2'}
+            raise google_places.GooglePlacesAPIError('boom', status_code=500)
+
+        def fake_details(place_id):
+            return details[place_id]
+
+        with mock.patch.object(google_places, 'search_text_page', side_effect=fake_search_page), \
+             mock.patch.object(google_places, 'get_place_details', side_effect=fake_details), \
+             mock.patch.object(website_check, 'check_website', return_value=make_website_result('none')), \
+             mock.patch.object(online_presence, 'detect', return_value=make_social_result('none')), \
+             mock.patch('crm.services.lead_extraction.time.sleep'):
+            lead_extraction._run(run.pk)
+        run.refresh_from_db()
+        self.assertEqual(run.qualified_count, 3)
+        self.assertEqual(run.status, ExtractionRun.Status.COMPLETED)
+
+    def test_max_candidates_cap_spans_pages(self):
+        run = ExtractionRun.objects.create(location='X', category='Y', created_by=self.admin, target_count=50)
+        page1 = [{'placeId': f'MX{i}'} for i in range(3)]
+        page2 = [{'placeId': f'MX{i}'} for i in range(3, 6)]
+        details = {f'MX{i}': make_details(f'MX{i}', rating=4.8, reviews=90) for i in range(6)}
+
+        def fake_search_page(query, page_token=''):
+            # Would page forever if not capped — always offers another page.
+            if not page_token:
+                return {'results': page1, 'nextPageToken': 'TOKEN2'}
+            return {'results': page2, 'nextPageToken': 'TOKEN3'}
+
+        def fake_details(place_id):
+            return details[place_id]
+
+        with mock.patch.object(lead_extraction, 'MAX_CANDIDATES_PER_RUN', 5), \
+             mock.patch.object(google_places, 'search_text_page', side_effect=fake_search_page), \
+             mock.patch.object(google_places, 'get_place_details', side_effect=fake_details), \
+             mock.patch.object(website_check, 'check_website', return_value=make_website_result('none')), \
+             mock.patch.object(online_presence, 'detect', return_value=make_social_result('none')), \
+             mock.patch('crm.services.lead_extraction.time.sleep'):
+            lead_extraction._run(run.pk)
+        run.refresh_from_db()
+        self.assertEqual(run.discovered_count, 5)
+        self.assertEqual(run.status, ExtractionRun.Status.COMPLETED)
+
+
+class GooglePlacesPaginationTests(SimpleTestCase):
+    def test_search_text_page_sends_page_token_and_field_mask(self):
+        resp = mock.Mock(status_code=200)
+        resp.json.return_value = {'places': [], 'nextPageToken': 'ABC123'}
+        with mock.patch('crm.services.google_places.requests.request', return_value=resp) as mocked, \
+             mock.patch('crm.services.google_places._api_key', return_value='fake-key'):
+            page = google_places.search_text_page('boutiques in Kochi', page_token='PRIOR_TOKEN')
+
+        self.assertEqual(page['nextPageToken'], 'ABC123')
+        _, kwargs = mocked.call_args
+        self.assertEqual(kwargs['json']['pageToken'], 'PRIOR_TOKEN')
+        self.assertIn('nextPageToken', kwargs['headers']['X-Goog-FieldMask'])
+
+    def test_search_text_wrapper_returns_first_page_results_only(self):
+        resp = mock.Mock(status_code=200)
+        resp.json.return_value = {
+            'places': [{'id': 'X1', 'displayName': {'text': 'Biz'}, 'formattedAddress': 'Addr'}],
+            'nextPageToken': 'MORE',
+        }
+        with mock.patch('crm.services.google_places.requests.request', return_value=resp), \
+             mock.patch('crm.services.google_places._api_key', return_value='fake-key'):
+            results = google_places.search_text('boutiques in Kochi')
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]['placeId'], 'X1')
 
 
 # ---------------------------------------------------------------------------
@@ -497,7 +603,7 @@ class LeadExtractionViewsTests(TransactionTestCase):
             return details[place_id]
 
         self.client.force_login(self.admin)
-        with mock.patch.object(google_places, 'search_text', return_value=candidates), \
+        with mock.patch.object(google_places, 'search_text_page', return_value={'results': candidates, 'nextPageToken': ''}), \
              mock.patch.object(google_places, 'get_place_details', side_effect=slow_details), \
              mock.patch.object(website_check, 'check_website', return_value=make_website_result('none')), \
              mock.patch.object(online_presence, 'detect', return_value=make_social_result('none')):

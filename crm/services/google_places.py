@@ -22,7 +22,8 @@ _BASE_URL = 'https://places.googleapis.com/v1'
 
 # Minimal field masks — keep discovery/detail calls cheap and predictable.
 SEARCH_FIELD_MASK = (
-    'places.id,places.displayName,places.formattedAddress,places.location,places.primaryType'
+    'places.id,places.displayName,places.formattedAddress,places.location,'
+    'places.primaryType,nextPageToken'
 )
 DETAILS_FIELD_MASK = (
     'displayName,formattedAddress,nationalPhoneNumber,internationalPhoneNumber,'
@@ -113,21 +114,26 @@ def _request(
         raise GooglePlacesAPIError('Google Places API returned an invalid response') from exc
 
 
-def search_text(query: str) -> list[dict[str, Any]]:
+def search_text_page(query: str, page_token: str = '') -> dict[str, Any]:
     """
-    Text Search (New). Returns a normalized list of candidate places:
-    [{placeId, name, address, latitude, longitude, primaryType}, ...]
+    Text Search (New), one page. Returns:
+    {'results': [{placeId, name, address, latitude, longitude, primaryType}, ...],
+     'nextPageToken': str}  (empty string when there are no more pages)
+
+    Pass the returned nextPageToken back in to fetch the next page of the SAME
+    query/location — this is pagination, not query variations/district
+    exhaustion (still explicitly deferred); it just stops artificially capping
+    a run at Google's ~20-results-per-call limit.
     """
     query = (query or '').strip()
     if not query:
-        return []
+        return {'results': [], 'nextPageToken': ''}
 
-    data = _request(
-        'POST',
-        'places:searchText',
-        field_mask=SEARCH_FIELD_MASK,
-        json_body={'textQuery': query},
-    )
+    body: dict[str, Any] = {'textQuery': query}
+    if page_token:
+        body['pageToken'] = page_token
+
+    data = _request('POST', 'places:searchText', field_mask=SEARCH_FIELD_MASK, json_body=body)
     results = []
     for p in data.get('places') or []:
         loc = p.get('location') or {}
@@ -139,7 +145,12 @@ def search_text(query: str) -> list[dict[str, Any]]:
             'longitude': loc.get('longitude'),
             'primaryType': p.get('primaryType') or '',
         })
-    return results
+    return {'results': results, 'nextPageToken': data.get('nextPageToken') or ''}
+
+
+def search_text(query: str) -> list[dict[str, Any]]:
+    """First-page-only convenience wrapper (used by the manual /api/places/search/ endpoint)."""
+    return search_text_page(query)['results']
 
 
 def get_place_details(place_id: str) -> dict[str, Any]:
