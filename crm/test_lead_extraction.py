@@ -556,6 +556,67 @@ class LeadExtractionCoreTests(TestCase):
         self.assertTrue(Lead.objects.filter(place__google_place_id__startswith='V2_').exists())
 
 
+    def test_duplicates_are_free_and_dont_eat_the_details_api_budget(self):
+        # 5 candidates are already-known duplicates (from a prior run); 4 are genuinely
+        # new. Even with MAX_CANDIDATES_PER_RUN capped at 4, all 4 new ones must still
+        # get processed — the duplicates must not have consumed that budget.
+        dup_ids = [f'DUP{i}' for i in range(5)]
+        for pid in dup_ids:
+            place = Place.objects.create(google_place_id=pid, name=f'Old {pid}')
+            Lead.objects.create(
+                employee=self.rep1, name=f'Old {pid}', phone='1112223333',
+                source='Google Places', status=Lead.Status.NEW, place=place,
+            )
+
+        run = ExtractionRun.objects.create(location='X', category='Y', created_by=self.admin, target_count=2)
+        new_ids = [f'NEW{i}' for i in range(4)]
+        candidates = [{'placeId': pid} for pid in dup_ids] + [{'placeId': pid} for pid in new_ids]
+        details = {pid: make_details(pid, rating=4.8, reviews=90) for pid in new_ids}
+
+        def fake_details(place_id):
+            return details[place_id]
+
+        with mock.patch.object(lead_extraction, 'MAX_CANDIDATES_PER_RUN', 4), \
+             mock.patch.object(google_places, 'search_text_page', return_value={'results': candidates, 'nextPageToken': ''}), \
+             mock.patch.object(google_places, 'get_place_details', side_effect=fake_details), \
+             mock.patch.object(website_check, 'check_website', return_value=make_website_result('none')), \
+             mock.patch.object(online_presence, 'detect', return_value=make_social_result('none')):
+            lead_extraction._run(run.pk)
+        run.refresh_from_db()
+
+        self.assertEqual(run.duplicate_count, 5)
+        self.assertEqual(run.qualified_count, 4)  # all 4 new candidates processed despite the cap of 4
+        self.assertEqual(run.status, ExtractionRun.Status.COMPLETED)
+
+    def test_all_duplicate_run_stops_via_total_scanned_ceiling(self):
+        # A fully mined-out location/category (every result already a lead) must still
+        # terminate — bounded by MAX_TOTAL_SCANNED, not by MAX_CANDIDATES_PER_RUN (which
+        # duplicates never touch).
+        dup_ids = [f'MINED{i}' for i in range(10)]
+        for pid in dup_ids:
+            place = Place.objects.create(google_place_id=pid, name=f'Old {pid}')
+            Lead.objects.create(
+                employee=self.rep1, name=f'Old {pid}', phone='1112223333',
+                source='Google Places', status=Lead.Status.NEW, place=place,
+            )
+        candidates = [{'placeId': pid} for pid in dup_ids]
+
+        run = ExtractionRun.objects.create(location='X', category='Y', created_by=self.admin, target_count=50)
+        with mock.patch.object(lead_extraction, 'MAX_TOTAL_SCANNED', 15), \
+             mock.patch.object(google_places, 'search_text_page', return_value={'results': candidates, 'nextPageToken': ''}), \
+             mock.patch.object(google_places, 'get_place_details') as mocked_details, \
+             mock.patch.object(website_check, 'check_website', return_value=make_website_result('none')), \
+             mock.patch.object(online_presence, 'detect', return_value=make_social_result('none')), \
+             mock.patch('crm.services.lead_extraction.time.sleep'):
+            lead_extraction._run(run.pk)
+        run.refresh_from_db()
+
+        mocked_details.assert_not_called()  # every candidate was a free duplicate skip
+        self.assertEqual(run.qualified_count, 0)
+        self.assertLessEqual(run.duplicate_count, 15)  # stopped by MAX_TOTAL_SCANNED, not run forever
+        self.assertEqual(run.status, ExtractionRun.Status.COMPLETED)
+
+
 class GooglePlacesPaginationTests(SimpleTestCase):
     def test_search_text_page_sends_page_token_and_field_mask(self):
         resp = mock.Mock(status_code=200)

@@ -28,10 +28,17 @@ from . import google_places, lead_qualification, online_presence, website_check
 
 logger = logging.getLogger(__name__)
 
-# Hard ceiling on candidates scanned in one run, independent of target_count —
-# without this, a run whose target massively exceeds what a location/category
-# can realistically supply would keep paging/varying the query forever.
+# Hard ceiling on Google Details API calls spent in one run, independent of
+# target_count — without this, a run whose target massively exceeds what a
+# location/category can realistically supply would keep paging/varying the
+# query forever. Already-known duplicates are free (no Details call, see
+# _process_candidate) and don't count against this — only real work does.
 MAX_CANDIDATES_PER_RUN = 200
+
+# Separate, looser ceiling on total candidates scanned INCLUDING free duplicate
+# skips — the backstop for a location/category that's almost entirely mined
+# out, so a run can't loop forever re-discovering the same known businesses.
+MAX_TOTAL_SCANNED = 1000
 
 # Google requires a brief pause before a nextPageToken becomes valid.
 NEXT_PAGE_DELAY_SECONDS = 2
@@ -207,15 +214,25 @@ def _build_lead_notes(details, evaluation, website_result, social_result) -> str
     )
 
 
-def _process_candidate(run, candidate, executive_cycle, per_exec_counts, per_exec_target) -> bool:
+CANDIDATE_OK = 'ok'          # spent a Google Details call — counts against MAX_CANDIDATES_PER_RUN
+CANDIDATE_SKIPPED = 'skip'   # already-known duplicate / junk row — free, doesn't eat the budget
+CANDIDATE_STOP = 'stop'      # every executive is at quota — caller should stop the whole run
+
+
+def _process_candidate(run, candidate, executive_cycle, per_exec_counts, per_exec_target) -> str:
     """
     Dedup -> details -> qualify -> assign for one discovered place.
-    Returns False only when every executive has hit their per-executive quota
-    (nothing left to assign) — the caller should stop the whole run then.
+
+    Already-known duplicates are recognized from our own Place table before
+    ever calling Google Place Details, so re-encountering businesses a prior
+    run already turned into leads costs nothing and doesn't count against
+    MAX_CANDIDATES_PER_RUN — a heavily-mined location/category can burn
+    through them cheaply and keep searching for something actually new,
+    instead of a run's whole budget going to businesses we already have.
     """
     place_id = (candidate.get('placeId') or '').strip()
     if not place_id:
-        return True
+        return CANDIDATE_SKIPPED
 
     run.discovered_count += 1
 
@@ -228,7 +245,7 @@ def _process_candidate(run, candidate, executive_cycle, per_exec_counts, per_exe
             reason='Already extracted and assigned in a previous run.',
         )
         run.save(update_fields=['discovered_count', 'duplicate_count'])
-        return True
+        return CANDIDATE_SKIPPED
 
     try:
         details = google_places.get_place_details(place_id)
@@ -242,7 +259,7 @@ def _process_candidate(run, candidate, executive_cycle, per_exec_counts, per_exe
         )
         run.save(update_fields=['discovered_count', 'invalid_count'])
         logger.info('Extraction run %s: details fetch failed for %s: %s', run.pk, place_id, exc)
-        return True
+        return CANDIDATE_OK
 
     place = google_places.upsert_place(
         details, latitude=candidate.get('latitude'), longitude=candidate.get('longitude'),
@@ -267,11 +284,11 @@ def _process_candidate(run, candidate, executive_cycle, per_exec_counts, per_exe
             reason=evaluation['reason'],
         )
         run.save(update_fields=['discovered_count', 'invalid_count'])
-        return True
+        return CANDIDATE_OK
 
     executive_id = _next_available_executive(executive_cycle, per_exec_counts, per_exec_target)
     if executive_id is None:
-        return False
+        return CANDIDATE_STOP
 
     notes = _build_lead_notes(details, evaluation, website_result, social_result)
     lead = _create_and_assign_lead(place, details, executive_id, evaluation, notes)
@@ -283,7 +300,7 @@ def _process_candidate(run, candidate, executive_cycle, per_exec_counts, per_exe
             reason='Already extracted and assigned in a previous run.',
         )
         run.save(update_fields=['discovered_count', 'duplicate_count'])
-        return True
+        return CANDIDATE_OK
 
     per_exec_counts[executive_id] += 1
     run.qualified_count += 1
@@ -294,7 +311,7 @@ def _process_candidate(run, candidate, executive_cycle, per_exec_counts, per_exe
         reason=evaluation['reason'], lead=lead, assigned_to_id=executive_id,
     )
     run.save(update_fields=['discovered_count', 'qualified_count', 'assigned_count'])
-    return True
+    return CANDIDATE_OK
 
 
 def _create_and_assign_lead(place, details, executive_id, evaluation, notes):
@@ -356,11 +373,19 @@ def _run(run_id: int):
     run.save(update_fields=['status', 'started_at', 'total_target_count'])
 
     queries = _query_variations(run.category, run.location)
-    candidates_processed = 0
+    candidates_processed = 0  # real Details-API work — bounded by MAX_CANDIDATES_PER_RUN
+    total_scanned = 0         # includes free duplicate skips — bounded by MAX_TOTAL_SCANNED
     last_error = None
 
+    def _budget_exhausted():
+        return (
+            run.qualified_count >= run.total_target_count
+            or candidates_processed >= MAX_CANDIDATES_PER_RUN
+            or total_scanned >= MAX_TOTAL_SCANNED
+        )
+
     for query in queries:
-        if run.qualified_count >= run.total_target_count or candidates_processed >= MAX_CANDIDATES_PER_RUN:
+        if _budget_exhausted():
             break
         if _stop_requested(run.pk):
             run.status = ExtractionRun.Status.STOPPED
@@ -390,24 +415,22 @@ def _run(run_id: int):
                 break
 
             for candidate in page_candidates:
-                if candidates_processed >= MAX_CANDIDATES_PER_RUN:
+                if _budget_exhausted():
                     break
                 if _stop_requested(run.pk):
                     run.status = ExtractionRun.Status.STOPPED
                     run.stopped_at = timezone.now()
                     run.save(update_fields=['status', 'stopped_at'])
                     return
-                if run.qualified_count >= run.total_target_count:
-                    break
 
-                keep_going = _process_candidate(run, candidate, executive_cycle, per_exec_counts, per_exec_target)
-                candidates_processed += 1
-                if not keep_going:
+                result = _process_candidate(run, candidate, executive_cycle, per_exec_counts, per_exec_target)
+                total_scanned += 1
+                if result == CANDIDATE_OK:
+                    candidates_processed += 1
+                elif result == CANDIDATE_STOP:
                     break  # every executive is at quota — nothing left to assign
 
-            if run.qualified_count >= run.total_target_count:
-                break
-            if candidates_processed >= MAX_CANDIDATES_PER_RUN:
+            if _budget_exhausted():
                 break
 
             next_token = page['nextPageToken']
