@@ -639,12 +639,14 @@ def _leads_list_qs_and_meta(request, user):
     if high_hope_filter == '1':
         qs = qs.filter(high_hope=True)
 
-    # Default landing (no ?fu= at all) is "Today" — an executive opening the leads
-    # page should see what needs action today, not the whole pipeline. Explicit
-    # ?fu=all is how "All Leads" opts back out of that default.
+    # Default landing (no ?fu= at all) is "Due" — overdue + today + never-scheduled,
+    # i.e. everything that needs action now. Strictly "today only" would silently
+    # hide overdue leads and brand-new leads with no follow-up set yet, which is
+    # exactly what must never happen ("don't miss any followup"). Explicit
+    # ?fu=today / ?fu=overdue narrow to just one bucket; ?fu=all opts out entirely.
     fu_filter = request.GET.get('fu', None)
     if fu_filter is None:
-        fu_filter = 'today'
+        fu_filter = 'due'
     if fu_filter == 'overdue':
         qs = qs.filter(
             active_q & (Q(next_followup__lt=start) | Q(next_followup__isnull=True))
@@ -655,12 +657,16 @@ def _leads_list_qs_and_meta(request, user):
             next_followup__gte=start,
             next_followup__lt=end,
         )
+    elif fu_filter == 'due':
+        qs = qs.filter(
+            active_q & (Q(next_followup__lt=end) | Q(next_followup__isnull=True))
+        )
     elif fu_filter == 'hot':
         qs = qs.filter(active_q).exclude(status=STATUS_NEW).filter(deal_value__gt=0)
     # 'all' (or anything else) — no follow-up-date filter, show everyone in scope.
 
-    # Follow-up queues are call/action lists — earliest-due first, not newest-first.
-    if fu_filter in ('today', 'overdue'):
+    # Follow-up queues are call/action lists — earliest-due (and never-scheduled) first.
+    if fu_filter in ('today', 'overdue', 'due'):
         followup_order = ('next_followup', *LEAD_DEFAULT_ORDER)
     else:
         followup_order = None
@@ -743,7 +749,7 @@ def _leads_list_qs_and_meta(request, user):
         q
         or stage
         or high_hope_filter
-        or (fu_filter and fu_filter != 'today')  # 'today' is the default, not a user-applied filter
+        or (fu_filter and fu_filter != 'due')  # 'due' is the default, not a user-applied filter
         or package_filter
         or created_day
         or closed_day
@@ -810,6 +816,7 @@ def leads_list(request):
         'date_week': _lq(date_scope='this_week', date_start='', date_end=''),
         'date_month': _lq(date_scope='this_month', date_start='', date_end=''),
         'fu_all': _lq(fu='all'),
+        'fu_due': _lq(fu='due'),
         'fu_overdue': _lq(fu='overdue'),
         'fu_today': _lq(fu='today'),
         'fu_hot': _lq(fu='hot'),
@@ -852,6 +859,10 @@ def leads_list(request):
     today_fu_count = _all_leads.filter(
         _active_q, next_followup__gte=start, next_followup__lt=end
     ).count()
+    # "Due" = overdue + today + never-scheduled — the default landing bucket.
+    due_count = _all_leads.filter(
+        _active_q & (Q(next_followup__lt=end) | Q(next_followup__isnull=True))
+    ).count()
     pending_tasks_count = Task.objects.filter(employee_id__in=scope_ids, is_completed=False).count()
     hot_leads_count = _all_leads.filter(
         _active_q,
@@ -893,6 +904,7 @@ def leads_list(request):
             'has_active_filters': has_active_filters,
             'overdue_count': overdue_count,
             'today_fu_count': today_fu_count,
+            'due_count': due_count,
             'pending_tasks_count': pending_tasks_count,
             'hot_leads_count': hot_leads_count,
             'manager_mode': manager_mode,

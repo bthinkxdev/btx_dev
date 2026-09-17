@@ -22,6 +22,16 @@
   {# ── COMMAND STRIP — click to filter, shows live counts ───── #}
   {# Each card = one filter. Click to show those leads. Active card = filled color. #}
   <div class="cmd-strip cmd-strip--inline">
+  <a href="{{ leads_base }}?{{ lqs.fu_due }}"
+     class="cmd-strip__card cmd-strip__card--due{% if filters.fu == 'due' %} cmd-strip__card--on{% endif %}"
+     title="Overdue + today + leads with no follow-up scheduled yet — nothing here gets missed">
+    <span class="cmd-strip__icon">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22c5.5 0 10-4.5 10-10S17.5 2 12 2 2 6.5 2 12s4.5 10 10 10z"/><path d="M12 6v6l4 2"/></svg>
+    </span>
+    <span class="cmd-strip__num">{{ due_count }}</span>
+    <span class="cmd-strip__lbl">Due Now</span>
+    <span class="cmd-strip__hint">Overdue + today + unscheduled</span>
+  </a>
   <a href="{{ leads_base }}?{{ lqs.fu_overdue }}"
      class="cmd-strip__card cmd-strip__card--danger{% if filters.fu == 'overdue' %} cmd-strip__card--on{% endif %}"
      title="Click to see leads whose follow-up date has already passed">
@@ -493,6 +503,16 @@ dialog::backdrop { background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); }
 .cmd-strip__card--all.cmd-strip__card--on .cmd-strip__lbl,
 .cmd-strip__card--all.cmd-strip__card--on .cmd-strip__hint,
 .cmd-strip__card--all.cmd-strip__card--on .cmd-strip__icon { color: #fff; }
+
+.cmd-strip__card--due  { border-color: var(--primary-200); }
+.cmd-strip__card--due  .cmd-strip__num  { color: var(--primary-600); }
+.cmd-strip__card--due  .cmd-strip__icon { color: var(--primary-500); }
+.cmd-strip__card--due:hover             { border-color: var(--primary-400); background: var(--primary-50); }
+.cmd-strip__card--due.cmd-strip__card--on { background: var(--primary-600); border-color: var(--primary-600); box-shadow: 0 2px 8px rgba(79,70,229,0.25); }
+.cmd-strip__card--due.cmd-strip__card--on .cmd-strip__num,
+.cmd-strip__card--due.cmd-strip__card--on .cmd-strip__lbl,
+.cmd-strip__card--due.cmd-strip__card--on .cmd-strip__hint,
+.cmd-strip__card--due.cmd-strip__card--on .cmd-strip__icon { color: #fff; }
 
 @media (max-width: 560px) {
   .cmd-strip { grid-template-columns: repeat(2, 1fr); gap: 6px; margin-bottom: 12px; }
