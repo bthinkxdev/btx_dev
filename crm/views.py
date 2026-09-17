@@ -423,15 +423,23 @@ LEAD_DEFAULT_ORDER = ('-created_at', '-id')
 LEADS_PER_PAGE = 20
 
 
-def _flag_lead_rows(leads_page, start, end):
+def _flag_lead_rows(leads_page, bounds):
     """
-    Tag each lead with why it belongs in today's worklist, for the row badges:
-    is_new_today (created today) and is_due_now (overdue/today/unscheduled follow-up).
+    Tag each lead with why it belongs in the active period's list, for the row
+    badges: is_new_in_period (created within the period) and
+    is_followup_in_period (follow-up scheduled within the period — exact
+    window only, no overdue/unscheduled folding). `bounds` is (ds, de) for the
+    active date_scope, or None when viewing "All time" (no period, no badges).
     Cheap Python-side flags on an already-paginated page — not a DB annotation.
     """
     for lead in leads_page:
-        lead.is_new_today = start <= lead.created_at < end
-        lead.is_due_now = not lead.next_followup or lead.next_followup < end
+        if bounds:
+            ds, de = bounds
+            lead.is_new_in_period = ds <= lead.created_at < de
+            lead.is_followup_in_period = bool(lead.next_followup) and ds <= lead.next_followup < de
+        else:
+            lead.is_new_in_period = False
+            lead.is_followup_in_period = False
     return leads_page
 
 
@@ -464,7 +472,10 @@ def _lead_for_exec(user, pk):
 
 def _exec_board_ctx(lead, user, **extra):
     start, end, _ = _local_today_bounds()
-    _flag_lead_rows([lead], start, end)
+    # No request/date_scope context available on this single-row re-render path
+    # (POST body only carries _tpl) — fall back to today's window, the default
+    # and overwhelmingly common case for whichever list this row lives on.
+    _flag_lead_rows([lead], (start, end))
     ctx = {
         'lead': lead,
         'status_choices': Lead.PRIMARY_STATUS_CHOICES,
@@ -691,12 +702,14 @@ def _leads_list_qs_and_meta(request, user):
         except ValueError:
             pass
 
-    # Default landing (no ?date_scope= at all) is "Today" — leads created today,
-    # merged with leads whose follow-up is overdue/unscheduled/due today, all in
-    # one list ordered by time, so nothing needs a separate "don't miss this"
-    # tab. Other periods (yesterday/week/month/custom) show what was created OR
-    # had a follow-up due within that window — a historical view, so no
-    # overdue-folding there. Explicit ?date_scope=all opts out of date filtering.
+    # Default landing (no ?date_scope= at all) is "Today". Every period —
+    # Today / Yesterday / This week / This month — uses the exact same rule:
+    # leads created within the window, OR leads with a follow-up scheduled
+    # exactly within the window. No overdue-folding, no "no follow-up set"
+    # catch-all — those cases would otherwise leak months-old, never-touched
+    # leads into every single period forever. Overdue tracking is the
+    # dedicated Follow-ups page's job, not this one. Explicit ?date_scope=all
+    # opts out of date filtering entirely.
     date_scope = request.GET.get('date_scope', None)
     if date_scope is None:
         date_scope = 'today'
@@ -704,21 +717,17 @@ def _leads_list_qs_and_meta(request, user):
     date_end_s = request.GET.get('date_end', '').strip()
 
     sort_by_time = False
+    period_bounds = None
     if date_scope in ('today', 'yesterday', 'this_week', 'this_month', 'custom'):
         bounds = _date_scope_bounds(date_scope, date_start_s, date_end_s)
         if bounds:
             ds, de = bounds
-            if date_scope == 'today':
-                qs = qs.filter(
-                    Q(created_at__gte=ds, created_at__lt=de)
-                    | (active_q & (Q(next_followup__lt=de) | Q(next_followup__isnull=True)))
-                )
-            else:
-                qs = qs.filter(
-                    Q(created_at__gte=ds, created_at__lt=de)
-                    | (active_q & Q(next_followup__gte=ds, next_followup__lt=de))
-                )
+            qs = qs.filter(
+                Q(created_at__gte=ds, created_at__lt=de)
+                | (active_q & Q(next_followup__gte=ds, next_followup__lt=de))
+            )
             sort_by_time = True
+            period_bounds = (ds, de)
     # 'all' (or anything else) — no date filter at all, show everyone in scope.
 
     if sort_by_time:
@@ -761,6 +770,7 @@ def _leads_list_qs_and_meta(request, user):
         'start': start,
         'end': end,
         'local_date': local_date,
+        'period_bounds': period_bounds,
         'filters_ctx': filters_ctx,
         'package_filter': package_filter,
         'has_active_filters': has_active_filters,
@@ -779,6 +789,7 @@ def leads_list(request):
     meta = _leads_list_qs_and_meta(request, user)
     qs = meta['qs']
     start, end = meta['start'], meta['end']
+    period_bounds = meta['period_bounds']
     filters_ctx = meta['filters_ctx']
     package_filter = meta['package_filter']
     has_active_filters = meta['has_active_filters']
@@ -800,7 +811,7 @@ def leads_list(request):
         last = paginator.num_pages or 1
         page_obj = paginator.page(last)
 
-    leads_page = _flag_lead_rows(list(page_obj.object_list), start, end)
+    leads_page = _flag_lead_rows(list(page_obj.object_list), period_bounds)
 
     form = LeadForm(employee=user)
     import_form = ExcelImportForm()
@@ -896,6 +907,7 @@ def leads_more_json(request):
     meta = _leads_list_qs_and_meta(request, user)
     qs = meta['qs']
     start, end = meta['start'], meta['end']
+    period_bounds = meta['period_bounds']
     filters_ctx = meta['filters_ctx']
 
     page_raw = (request.GET.get('page') or '1').strip()
@@ -914,7 +926,7 @@ def leads_more_json(request):
             }
         )
 
-    leads_page = _flag_lead_rows(list(page_obj.object_list), start, end)
+    leads_page = _flag_lead_rows(list(page_obj.object_list), period_bounds)
     packages = Package.objects.all()
     base_ctx = {
         'fu_start': start,
