@@ -19,62 +19,6 @@
     </p>
   </div>
 
-  {# ── COMMAND STRIP — click to filter, shows live counts ───── #}
-  {# Each card = one filter. Click to show those leads. Active card = filled color. #}
-  <div class="cmd-strip cmd-strip--inline">
-  <a href="{{ leads_base }}?{{ lqs.fu_due }}"
-     class="cmd-strip__card cmd-strip__card--due{% if filters.fu == 'due' %} cmd-strip__card--on{% endif %}"
-     title="Overdue + today + leads with no follow-up scheduled yet — nothing here gets missed">
-    <span class="cmd-strip__icon">
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22c5.5 0 10-4.5 10-10S17.5 2 12 2 2 6.5 2 12s4.5 10 10 10z"/><path d="M12 6v6l4 2"/></svg>
-    </span>
-    <span class="cmd-strip__num">{{ due_count }}</span>
-    <span class="cmd-strip__lbl">Due Now</span>
-    <span class="cmd-strip__hint">Overdue + today + unscheduled</span>
-  </a>
-  <a href="{{ leads_base }}?{{ lqs.fu_overdue }}"
-     class="cmd-strip__card cmd-strip__card--danger{% if filters.fu == 'overdue' %} cmd-strip__card--on{% endif %}"
-     title="Click to see leads whose follow-up date has already passed">
-    <span class="cmd-strip__icon">
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-    </span>
-    <span class="cmd-strip__num">{{ overdue_count }}</span>
-    <span class="cmd-strip__lbl">Overdue</span>
-    <span class="cmd-strip__hint">Follow-up missed</span>
-  </a>
-  <a href="{{ leads_base }}?{{ lqs.fu_today }}"
-     class="cmd-strip__card cmd-strip__card--warning{% if filters.fu == 'today' %} cmd-strip__card--on{% endif %}"
-     title="Click to see leads with a follow-up scheduled for today">
-    <span class="cmd-strip__icon">
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-    </span>
-    <span class="cmd-strip__num">{{ today_fu_count }}</span>
-    <span class="cmd-strip__lbl">Today</span>
-    <span class="cmd-strip__hint">Follow-ups due today</span>
-  </a>
-  <a href="{{ leads_base }}?{{ lqs.fu_hot }}"
-     class="cmd-strip__card cmd-strip__card--hot{% if filters.fu == 'hot' %} cmd-strip__card--on{% endif %}"
-     title="Interested, Negotiation, Qualified, or Proposal leads with a deal value">
-    <span class="cmd-strip__icon">
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M13.5 0.67s.74 2.65.74 4.8c0 2.06-1.35 3.73-3.41 3.73-2.07 0-3.63-1.67-3.63-3.73l.03-.36C5.21 7.51 4 10.62 4 14c0 4.42 3.58 8 8 8s8-3.58 8-8C20 8.61 17.41 3.8 13.5.67zM11.71 19c-1.78 0-3.22-1.4-3.22-3.14 0-1.62 1.05-2.76 2.81-3.12 1.77-.36 3.6-1.21 4.62-2.58.39 1.29.59 2.65.59 4.04 0 2.65-2.15 4.8-4.8 4.8z"/></svg>
-    </span>
-    <span class="cmd-strip__num">{{ hot_leads_count }}</span>
-    <span class="cmd-strip__lbl">Hot Leads</span>
-    <span class="cmd-strip__hint">Pipeline + deal value</span>
-  </a>
-  <a href="{{ leads_base }}?{{ lqs.fu_all }}"
-     class="cmd-strip__card cmd-strip__card--all{% if filters.fu == 'all' %} cmd-strip__card--on{% endif %}"
-     title="Click to see all leads with no filter">
-    <span class="cmd-strip__icon">
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-    </span>
-    <span class="cmd-strip__num">{{ all_leads_total }}</span>
-    <span class="cmd-strip__lbl">All Leads</span>
-    <span class="cmd-strip__hint">No filter active</span>
-  </a>
-
-  </div>
-
   <div class="exec-page-head__cta">
     <button type="button" class="leads-add-cta" id="leads-open-add-modal" aria-haspopup="dialog" aria-controls="add-lead-modal">
       <span class="leads-add-cta__icon" aria-hidden="true">
@@ -117,7 +61,7 @@
       <div class="lf-grp">
         <span class="lf-grp__lbl">From</span>
         <div class="leads-pill-row">
-          <a class="pill {% if not filters.date_scope %}on{% endif %}" href="{{ leads_base }}?{{ lqs.date_all }}">All time</a>
+          <a class="pill {% if filters.date_scope == 'all' %}on{% endif %}" href="{{ leads_base }}?{{ lqs.date_all }}">All time</a>
           <a class="pill {% if filters.date_scope == 'today' %}on{% endif %}" href="{{ leads_base }}?{{ lqs.date_today }}">Today</a>
           <a class="pill {% if filters.date_scope == 'yesterday' %}on{% endif %}" href="{{ leads_base }}?{{ lqs.date_yesterday }}">Yesterday</a>
           <a class="pill {% if filters.date_scope == 'this_week' %}on{% endif %}" href="{{ leads_base }}?{{ lqs.date_week }}">This week</a>
@@ -169,7 +113,6 @@
       {# Preserve strip / date / pipeline-stage state when this form submits #}
       <input type="hidden" name="stage" value="{{ filters.stage }}">
       <input type="hidden" name="high_hope" value="{{ filters.high_hope }}">
-      <input type="hidden" name="fu" value="{{ filters.fu }}">
       <input type="hidden" name="date_scope" id="leads-h-date-scope" value="{{ filters.date_scope }}">
       <input type="hidden" name="created_day" value="{{ filters.created_day }}">
       <input type="hidden" name="closed_day" value="{{ filters.closed_day }}">
@@ -330,9 +273,9 @@ dialog::backdrop { background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); }
 
 /* ── Leads page: focused Add CTA + add-lead modal ─────── */
 .exec-page-head--leads {
-  /* Desktop: intro + command strip + CTA on a single row */
+  /* Desktop: intro + CTA on a single row */
   display: grid;
-  grid-template-columns: 260px 1fr 320px;
+  grid-template-columns: 1fr auto;
   align-items: center;
   gap: 10px 14px;
 }
@@ -428,97 +371,6 @@ dialog::backdrop { background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); }
 .add-lead-submit {
   padding: 12px 28px !important; font-size: 15px !important; font-weight: 800 !important;
   box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
-}
-
-/* ── Command Strip — follow-up shortcuts ──────────────── */
-.cmd-strip {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  margin-bottom: 0px;
-}
-.cmd-strip--inline { gap: 6px; min-width: 0; }
-.cmd-strip--inline .cmd-strip__card { min-height: 52px; padding: 7px 6px 6px; }
-.cmd-strip__card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 8px 6px 6px;
-  border-radius: var(--radius);
-  border: 2px solid var(--border);
-  background: var(--surface);
-  text-decoration: none !important;
-  gap: 0px;
-  box-shadow: var(--shadow-sm);
-  cursor: pointer;
-  min-height: 56px;
-  transition: transform 0.12s, box-shadow 0.15s, border-color 0.15s, background 0.15s;
-  position: relative;
-  overflow: hidden;
-}
-.cmd-strip__card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); text-decoration: none !important; }
-.cmd-strip__icon { color: var(--text-muted); margin-bottom: 1px; }
-.cmd-strip__num  { font-size: 19px; font-weight: 900; line-height: 1; letter-spacing: -0.03em; color: var(--neutral-800); }
-.cmd-strip__lbl  { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; color: var(--neutral-700); }
-.cmd-strip__hint { font-size: 8px; font-weight: 600; color: var(--text-muted); white-space: nowrap; letter-spacing: 0.02em; }
-
-/* color variants */
-.cmd-strip__card--danger  { border-color: var(--danger-200); }
-.cmd-strip__card--danger  .cmd-strip__num  { color: var(--danger-600); }
-.cmd-strip__card--danger  .cmd-strip__icon { color: var(--danger-400); }
-.cmd-strip__card--danger:hover             { border-color: var(--danger-400); background: var(--danger-50); }
-.cmd-strip__card--danger.cmd-strip__card--on  { background: var(--danger-600); border-color: var(--danger-600); box-shadow: 0 2px 8px rgba(220,38,38,0.25); }
-.cmd-strip__card--danger.cmd-strip__card--on  .cmd-strip__num,
-.cmd-strip__card--danger.cmd-strip__card--on  .cmd-strip__lbl,
-.cmd-strip__card--danger.cmd-strip__card--on  .cmd-strip__hint,
-.cmd-strip__card--danger.cmd-strip__card--on  .cmd-strip__icon { color: #fff; }
-
-.cmd-strip__card--warning  { border-color: var(--warning-100); }
-.cmd-strip__card--warning  .cmd-strip__num  { color: var(--warning-600); }
-.cmd-strip__card--warning  .cmd-strip__icon { color: var(--warning-500); }
-.cmd-strip__card--warning:hover             { border-color: var(--warning-400); background: var(--warning-50); }
-.cmd-strip__card--warning.cmd-strip__card--on { background: var(--warning-500); border-color: var(--warning-500); box-shadow: 0 2px 8px rgba(245,158,11,0.25); }
-.cmd-strip__card--warning.cmd-strip__card--on .cmd-strip__num,
-.cmd-strip__card--warning.cmd-strip__card--on .cmd-strip__lbl,
-.cmd-strip__card--warning.cmd-strip__card--on .cmd-strip__hint,
-.cmd-strip__card--warning.cmd-strip__card--on .cmd-strip__icon { color: #fff; }
-
-.cmd-strip__card--hot  { border-color: #fde68a; }
-.cmd-strip__card--hot  .cmd-strip__num  { color: #b45309; }
-.cmd-strip__card--hot  .cmd-strip__icon { color: #d97706; }
-.cmd-strip__card--hot:hover             { border-color: #f59e0b; background: #fffbeb; }
-.cmd-strip__card--hot.cmd-strip__card--on { background: #d97706; border-color: #d97706; box-shadow: 0 2px 8px rgba(217,119,6,0.25); }
-.cmd-strip__card--hot.cmd-strip__card--on .cmd-strip__num,
-.cmd-strip__card--hot.cmd-strip__card--on .cmd-strip__lbl,
-.cmd-strip__card--hot.cmd-strip__card--on .cmd-strip__hint,
-.cmd-strip__card--hot.cmd-strip__card--on .cmd-strip__icon { color: #fff; }
-
-.cmd-strip__card--all  { border-color: var(--neutral-200); }
-.cmd-strip__card--all  .cmd-strip__num  { color: var(--neutral-700); }
-.cmd-strip__card--all  .cmd-strip__icon { color: var(--neutral-400); }
-.cmd-strip__card--all:hover             { border-color: var(--neutral-400); background: var(--neutral-50); }
-.cmd-strip__card--all.cmd-strip__card--on { background: var(--primary-600); border-color: var(--primary-600); box-shadow: 0 2px 8px rgba(79,70,229,0.15); }
-.cmd-strip__card--all.cmd-strip__card--on .cmd-strip__num,
-.cmd-strip__card--all.cmd-strip__card--on .cmd-strip__lbl,
-.cmd-strip__card--all.cmd-strip__card--on .cmd-strip__hint,
-.cmd-strip__card--all.cmd-strip__card--on .cmd-strip__icon { color: #fff; }
-
-.cmd-strip__card--due  { border-color: var(--primary-200); }
-.cmd-strip__card--due  .cmd-strip__num  { color: var(--primary-600); }
-.cmd-strip__card--due  .cmd-strip__icon { color: var(--primary-500); }
-.cmd-strip__card--due:hover             { border-color: var(--primary-400); background: var(--primary-50); }
-.cmd-strip__card--due.cmd-strip__card--on { background: var(--primary-600); border-color: var(--primary-600); box-shadow: 0 2px 8px rgba(79,70,229,0.25); }
-.cmd-strip__card--due.cmd-strip__card--on .cmd-strip__num,
-.cmd-strip__card--due.cmd-strip__card--on .cmd-strip__lbl,
-.cmd-strip__card--due.cmd-strip__card--on .cmd-strip__hint,
-.cmd-strip__card--due.cmd-strip__card--on .cmd-strip__icon { color: #fff; }
-
-@media (max-width: 560px) {
-  .cmd-strip { grid-template-columns: repeat(2, 1fr); gap: 6px; margin-bottom: 12px; }
-  .cmd-strip__card { padding: 9px 6px 7px; min-height: 62px; }
-  .cmd-strip__num  { font-size: 20px; }
-  .cmd-strip__hint { display: none; }
 }
 
 /* ── Sales pipeline tabs — 5 primary stages + All ─────── */
