@@ -1,5 +1,5 @@
 {% load crm_extras %}
-<article id="lead-exec-{{ lead.pk }}" class="exec-board {% if lead.status == 'closed' or lead.status == 'lost' or lead.status == 'lost_after_proposal' %}exec-board--closed{% elif not lead.next_followup or lead.next_followup < fu_start %}exec-board--prio-overdue{% elif lead.next_followup < fu_end %}exec-board--prio-today{% elif lead.status == 'proposal_sent' or lead.status == 'negotiation_after_proposal' or lead.status == 'closing_ongoing' or lead.status == 'failed_retry' %}{% if lead.deal_value %}exec-board--prio-hot{% else %}exec-board--prio-normal{% endif %}{% else %}exec-board--prio-normal{% endif %}{% if lead.task_open_count %} exec-board--has-pending-tasks{% endif %}{% if lead.high_hope %} exec-board--high-hope{% endif %}">
+<article id="lead-exec-{{ lead.pk }}" {% if oob %}hx-swap-oob="outerHTML"{% endif %} class="exec-board {% if lead.status == 'closed' or lead.status == 'lost' or lead.status == 'lost_after_proposal' %}exec-board--closed{% elif not lead.next_followup or lead.next_followup < fu_start %}exec-board--prio-overdue{% elif lead.next_followup < fu_end %}exec-board--prio-today{% elif lead.status == 'proposal_sent' or lead.status == 'negotiation_after_proposal' or lead.status == 'closing_ongoing' or lead.status == 'failed_retry' %}{% if lead.deal_value %}exec-board--prio-hot{% else %}exec-board--prio-normal{% endif %}{% else %}exec-board--prio-normal{% endif %}{% if lead.task_open_count %} exec-board--has-pending-tasks{% endif %}{% if lead.high_hope %} exec-board--high-hope{% endif %}">
   <div class="exec-board__inner">
     <div class="exec-board__top">
 
@@ -66,6 +66,7 @@
           <span class="exec-board__fu-main exec-board__fu-main--empty">Not set</span>
           <span class="exec-board__fu-sub">Use Schedule Followup →</span>
           {% endif %}
+          <span class="exec-board__fu-age" title="Time since this lead was created">Lead: {{ lead.created_at|timesince }} old</span>
         </div>
       </div>
 

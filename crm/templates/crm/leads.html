@@ -53,7 +53,7 @@
     <span class="cmd-strip__hint">Pipeline + deal value</span>
   </a>
   <a href="{{ leads_base }}?{{ lqs.fu_all }}"
-     class="cmd-strip__card cmd-strip__card--all{% if not filters.fu %} cmd-strip__card--on{% endif %}"
+     class="cmd-strip__card cmd-strip__card--all{% if filters.fu == 'all' %} cmd-strip__card--on{% endif %}"
      title="Click to see all leads with no filter">
     <span class="cmd-strip__icon">
       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
@@ -794,6 +794,7 @@ dialog::backdrop { background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); }
 .lead-mcard__fu-chip--od { background: var(--danger-50); border-color: var(--danger-100); color: var(--danger-700); }
 .lead-mcard__fu-chip--td { background: var(--warning-50); border-color: var(--warning-100); color: #92400e; }
 .lead-mcard__fu-chip--ok { background: var(--neutral-50); color: var(--neutral-700); }
+.lead-mcard__age { font-size: 10px; color: var(--text-muted); margin-bottom: 8px; }
 
 .lead-mcard__acts {
   display: grid;
@@ -932,6 +933,7 @@ dialog::backdrop { background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); }
 .exec-board__fu-date { font-size: 11px; font-weight: 600; opacity: .75; }
 .exec-board__fu-sub  { font-size: 10px; font-weight: 600; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .exec-board__fu--overdue .exec-board__fu-sub { color: var(--danger-500); font-weight: 700; }
+.exec-board__fu-age { font-size: 10px; color: var(--text-light, var(--text-muted)); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* Col 3: Action Toolbar
    308px total | padding 8px each side = 292px content

@@ -1,5 +1,5 @@
 {% load crm_extras %}
-<article id="lead-mcard-{{ lead.pk }}" class="lead-mcard {% if lead.status == 'closed' or lead.status == 'lost' or lead.status == 'lost_after_proposal' %}lead-mcard--closed{% elif not lead.next_followup or lead.next_followup < fu_start %}lead-mcard--od{% elif lead.next_followup < fu_end %}lead-mcard--td{% elif lead.status == 'proposal_sent' or lead.status == 'negotiation_after_proposal' or lead.status == 'closing_ongoing' or lead.status == 'failed_retry' %}{% if lead.deal_value %}lead-mcard--hot{% else %}lead-mcard--norm{% endif %}{% else %}lead-mcard--norm{% endif %}{% if lead.task_open_count %} lead-mcard--pending-tasks{% endif %}{% if lead.high_hope %} lead-mcard--high-hope{% endif %}">
+<article id="lead-mcard-{{ lead.pk }}" {% if oob %}hx-swap-oob="outerHTML"{% endif %} class="lead-mcard {% if lead.status == 'closed' or lead.status == 'lost' or lead.status == 'lost_after_proposal' %}lead-mcard--closed{% elif not lead.next_followup or lead.next_followup < fu_start %}lead-mcard--od{% elif lead.next_followup < fu_end %}lead-mcard--td{% elif lead.status == 'proposal_sent' or lead.status == 'negotiation_after_proposal' or lead.status == 'closing_ongoing' or lead.status == 'failed_retry' %}{% if lead.deal_value %}lead-mcard--hot{% else %}lead-mcard--norm{% endif %}{% else %}lead-mcard--norm{% endif %}{% if lead.task_open_count %} lead-mcard--pending-tasks{% endif %}{% if lead.high_hope %} lead-mcard--high-hope{% endif %}">
   <div class="lead-mcard__top">
     <span class="lead-mcard__name">{{ lead.name }}</span>
     <div class="lead-mcard__tags">
@@ -23,6 +23,7 @@
       {% if lead.next_followup %}{{ lead.next_followup|date:"M j · g:i A" }}{% else %}Not set{% endif %}
     </span>
   </div>
+  <div class="lead-mcard__age" title="Time since this lead was created">Lead: {{ lead.created_at|timesince }} old</div>
   <nav class="lead-mcard__acts" aria-label="Actions for {{ lead.name }}">
     {% if lead.phone %}
     <button type="button" class="lead-mcard__act lead-mcard__act--call exec-call-btn" data-tel="tel:{{ lead.phone }}" data-log-url="{% url 'crm:lead_log_call' lead.pk %}" aria-label="Call" title="Call">

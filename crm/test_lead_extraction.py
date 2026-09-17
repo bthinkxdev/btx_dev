@@ -755,9 +755,11 @@ class LeadExtractionViewsTests(TransactionTestCase):
         self.assertEqual(surviving_leads.count(), run.qualified_count)  # already-created leads preserved
 
         # The assigned rep sees the extracted lead on the existing /crm/leads/ page — no manual import.
+        # Extracted leads have no next_followup yet, so they don't fall in the page's
+        # default "Today" view — use ?fu=all, same as browsing the full pipeline.
         if surviving_leads.exists():
             lead = surviving_leads.first()
             self.client.force_login(lead.employee)
-            r = self.client.get('/crm/leads/')
+            r = self.client.get('/crm/leads/?fu=all')
             self.assertEqual(r.status_code, 200)
             self.assertIn(lead.name.encode(), r.content)

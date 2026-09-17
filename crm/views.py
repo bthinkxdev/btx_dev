@@ -485,7 +485,10 @@ def _patch_lead_from_post(lead, user, request):
         if pid == '':
             lead.package = None
         else:
-            pkg = Package.objects.filter(pk=pid, employee_id=lead.employee_id).first()
+            # Packages are a shared, platform-wide catalog (see packages.html) — not
+            # scoped to whichever manager created them — so any package can be applied
+            # to any lead regardless of who owns it.
+            pkg = Package.objects.filter(pk=pid).first()
             if pkg:
                 lead.package = pkg
         if old_pkg_id != lead.package_id:
@@ -636,7 +639,12 @@ def _leads_list_qs_and_meta(request, user):
     if high_hope_filter == '1':
         qs = qs.filter(high_hope=True)
 
-    fu_filter = request.GET.get('fu', '')
+    # Default landing (no ?fu= at all) is "Today" — an executive opening the leads
+    # page should see what needs action today, not the whole pipeline. Explicit
+    # ?fu=all is how "All Leads" opts back out of that default.
+    fu_filter = request.GET.get('fu', None)
+    if fu_filter is None:
+        fu_filter = 'today'
     if fu_filter == 'overdue':
         qs = qs.filter(
             active_q & (Q(next_followup__lt=start) | Q(next_followup__isnull=True))
@@ -649,6 +657,13 @@ def _leads_list_qs_and_meta(request, user):
         )
     elif fu_filter == 'hot':
         qs = qs.filter(active_q).exclude(status=STATUS_NEW).filter(deal_value__gt=0)
+    # 'all' (or anything else) — no follow-up-date filter, show everyone in scope.
+
+    # Follow-up queues are call/action lists — earliest-due first, not newest-first.
+    if fu_filter in ('today', 'overdue'):
+        followup_order = ('next_followup', *LEAD_DEFAULT_ORDER)
+    else:
+        followup_order = None
 
     pkg = request.GET.get('package')
     package_filter = int(pkg) if pkg and pkg.isdigit() else None
@@ -706,7 +721,7 @@ def _leads_list_qs_and_meta(request, user):
             ds, de = bounds
             qs = qs.filter(created_at__gte=ds, created_at__lt=de)
 
-    qs = qs.order_by(*LEAD_DEFAULT_ORDER)
+    qs = qs.order_by(*(followup_order or LEAD_DEFAULT_ORDER))
 
     filters_ctx = {
         'q': q,
@@ -728,7 +743,7 @@ def _leads_list_qs_and_meta(request, user):
         q
         or stage
         or high_hope_filter
-        or fu_filter
+        or (fu_filter and fu_filter != 'today')  # 'today' is the default, not a user-applied filter
         or package_filter
         or created_day
         or closed_day
@@ -794,7 +809,7 @@ def leads_list(request):
         'date_yesterday': _lq(date_scope='yesterday', date_start='', date_end=''),
         'date_week': _lq(date_scope='this_week', date_start='', date_end=''),
         'date_month': _lq(date_scope='this_month', date_start='', date_end=''),
-        'fu_all': _lq(fu=''),
+        'fu_all': _lq(fu='all'),
         'fu_overdue': _lq(fu='overdue'),
         'fu_today': _lq(fu='today'),
         'fu_hot': _lq(fu='hot'),
@@ -1056,11 +1071,16 @@ def lead_patch(request, pk):
     lead = _lead_for_exec(user, pk)
     ctx = _exec_board_ctx(lead, user)
     if tpl == 'sticky':
-        resp = render(request, 'crm/partials/lead_detail_sticky.html', ctx)
+        body = render_to_string('crm/partials/lead_detail_sticky.html', ctx, request)
     elif tpl == 'mobile_card':
-        resp = render(request, 'crm/partials/lead_mobile_card.html', ctx)
+        body = render_to_string('crm/partials/lead_mobile_card.html', ctx, request)
     else:
-        resp = render(request, 'crm/partials/lead_exec_board.html', ctx)
+        # exec_row (desktop) and the mobile card are two DOM copies of the same
+        # lead sitting on the leads-list page at once — refresh both from one
+        # response so the mobile view never shows a stale package/status/etc.
+        body = render_to_string('crm/partials/lead_exec_board.html', ctx, request)
+        body += render_to_string('crm/partials/lead_mobile_card.html', {**ctx, 'oob': True}, request)
+    resp = HttpResponse(body)
     if request.headers.get('HX-Request'):
         _hx_toast(resp, 'Updated')
     return resp
@@ -1083,12 +1103,18 @@ def lead_high_hope_toggle(request, pk):
         tpl = request.POST.get('_tpl', 'exec_row')
         lead_ann = _lead_for_exec(user, pk)
         ctx = _exec_board_ctx(lead_ann, user)
+        # exec_row (desktop) and mobile_card are both on the leads-list page at
+        # once and the high-hope star is toggleable from either — keep both in
+        # sync from a single response, whichever one was clicked.
         if tpl == 'sticky':
-            resp = render(request, 'crm/partials/lead_detail_sticky.html', ctx)
+            body = render_to_string('crm/partials/lead_detail_sticky.html', ctx, request)
         elif tpl == 'mobile_card':
-            resp = render(request, 'crm/partials/lead_mobile_card.html', ctx)
+            body = render_to_string('crm/partials/lead_mobile_card.html', ctx, request)
+            body += render_to_string('crm/partials/lead_exec_board.html', {**ctx, 'oob': True}, request)
         else:
-            resp = render(request, 'crm/partials/lead_exec_board.html', ctx)
+            body = render_to_string('crm/partials/lead_exec_board.html', ctx, request)
+            body += render_to_string('crm/partials/lead_mobile_card.html', {**ctx, 'oob': True}, request)
+        resp = HttpResponse(body)
         _hx_toast(resp, 'Updated')
         return resp
 
