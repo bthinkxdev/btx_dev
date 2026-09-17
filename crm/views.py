@@ -425,6 +425,18 @@ LEAD_DEFAULT_ORDER = ('-created_at', '-id')
 LEADS_PER_PAGE = 20
 
 
+def _flag_lead_rows(leads_page, start, end):
+    """
+    Tag each lead with why it belongs in today's worklist, for the row badges:
+    is_new_today (created today) and is_due_now (overdue/today/unscheduled follow-up).
+    Cheap Python-side flags on an already-paginated page — not a DB annotation.
+    """
+    for lead in leads_page:
+        lead.is_new_today = start <= lead.created_at < end
+        lead.is_due_now = not lead.next_followup or lead.next_followup < end
+    return leads_page
+
+
 def _lead_for_exec(user, pk):
     """Single lead with activity + task counts for execution board."""
     start, end, local_date = _local_today_bounds()
@@ -454,6 +466,7 @@ def _lead_for_exec(user, pk):
 
 def _exec_board_ctx(lead, user, **extra):
     start, end, _ = _local_today_bounds()
+    _flag_lead_rows([lead], start, end)
     ctx = {
         'lead': lead,
         'status_choices': Lead.PRIMARY_STATUS_CHOICES,
@@ -658,8 +671,11 @@ def _leads_list_qs_and_meta(request, user):
             next_followup__lt=end,
         )
     elif fu_filter == 'due':
+        # A rep's daily worklist: leads that came in today (whatever their follow-up
+        # date is) PLUS anything overdue/unscheduled/due-today — merged, not either/or.
         qs = qs.filter(
-            active_q & (Q(next_followup__lt=end) | Q(next_followup__isnull=True))
+            Q(created_at__gte=start, created_at__lt=end)
+            | (active_q & (Q(next_followup__lt=end) | Q(next_followup__isnull=True)))
         )
     elif fu_filter == 'hot':
         qs = qs.filter(active_q).exclude(status=STATUS_NEW).filter(deal_value__gt=0)
@@ -802,7 +818,7 @@ def leads_list(request):
         last = paginator.num_pages or 1
         page_obj = paginator.page(last)
 
-    leads_page = list(page_obj.object_list)
+    leads_page = _flag_lead_rows(list(page_obj.object_list), start, end)
 
     form = LeadForm(employee=user)
     import_form = ExcelImportForm()
@@ -942,7 +958,7 @@ def leads_more_json(request):
             }
         )
 
-    leads_page = list(page_obj.object_list)
+    leads_page = _flag_lead_rows(list(page_obj.object_list), start, end)
     packages = Package.objects.all()
     base_ctx = {
         'fu_start': start,

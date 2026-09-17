@@ -41,7 +41,14 @@ class LeadsListingFollowupDefaultTests(TestCase):
         self.future = Lead.objects.create(
             employee=self.rep, name='FutureLead', phone='4', next_followup=end + timedelta(days=5),
         )
+        # Backdate so this lead is NOT "new today" — isolates the follow-up-date
+        # exclusion from the separate "created today" inclusion rule.
+        Lead.objects.filter(pk=self.future.pk).update(created_at=start - timedelta(days=10))
         self.no_followup = Lead.objects.create(employee=self.rep, name='NoFollowupLead', phone='5')
+
+        self.new_lead_future_fu = Lead.objects.create(
+            employee=self.rep, name='NewLeadFutureFu', phone='6', next_followup=end + timedelta(days=5),
+        )
 
     def test_default_landing_shows_due_now_not_just_today(self):
         r = self.client.get('/crm/leads/')
@@ -53,8 +60,23 @@ class LeadsListingFollowupDefaultTests(TestCase):
         self.assertIn('TodayLate', content)
         self.assertIn('OverdueLead', content)
         self.assertIn('NoFollowupLead', content)
-        # Only genuinely future-scheduled leads are excluded from the default view.
+        # A lead created today shows up regardless of its own follow-up date.
+        self.assertIn('NewLeadFutureFu', content)
+        # An older lead whose follow-up is genuinely in the future is excluded.
         self.assertNotIn('FutureLead', content)
+
+    def test_new_lead_and_followup_labels_render_correctly(self):
+        r = self.client.get('/crm/leads/')
+        content = r.content.decode()
+
+        new_lead_pos = content.index('NewLeadFutureFu')
+        # The "New Lead" label appears within this lead's card, not tied to a follow-up.
+        new_lead_block = content[new_lead_pos:new_lead_pos + 3000]
+        self.assertIn('New Lead', new_lead_block)
+
+        overdue_pos = content.index('OverdueLead')
+        overdue_block = content[overdue_pos:overdue_pos + 3000]
+        self.assertIn('Follow-up</span>', overdue_block)
 
     def test_default_landing_orders_earliest_and_unscheduled_first(self):
         r = self.client.get('/crm/leads/')
@@ -85,12 +107,13 @@ class LeadsListingFollowupDefaultTests(TestCase):
         self.assertNotIn('OverdueLead', content)
         self.assertNotIn('NoFollowupLead', content)
         self.assertNotIn('FutureLead', content)
+        self.assertNotIn('NewLeadFutureFu', content)  # created today, but its own follow-up isn't due today
         self.assertIn('cmd-strip__card--warning cmd-strip__card--on', content)
 
     def test_explicit_fu_all_shows_everyone(self):
         r = self.client.get('/crm/leads/?fu=all')
         content = r.content.decode()
-        for name in ('TodayEarly', 'TodayLate', 'OverdueLead', 'FutureLead', 'NoFollowupLead'):
+        for name in ('TodayEarly', 'TodayLate', 'OverdueLead', 'FutureLead', 'NoFollowupLead', 'NewLeadFutureFu'):
             self.assertIn(name, content)
         self.assertIn('cmd-strip__card--all cmd-strip__card--on', content)
         self.assertIn('<span class="leads-filter-mob-btn__dot"', content)  # fu=all counts as an explicit, active filter
@@ -102,6 +125,7 @@ class LeadsListingFollowupDefaultTests(TestCase):
         self.assertIn('NoFollowupLead', content)  # no follow-up set counts as overdue
         self.assertNotIn('TodayEarly', content)
         self.assertNotIn('FutureLead', content)
+        self.assertNotIn('NewLeadFutureFu', content)
         self.assertIn('cmd-strip__card--danger cmd-strip__card--on', content)
 
     def test_clear_filters_link_points_at_bare_leads_url_which_defaults_to_due_now(self):

@@ -678,6 +678,22 @@ dialog::backdrop { background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); }
   white-space: nowrap;
 }
 
+/* ── Lead row flags: why this lead is in today's list ────── */
+.lead-flag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.lead-flag--new { background: var(--primary-50); color: var(--primary-600); border: 1px solid var(--primary-200); }
+.lead-flag--fu  { background: var(--danger-50); color: var(--danger-600); border: 1px solid var(--danger-200); }
+
 /* ── Leads infinite scroll ─────────────────────────────── */
 .leads-scroll-anchor { height: 1px; pointer-events: none; }
 .leads-infinite-sentinel {
