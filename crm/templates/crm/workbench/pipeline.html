@@ -4,29 +4,33 @@
 
 {% block content %}
 <div class="wb-page">
-  <div class="pipeline-board">
+  {% if manager_mode_scope %}
+  <div class="wb-exec-picker">
+    <span class="wb-exec-picker__label">Viewing:</span>
+    <a class="pill {% if not selected_employee %}on{% endif %}" href="?">My team (all)</a>
+    {% for e in scope_employees %}
+    <a class="pill {% if selected_employee.id == e.id %}on{% endif %}" href="?employee={{ e.id }}">{{ e.get_full_name|default:e.username }}</a>
+    {% endfor %}
+  </div>
+  {% endif %}
+  <div class="pipeline-board" id="pipeline-board">
     {% for col in columns %}
-    <div class="pipeline-col">
+    <div class="pipeline-col" data-col-value="{{ col.value }}">
       <div class="pipeline-col__head">
         <span class="pipeline-col__title">{{ col.label }}</span>
-        <span class="pipeline-col__count">{{ col.count }}</span>
+        <span class="pipeline-col__count" id="pipeline-col-count-{{ col.value }}">{{ col.count }}</span>
       </div>
-      {% if col.value_sum %}
-      <div class="pipeline-col__value">Rs. {{ col.value_sum|floatformat:0 }}</div>
-      {% endif %}
-      <div class="pipeline-col__body">
+      <div class="pipeline-col__value" id="pipeline-col-value-{{ col.value }}" {% if not col.value_sum %}hidden{% endif %}>Rs. {{ col.value_sum|floatformat:0 }}</div>
+      <div class="pipeline-col__body" id="pipeline-col-body-{{ col.value }}" data-col-value="{{ col.value }}">
         {% for lead in col.leads %}
-        <div class="pipeline-card">
+        <div class="pipeline-card" id="pipeline-card-{{ lead.pk }}" draggable="true"
+             data-lead-id="{{ lead.pk }}" data-deal-value="{{ lead.deal_value|stringformat:'d' }}">
           <a href="{% url 'crm:lead_detail' lead.pk %}" class="pipeline-card__name">{{ lead.name }}</a>
           <div class="pipeline-card__meta">
             {% if lead.package %}{{ lead.package.name }} · {% endif %}Rs. {{ lead.deal_value|floatformat:0 }}
           </div>
           <div class="pipeline-card__owner">{{ lead.employee.get_full_name|default:lead.employee.username }}</div>
-          <form class="pipeline-card__move"
-                hx-post="{% url 'crm:lead_status_detail' lead.pk %}"
-                hx-target="#pipeline-move-sink"
-                hx-swap="innerHTML"
-                hx-trigger="change">
+          <form class="pipeline-card__move" data-status-url="{% url 'crm:lead_status_detail' lead.pk %}">
             {% csrf_token %}
             <select name="status" class="pipeline-card__select" data-pipeline-move>
               {% for c2 in columns %}
@@ -35,27 +39,134 @@
             </select>
           </form>
         </div>
-        {% empty %}
-        <div class="pipeline-col__empty">Empty</div>
         {% endfor %}
       </div>
+      <div class="pipeline-col__empty" id="pipeline-col-empty-{{ col.value }}" {% if col.leads %}hidden{% endif %}>Empty</div>
     </div>
     {% endfor %}
   </div>
 </div>
 
-<div id="pipeline-move-sink" hidden></div>
-
 <script>
 (function () {
-  document.body.addEventListener('htmx:afterRequest', function (evt) {
-    var el = evt.detail && evt.detail.elt;
-    if (el && el.matches && el.matches('[data-pipeline-move]')) {
-      window.location.reload();
+  var board = document.getElementById('pipeline-board');
+  if (!board) return;
+
+  function fmtInr(n) {
+    return 'Rs. ' + Math.round(n).toLocaleString('en-IN');
+  }
+
+  function recalcColumn(colValue) {
+    var body = document.getElementById('pipeline-col-body-' + colValue);
+    var count = document.getElementById('pipeline-col-count-' + colValue);
+    var valueEl = document.getElementById('pipeline-col-value-' + colValue);
+    var emptyEl = document.getElementById('pipeline-col-empty-' + colValue);
+    if (!body) return;
+    var cards = body.querySelectorAll('.pipeline-card');
+    var sum = 0;
+    cards.forEach(function (c) { sum += parseFloat(c.getAttribute('data-deal-value')) || 0; });
+    if (count) count.textContent = cards.length;
+    if (valueEl) {
+      if (sum > 0) { valueEl.hidden = false; valueEl.textContent = fmtInr(sum); }
+      else { valueEl.hidden = true; }
     }
+    if (emptyEl) emptyEl.hidden = cards.length > 0;
+  }
+
+  function persistStage(card, newStage, onFail) {
+    var form = card.querySelector('.pipeline-card__move');
+    var url = form.getAttribute('data-status-url');
+    var token = form.querySelector('[name=csrfmiddlewaretoken]').value;
+    var body = new URLSearchParams();
+    body.set('status', newStage);
+    body.set('csrfmiddlewaretoken', token);
+    fetch(url, {
+      method: 'POST',
+      headers: { 'X-Requested-With': 'XMLHttpRequest', 'HX-Request': 'true' },
+      body: body,
+    }).then(function (r) {
+      if (!r.ok) throw new Error('save failed');
+    }).catch(function () {
+      if (onFail) onFail();
+    });
+  }
+
+  function moveCard(card, fromStage, toStage, persist) {
+    if (fromStage === toStage) return;
+    var targetBody = document.getElementById('pipeline-col-body-' + toStage);
+    if (!targetBody) return;
+    targetBody.appendChild(card);
+    var select = card.querySelector('[data-pipeline-move]');
+    if (select) select.value = toStage;
+    recalcColumn(fromStage);
+    recalcColumn(toStage);
+    if (persist) {
+      persistStage(card, toStage, function () {
+        // revert on failure
+        var originBody = document.getElementById('pipeline-col-body-' + fromStage);
+        if (originBody) {
+          originBody.appendChild(card);
+          if (select) select.value = fromStage;
+          recalcColumn(fromStage);
+          recalcColumn(toStage);
+        }
+        if (window.crmToast) window.crmToast('Could not save — reverted');
+      });
+    }
+  }
+
+  // Drag and drop
+  var dragCard = null;
+  board.addEventListener('dragstart', function (e) {
+    var card = e.target.closest('.pipeline-card');
+    if (!card) return;
+    dragCard = card;
+    card.classList.add('is-dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', card.id);
+  });
+  board.addEventListener('dragend', function (e) {
+    var card = e.target.closest('.pipeline-card');
+    if (card) card.classList.remove('is-dragging');
+    board.querySelectorAll('.pipeline-col__body.is-dragover').forEach(function (b) {
+      b.classList.remove('is-dragover');
+    });
+    dragCard = null;
+  });
+  board.querySelectorAll('.pipeline-col__body').forEach(function (bodyEl) {
+    bodyEl.addEventListener('dragover', function (e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      bodyEl.classList.add('is-dragover');
+    });
+    bodyEl.addEventListener('dragleave', function () {
+      bodyEl.classList.remove('is-dragover');
+    });
+    bodyEl.addEventListener('drop', function (e) {
+      e.preventDefault();
+      bodyEl.classList.remove('is-dragover');
+      if (!dragCard) return;
+      var fromCol = dragCard.closest('.pipeline-col__body');
+      var fromStage = fromCol ? fromCol.getAttribute('data-col-value') : null;
+      var toStage = bodyEl.getAttribute('data-col-value');
+      moveCard(dragCard, fromStage, toStage, true);
+    });
+  });
+
+  // Dropdown fallback (keyboard/mobile) — same move, no reload
+  board.addEventListener('change', function (e) {
+    var select = e.target.closest('[data-pipeline-move]');
+    if (!select) return;
+    var card = select.closest('.pipeline-card');
+    var fromCol = card.closest('.pipeline-col__body');
+    var fromStage = fromCol ? fromCol.getAttribute('data-col-value') : null;
+    var toStage = select.value;
+    moveCard(card, fromStage, toStage, true);
   });
 })();
 </script>
+
+{% include "crm/workbench/_workbench_styles.html" %}
 
 <style>
   .pipeline-board { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 12px; }
@@ -63,9 +174,11 @@
   .pipeline-col__head { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--border); font-weight: 700; font-size: 13px; }
   .pipeline-col__count { background: var(--neutral-200); border-radius: 999px; padding: 1px 8px; font-size: 11px; }
   .pipeline-col__value { font-size: 11px; color: var(--text-muted); padding: 0 12px 8px; }
-  .pipeline-col__body { padding: 8px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+  .pipeline-col__body { padding: 8px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 60px; transition: background-color 0.15s ease; }
+  .pipeline-col__body.is-dragover { background: var(--primary-50); outline: 2px dashed var(--primary-300); outline-offset: -4px; }
   .pipeline-col__empty { text-align: center; color: var(--text-muted); font-size: 12px; padding: 16px 0; }
-  .pipeline-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 10px; box-shadow: var(--shadow-sm); }
+  .pipeline-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 10px; box-shadow: var(--shadow-sm); cursor: grab; }
+  .pipeline-card.is-dragging { opacity: 0.4; }
   .pipeline-card__name { display: block; font-weight: 700; font-size: 13px; text-decoration: none; color: var(--neutral-900); }
   .pipeline-card__meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
   .pipeline-card__owner { font-size: 10px; color: var(--text-light); margin-top: 2px; }

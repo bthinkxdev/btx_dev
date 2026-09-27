@@ -5,36 +5,46 @@
 
 {% block content %}
 <div class="wb-page">
+  {% if manager_mode_scope %}
+  <div class="wb-exec-picker">
+    <span class="wb-exec-picker__label">Viewing:</span>
+    <a class="pill {% if not selected_employee %}on{% endif %}" href="?tab={{ tab }}">My team (all)</a>
+    {% for e in scope_employees %}
+    <a class="pill {% if selected_employee.id == e.id %}on{% endif %}" href="?tab={{ tab }}&employee={{ e.id }}">{{ e.get_full_name|default:e.username }}</a>
+    {% endfor %}
+  </div>
+  {% endif %}
+
   <div class="wb-stats">
-    <a class="wb-stat wb-stat--danger {% if tab == 'overdue' %}is-active{% endif %}" href="?tab=overdue">
+    <a class="wb-stat wb-stat--danger {% if tab == 'overdue' %}is-active{% endif %}" href="?tab=overdue{{ employee_qs_suffix }}">
       <span class="wb-stat__value">{{ counts.overdue }}</span>
       <span class="wb-stat__label">Overdue</span>
     </a>
-    <a class="wb-stat wb-stat--info {% if tab == 'today' %}is-active{% endif %}" href="?tab=today">
+    <a class="wb-stat wb-stat--info {% if tab == 'today' %}is-active{% endif %}" href="?tab=today{{ employee_qs_suffix }}">
       <span class="wb-stat__value">{{ counts.today }}</span>
       <span class="wb-stat__label">Today</span>
     </a>
-    <a class="wb-stat wb-stat--success {% if tab == 'new' %}is-active{% endif %}" href="?tab=new">
+    <a class="wb-stat wb-stat--success {% if tab == 'new' %}is-active{% endif %}" href="?tab=new{{ employee_qs_suffix }}">
       <span class="wb-stat__value">{{ counts.new }}</span>
       <span class="wb-stat__label">New Leads</span>
     </a>
-    <a class="wb-stat wb-stat--muted {% if tab == 'upcoming' %}is-active{% endif %}" href="?tab=upcoming">
+    <a class="wb-stat wb-stat--muted {% if tab == 'upcoming' %}is-active{% endif %}" href="?tab=upcoming{{ employee_qs_suffix }}">
       <span class="wb-stat__value">{{ counts.upcoming }}</span>
       <span class="wb-stat__label">Upcoming</span>
     </a>
-    <a class="wb-stat wb-stat--warn {% if tab == 'no_action' %}is-active{% endif %}" href="?tab=no_action">
+    <a class="wb-stat wb-stat--warn {% if tab == 'no_action' %}is-active{% endif %}" href="?tab=no_action{{ employee_qs_suffix }}">
       <span class="wb-stat__value">{{ counts.no_action }}</span>
       <span class="wb-stat__label">No Next Action</span>
     </a>
   </div>
 
   <div class="wb-tabs">
-    <a class="wb-tab {% if tab == 'overdue' %}is-active{% endif %}" href="?tab=overdue">Overdue ({{ counts.overdue }})</a>
-    <a class="wb-tab {% if tab == 'today' %}is-active{% endif %}" href="?tab=today">Today ({{ counts.today }})</a>
-    <a class="wb-tab {% if tab == 'new' %}is-active{% endif %}" href="?tab=new">New Leads ({{ counts.new }})</a>
-    <a class="wb-tab {% if tab == 'upcoming' %}is-active{% endif %}" href="?tab=upcoming">Upcoming ({{ counts.upcoming }})</a>
-    <a class="wb-tab {% if tab == 'no_action' %}is-active{% endif %}" href="?tab=no_action">No Next Action ({{ counts.no_action }})</a>
-    <a class="wb-tab {% if tab == 'all' %}is-active{% endif %}" href="?tab=all">All ({{ total_active }})</a>
+    <a class="wb-tab {% if tab == 'overdue' %}is-active{% endif %}" href="?tab=overdue{{ employee_qs_suffix }}">Overdue ({{ counts.overdue }})</a>
+    <a class="wb-tab {% if tab == 'today' %}is-active{% endif %}" href="?tab=today{{ employee_qs_suffix }}">Today ({{ counts.today }})</a>
+    <a class="wb-tab {% if tab == 'new' %}is-active{% endif %}" href="?tab=new{{ employee_qs_suffix }}">New Leads ({{ counts.new }})</a>
+    <a class="wb-tab {% if tab == 'upcoming' %}is-active{% endif %}" href="?tab=upcoming{{ employee_qs_suffix }}">Upcoming ({{ counts.upcoming }})</a>
+    <a class="wb-tab {% if tab == 'no_action' %}is-active{% endif %}" href="?tab=no_action{{ employee_qs_suffix }}">No Next Action ({{ counts.no_action }})</a>
+    <a class="wb-tab {% if tab == 'all' %}is-active{% endif %}" href="?tab=all{{ employee_qs_suffix }}">All ({{ total_active }})</a>
   </div>
 
   <div class="wb-list" id="wb-list">

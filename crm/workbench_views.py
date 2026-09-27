@@ -18,31 +18,25 @@ from .models import Activity, Cadence, Lead
 from .rbac import can_view_all_sales_data
 from .services.pipeline import PipelineError, complete_activity
 from .views import (
-    _lead_scope_qs,
     _local_today_bounds,
+    _sales_scope_context,
     _sales_scope_user_ids,
     _sales_team_users_qs,
     sales_pipeline_required,
 )
 
 
-def _workbench_scope_ids(user):
-    if can_view_all_sales_data(user):
-        return _sales_scope_user_ids(user)
-    return {user.id}
-
-
-def _active_leads_qs(user):
+def _active_leads_qs(scope_ids):
     return (
-        _lead_scope_qs(user)
+        Lead.objects.filter(employee_id__in=scope_ids)
         .filter(lifecycle_state=Lead.LifecycleState.ACTIVE)
         .select_related('next_activity', 'package', 'employee')
     )
 
 
-def _bucket_counts(user):
+def _bucket_counts(scope_ids):
     start, end, _ = _local_today_bounds()
-    qs = _active_leads_qs(user)
+    qs = _active_leads_qs(scope_ids)
     return {
         'overdue': qs.filter(next_activity__scheduled_at__lt=start).count(),
         'today': qs.filter(next_activity__scheduled_at__gte=start, next_activity__scheduled_at__lt=end).count(),
@@ -52,9 +46,9 @@ def _bucket_counts(user):
     }
 
 
-def _tab_qs(user, tab):
+def _tab_qs(scope_ids, tab):
     start, end, _ = _local_today_bounds()
-    qs = _active_leads_qs(user)
+    qs = _active_leads_qs(scope_ids)
     if tab == 'overdue':
         return qs.filter(next_activity__scheduled_at__lt=start).order_by('next_activity__scheduled_at')
     if tab == 'today':
@@ -89,21 +83,26 @@ def _tab_qs(user, tab):
 @sales_pipeline_required
 def workbench(request):
     user = request.user
+    scope = _sales_scope_context(request, user)
     tab = (request.GET.get('tab') or 'overdue').strip()
     if tab not in ('overdue', 'today', 'new', 'upcoming', 'no_action', 'all'):
         tab = 'overdue'
-    leads = list(_tab_qs(user, tab)[:200])
-    counts = _bucket_counts(user)
+    leads = list(_tab_qs(scope['scope_ids'], tab)[:200])
+    counts = _bucket_counts(scope['scope_ids'])
     return render(
         request,
         'crm/workbench/workbench.html',
         {
             'leads': leads,
             'counts': counts,
-            'total_active': _active_leads_qs(user).count(),
+            'total_active': _active_leads_qs(scope['scope_ids']).count(),
             'tab': tab,
             'outcome_choices': Activity.Outcome.choices,
             'type_choices': Activity.Type.choices,
+            'manager_mode_scope': scope['manager_mode'],
+            'scope_employees': scope['scope_employees'],
+            'selected_employee': scope['selected_employee'],
+            'employee_qs_suffix': f"&employee={scope['selected_employee'].id}" if scope['selected_employee'] else '',
         },
     )
 
@@ -113,7 +112,8 @@ def workbench(request):
 def workbench_lead_panel(request, pk):
     """The Work modal body for one lead's current activity."""
     user = request.user
-    lead = get_object_or_404(_active_leads_qs(user), pk=pk)
+    scope = _sales_scope_context(request, user)
+    lead = get_object_or_404(_active_leads_qs(scope['scope_ids']), pk=pk)
     return render(
         request,
         'crm/workbench/partials/work_modal.html',
@@ -131,7 +131,8 @@ def workbench_lead_panel(request, pk):
 @require_POST
 def workbench_complete_activity(request, pk):
     user = request.user
-    lead = get_object_or_404(_active_leads_qs(user), pk=pk)
+    scope = _sales_scope_context(request, user)
+    lead = get_object_or_404(_active_leads_qs(scope['scope_ids']), pk=pk)
     activity = lead.next_activity
     if not activity:
         return HttpResponse(status=409)
@@ -227,8 +228,9 @@ def workbench_team(request):
 def pipeline_board(request):
     """Visual kanban: one column per pipeline stage, active leads only."""
     user = request.user
+    scope = _sales_scope_context(request, user)
     leads = (
-        _lead_scope_qs(user)
+        Lead.objects.filter(employee_id__in=scope['scope_ids'])
         .filter(lifecycle_state=Lead.LifecycleState.ACTIVE)
         .select_related('package', 'employee', 'next_activity')
         .order_by('-deal_value', '-updated_at')
@@ -243,4 +245,13 @@ def pipeline_board(request):
             'count': len(stage_leads),
             'value_sum': sum((l.deal_value for l in stage_leads), start=0),
         })
-    return render(request, 'crm/workbench/pipeline.html', {'columns': columns})
+    return render(
+        request,
+        'crm/workbench/pipeline.html',
+        {
+            'columns': columns,
+            'manager_mode_scope': scope['manager_mode'],
+            'scope_employees': scope['scope_employees'],
+            'selected_employee': scope['selected_employee'],
+        },
+    )

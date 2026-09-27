@@ -66,6 +66,7 @@
           <th class="num">New</th>
           <th class="num">No Action</th>
           <th class="num">Completed Today</th>
+          <th>View as</th>
         </tr>
       </thead>
       <tbody>
@@ -78,9 +79,23 @@
           <td class="num">{{ row.new }}</td>
           <td class="num" style="{% if row.no_action %}color:var(--warning-600);font-weight:700;{% endif %}">{{ row.no_action }}</td>
           <td class="num">{{ row.completed_today }}</td>
+          <td class="billing-actions-col">
+            <a class="btn btn-outline btn-sm"
+               href="{% url 'crm:workbench' %}?tab=overdue&employee={{ row.user.id }}"
+               hx-get="{% url 'crm:workbench' %}?tab=overdue&employee={{ row.user.id }}"
+               hx-target="#crm-main-content" hx-select="#crm-main-content" hx-swap="outerHTML" hx-push-url="true">Workbench</a>
+            <a class="btn btn-outline btn-sm"
+               href="{% url 'crm:pipeline_board' %}?employee={{ row.user.id }}"
+               hx-get="{% url 'crm:pipeline_board' %}?employee={{ row.user.id }}"
+               hx-target="#crm-main-content" hx-select="#crm-main-content" hx-swap="outerHTML" hx-push-url="true">Pipeline</a>
+            <a class="btn btn-outline btn-sm"
+               href="{% url 'crm:leads' %}?employee={{ row.user.id }}"
+               hx-get="{% url 'crm:leads' %}?employee={{ row.user.id }}"
+               hx-target="#crm-main-content" hx-select="#crm-main-content" hx-swap="outerHTML" hx-push-url="true">Leads</a>
+          </td>
         </tr>
         {% empty %}
-        <tr><td colspan="7" class="billing-empty">No executives in scope.</td></tr>
+        <tr><td colspan="8" class="billing-empty">No executives in scope.</td></tr>
         {% endfor %}
       </tbody>
     </table>
