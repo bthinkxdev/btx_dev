@@ -13,9 +13,22 @@
   <script src="https://unpkg.com/htmx.org@1.9.10"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script>
-    /* Avoid restoring stale main content (open dialogs / broken chart canvases) from HTMX history cache. */
+    /*
+     * historyCacheSize=0 means every back/forward navigation is a cache
+     * "miss". Without refreshOnHistoryMiss, htmx then restores a miss by
+     * AJAX-fetching the page and dumping the FULL response (the whole
+     * <html> document, not just #crm-main-content) into <body>, since a
+     * history restore always targets/innerHTMLs the history element and
+     * ignores the original link's hx-select/hx-target. That nests a second
+     * copy of the sidebar/header/main inside the page, leaving duplicate
+     * ids and orphaning the real nav's htmx bindings — which is exactly
+     * why buttons/nav links stop responding after Back until a hard
+     * reload. refreshOnHistoryMiss makes a miss do a real full-page
+     * navigation instead, which is slower but always structurally correct.
+     */
     if (typeof htmx !== 'undefined') {
       htmx.config.historyCacheSize = 0;
+      htmx.config.refreshOnHistoryMiss = true;
     }
   </script>
   <style>

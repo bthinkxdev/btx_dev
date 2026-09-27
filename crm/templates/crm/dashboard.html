@@ -213,18 +213,6 @@
     </div>
   </div>
 </div>
-{% else %}
-<div class="page-header">
-  <div>
-    <h1>Good day, {{ request.user.first_name|default:request.user.username }} 👋</h1>
-    <p>This area is not available for your account role.</p>
-  </div>
-</div>
-{% endif %}
-{% endblock %}
-
-{% block scripts %}
-{% if show_sales_dashboard %}
 <script>
 (function(){
   var chartDefaults = {
@@ -310,5 +298,12 @@
   }
 })();
 </script>
+{% else %}
+<div class="page-header">
+  <div>
+    <h1>Good day, {{ request.user.first_name|default:request.user.username }} 👋</h1>
+    <p>This area is not available for your account role.</p>
+  </div>
+</div>
 {% endif %}
 {% endblock %}
