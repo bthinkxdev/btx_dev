@@ -1925,6 +1925,18 @@
       </a>
 
       {% if crm_can_access_sales_pipeline %}
+      <a href="{% url 'crm:workbench' %}"
+         hx-get="{% url 'crm:workbench' %}"
+         hx-target="#crm-main-content"
+         hx-select="#crm-main-content"
+         hx-swap="outerHTML"
+         hx-push-url="true"
+         class="nav-item {% if 'workbench' in request.resolver_match.url_name %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+        </svg>
+        <span>Daily Workbench</span>
+      </a>
       <a href="{% url 'crm:leads' %}"
          hx-get="{% url 'crm:leads' %}"
          hx-target="#crm-main-content"
@@ -1937,9 +1949,18 @@
         </svg>
         <span>Leads</span>
       </a>
-      {% endif %}
-
-      {% if crm_can_access_sales_pipeline %}
+      <a href="{% url 'crm:pipeline_board' %}"
+         hx-get="{% url 'crm:pipeline_board' %}"
+         hx-target="#crm-main-content"
+         hx-select="#crm-main-content"
+         hx-swap="outerHTML"
+         hx-push-url="true"
+         class="nav-item {% if request.resolver_match.url_name == 'pipeline_board' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 3h18v4H3z"/><path d="M3 10h12v4H3z"/><path d="M3 17h6v4H3z"/>
+        </svg>
+        <span>Pipeline</span>
+      </a>
       <a href="{% url 'crm:followups' %}"
          hx-get="{% url 'crm:followups' %}"
          hx-target="#crm-main-content"
@@ -1952,6 +1973,21 @@
         </svg>
         <span>Follow-ups</span>
       </a>
+      {% if crm_manager_mode %}
+      <a href="{% url 'crm:workbench_team' %}"
+         hx-get="{% url 'crm:workbench_team' %}"
+         hx-target="#crm-main-content"
+         hx-select="#crm-main-content"
+         hx-swap="outerHTML"
+         hx-push-url="true"
+         class="nav-item {% if request.resolver_match.url_name == 'workbench_team' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        <span>Team</span>
+      </a>
+      {% endif %}
+      {% endif %}
 
       <a href="{% url 'crm:packages' %}"
          hx-get="{% url 'crm:packages' %}"
@@ -1978,8 +2014,6 @@
         </svg>
         <span>Performance</span>
       </a>
-
-      {% endif %}
 
       {% if crm_can_access_sales_pipeline %}
       <a href="{% url 'crm:billing_dashboard' %}"

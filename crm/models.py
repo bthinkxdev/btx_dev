@@ -83,83 +83,30 @@ class Package(models.Model):
 
 class Lead(models.Model):
     class Status(models.TextChoices):
-        # Early stages
+        """
+        The clean 7-stage pipeline. Replaces the old 15-value detailed
+        status (WhatsApp Connected, Failed to Close & Retry, Project
+        Handed, ...) — those referenced the Projects/delivery workflow
+        that no longer exists in this app. Won/Lost/Nurture/Duplicate are
+        NOT stages here; they live on `lifecycle_state` below, set only
+        through crm.services.pipeline so they carry a reason/date/owner.
+        """
         NEW = 'new', 'New'
-        WHATSAPP_CONNECTED = 'whatsapp_connected', 'WhatsApp Connected'
-        CALL_CONNECTED = 'call_connected', 'Call Connected'
+        CONTACTED = 'contacted', 'Contacted'
+        QUALIFIED = 'qualified', 'Qualified'
+        DEMO = 'demo', 'Demo'
+        PROPOSAL = 'proposal', 'Proposal'
+        NEGOTIATION = 'negotiation', 'Negotiation'
+        WON = 'won', 'Won'
 
-        # Conversion stages
-        CLOSING_ONGOING = 'closing_ongoing', 'Closing Ongoing'
-        CLOSED = 'closed', 'Closed'
-        FAILED_RETRY = 'failed_retry', 'Failed to Close & Retry'
-        LOST = 'lost', 'Lost'
-
-        # Proposal stages
-        PROPOSAL_SENT = 'proposal_sent', 'Proposal Sent'
-        NEGOTIATION_AFTER_PROPOSAL = 'negotiation_after_proposal', 'Negotiation After Proposal'
-        LOST_AFTER_PROPOSAL = 'lost_after_proposal', 'Lost After Proposal'
-
-        # Payment & delivery stages
-        ADVANCE_RECEIVED_PROJECT_STARTED = 'advance_received_project_started', 'Advance Received & Project Started'
-        PROJECT_HANDED = 'project_handed', 'Project Handed'
-        TRAINING_COMPLETED = 'training_completed', 'Training Completed'
-        BALANCE_PAID_PROJECT_COMPLETED = 'balance_paid_project_completed', 'Balance Paid & Project Completed'
-        ISSUE_PAYMENT_COLLECTION = 'issue_payment_collection', 'Issue in Payment Collection'
-
-    # ── Sales pipeline (5 primary stages) ──────────────────────────────
-    # The full Status list above stays as-is (nothing removed, nothing
-    # migrated) — these just group it for the simplified pipeline UI.
-    # Detailed status is still the same `status` field; the pipeline
-    # tabs/quick-picker only ever show/set these 5 canonical values.
-    PIPELINE_STAGES = (
-        ('new', 'New'),
-        ('closing_ongoing', 'Closing Ongoing'),
-        ('proposal_sent', 'Proposal Sent'),
-        ('closed', 'Closed (Advance Received)'),
-        ('lost', 'Lost'),
-    )
-
-    PRIMARY_STATUS_CHOICES = (
-        (Status.NEW, 'New'),
-        (Status.CLOSING_ONGOING, 'Closing Ongoing'),
-        (Status.PROPOSAL_SENT, 'Proposal Sent'),
-        (Status.ADVANCE_RECEIVED_PROJECT_STARTED, 'Closed (Advance Received)'),
-        (Status.LOST, 'Lost'),
-    )
-
-    # Every detailed status maps to exactly one primary pipeline stage.
-    STATUS_TO_STAGE = {
-        Status.NEW: 'new',
-        Status.WHATSAPP_CONNECTED: 'new',
-        Status.CALL_CONNECTED: 'new',
-        Status.CLOSING_ONGOING: 'closing_ongoing',
-        Status.FAILED_RETRY: 'closing_ongoing',
-        Status.CLOSED: 'closed',
-        Status.LOST: 'lost',
-        Status.PROPOSAL_SENT: 'proposal_sent',
-        Status.NEGOTIATION_AFTER_PROPOSAL: 'proposal_sent',
-        Status.LOST_AFTER_PROPOSAL: 'lost',
-        Status.ADVANCE_RECEIVED_PROJECT_STARTED: 'closed',
-        Status.PROJECT_HANDED: 'closed',
-        Status.TRAINING_COMPLETED: 'closed',
-        Status.BALANCE_PAID_PROJECT_COMPLETED: 'closed',
-        Status.ISSUE_PAYMENT_COLLECTION: 'closed',
-    }
-
-    # The canonical status value used when a stage tab/quick-picker sets
-    # the coarse pipeline stage directly (reverse of STAGE mapping above).
-    STAGE_PRIMARY_STATUS = {
-        'new': Status.NEW,
-        'closing_ongoing': Status.CLOSING_ONGOING,
-        'proposal_sent': Status.PROPOSAL_SENT,
-        'closed': Status.ADVANCE_RECEIVED_PROJECT_STARTED,
-        'lost': Status.LOST,
-    }
-
-    STAGE_TO_STATUSES = {}
-    for _status_val, _stage_key in STATUS_TO_STAGE.items():
-        STAGE_TO_STATUSES.setdefault(_stage_key, []).append(_status_val)
-    del _status_val, _stage_key
+    # One stage == one status now (no grouping layer needed) — kept as
+    # these same names/shapes because leads_list/performance/templates
+    # already read them this way.
+    PIPELINE_STAGES = tuple(Status.choices)
+    PRIMARY_STATUS_CHOICES = tuple(Status.choices)
+    STATUS_TO_STAGE = {value: value for value, _label in Status.choices}
+    STAGE_PRIMARY_STATUS = {value: value for value, _label in Status.choices}
+    STAGE_TO_STATUSES = {value: [value] for value, _label in Status.choices}
 
     employee = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -205,6 +152,45 @@ class Lead(models.Model):
         blank=True,
         related_name='lead',
     )
+
+    # ── Activity-based pipeline (additive layer on top of `status` above) ──
+    class LifecycleState(models.TextChoices):
+        ACTIVE = 'active', 'Active'
+        WON = 'won', 'Won'
+        LOST = 'lost_final', 'Lost'
+        NURTURE = 'nurture', 'Nurture'
+        DUPLICATE = 'duplicate', 'Duplicate'
+
+    lifecycle_state = models.CharField(
+        max_length=20,
+        choices=LifecycleState.choices,
+        default=LifecycleState.ACTIVE,
+        db_index=True,
+        help_text='Coarse state machine: active leads must have next_activity set.',
+    )
+    next_activity = models.ForeignKey(
+        'Activity',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='+',
+        help_text='The single pending activity that keeps this lead in the work queue.',
+    )
+    won_at = models.DateTimeField(null=True, blank=True)
+    lost_reason = models.CharField(max_length=200, blank=True)
+    lost_note = models.TextField(blank=True)
+    lost_at = models.DateTimeField(null=True, blank=True)
+    nurture_reason = models.CharField(max_length=200, blank=True)
+    nurture_next_review = models.DateField(null=True, blank=True)
+    duplicate_of = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='duplicates',
+        help_text='Set when this lead was marked a duplicate of another lead.',
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -523,6 +509,117 @@ class ActivityLog(models.Model):
 
     def __str__(self):
         return f'{self.action} — {self.lead.name}'
+
+
+class Activity(models.Model):
+    """
+    First-class work item against a Lead: a scheduled call/WhatsApp/demo/etc.
+    Completing one, via crm.services.pipeline, either creates the next
+    Activity or moves the Lead to a terminal lifecycle_state — a Lead should
+    never be left with no next_activity and no terminal state.
+    """
+
+    class Type(models.TextChoices):
+        CALL = 'call', 'Call'
+        WHATSAPP = 'whatsapp', 'WhatsApp'
+        EMAIL = 'email', 'Email'
+        DEMO = 'demo', 'Demo'
+        MEETING = 'meeting', 'Meeting'
+        QUOTATION = 'quotation', 'Quotation'
+        PAYMENT_FOLLOWUP = 'payment_followup', 'Payment Follow-up'
+        TASK = 'task', 'Task'
+        OTHER = 'other', 'Other'
+
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        COMPLETED = 'completed', 'Completed'
+        CANCELLED = 'cancelled', 'Cancelled'
+        RESCHEDULED = 'rescheduled', 'Rescheduled'
+
+    class Outcome(models.TextChoices):
+        INTERESTED = 'interested', 'Interested'
+        FOLLOW_UP_REQUIRED = 'follow_up_required', 'Follow-up Required'
+        DEMO_SCHEDULED = 'demo_scheduled', 'Demo Scheduled'
+        PROPOSAL_REQUESTED = 'proposal_requested', 'Proposal Requested'
+        NO_ANSWER = 'no_answer', 'No Answer'
+        NOT_INTERESTED = 'not_interested', 'Not Interested'
+        WON = 'won', 'Won'
+        LOST = 'lost', 'Lost'
+
+    class Source(models.TextChoices):
+        MANUAL = 'manual', 'Manual'
+        AUTOMATIC = 'automatic', 'Automatic'
+        MIGRATED = 'migrated', 'Migrated'
+
+    lead = models.ForeignKey(Lead, on_delete=models.CASCADE, related_name='pipeline_activities')
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='pipeline_activities',
+    )
+    activity_type = models.CharField(max_length=20, choices=Type.choices, default=Type.CALL)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING, db_index=True)
+    scheduled_at = models.DateTimeField(db_index=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    outcome = models.CharField(max_length=30, choices=Outcome.choices, blank=True)
+    notes = models.TextField(blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='pipeline_activities_created',
+    )
+    completed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='pipeline_activities_completed',
+    )
+    source = models.CharField(max_length=20, choices=Source.choices, default=Source.MANUAL)
+    rescheduled = models.BooleanField(default=False)
+    original_scheduled_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['scheduled_at']
+        verbose_name_plural = 'Activities'
+
+    def __str__(self):
+        return f'{self.get_activity_type_display()} — {self.lead.name} @ {self.scheduled_at}'
+
+    @property
+    def is_overdue(self):
+        return self.status == self.Status.PENDING and self.scheduled_at < timezone.now()
+
+
+class Cadence(models.Model):
+    """Named sequence of follow-up steps (e.g. 'Standard Sales Cadence')."""
+
+    name = models.CharField(max_length=120, unique=True)
+    is_default = models.BooleanField(default=False, db_index=True)
+
+    class Meta:
+        ordering = ['name']
+        verbose_name_plural = 'Cadences'
+
+    def __str__(self):
+        return self.name
+
+
+class CadenceStep(models.Model):
+    cadence = models.ForeignKey(Cadence, on_delete=models.CASCADE, related_name='steps')
+    day_offset = models.PositiveSmallIntegerField(help_text='Days after the previous step (0 = same day).')
+    activity_type = models.CharField(max_length=20, choices=Activity.Type.choices, default=Activity.Type.CALL)
+    order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ['order', 'day_offset']
+
+    def __str__(self):
+        return f'{self.cadence.name} — day {self.day_offset}: {self.activity_type}'
 
 
 class Achievement(models.Model):

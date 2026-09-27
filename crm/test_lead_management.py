@@ -53,3 +53,25 @@ class LeadDuplicatePreventionTests(TestCase):
 
         self.assertEqual(Lead.objects.filter(phone='9998887777').count(), 1)
         self.assertEqual(Lead.objects.filter(employee=other_rep).count(), 0)
+
+    def test_duplicate_shows_prompt_with_open_existing_link(self):
+        self._post('Alice', '9998887777')
+        existing = Lead.objects.get(phone='9998887777')
+        r = self._post('Alice Again', '9998887777')
+        self.assertIn('Possible duplicate', r.content.decode())
+        self.assertIn(f'/crm/leads/{existing.pk}/', r.content.decode())
+
+    def test_confirm_duplicate_creates_anyway(self):
+        self._post('Alice', '9998887777')
+        self.assertEqual(Lead.objects.filter(phone='9998887777').count(), 1)
+
+        self.client.post(
+            '/crm/leads/create/',
+            {
+                'name': 'Alice Again', 'phone': '9998887777', 'email': '', 'source': '',
+                'status': 'new', 'package': '', 'deal_value': '0', 'notes': '',
+                'confirm_duplicate': '1',
+            },
+            HTTP_HX_REQUEST='true',
+        )
+        self.assertEqual(Lead.objects.filter(phone='9998887777').count(), 2)

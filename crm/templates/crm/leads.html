@@ -187,8 +187,12 @@
       <button type="button" onclick="this.closest('dialog').close()" class="crm-dialog__x" aria-label="Close">&times;</button>
     </div>
     <form method="post" action="{% url 'crm:lead_create' %}" id="add-lead-form" class="add-lead-form"
-          hx-post="{% url 'crm:lead_create' %}">
+          hx-post="{% url 'crm:lead_create' %}"
+          hx-target="#add-lead-dup-warning"
+          hx-swap="innerHTML">
       {% csrf_token %}
+      <input type="hidden" name="confirm_duplicate" value="">
+      <div id="add-lead-dup-warning"></div>
       <fieldset class="add-lead-fieldset">
         <legend class="add-lead-legend">Contact</legend>
         <div class="add-lead-grid">
@@ -399,17 +403,21 @@ dialog::backdrop { background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); }
 
 .pipeline-tab--all           { border-color: var(--neutral-200); }
 .pipeline-tab--new           { border-color: var(--primary-200); }
-.pipeline-tab--closing_ongoing { border-color: #fde68a; }
-.pipeline-tab--proposal_sent { border-color: #a5f3fc; }
-.pipeline-tab--closed        { border-color: var(--success-100); }
-.pipeline-tab--lost          { border-color: var(--danger-100); }
+.pipeline-tab--contacted     { border-color: #bfdbfe; }
+.pipeline-tab--qualified     { border-color: #99f6e4; }
+.pipeline-tab--demo          { border-color: #a5f3fc; }
+.pipeline-tab--proposal      { border-color: #ddd6fe; }
+.pipeline-tab--negotiation   { border-color: #fde68a; }
+.pipeline-tab--won           { border-color: var(--success-100); }
 
 .pipeline-tab--all.pipeline-tab--on           { background: var(--neutral-700); border-color: var(--neutral-700); }
 .pipeline-tab--new.pipeline-tab--on           { background: var(--primary-600); border-color: var(--primary-600); }
-.pipeline-tab--closing_ongoing.pipeline-tab--on { background: #d97706; border-color: #d97706; }
-.pipeline-tab--proposal_sent.pipeline-tab--on { background: #0e7490; border-color: #0e7490; }
-.pipeline-tab--closed.pipeline-tab--on        { background: var(--success-600); border-color: var(--success-600); }
-.pipeline-tab--lost.pipeline-tab--on          { background: var(--danger-600); border-color: var(--danger-600); }
+.pipeline-tab--contacted.pipeline-tab--on     { background: #2563eb; border-color: #2563eb; }
+.pipeline-tab--qualified.pipeline-tab--on     { background: #0d9488; border-color: #0d9488; }
+.pipeline-tab--demo.pipeline-tab--on          { background: #0e7490; border-color: #0e7490; }
+.pipeline-tab--proposal.pipeline-tab--on      { background: #7c3aed; border-color: #7c3aed; }
+.pipeline-tab--negotiation.pipeline-tab--on   { background: #d97706; border-color: #d97706; }
+.pipeline-tab--won.pipeline-tab--on           { background: var(--success-600); border-color: var(--success-600); }
 .pipeline-tab--on .pipeline-tab__num,
 .pipeline-tab--on .pipeline-tab__lbl { color: #fff; }
 

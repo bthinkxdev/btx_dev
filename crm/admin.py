@@ -2,8 +2,11 @@ from django.contrib import admin
 
 from .models import (
     Achievement,
+    Activity,
     ActivityLog,
     AuditEntry,
+    Cadence,
+    CadenceStep,
     Bill,
     BillLineItem,
     BillPayment,
@@ -189,10 +192,33 @@ class ActivityInline(admin.TabularInline):
 
 @admin.register(Lead)
 class LeadAdmin(admin.ModelAdmin):
-    list_display = ('name', 'employee', 'status', 'phone', 'next_followup')
-    list_filter = ('status', 'employee')
+    list_display = (
+        'name', 'employee', 'status', 'lifecycle_state', 'next_activity', 'phone', 'next_followup',
+    )
+    list_filter = ('status', 'lifecycle_state', 'employee')
     search_fields = ('name', 'phone', 'email')
     inlines = [ActivityInline]
+
+
+class CadenceStepInline(admin.TabularInline):
+    model = CadenceStep
+    extra = 1
+
+
+@admin.register(Cadence)
+class CadenceAdmin(admin.ModelAdmin):
+    list_display = ('name', 'is_default')
+    inlines = [CadenceStepInline]
+
+
+@admin.register(Activity)
+class PipelineActivityAdmin(admin.ModelAdmin):
+    list_display = (
+        'lead', 'owner', 'activity_type', 'status', 'scheduled_at', 'outcome', 'source',
+    )
+    list_filter = ('activity_type', 'status', 'outcome', 'source')
+    search_fields = ('lead__name', 'lead__phone')
+    autocomplete_fields = ('lead',)
 
 
 @admin.register(WhatsAppNumber)

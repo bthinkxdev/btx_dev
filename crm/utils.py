@@ -7,7 +7,7 @@ from decimal import Decimal, InvalidOperation
 
 from django.contrib.auth import get_user_model
 from django.db import transaction
-from django.db.models import Q, Sum
+from django.db.models import Sum
 from django.utils import timezone
 
 from .models import ActivityLog, FollowUp, Lead, Package, Task
@@ -220,22 +220,13 @@ def get_report_data(user, period):
         period_title = 'Monthly'
         date_line = f'{first.strftime("%Y-%m-%d")} → {local.isoformat()}'
 
-    # Status logic uses explicit values to avoid depending on enum members.
-    STATUS_NEW = 'new'
-    STATUS_CLOSED = 'closed'
-    STATUS_LOST = 'lost'
-    STATUS_LOST_AFTER_PROPOSAL = 'lost_after_proposal'
-
-    # "Interested" = proposal/negotiation/closing intent window.
+    # "Interested" = actively progressing through the pipeline.
     INTERESTED_STATUSES = (
-        'proposal_sent',
-        'negotiation_after_proposal',
-        'closing_ongoing',
-        'failed_retry',
+        Lead.Status.QUALIFIED,
+        Lead.Status.DEMO,
+        Lead.Status.PROPOSAL,
+        Lead.Status.NEGOTIATION,
     )
-
-    # Terminal states for pipeline health.
-    TERMINAL_STATUSES = (STATUS_CLOSED, STATUS_LOST, STATUS_LOST_AFTER_PROPOSAL)
 
     leads = Lead.objects.filter(employee=user)
 
@@ -244,7 +235,7 @@ def get_report_data(user, period):
     ).count()
     contacted_leads = leads.filter(
         created_at__gte=start, created_at__lt=today_end
-    ).exclude(status=STATUS_NEW).count()
+    ).exclude(status=Lead.Status.NEW).count()
     followups_done = ActivityLog.objects.filter(
         lead__employee=user,
         action='follow_up_done',
@@ -255,12 +246,13 @@ def get_report_data(user, period):
         updated_at__gte=start,
         updated_at__lt=today_end,
         status__in=INTERESTED_STATUSES,
+        lifecycle_state=Lead.LifecycleState.ACTIVE,
     ).count()
 
     closed_qs = leads.filter(
-        status=STATUS_CLOSED,
-        updated_at__gte=start,
-        updated_at__lt=today_end,
+        lifecycle_state=Lead.LifecycleState.WON,
+        won_at__gte=start,
+        won_at__lt=today_end,
     )
     closed_deals = closed_qs.count()
     revenue = closed_qs.aggregate(s=Sum('deal_value'))['s'] or Decimal('0')
@@ -275,11 +267,10 @@ def get_report_data(user, period):
     pending_tasks = Task.objects.filter(
         employee=user, is_completed=False
     ).count()
-    active_q = ~Q(status__in=TERMINAL_STATUSES)
     hot_leads = leads.filter(
-        active_q,
+        lifecycle_state=Lead.LifecycleState.ACTIVE,
     ).exclude(
-        status=STATUS_NEW,
+        status=Lead.Status.NEW,
     ).filter(
         deal_value__gt=0,
     ).count()

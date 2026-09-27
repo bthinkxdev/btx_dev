@@ -1,0 +1,74 @@
+{% extends "crm/base.html" %}
+{% block title %}Pipeline{% endblock %}
+{% block page_title %}Pipeline{% endblock %}
+
+{% block content %}
+<div class="wb-page">
+  <div class="pipeline-board">
+    {% for col in columns %}
+    <div class="pipeline-col">
+      <div class="pipeline-col__head">
+        <span class="pipeline-col__title">{{ col.label }}</span>
+        <span class="pipeline-col__count">{{ col.count }}</span>
+      </div>
+      {% if col.value_sum %}
+      <div class="pipeline-col__value">Rs. {{ col.value_sum|floatformat:0 }}</div>
+      {% endif %}
+      <div class="pipeline-col__body">
+        {% for lead in col.leads %}
+        <div class="pipeline-card">
+          <a href="{% url 'crm:lead_detail' lead.pk %}" class="pipeline-card__name">{{ lead.name }}</a>
+          <div class="pipeline-card__meta">
+            {% if lead.package %}{{ lead.package.name }} · {% endif %}Rs. {{ lead.deal_value|floatformat:0 }}
+          </div>
+          <div class="pipeline-card__owner">{{ lead.employee.get_full_name|default:lead.employee.username }}</div>
+          <form class="pipeline-card__move"
+                hx-post="{% url 'crm:lead_status_detail' lead.pk %}"
+                hx-target="#pipeline-move-sink"
+                hx-swap="innerHTML"
+                hx-trigger="change">
+            {% csrf_token %}
+            <select name="status" class="pipeline-card__select" data-pipeline-move>
+              {% for c2 in columns %}
+              <option value="{{ c2.value }}" {% if c2.value == col.value %}selected{% endif %}>{{ c2.label }}</option>
+              {% endfor %}
+            </select>
+          </form>
+        </div>
+        {% empty %}
+        <div class="pipeline-col__empty">Empty</div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div id="pipeline-move-sink" hidden></div>
+
+<script>
+(function () {
+  document.body.addEventListener('htmx:afterRequest', function (evt) {
+    var el = evt.detail && evt.detail.elt;
+    if (el && el.matches && el.matches('[data-pipeline-move]')) {
+      window.location.reload();
+    }
+  });
+})();
+</script>
+
+<style>
+  .pipeline-board { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 12px; }
+  .pipeline-col { flex: 0 0 240px; background: var(--neutral-50); border: 1px solid var(--border); border-radius: var(--radius); display: flex; flex-direction: column; max-height: calc(100vh - 160px); }
+  .pipeline-col__head { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--border); font-weight: 700; font-size: 13px; }
+  .pipeline-col__count { background: var(--neutral-200); border-radius: 999px; padding: 1px 8px; font-size: 11px; }
+  .pipeline-col__value { font-size: 11px; color: var(--text-muted); padding: 0 12px 8px; }
+  .pipeline-col__body { padding: 8px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+  .pipeline-col__empty { text-align: center; color: var(--text-muted); font-size: 12px; padding: 16px 0; }
+  .pipeline-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 10px; box-shadow: var(--shadow-sm); }
+  .pipeline-card__name { display: block; font-weight: 700; font-size: 13px; text-decoration: none; color: var(--neutral-900); }
+  .pipeline-card__meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .pipeline-card__owner { font-size: 10px; color: var(--text-light); margin-top: 2px; }
+  .pipeline-card__select { width: 100%; margin-top: 6px; font-size: 11px; padding: 4px; border-radius: var(--radius-sm); border: 1px solid var(--border); }
+</style>
+{% endblock %}

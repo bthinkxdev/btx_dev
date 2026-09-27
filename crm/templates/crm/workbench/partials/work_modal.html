@@ -1,0 +1,94 @@
+{% load crm_extras %}
+<div class="wb-modal__head">
+  <div>
+    <h2>{{ lead.name }}</h2>
+    <p class="wb-modal__sub">
+      {% if activity %}{{ activity.get_activity_type_display }} · due {{ activity.scheduled_at|date:"d M Y, H:i" }}{% else %}No pending activity{% endif %}
+    </p>
+  </div>
+  <button type="button" onclick="document.getElementById('wb-work-modal').close()" class="btn btn-outline btn-sm">&times;</button>
+</div>
+
+<div id="wb-modal-error-host"></div>
+
+{% if activity %}
+<form id="wb-complete-form"
+      hx-post="{% url 'crm:workbench_complete_activity' lead.pk %}"
+      hx-target="#wb-modal-error-host"
+      hx-swap="innerHTML">
+  {% csrf_token %}
+
+  <div class="wb-field">
+    <label>What happened?</label>
+    <div class="wb-outcome-grid">
+      {% for value, label in outcome_choices %}
+      <label class="wb-outcome-option">
+        <input type="radio" name="outcome" value="{{ value }}" data-outcome-radio required>
+        <span class="wb-outcome-option__surface">{{ label }}</span>
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div id="wb-next-action-fields" hidden>
+    <div class="wb-field">
+      <label for="wb-next-type">Next activity</label>
+      <select name="next_type" id="wb-next-type">
+        {% for value, label in type_choices %}
+        <option value="{{ value }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="wb-field">
+      <label for="wb-next-when">Date &amp; time</label>
+      <input type="datetime-local" name="next_scheduled_at" id="wb-next-when">
+    </div>
+  </div>
+
+  <div id="wb-lost-fields" hidden>
+    <div class="wb-field">
+      <label for="wb-lost-reason">Lost reason</label>
+      <input type="text" name="lost_reason" id="wb-lost-reason" placeholder="e.g. Competitor selected">
+    </div>
+    <div class="wb-field">
+      <label for="wb-lost-note">Note</label>
+      <textarea name="lost_note" id="wb-lost-note" rows="2" placeholder="What happened?"></textarea>
+    </div>
+  </div>
+
+  <div class="wb-field">
+    <label for="wb-notes">Notes (optional)</label>
+    <textarea name="notes" id="wb-notes" rows="2"></textarea>
+  </div>
+
+  <div class="wb-modal__foot">
+    <button type="button" onclick="document.getElementById('wb-work-modal').close()" class="btn btn-outline btn-sm">Cancel</button>
+    <button type="submit" class="btn btn-primary btn-sm">Save &amp; Next</button>
+  </div>
+</form>
+
+<script>
+(function () {
+  var MANUAL = ['interested', 'follow_up_required', 'demo_scheduled', 'proposal_requested', 'not_interested'];
+  var form = document.getElementById('wb-complete-form');
+  var nextFields = document.getElementById('wb-next-action-fields');
+  var lostFields = document.getElementById('wb-lost-fields');
+  var nextWhen = document.getElementById('wb-next-when');
+  var lostReason = document.getElementById('wb-lost-reason');
+
+  form.querySelectorAll('[data-outcome-radio]').forEach(function (r) {
+    r.addEventListener('change', function () {
+      var v = r.value;
+      var manual = MANUAL.indexOf(v) !== -1;
+      var lost = v === 'lost';
+      nextFields.hidden = !manual;
+      lostFields.hidden = !lost;
+      nextWhen.required = manual;
+      lostReason.required = lost;
+    });
+  });
+})();
+</script>
+{% else %}
+<p>This lead has no pending activity — it will appear in "No Next Action".</p>
+{% endif %}

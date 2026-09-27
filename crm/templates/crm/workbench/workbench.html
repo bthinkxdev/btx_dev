@@ -1,0 +1,106 @@
+{% extends "crm/base.html" %}
+{% load crm_extras %}
+{% block title %}Daily Workbench{% endblock %}
+{% block page_title %}Daily Workbench{% endblock %}
+
+{% block content %}
+<div class="wb-page">
+  <div class="wb-stats">
+    <a class="wb-stat wb-stat--danger {% if tab == 'overdue' %}is-active{% endif %}" href="?tab=overdue">
+      <span class="wb-stat__value">{{ counts.overdue }}</span>
+      <span class="wb-stat__label">Overdue</span>
+    </a>
+    <a class="wb-stat wb-stat--info {% if tab == 'today' %}is-active{% endif %}" href="?tab=today">
+      <span class="wb-stat__value">{{ counts.today }}</span>
+      <span class="wb-stat__label">Today</span>
+    </a>
+    <a class="wb-stat wb-stat--success {% if tab == 'new' %}is-active{% endif %}" href="?tab=new">
+      <span class="wb-stat__value">{{ counts.new }}</span>
+      <span class="wb-stat__label">New Leads</span>
+    </a>
+    <a class="wb-stat wb-stat--muted {% if tab == 'upcoming' %}is-active{% endif %}" href="?tab=upcoming">
+      <span class="wb-stat__value">{{ counts.upcoming }}</span>
+      <span class="wb-stat__label">Upcoming</span>
+    </a>
+    <a class="wb-stat wb-stat--warn {% if tab == 'no_action' %}is-active{% endif %}" href="?tab=no_action">
+      <span class="wb-stat__value">{{ counts.no_action }}</span>
+      <span class="wb-stat__label">No Next Action</span>
+    </a>
+  </div>
+
+  <div class="wb-tabs">
+    <a class="wb-tab {% if tab == 'overdue' %}is-active{% endif %}" href="?tab=overdue">Overdue ({{ counts.overdue }})</a>
+    <a class="wb-tab {% if tab == 'today' %}is-active{% endif %}" href="?tab=today">Today ({{ counts.today }})</a>
+    <a class="wb-tab {% if tab == 'new' %}is-active{% endif %}" href="?tab=new">New Leads ({{ counts.new }})</a>
+    <a class="wb-tab {% if tab == 'upcoming' %}is-active{% endif %}" href="?tab=upcoming">Upcoming ({{ counts.upcoming }})</a>
+    <a class="wb-tab {% if tab == 'no_action' %}is-active{% endif %}" href="?tab=no_action">No Next Action ({{ counts.no_action }})</a>
+    <a class="wb-tab {% if tab == 'all' %}is-active{% endif %}" href="?tab=all">All ({{ total_active }})</a>
+  </div>
+
+  <div class="wb-list" id="wb-list">
+    {% for lead in leads %}
+    <div class="wb-row" id="wb-row-{{ lead.pk }}">
+      <div class="wb-row__main">
+        <div class="wb-row__name-line">
+          <a href="{% url 'crm:lead_detail' lead.pk %}" class="wb-row__name">{{ lead.name }}</a>
+          {% if lead.high_hope %}<span class="wb-badge wb-badge--hot">HOT</span>{% endif %}
+          <span class="wb-badge">{{ lead.get_status_display }}</span>
+        </div>
+        <div class="wb-row__meta">
+          {% if lead.phone %}<span>{{ lead.phone }}</span>{% endif %}
+          {% if lead.package %}<span>· {{ lead.package.name }}</span>{% endif %}
+          {% if lead.deal_value %}<span>· Rs. {{ lead.deal_value|floatformat:0 }}</span>{% endif %}
+        </div>
+      </div>
+      <div class="wb-row__activity">
+        {% if lead.next_activity %}
+          <span class="wb-badge {% if lead.next_activity.is_overdue %}wb-badge--danger{% endif %}">
+            {{ lead.next_activity.get_activity_type_display }} · {{ lead.next_activity.scheduled_at|date:"d M, H:i" }}
+          </span>
+        {% else %}
+          <span class="wb-badge wb-badge--warn">No next action</span>
+        {% endif %}
+      </div>
+      <div class="wb-row__actions">
+        {% if lead.phone %}
+        <a href="tel:{{ lead.phone }}" class="btn btn-outline btn-sm">Call</a>
+        {% with wa=lead.phone|whatsapp_wa_url %}{% if wa %}
+        <a href="{{ wa }}" target="_blank" rel="noopener" class="btn btn-outline btn-sm">WhatsApp</a>
+        {% endif %}{% endwith %}
+        {% endif %}
+        <button type="button" class="btn btn-primary btn-sm"
+                hx-get="{% url 'crm:workbench_lead_panel' lead.pk %}"
+                hx-target="#wb-modal-body"
+                hx-swap="innerHTML"
+                onclick="document.getElementById('wb-work-modal').showModal()">Work</button>
+      </div>
+    </div>
+    {% empty %}
+    <div class="wb-empty">Nothing here — clear queue.</div>
+    {% endfor %}
+  </div>
+</div>
+
+<dialog id="wb-work-modal" class="wb-modal">
+  <div id="wb-modal-body" class="wb-modal__body"></div>
+</dialog>
+
+{% include "crm/workbench/_workbench_styles.html" %}
+
+<script>
+(function () {
+  document.body.addEventListener('htmx:trigger', function () {});
+  document.body.addEventListener('crmWorkbenchRefresh', function () {
+    window.location.reload();
+  });
+  document.body.addEventListener('htmx:afterRequest', function (evt) {
+    var trig = evt.detail && evt.detail.xhr && evt.detail.xhr.getResponseHeader('HX-Trigger');
+    if (trig && trig.indexOf('crmWorkbenchRefresh') !== -1) {
+      var dlg = document.getElementById('wb-work-modal');
+      if (dlg && dlg.open) dlg.close();
+      window.location.reload();
+    }
+  });
+})();
+</script>
+{% endblock %}

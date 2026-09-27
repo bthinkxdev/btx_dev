@@ -1,7 +1,7 @@
 from django.contrib.auth import views as auth_views
 from django.urls import path
 
-from . import billing_views, views
+from . import billing_views, views, workbench_views
 
 app_name = 'crm'
 
@@ -86,4 +86,19 @@ urlpatterns = [
     path('billing/create/', billing_views.bill_create, name='bill_create'),
     path('billing/bills/<int:pk>/', billing_views.bill_detail, name='bill_detail'),
     path('billing/bills/<int:pk>/pdf/', billing_views.bill_pdf, name='bill_pdf'),
+
+    # Daily Workbench — Activity-based work queue (additive, v1).
+    path('workbench/', workbench_views.workbench, name='workbench'),
+    path('workbench/team/', workbench_views.workbench_team, name='workbench_team'),
+    path('pipeline/', workbench_views.pipeline_board, name='pipeline_board'),
+    path(
+        'workbench/leads/<int:pk>/panel/',
+        workbench_views.workbench_lead_panel,
+        name='workbench_lead_panel',
+    ),
+    path(
+        'workbench/leads/<int:pk>/complete/',
+        workbench_views.workbench_complete_activity,
+        name='workbench_complete_activity',
+    ),
 ]

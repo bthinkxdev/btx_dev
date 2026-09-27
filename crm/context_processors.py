@@ -5,7 +5,12 @@ from datetime import datetime
 from django.utils import timezone
 
 from .models import EmployeeProfile, FollowUp, Task
-from .rbac import can_access_sales_pipeline, can_view_financial_data, is_crm_developer
+from .rbac import (
+    can_access_sales_pipeline,
+    can_view_all_sales_data,
+    can_view_financial_data,
+    is_crm_developer,
+)
 
 
 def crm_header(request):
@@ -19,6 +24,7 @@ def crm_header(request):
         'crm_is_developer': False,
         'crm_can_view_financial_data': True,
         'crm_can_access_sales_pipeline': True,
+        'crm_manager_mode': False,
     }
     user = getattr(request, 'user', None)
     if not user or not user.is_authenticated:
@@ -61,4 +67,5 @@ def crm_header(request):
     out['crm_is_developer'] = is_crm_developer(user)
     out['crm_can_view_financial_data'] = can_view_financial_data(user)
     out['crm_can_access_sales_pipeline'] = can_access_sales_pipeline(user)
+    out['crm_manager_mode'] = can_view_all_sales_data(user)
     return out

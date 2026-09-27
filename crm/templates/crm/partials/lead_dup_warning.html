@@ -1,0 +1,20 @@
+<div class="dup-warning">
+  <strong>Possible duplicate</strong>
+  <p>
+    <strong>{{ existing.name }}</strong>{% if existing.phone %} — {{ existing.phone }}{% endif %}<br>
+    Existing owner: {{ existing.employee.get_full_name|default:existing.employee.get_username|default:"unassigned" }}
+    · Stage: {{ existing.get_status_display }}
+  </p>
+  <div class="dup-warning__actions">
+    <a href="{% url 'crm:lead_detail' existing.pk %}" target="_blank" rel="noopener" class="btn btn-outline btn-sm">Open existing</a>
+    <button type="button" class="btn btn-primary btn-sm"
+            onclick="var f=document.getElementById('add-lead-form'); f.querySelector('[name=confirm_duplicate]').value='1'; htmx.trigger(f,'submit');">
+      Create new anyway
+    </button>
+  </div>
+</div>
+<style>
+  .dup-warning { background: var(--warning-50); border: 1px solid var(--warning-200); border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 12px; font-size: 13px; }
+  .dup-warning p { margin: 6px 0; color: var(--text-muted); }
+  .dup-warning__actions { display: flex; gap: 8px; margin-top: 8px; }
+</style>

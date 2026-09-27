@@ -244,26 +244,13 @@ def _followups_queue_context(user, scope_ids=None):
     }
 
 
-# Lead status values (match crm.models.Lead.Status enum values).
-# We use explicit strings in conditions so we don't depend on enum member names.
-STATUS_CLOSED = 'closed'
-STATUS_LOST = 'lost'
-STATUS_LOST_AFTER_PROPOSAL = 'lost_after_proposal'
-
-STATUS_WHATSAPP_CONNECTED = 'whatsapp_connected'
-STATUS_CALL_CONNECTED = 'call_connected'
-STATUS_CLOSING_ONGOING = 'closing_ongoing'
-
-STATUS_PROPOSAL_SENT = 'proposal_sent'
-STATUS_NEGOTIATION_AFTER_PROPOSAL = 'negotiation_after_proposal'
-STATUS_FAILED_RETRY = 'failed_retry'
-
-TERMINAL_STATUSES = (STATUS_CLOSED, STATUS_LOST, STATUS_LOST_AFTER_PROPOSAL)
+# Won/Lost/Nurture live on Lead.lifecycle_state (set via crm.services.pipeline),
+# not on `status` — `status` is purely the 7-stage pipeline position now.
 INTERESTED_SORT_STATUSES = (
-    STATUS_CLOSING_ONGOING,
-    STATUS_PROPOSAL_SENT,
-    STATUS_NEGOTIATION_AFTER_PROPOSAL,
-    STATUS_FAILED_RETRY,
+    Lead.Status.QUALIFIED,
+    Lead.Status.DEMO,
+    Lead.Status.PROPOSAL,
+    Lead.Status.NEGOTIATION,
 )
 
 
@@ -416,11 +403,11 @@ def dashboard(request):
 
     total_leads = leads.count()
     interested = leads.filter(
-        status__in=INTERESTED_SORT_STATUSES
+        status__in=INTERESTED_SORT_STATUSES, lifecycle_state=Lead.LifecycleState.ACTIVE,
     ).count()
-    closed_won = leads.filter(status=STATUS_CLOSED).count()
+    closed_won = leads.filter(lifecycle_state=Lead.LifecycleState.WON).count()
     revenue = (
-        leads.filter(status=STATUS_CLOSED).aggregate(s=Sum('deal_value'))['s']
+        leads.filter(lifecycle_state=Lead.LifecycleState.WON).aggregate(s=Sum('deal_value'))['s']
         or Decimal('0')
     )
     profile = _profile(user)
@@ -437,13 +424,13 @@ def dashboard(request):
     leads_chart_labels = [x['d'].isoformat() if x['d'] else '' for x in per_day]
     leads_chart_data = [x['c'] for x in per_day]
 
-    won_count = leads.filter(status=STATUS_CLOSED).count()
+    won_count = closed_won
     conv_pct = round((won_count / total_leads * 100), 1) if total_leads else 0
 
     six_mo = timezone.now() - timedelta(days=185)
     rev_monthly = list(
-        leads.filter(status=STATUS_CLOSED, updated_at__gte=six_mo)
-        .annotate(m=TruncMonth('updated_at'))
+        leads.filter(lifecycle_state=Lead.LifecycleState.WON, won_at__gte=six_mo)
+        .annotate(m=TruncMonth('won_at'))
         .values('m')
         .annotate(total=Sum('deal_value'))
         .order_by('m')
@@ -474,7 +461,7 @@ def _leads_list_qs_and_meta(request, user):
     Build filtered + ordered Lead queryset and filter state for leads_list / infinite scroll.
     """
     start, end, local_date = _local_today_bounds()
-    active_q = ~Q(status__in=TERMINAL_STATUSES)
+    active_q = Q(lifecycle_state=Lead.LifecycleState.ACTIVE)
     scope = _sales_scope_context(request, user)
 
     latest = ActivityLog.objects.filter(lead_id=OuterRef('pk')).order_by('-created_at')
@@ -524,13 +511,11 @@ def _leads_list_qs_and_meta(request, user):
         except ValueError:
             pass
 
-    closed_statuses = Lead.STAGE_TO_STATUSES['closed']
-
     closed_day = request.GET.get('closed_day', '').strip()
     if closed_day:
         try:
             d = datetime.strptime(closed_day, '%Y-%m-%d').date()
-            qs = qs.filter(status__in=closed_statuses, updated_at__date=d)
+            qs = qs.filter(lifecycle_state=Lead.LifecycleState.WON, won_at__date=d)
         except ValueError:
             pass
 
@@ -547,7 +532,7 @@ def _leads_list_qs_and_meta(request, user):
         try:
             y, m = int(closed_month[:4]), int(closed_month[5:7])
             qs = qs.filter(
-                status__in=closed_statuses, updated_at__year=y, updated_at__month=m
+                lifecycle_state=Lead.LifecycleState.WON, won_at__year=y, won_at__month=m,
             )
         except ValueError:
             pass
@@ -870,6 +855,14 @@ def lead_create(request):
     user = request.user
     form = LeadForm(request.POST, employee=user)
     if form.is_valid():
+        if request.POST.get('confirm_duplicate') != '1':
+            existing = form.find_duplicate()
+            if existing:
+                return render(
+                    request,
+                    'crm/partials/lead_dup_warning.html',
+                    {'existing': existing},
+                )
         lead = form.save(commit=False)
         lead.employee = user
         lead.save()
@@ -1163,6 +1156,12 @@ def lead_status_detail(request, pk):
         lead.save(update_fields=['status', 'updated_at'])
         if old != st:
             log_activity(lead, 'status_change', f'{old} → {st}')
+        if st == Lead.Status.WON and lead.lifecycle_state != Lead.LifecycleState.WON:
+            from .services.pipeline import PipelineError, mark_won
+            try:
+                mark_won(lead, user=user)
+            except PipelineError:
+                pass  # status still updated above; lifecycle stays Active until deal_value is set
     if request.headers.get('HX-Request'):
         resp = render(
             request,
@@ -1750,9 +1749,9 @@ def performance(request):
     user = request.user
     leads = Lead.objects.filter(employee=user)
     total = leads.count()
-    won = leads.filter(status=STATUS_CLOSED).count()
+    won = leads.filter(lifecycle_state=Lead.LifecycleState.WON).count()
     revenue = (
-        leads.filter(status=STATUS_CLOSED).aggregate(s=Sum('deal_value'))['s']
+        leads.filter(lifecycle_state=Lead.LifecycleState.WON).aggregate(s=Sum('deal_value'))['s']
         or Decimal('0')
     )
     conv = round((won / total * 100), 1) if total else 0
@@ -1766,8 +1765,8 @@ def performance(request):
         .order_by('d')
     )
     daily_won = list(
-        leads.filter(status=STATUS_CLOSED, updated_at__gte=since)
-        .annotate(d=TruncDate('updated_at'))
+        leads.filter(lifecycle_state=Lead.LifecycleState.WON, won_at__gte=since)
+        .annotate(d=TruncDate('won_at'))
         .values('d')
         .annotate(c=Count('id'))
         .order_by('d')
@@ -1793,9 +1792,9 @@ def performance(request):
         mm = x['m']
         if mm:
             won_q = leads.filter(
-                status=STATUS_CLOSED,
-                updated_at__year=mm.year,
-                updated_at__month=mm.month,
+                lifecycle_state=Lead.LifecycleState.WON,
+                won_at__year=mm.year,
+                won_at__month=mm.month,
             )
             m_won_list.append(won_q.count())
             m_rev_list.append(

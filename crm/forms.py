@@ -17,21 +17,20 @@ class LeadForm(forms.ModelForm):
         self.fields['status'].choices = Lead.PRIMARY_STATUS_CHOICES
 
     def clean_phone(self):
-        phone = (self.cleaned_data.get('phone') or '').strip()
-        if phone:
-            dup = Lead.objects.filter(phone=phone)
-            if self.instance.pk:
-                dup = dup.exclude(pk=self.instance.pk)
-            existing = dup.select_related('employee').first()
-            if existing:
-                owner = (
-                    (existing.employee.get_full_name() or existing.employee.get_username())
-                    if existing.employee_id else 'unassigned'
-                )
-                raise forms.ValidationError(
-                    f'A lead with this phone number already exists: "{existing.name}" (owner: {owner}).'
-                )
-        return phone
+        # Duplicate phones are not blocked here — the view offers a
+        # "possible duplicate / open existing or create new anyway" prompt
+        # instead of a hard validation error (crm.views.lead_create).
+        return (self.cleaned_data.get('phone') or '').strip()
+
+    def find_duplicate(self):
+        """Existing lead sharing this phone number, if any (global, not per-employee)."""
+        phone = (self.data.get('phone') or '').strip()
+        if not phone:
+            return None
+        dup = Lead.objects.filter(phone=phone)
+        if self.instance.pk:
+            dup = dup.exclude(pk=self.instance.pk)
+        return dup.select_related('employee').first()
 
 
 class FollowUpForm(forms.ModelForm):
