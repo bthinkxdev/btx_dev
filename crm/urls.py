@@ -1,7 +1,7 @@
 from django.contrib.auth import views as auth_views
 from django.urls import path
 
-from . import billing_views, finance_views, lead_extraction_views, views, views_tickets
+from . import billing_views, views
 
 app_name = 'crm'
 
@@ -16,150 +16,8 @@ urlpatterns = [
         auth_views.LogoutView.as_view(),
         name='logout',
     ),
-    path('onboarding/<uuid:token>/', views.onboarding_form, name='onboarding_form'),
-    path(
-        'onboarding/<uuid:token>/section/',
-        views.onboarding_section_save,
-        name='onboarding_section_save',
-    ),
-    path(
-        'onboarding/<uuid:token>/submit/',
-        views.onboarding_final_submit,
-        name='onboarding_final_submit',
-    ),
-    path('portal/<uuid:token>/', views.client_portal, name='client_portal'),
-    path(
-        'portal/<uuid:token>/change-request/',
-        views.portal_submit_change_request,
-        name='portal_submit_change_request',
-    ),
-    path(
-        'portal/<uuid:token>/change-requests/',
-        views.portal_change_requests,
-        name='portal_change_requests',
-    ),
     path('', views.dashboard, name='dashboard'),
-    path('operations/', views.operations_dashboard, name='operations_dashboard'),
-    path('projects/', views.projects_list, name='projects'),
-    path('projects/create/', views.project_create, name='project_create'),
-    path('projects/<int:pk>/', views.project_detail, name='project_detail'),
-    path(
-        'projects/<int:pk>/finance/',
-        finance_views.project_finance,
-        name='project_finance',
-    ),
-    path(
-        'clients/<int:pk>/finance/',
-        finance_views.client_finance,
-        name='client_finance',
-    ),
-    path('tickets/', views_tickets.tickets_hub, name='tickets'),
-    path('tickets/board/', views_tickets.tickets_board_partial, name='tickets_board'),
-    path('tickets/create/', views_tickets.ticket_create, name='ticket_create'),
-    path('tickets/members/', views_tickets.ticket_member_select, name='ticket_member_select'),
-    path('tickets/<int:pk>/', views_tickets.ticket_detail, name='ticket_detail'),
-    path('tickets/<int:pk>/move/', views_tickets.ticket_move, name='ticket_move'),
-    path('tickets/<int:pk>/upload/', views_tickets.ticket_upload, name='ticket_upload'),
-    path(
-        'projects/<int:pk>/assignees/',
-        views.project_assignees_update,
-        name='project_assignees_update',
-    ),
-    path(
-        'projects/<int:pk>/tickets/',
-        views.project_tickets_board,
-        name='project_tickets_board',
-    ),
-    path(
-        'projects/<int:pk>/tickets/create/',
-        views.project_ticket_create,
-        name='project_ticket_create',
-    ),
-    path(
-        'projects/<int:pk>/tickets/<int:ticket_pk>/move/',
-        views.project_ticket_move,
-        name='project_ticket_move',
-    ),
-    path(
-        'projects/<int:pk>/tickets/<int:ticket_pk>/',
-        views.project_ticket_detail,
-        name='project_ticket_detail',
-    ),
-    path(
-        'projects/<int:pk>/tickets/<int:ticket_pk>/upload/',
-        views.project_ticket_upload,
-        name='project_ticket_upload',
-    ),
-    path(
-        'projects/<int:pk>/operations/',
-        views.project_operations,
-        name='project_operations',
-    ),
-    path(
-        'projects/<int:pk>/operations/provisioning/',
-        views.project_provisioning_step_update,
-        name='project_provisioning_step',
-    ),
-    path(
-        'projects/<int:pk>/operations/credentials/',
-        views.project_credential_save,
-        name='project_credential_save',
-    ),
-    path(
-        'projects/<int:pk>/operations/credentials/<int:cred_id>/reveal/',
-        views.credential_reveal,
-        name='credential_reveal',
-    ),
-    path(
-        'projects/<int:pk>/operations/credentials/<int:cred_id>/copy-log/',
-        views.credential_copy_logged,
-        name='credential_copy_logged',
-    ),
-    path(
-        'projects/<int:pk>/operations/handover/',
-        views.project_handover_save,
-        name='project_handover_save',
-    ),
-    path(
-        'projects/<int:pk>/operations/renewals/',
-        views.project_renewal_add,
-        name='project_renewal_add',
-    ),
-    path(
-        'projects/<int:pk>/portal/activate/',
-        views.portal_activate,
-        name='portal_activate',
-    ),
-    path(
-        'projects/<int:pk>/portal/deactivate/',
-        views.portal_deactivate,
-        name='portal_deactivate',
-    ),
-    path(
-        'projects/<int:pk>/status/',
-        views.project_status_update,
-        name='project_status_update',
-    ),
-    path(
-        'projects/<int:pk>/onboarding/',
-        views.project_onboarding_detail,
-        name='project_onboarding_detail',
-    ),
-    path(
-        'projects/<int:pk>/onboarding/section/verify/',
-        views.onboarding_section_verify,
-        name='onboarding_section_verify',
-    ),
-    path(
-        'projects/<int:pk>/onboarding/notes/',
-        views.onboarding_internal_notes_save,
-        name='onboarding_internal_notes_save',
-    ),
-    path(
-        'projects/<int:pk>/onboarding/client-notes/',
-        views.onboarding_client_notes_save,
-        name='onboarding_client_notes_save',
-    ),
+
     path('leads/', views.leads_list, name='leads'),
     path('leads/more/', views.leads_more_json, name='leads_more'),
     path('leads/search/', views.lead_search, name='lead_search'),
@@ -169,11 +27,6 @@ urlpatterns = [
     path('leads/<int:pk>/patch/', views.lead_patch, name='lead_patch'),
     path('leads/<int:pk>/quick-fu/', views.lead_quick_followup, name='lead_quick_fu'),
     path('leads/<int:pk>/quick-note/', views.lead_quick_note, name='lead_quick_note'),
-    path(
-        'leads/<int:lead_pk>/convert/',
-        views.lead_convert_to_project,
-        name='lead_convert',
-    ),
     path('leads/<int:pk>/', views.lead_detail, name='lead_detail'),
     path('leads/<int:pk>/notes/', views.lead_notes_save, name='lead_notes_save'),
     path(
@@ -195,6 +48,11 @@ urlpatterns = [
         views.lead_log_whatsapp,
         name='lead_log_whatsapp',
     ),
+    path(
+        'leads/<int:pk>/high-hope-toggle/',
+        views.lead_high_hope_toggle,
+        name='lead_high_hope_toggle',
+    ),
     path('tasks/<int:pk>/toggle/', views.task_toggle, name='task_toggle'),
     path('tasks/<int:pk>/update/', views.task_update, name='task_update'),
     path(
@@ -210,289 +68,22 @@ urlpatterns = [
     path('followups/', views.followups_page, name='followups'),
     path('followups/<int:pk>/done/', views.followup_done, name='followup_done'),
     path('followups/<int:pk>/reschedule/', views.followup_reschedule, name='followup_reschedule'),
+
     path('packages/', views.packages_page, name='packages'),
     path('packages/create/', views.package_create, name='package_create'),
     path('packages/<int:pk>/edit/', views.package_update, name='package_update'),
     path('packages/<int:pk>/delete/', views.package_delete, name='package_delete'),
-    path('packages/<int:pk>/scope/', views.package_scope_edit, name='package_scope_edit'),
+
     path('performance/', views.performance, name='performance'),
     path(
         'performance/report-card/',
         views.performance_report_card,
         name='performance_report_card',
     ),
-    path(
-        'leads/<int:pk>/high-hope-toggle/',
-        views.lead_high_hope_toggle,
-        name='lead_high_hope_toggle',
-    ),
-    path(
-        'whatsapp-bot-toggle/',
-        views.whatsapp_bot_toggle,
-        name='whatsapp_bot_toggle',
-    ),
-    path(
-        'whatsapp-bot-exclude/add/',
-        views.whatsapp_bot_exclude_add,
-        name='whatsapp_bot_exclude_add',
-    ),
-    path(
-        'whatsapp-bot-exclude/<int:pk>/remove/',
-        views.whatsapp_bot_exclude_remove,
-        name='whatsapp_bot_exclude_remove',
-    ),
-    path('wa/qr/', views.whatsapp_qr_list, name='whatsapp_qr_list'),
-    path('wa/qr/<str:session_id>/', views.whatsapp_qr_session, name='whatsapp_qr_session'),
-    path('wa/health/', views.whatsapp_session_health, name='whatsapp_session_health'),
-    path('achievements/', views.achievements_dashboard, name='achievements_dashboard'),
-    path('achievements/create/', views.achievement_create, name='achievement_create'),
-    path('achievements/<int:pk>/edit/', views.achievement_update, name='achievement_update'),
-    path('achievements/<int:pk>/delete/', views.achievement_delete, name='achievement_delete'),
-    path('lead-extraction/', lead_extraction_views.lead_extraction_page, name='lead_extraction'),
-    path(
-        'lead-extraction/start/',
-        lead_extraction_views.lead_extraction_start,
-        name='lead_extraction_start',
-    ),
-    path(
-        'lead-extraction/<int:run_id>/stop/',
-        lead_extraction_views.lead_extraction_stop,
-        name='lead_extraction_stop',
-    ),
-    path(
-        'lead-extraction/<int:run_id>/status/',
-        lead_extraction_views.lead_extraction_status,
-        name='lead_extraction_status',
-    ),
-    path('audit/', views.audit_trail, name='audit_trail'),
-    path('projects/<int:pk>/audit/', views.project_audit_trail, name='project_audit_trail'),
-    path(
-        'projects/<int:pk>/change-request/staff/',
-        views.change_request_staff_create,
-        name='change_request_staff_create',
-    ),
-    path('change-requests/', views.change_requests_list, name='change_requests_list'),
-    path(
-        'change-requests/<int:pk>/',
-        views.change_request_detail,
-        name='change_request_detail',
-    ),
-    path(
-        'change-requests/<int:pk>/triage/',
-        views.change_request_triage,
-        name='change_request_triage',
-    ),
-    path(
-        'change-requests/<int:pk>/quote/',
-        views.change_request_quote,
-        name='change_request_quote',
-    ),
-    path(
-        'change-requests/<int:pk>/approve/',
-        views.change_request_approve,
-        name='change_request_approve',
-    ),
-    path(
-        'change-requests/<int:pk>/reject/',
-        views.change_request_reject,
-        name='change_request_reject',
-    ),
-    path(
-        'change-requests/<int:pk>/complete/',
-        views.change_request_complete,
-        name='change_request_complete',
-    ),
-    path(
-        'change-requests/<int:pk>/start/',
-        views.change_request_start,
-        name='change_request_start',
-    ),
-    path('renewals/', views.renewals_dashboard, name='renewals_dashboard'),
-    path('renewals/<int:pk>/', views.renewal_detail, name='renewal_detail'),
-    path(
-        'renewals/<int:pk>/send-reminder/',
-        views.renewal_send_reminder_manual,
-        name='renewal_send_reminder_manual',
-    ),
-    # Finance — income, expenses, reports
-    path('finance/', finance_views.finance_dashboard, name='finance_dashboard'),
-    path('finance/income/', finance_views.income_list, name='income_list'),
-    path('finance/income/add/', finance_views.income_create, name='income_create'),
-    path('finance/income/<int:pk>/edit/', finance_views.income_edit, name='income_edit'),
-    path('finance/income/<int:pk>/delete/', finance_views.income_delete, name='income_delete'),
-    path('finance/expenses/', finance_views.expense_list, name='expense_list'),
-    path(
-        'finance/expenses/dashboard/',
-        finance_views.expense_dashboard,
-        name='expense_dashboard',
-    ),
-    path('finance/expenses/add/', finance_views.expense_create, name='expense_create'),
-    path(
-        'finance/expenses/<int:pk>/edit/',
-        finance_views.expense_edit,
-        name='expense_edit',
-    ),
-    path(
-        'finance/expenses/<int:pk>/delete/',
-        finance_views.expense_delete,
-        name='expense_delete',
-    ),
-    path(
-        'finance/expenses/<int:pk>/receipt/',
-        finance_views.expense_receipt,
-        name='expense_receipt',
-    ),
-    path('finance/statement/', finance_views.finance_statement, name='finance_statement'),
-    path(
-        'finance/funds/',
-        finance_views.funds_overview,
-        name='funds_overview',
-    ),
-    path(
-        'finance/funds/transfer/',
-        finance_views.fund_transfer_create,
-        name='fund_transfer_create',
-    ),
-    path(
-        'finance/funds/usage/',
-        finance_views.fund_usage_create,
-        name='fund_usage_create',
-    ),
-    path(
-        'finance/funds/reports/',
-        finance_views.fund_reports_hub,
-        name='fund_reports_hub',
-    ),
-    path(
-        'finance/funds/reports/<slug:report_type>/',
-        finance_views.fund_report_run,
-        name='fund_report_run',
-    ),
-    path(
-        'finance/funds/<slug:fund_slug>/',
-        finance_views.fund_detail,
-        name='fund_detail',
-    ),
-    path(
-        'finance/allocation/',
-        finance_views.allocation_dashboard,
-        name='allocation_dashboard',
-    ),
-    path(
-        'finance/allocation/settings/',
-        finance_views.allocation_settings,
-        name='allocation_settings',
-    ),
-    # Legacy URL — Record Usage retired; same redirect as fund_usage_create
-    path(
-        'finance/allocation/usage/add/',
-        finance_views.fund_usage_create,
-        name='fund_usage_create_legacy',
-    ),
-    path(
-        'finance/allocation/recalculate/',
-        finance_views.allocation_recalculate_all,
-        name='allocation_recalculate',
-    ),
-    path(
-        'finance/founders/',
-        finance_views.founder_dashboard,
-        name='founder_dashboard',
-    ),
-    path(
-        'finance/founders/settings/',
-        finance_views.founder_settings,
-        name='founder_settings',
-    ),
-    path(
-        'finance/founders/withdraw/',
-        finance_views.founder_withdrawal_create,
-        name='founder_withdrawal_create',
-    ),
-    path(
-        'finance/settings/',
-        finance_views.finance_settings,
-        name='finance_settings',
-    ),
-    path(
-        'finance/settings/categories/',
-        finance_views.finance_settings_categories,
-        name='finance_settings_categories',
-    ),
-    path(
-        'finance/settings/bank-accounts/',
-        finance_views.finance_settings_bank_accounts,
-        name='finance_settings_bank_accounts',
-    ),
-    path('finance/reports/', finance_views.finance_reports, name='finance_reports'),
-    path(
-        'finance/reports/executive/',
-        finance_views.finance_executive,
-        name='finance_executive',
-    ),
-    # Legacy aliases must precede the slug catch-all
-    path(
-        'finance/reports/monthly-expense/',
-        finance_views.report_monthly_expense,
-        name='report_monthly_expense',
-    ),
-    path(
-        'finance/reports/category/',
-        finance_views.report_category,
-        name='report_category',
-    ),
-    path(
-        'finance/reports/vendor/',
-        finance_views.report_vendor,
-        name='report_vendor',
-    ),
-    path(
-        'finance/reports/project/',
-        finance_views.report_project_expense,
-        name='report_project_expense',
-    ),
-    path(
-        'finance/reports/<slug:report_type>/',
-        finance_views.finance_report_run,
-        name='finance_report_run',
-    ),
-    # Billing & Accounts (admin only)
+
+    # Billing — simple bill + receipt, no ledger/accounts.
     path('billing/', billing_views.billing_dashboard, name='billing_dashboard'),
-    path('billing/ledger/', billing_views.ledger_list, name='billing_ledger'),
-    path('billing/projects/<int:pk>/', billing_views.billing_project, name='billing_project'),
-    path('billing/projects/<int:pk>/record/', billing_views.billing_project, name='billing_record'),
-    path('billing/projects/<int:pk>/bills/create/', billing_views.bill_create, name='bill_create'),
-    path(
-        'billing/projects/<int:pk>/bills/quick/',
-        billing_views.bill_quick_create,
-        name='bill_quick_create',
-    ),
-    path('billing/projects/<int:pk>/payments/', billing_views.payment_create, name='payment_create'),
-    path(
-        'billing/projects/<int:pk>/statement/',
-        billing_views.statement_download,
-        name='statement_download',
-    ),
+    path('billing/create/', billing_views.bill_create, name='bill_create'),
     path('billing/bills/<int:pk>/', billing_views.bill_detail, name='bill_detail'),
     path('billing/bills/<int:pk>/pdf/', billing_views.bill_pdf, name='bill_pdf'),
-    path(
-        'billing/bills/<int:pk>/resend-email/',
-        billing_views.bill_resend_email,
-        name='bill_resend_email',
-    ),
-    path(
-        'billing/payments/<int:payment_pk>/verify/',
-        billing_views.payment_verify,
-        name='payment_verify',
-    ),
-    path(
-        'billing/payments/<int:payment_pk>/pdf/',
-        billing_views.payment_receipt_pdf,
-        name='payment_receipt_pdf',
-    ),
-    path(
-        'billing/payments/<int:payment_pk>/resend-email/',
-        billing_views.payment_resend_email,
-        name='payment_resend_email',
-    ),
 ]

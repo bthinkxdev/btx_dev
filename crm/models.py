@@ -1882,11 +1882,23 @@ class Bill(models.Model):
         Project,
         on_delete=models.CASCADE,
         related_name='bills',
+        null=True,
+        blank=True,
     )
     client = models.ForeignKey(
         Client,
         on_delete=models.CASCADE,
         related_name='bills',
+        null=True,
+        blank=True,
+    )
+    lead = models.ForeignKey(
+        Lead,
+        on_delete=models.SET_NULL,
+        related_name='bills',
+        null=True,
+        blank=True,
+        help_text='Optional — a simple bill can reference a lead, or no one at all',
     )
     bill_date = models.DateField(default=timezone.localdate)
     due_date = models.DateField(null=True, blank=True)
@@ -1998,6 +2010,8 @@ class BillPayment(models.Model):
         Project,
         on_delete=models.CASCADE,
         related_name='bill_payments',
+        null=True,
+        blank=True,
     )
     amount = models.DecimalField(max_digits=14, decimal_places=2)
     transaction_id = models.CharField(max_length=120, blank=True)
@@ -2039,7 +2053,7 @@ class BillPayment(models.Model):
         ordering = ['-payment_date', '-created_at']
 
     def __str__(self):
-        return f'{self.amount} — {self.project_id}'
+        return f'{self.amount} — {self.bill_id or self.project_id}'
 
 
 class LedgerEntry(models.Model):

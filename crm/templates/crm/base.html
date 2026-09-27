@@ -1918,55 +1918,13 @@
          hx-select="#crm-main-content"
          hx-swap="outerHTML"
          hx-push-url="true"
-         class="nav-item {% if request.resolver_match.url_name == 'leads' or request.resolver_match.url_name == 'lead_detail' or request.resolver_match.url_name == 'lead_convert' %}active{% endif %}">
+         class="nav-item {% if request.resolver_match.url_name == 'leads' or request.resolver_match.url_name == 'lead_detail' %}active{% endif %}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
         </svg>
         <span>Leads</span>
       </a>
       {% endif %}
-
-      <a href="{% url 'crm:projects' %}"
-         hx-get="{% url 'crm:projects' %}"
-         hx-target="#crm-main-content"
-         hx-select="#crm-main-content"
-         hx-swap="outerHTML"
-         hx-push-url="true"
-         class="nav-item {% if request.resolver_match.url_name == 'projects' or request.resolver_match.url_name == 'project_create' or request.resolver_match.url_name == 'project_detail' or request.resolver_match.url_name == 'project_onboarding_detail' %}active{% endif %}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-        </svg>
-        <span>Projects</span>
-      </a>
-
-      <a href="{% url 'crm:tickets' %}?view=board"
-         hx-get="{% url 'crm:tickets' %}?view=board"
-         hx-target="#crm-main-content"
-         hx-select="#crm-main-content"
-         hx-swap="outerHTML"
-         hx-push-url="true"
-         class="nav-item nav-item--with-badge {% if 'ticket' in request.resolver_match.url_name %}active{% endif %}"
-         title="{% if crm_tickets_open_n %}{{ crm_tickets_open_n }} open ticket{{ crm_tickets_open_n|pluralize }}{% else %}Tickets{% endif %}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-        </svg>
-        <span>Tickets</span>
-        {% if crm_tickets_open_n %}<span class="nav-count">{{ crm_tickets_open_n }}</span>{% endif %}
-      </a>
-
-      <a href="{% url 'crm:operations_dashboard' %}"
-         hx-get="{% url 'crm:operations_dashboard' %}"
-         hx-target="#crm-main-content"
-         hx-select="#crm-main-content"
-         hx-swap="outerHTML"
-         hx-push-url="true"
-         class="nav-item {% if request.resolver_match.url_name == 'operations_dashboard' or request.resolver_match.url_name == 'project_operations' or request.resolver_match.url_name == 'project_provisioning_step' or request.resolver_match.url_name == 'project_credential_save' or request.resolver_match.url_name == 'credential_reveal' or request.resolver_match.url_name == 'credential_copy_logged' or request.resolver_match.url_name == 'project_handover_save' or request.resolver_match.url_name == 'project_renewal_add' or request.resolver_match.url_name == 'change_request_staff_create' or request.resolver_match.url_name == 'project_audit_trail' %}active{% endif %}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
-          <circle cx="12" cy="12" r="3"/>
-        </svg>
-        <span>Operations</span>
-      </a>
 
       {% if crm_can_access_sales_pipeline %}
       <a href="{% url 'crm:followups' %}"
@@ -2008,187 +1966,20 @@
         <span>Performance</span>
       </a>
 
-      <a href="{% url 'crm:renewals_dashboard' %}"
-         hx-get="{% url 'crm:renewals_dashboard' %}"
-         hx-target="#crm-main-content"
-         hx-select="#crm-main-content"
-         hx-swap="outerHTML"
-         hx-push-url="true"
-         class="nav-item {% if request.resolver_match.url_name == 'renewals_dashboard' or request.resolver_match.url_name == 'renewal_detail' or request.resolver_match.url_name == 'renewal_send_reminder_manual' %}active{% endif %}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4"/><path d="M12 16h.01"/>
-        </svg>
-        <span>Renewals</span>
-      </a>
       {% endif %}
 
-      {% if request.user|crm_can_change_requests %}
-      <a href="{% url 'crm:change_requests_list' %}"
-         hx-get="{% url 'crm:change_requests_list' %}"
-         hx-target="#crm-main-content"
-         hx-select="#crm-main-content"
-         hx-swap="outerHTML"
-         hx-push-url="true"
-         class="nav-item {% if request.resolver_match.url_name == 'change_requests_list' or request.resolver_match.url_name == 'change_request_detail' %}active{% endif %}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
-        </svg>
-        <span>Change Requests</span>
-      </a>
-      {% endif %}
-
-      {% if crm_can_access_finance %}
-      <span class="nav-section-label">Finance</span>
-      <a href="{% url 'crm:finance_dashboard' %}"
-         hx-get="{% url 'crm:finance_dashboard' %}"
-         hx-target="#crm-main-content"
-         hx-select="#crm-main-content"
-         hx-swap="outerHTML"
-         hx-push-url="true"
-         data-nav="finance-dashboard"
-         class="nav-item {% if request.resolver_match.url_name == 'finance_dashboard' %}active{% endif %}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-        </svg>
-        <span>Dashboard</span>
-      </a>
-
-      <div class="nav-group">
-        <div class="nav-group__label">Transactions</div>
-        <a href="{% url 'crm:income_list' %}"
-           hx-get="{% url 'crm:income_list' %}"
-           hx-target="#crm-main-content"
-           hx-select="#crm-main-content"
-           hx-swap="outerHTML"
-           hx-push-url="true"
-           data-nav="finance-income"
-           class="nav-subitem {% if request.resolver_match.url_name == 'income_list' or request.resolver_match.url_name == 'income_create' or request.resolver_match.url_name == 'income_edit' %}active{% endif %}">
-          <span>Income</span>
-        </a>
-        <a href="{% url 'crm:expense_list' %}"
-           hx-get="{% url 'crm:expense_list' %}"
-           hx-target="#crm-main-content"
-           hx-select="#crm-main-content"
-           hx-swap="outerHTML"
-           hx-push-url="true"
-           data-nav="finance-expense"
-           class="nav-subitem {% if request.resolver_match.url_name == 'expense_list' or request.resolver_match.url_name == 'expense_create' or request.resolver_match.url_name == 'expense_edit' or request.resolver_match.url_name == 'expense_receipt' %}active{% endif %}">
-          <span>Expenses</span>
-        </a>
-        <a href="{% url 'crm:finance_statement' %}"
-           hx-get="{% url 'crm:finance_statement' %}"
-           hx-target="#crm-main-content"
-           hx-select="#crm-main-content"
-           hx-swap="outerHTML"
-           hx-push-url="true"
-           data-nav="finance-statement"
-           class="nav-subitem {% if request.resolver_match.url_name == 'finance_statement' %}active{% endif %}">
-          <span>Statement</span>
-        </a>
-      </div>
-
-      <a href="{% url 'crm:funds_overview' %}"
-         hx-get="{% url 'crm:funds_overview' %}"
-         hx-target="#crm-main-content"
-         hx-select="#crm-main-content"
-         hx-swap="outerHTML"
-         hx-push-url="true"
-         data-nav="finance-funds"
-         class="nav-item {% if 'fund' in request.resolver_match.url_name or request.resolver_match.url_name == 'founder_withdrawal_create' or request.resolver_match.url_name == 'allocation_dashboard' %}active{% endif %}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
-        </svg>
-        <span>Funds</span>
-      </a>
-
-      <a href="{% url 'crm:finance_reports' %}"
-         hx-get="{% url 'crm:finance_reports' %}"
-         hx-target="#crm-main-content"
-         hx-select="#crm-main-content"
-         hx-swap="outerHTML"
-         hx-push-url="true"
-         data-nav="finance-reports"
-         class="nav-item {% if request.resolver_match.url_name == 'finance_reports' or request.resolver_match.url_name == 'finance_report_run' or request.resolver_match.url_name == 'finance_executive' %}active{% endif %}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-6"/>
-        </svg>
-        <span>Reports</span>
-      </a>
-
-      {% if crm_can_access_billing %}
-      <a href="{% url 'crm:finance_settings' %}"
-         hx-get="{% url 'crm:finance_settings' %}"
-         hx-target="#crm-main-content"
-         hx-select="#crm-main-content"
-         hx-swap="outerHTML"
-         hx-push-url="true"
-         data-nav="finance-settings"
-         class="nav-item {% if request.resolver_match.url_name == 'finance_settings' or request.resolver_match.url_name == 'finance_settings_categories' or request.resolver_match.url_name == 'finance_settings_bank_accounts' or request.resolver_match.url_name == 'allocation_settings' or request.resolver_match.url_name == 'founder_settings' %}active{% endif %}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
-        </svg>
-        <span>Settings</span>
-      </a>
-      {% endif %}
-      {% endif %}
-
-      {% if crm_can_access_billing %}
+      {% if crm_can_access_sales_pipeline %}
       <a href="{% url 'crm:billing_dashboard' %}"
          hx-get="{% url 'crm:billing_dashboard' %}"
          hx-target="#crm-main-content"
          hx-select="#crm-main-content"
          hx-swap="outerHTML"
          hx-push-url="true"
-         class="nav-item {% if 'billing' in request.resolver_match.url_name or request.resolver_match.url_name == 'bill_detail' or request.resolver_match.url_name == 'bill_create' or request.resolver_match.url_name == 'payment_create' %}active{% endif %}">
+         class="nav-item {% if 'bill' in request.resolver_match.url_name %}active{% endif %}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>
         </svg>
-        <span>Billing &amp; Accounts</span>
-      </a>
-      {% endif %}
-
-      {% if request.user|crm_can_audit %}
-      <a href="{% url 'crm:audit_trail' %}"
-         hx-get="{% url 'crm:audit_trail' %}"
-         hx-target="#crm-main-content"
-         hx-select="#crm-main-content"
-         hx-swap="outerHTML"
-         hx-push-url="true"
-         class="nav-item {% if request.resolver_match.url_name == 'audit_trail' %}active{% endif %}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-        </svg>
-        <span>Audit Trail</span>
-      </a>
-      {% endif %}
-
-      {% if crm_can_access_sales_pipeline %}
-      <a href="{% url 'crm:achievements_dashboard' %}"
-         hx-get="{% url 'crm:achievements_dashboard' %}"
-         hx-target="#crm-main-content"
-         hx-select="#crm-main-content"
-         hx-swap="outerHTML"
-         hx-push-url="true"
-         class="nav-item {% if request.resolver_match.url_name == 'achievements_dashboard' %}active{% endif %}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 3h18v4H3z"/><path d="M5 7v11a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7"/><path d="M9 11h6"/><path d="M9 15h3"/>
-        </svg>
-        <span>Achievements</span>
-      </a>
-      {% endif %}
-
-      {% if crm_can_access_lead_extraction %}
-      <a href="{% url 'crm:lead_extraction' %}"
-         hx-get="{% url 'crm:lead_extraction' %}"
-         hx-target="#crm-main-content"
-         hx-select="#crm-main-content"
-         hx-swap="outerHTML"
-         hx-push-url="true"
-         class="nav-item {% if request.resolver_match.url_name == 'lead_extraction' %}active{% endif %}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-        </svg>
-        <span>Lead Extraction</span>
+        <span>Billing</span>
       </a>
       {% endif %}
 
@@ -2196,7 +1987,7 @@
       {% if crm_can_access_sales_pipeline %}
       <p class="sidebar-mobile-hint">Search by name or phone: open <strong>Leads</strong>, tap <strong>Filters</strong>, then Search.</p>
       {% else %}
-      <p class="sidebar-mobile-hint">Use <strong>Projects</strong> and <strong>Operations</strong> from the menu.</p>
+      <p class="sidebar-mobile-hint">Use the menu above.</p>
       {% endif %}
     </nav>
 
@@ -2221,11 +2012,6 @@
     </div>
     {% endif %}
     <div class="header-right">
-      {% if crm_can_access_sales_pipeline %}
-      <div id="wa-bot-toggle-host">
-        {% include "crm/partials/whatsapp_bot_panel.html" %}
-      </div>
-      {% endif %}
       {% if request.user.is_authenticated %}
       <details class="header-dd header-dd--tasks" id="crm-header-task-dd">
         <summary class="header-task-sum" aria-label="Task notifications" title="Tasks due today or overdue">
@@ -3215,14 +3001,14 @@
             var q = 'modal=expense';
             if (prefill && prefill.bucket) q += '&funding=' + encodeURIComponent(prefill.bucket);
             if (typeof htmx !== 'undefined') {
-              htmx.ajax('GET', '{% url "crm:expense_list" %}?' + q, {
+              htmx.ajax('GET', '{% url "crm:billing_dashboard" %}?' + q, {
                 target: '#crm-main-content',
                 select: '#crm-main-content',
                 swap: 'outerHTML',
                 pushUrl: true,
               });
             } else {
-              window.location.href = '{% url "crm:expense_list" %}?' + q;
+              window.location.href = '{% url "crm:billing_dashboard" %}?' + q;
             }
             return;
           }

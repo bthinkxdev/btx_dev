@@ -141,74 +141,7 @@ def whatsapp_wa_url(phone):
 
 
 @register.filter
-def crm_can_audit(user):
-    from ..rbac import can_access_audit_trail
-
-    return bool(user and user.is_authenticated and can_access_audit_trail(user))
-
-
-@register.filter
-def crm_can_change_requests(user):
-    from ..rbac import can_access_change_requests
-
-    return bool(user and user.is_authenticated and can_access_change_requests(user))
-
-
-@register.filter
-def crm_can_access_renewals(user):
-    from ..rbac import can_access_renewals_dashboard
-
-    return bool(user and user.is_authenticated and can_access_renewals_dashboard(user))
-
-
-@register.filter
-def crm_can_access_billing(user):
-    from ..rbac import can_access_billing
-
-    return bool(user and user.is_authenticated and can_access_billing(user))
-
-
-@register.filter
-def crm_can_access_finance(user):
-    from ..rbac import can_access_finance
-
-    return bool(user and user.is_authenticated and can_access_finance(user))
-
-
-@register.filter
 def dict_get(mapping, key):
     if not mapping or key is None:
         return key
     return mapping.get(key, key)
-
-
-def _linkify_ticket_note_text(text):
-    """Escape HTML, preserve line breaks, turn http(s) URLs into anchor tags."""
-    from django.utils.html import escape
-
-    text = escape(text or '')
-    text = text.replace('\n\n', '</p><p>').replace('\n', '<br>')
-
-    def _replace_url(match):
-        url = match.group(0)
-        trail = ''
-        while url and url[-1] in '.,;:!?)':
-            trail = url[-1] + trail
-            url = url[:-1]
-        if not url:
-            return match.group(0)
-        return (
-            f'<a href="{url}" target="_blank" rel="noopener noreferrer">{url}</a>{trail}'
-        )
-
-    text = re.sub(r'https?://[^\s<>"\']+', _replace_url, text)
-    return text
-
-
-@register.filter
-def ticket_richtext(value):
-    """Line breaks + auto-link URLs in ticket detailed notes."""
-    from django.utils.safestring import mark_safe
-
-    body = _linkify_ticket_note_text(value)
-    return mark_safe(f'<p>{body}</p>')
