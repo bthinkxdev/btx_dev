@@ -102,9 +102,3 @@ class QuickFollowUpForm(forms.Form):
     fu_note = forms.CharField(required=False, max_length=500, widget=forms.TextInput(attrs={'placeholder': 'Optional'}))
 
 
-class QuickNoteForm(forms.Form):
-    quick_note = forms.CharField(
-        required=False,
-        max_length=500,
-        widget=forms.TextInput(attrs={'placeholder': 'Quick note…'}),
-    )

@@ -2145,6 +2145,8 @@ class BillPayment(models.Model):
     )
     verified_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    receipt_number = models.CharField(max_length=48, blank=True)
+    receipt_pdf = models.FileField(upload_to='bills/receipts/', blank=True)
 
     class Meta:
         ordering = ['-payment_date', '-created_at']

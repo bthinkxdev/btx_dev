@@ -5,13 +5,16 @@ amount, get a Bill + PDF payment receipt. No ledger, no accounts.
 
 from decimal import Decimal, InvalidOperation
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.views.decorators.http import require_POST
 
 from .models import Bill, BillPayment, Lead, Package
-from .services.simple_billing import create_quick_bill
+from .services.simple_billing import add_payment_to_bill, create_quick_bill
 
 BILLS_PER_PAGE = 20
 
@@ -85,7 +88,7 @@ def bill_create(request):
                 payment_method=payment_method,
                 notes=notes,
             )
-            return redirect('crm:bill_detail', pk=bill.pk)
+            return redirect(reverse('crm:bill_detail', kwargs={'pk': bill.pk}) + '?preview=1')
 
         posted_items = [
             {'description': d, 'quantity': q, 'unit_price': p}
@@ -108,6 +111,10 @@ def bill_create(request):
             },
         )
 
+    prefill_lead = None
+    lead_param = (request.GET.get('lead') or '').strip()
+    if lead_param.isdigit():
+        prefill_lead = Lead.objects.filter(pk=int(lead_param)).first()
     return render(
         request,
         'crm/billing/bill_create.html',
@@ -115,6 +122,8 @@ def bill_create(request):
             'packages': Package.objects.all().order_by('name'),
             'posted_items': [],
             'payment_method_choices': BillPayment.PaymentMethod.choices,
+            'form_lead_id': prefill_lead.pk if prefill_lead else '',
+            'form_lead_name': prefill_lead.name if prefill_lead else '',
         },
     )
 
@@ -125,7 +134,15 @@ def bill_detail(request, pk):
         Bill.objects.select_related('lead').prefetch_related('line_items', 'payments'),
         pk=pk,
     )
-    return render(request, 'crm/billing/bill_detail.html', {'bill': bill})
+    return render(
+        request,
+        'crm/billing/bill_detail.html',
+        {
+            'bill': bill,
+            'payment_method_choices': BillPayment.PaymentMethod.choices,
+            'auto_preview': request.GET.get('preview') == '1',
+        },
+    )
 
 
 @login_required
@@ -138,3 +155,45 @@ def bill_pdf(request, pk):
         as_attachment=False,
         filename=f'{bill.bill_number.replace("/", "-")}.pdf',
     )
+
+
+@login_required
+@require_POST
+def bill_payment_create(request, pk):
+    bill = get_object_or_404(Bill, pk=pk)
+    if bill.balance_due <= 0:
+        messages.error(request, 'This bill is already fully paid.')
+        return redirect('crm:bill_detail', pk=bill.pk)
+
+    amount_raw = (request.POST.get('amount') or '').strip()
+    try:
+        amount = Decimal(amount_raw)
+    except InvalidOperation:
+        amount = Decimal('0')
+    if amount <= 0:
+        messages.error(request, 'Enter a payment amount greater than zero.')
+        return redirect('crm:bill_detail', pk=bill.pk)
+
+    payment_method = request.POST.get('payment_method') or BillPayment.PaymentMethod.CASH
+    if payment_method not in dict(BillPayment.PaymentMethod.choices):
+        payment_method = BillPayment.PaymentMethod.CASH
+
+    add_payment_to_bill(
+        bill,
+        amount=amount,
+        payment_method=payment_method,
+        notes=(request.POST.get('notes') or '').strip(),
+        transaction_id=(request.POST.get('transaction_id') or '').strip(),
+        created_by=request.user,
+    )
+    messages.success(request, 'Payment recorded.')
+    return redirect('crm:bill_detail', pk=bill.pk)
+
+
+@login_required
+def bill_payment_receipt(request, pk):
+    payment = get_object_or_404(BillPayment, pk=pk)
+    if not payment.receipt_pdf:
+        raise Http404('Receipt PDF not available.')
+    filename = f'{(payment.receipt_number or str(payment.pk)).replace("/", "-")}.pdf'
+    return FileResponse(payment.receipt_pdf.open('rb'), as_attachment=False, filename=filename)

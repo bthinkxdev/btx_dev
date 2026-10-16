@@ -21,6 +21,7 @@ from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
+from django.core.files.base import ContentFile
 from django.db import transaction
 from django.utils import timezone
 
@@ -85,8 +86,9 @@ def create_quick_bill(
         bill.recalculate_totals()
         bill.save()
 
+        payment = None
         if received_amount and received_amount > 0:
-            BillPayment.objects.create(
+            payment = BillPayment.objects.create(
                 bill=bill,
                 amount=received_amount,
                 payment_method=payment_method,
@@ -95,14 +97,61 @@ def create_quick_bill(
                 recorded_by=created_by,
                 verified_by=created_by,
                 verified_at=timezone.now(),
+                receipt_number=f'{bill.bill_number}/P1',
             )
             bill.recalculate_totals()
 
-    pdf_bytes = render_bill_pdf(bill)
-    from django.core.files.base import ContentFile
-
-    bill.pdf_file.save(f'{bill.bill_number.replace("/", "-")}.pdf', ContentFile(pdf_bytes), save=True)
+    bill.pdf_file.save(
+        f'{bill.bill_number.replace("/", "-")}.pdf', ContentFile(render_bill_pdf(bill)), save=True,
+    )
+    if payment is not None:
+        payment.receipt_pdf.save(
+            f'{payment.receipt_number.replace("/", "-")}.pdf',
+            ContentFile(render_payment_receipt_pdf(bill, payment)),
+            save=True,
+        )
     return bill
+
+
+def add_payment_to_bill(
+    bill: Bill,
+    *,
+    amount: Decimal,
+    payment_method: str,
+    notes: str = '',
+    transaction_id: str = '',
+    created_by=None,
+) -> BillPayment:
+    """Record an additional payment against an existing bill, update its
+    totals/status, and generate a dedicated receipt PDF for this payment."""
+    with transaction.atomic():
+        seq = bill.payments.count() + 1
+        payment = BillPayment.objects.create(
+            bill=bill,
+            amount=amount,
+            payment_method=payment_method,
+            transaction_id=transaction_id,
+            notes=notes,
+            status=BillPayment.Status.VERIFIED,
+            recorded_by=created_by,
+            verified_by=created_by,
+            verified_at=timezone.now(),
+            receipt_number=f'{bill.bill_number}/P{seq}',
+        )
+        bill.recalculate_totals()
+        bill.save()
+
+    if bill.pdf_file:
+        bill.pdf_file.delete(save=False)  # regenerating with updated totals — drop the stale file
+    bill.pdf_file.save(
+        f'{bill.bill_number.replace("/", "-")}.pdf', ContentFile(render_bill_pdf(bill)), save=True,
+    )
+    payment.receipt_pdf.save(
+        f'{payment.receipt_number.replace("/", "-")}.pdf',
+        ContentFile(render_payment_receipt_pdf(bill, payment)),
+        save=True,
+    )
+    return payment
 
 
 def amount_in_words(amount: Decimal) -> str:
@@ -161,8 +210,20 @@ def fmt_inr(amount) -> str:
     return f'Rs. {Decimal(amount):,.2f}/-'
 
 
-def _prepare_stamp_image(path: Path, max_width_pt: float = 72):
-    """Light-on-dark stamp/signature/logo -> black ink on transparent for white PDF."""
+def _prepare_stamp_image(path: Path, max_width_pt: float = 72, dark_on_light: bool = False):
+    """
+    Cuts a stamp/signature/logo's background out to transparency, ready to
+    overlay on a white PDF page.
+
+    dark_on_light=False (default): source is light ink on a dark background
+    (the white-on-black company logo) -> light pixels become opaque black
+    ink, the dark background becomes transparent.
+
+    dark_on_light=True: source is dark ink on a light/white background (a
+    scanned seal or signature) -> the light background becomes transparent
+    and the ink keeps its own color (navy seal, green signature, ...)
+    instead of being flattened to black.
+    """
     from PIL import Image
 
     if not path.exists():
@@ -171,12 +232,22 @@ def _prepare_stamp_image(path: Path, max_width_pt: float = 72):
     datas = img.getdata()
     new_data = []
     for r, g, b, a in datas:
+        if a == 0:
+            new_data.append((r, g, b, 0))
+            continue
         brightness = (r + g + b) / 3
-        if brightness < 55:
-            new_data.append((255, 255, 255, 0))
+        if dark_on_light:
+            if brightness >= 235:
+                new_data.append((r, g, b, 0))
+            else:
+                ink = max(0, min(255, int((235 - brightness) * 255 / 180)))
+                new_data.append((r, g, b, ink))
         else:
-            ink = max(0, min(255, int((brightness - 55) * 2.5)))
-            new_data.append((0, 0, 0, ink))
+            if brightness < 55:
+                new_data.append((255, 255, 255, 0))
+            else:
+                ink = max(0, min(255, int((brightness - 55) * 2.5)))
+                new_data.append((0, 0, 0, ink))
     img.putdata(new_data)
     w, h = img.size
     scale = max_width_pt / w
@@ -226,7 +297,7 @@ def _pdf_draw_footer_block(c, *, page_w, margin, right_x, bill_date, black, gray
     c.setLineWidth(0.4)
     c.line(margin, footer_top + 2, right_x, footer_top + 2)
 
-    seal_result = _prepare_stamp_image(ASSETS['seal'], max_width_pt=70)
+    seal_result = _prepare_stamp_image(ASSETS['seal'], max_width_pt=70, dark_on_light=True)
     if seal_result:
         seal_buf, seal_h = seal_result
         seal_w = min(70, 70)
@@ -251,7 +322,7 @@ def _pdf_draw_footer_block(c, *, page_w, margin, right_x, bill_date, black, gray
     c.drawRightString(right_x, ty, 'Thank You!')
     ty -= line_h + 2
 
-    sig_result = _prepare_stamp_image(ASSETS['signature'], max_width_pt=sig_w)
+    sig_result = _prepare_stamp_image(ASSETS['signature'], max_width_pt=sig_w, dark_on_light=True)
     if sig_result:
         sig_buf, sig_img_h = sig_result
         sig_draw_h = min(sig_img_h, 32)
@@ -525,6 +596,183 @@ def render_bill_pdf(bill: Bill) -> bytes:
         margin=margin,
         right_x=right_x,
         bill_date=bill.bill_date,
+        black=black,
+        gray=gray,
+        light_gray=light_gray,
+    )
+
+    c.showPage()
+    c.save()
+    buf.seek(0)
+    return buf.read()
+
+
+def render_payment_receipt_pdf(bill: Bill, payment: BillPayment) -> bytes:
+    """One-page receipt for a single payment against a bill — same branding
+    as render_bill_pdf, but a payment summary instead of the line-items table."""
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    from reportlab.lib.utils import ImageReader
+    from reportlab.pdfgen import canvas
+
+    page_w, page_h = A4
+    margin = 16 * mm
+    right_x = page_w - margin
+    content_w = page_w - 2 * margin
+
+    black = colors.black
+    white = colors.white
+    gray = colors.HexColor('#444444')
+    light_gray = colors.HexColor('#777777')
+    rule = colors.HexColor('#bbbbbb')
+    fill_soft = colors.HexColor('#f4f4f4')
+    fill_header = colors.HexColor('#1a1a1a')
+
+    buf = io.BytesIO()
+    c = canvas.Canvas(buf, pagesize=A4)
+    c.setTitle(payment.receipt_number or bill.bill_number)
+
+    y = page_h - margin
+
+    c.setFillColor(black)
+    c.rect(0, page_h - 3 * mm, page_w, 3 * mm, fill=1, stroke=0)
+
+    header_h = 52
+    _pdf_draw_box(c, margin, y - header_h, content_w, header_h, fill=fill_soft, stroke=rule, radius=4)
+
+    logo_sz = 14 * mm
+    logo_x = margin + 8
+    logo_y_center = y - header_h / 2
+    text_x = logo_x + logo_sz + 10
+
+    logo_result = _prepare_stamp_image(ASSETS['logo'], max_width_pt=logo_sz * 2.5)
+    if logo_result:
+        logo_buf, logo_h = logo_result
+        logo_draw_h = min(logo_h, logo_sz)
+        c.drawImage(
+            ImageReader(logo_buf),
+            logo_x,
+            logo_y_center - logo_draw_h / 2,
+            width=logo_sz,
+            height=logo_draw_h,
+            mask='auto',
+            preserveAspectRatio=True,
+        )
+    else:
+        text_x = margin + 10
+
+    ty = y - 14
+    c.setFont('Helvetica-Bold', 15)
+    c.setFillColor(black)
+    c.drawString(text_x, ty, COMPANY['legal_name'])
+    ty -= 14
+    c.setFont('Helvetica', 8)
+    c.setFillColor(gray)
+    for line in COMPANY['address_lines']:
+        c.drawString(text_x, ty, line)
+        ty -= 10
+    c.drawString(text_x, ty, f'Pin {COMPANY["pin"]}  |  Ph {COMPANY["phone"]}  |  Reg {COMPANY["reg_no"]}')
+
+    y -= header_h + 12
+
+    title_h = 26
+    _pdf_draw_box(c, margin, y - title_h, content_w, title_h, fill=fill_header, stroke=0)
+    c.setFillColor(white)
+    c.setFont('Helvetica-Bold', 12)
+    c.drawCentredString(page_w / 2, y - title_h + 8, 'PAYMENT RECEIPT')
+    y -= title_h + 10
+
+    meta_h = 22
+    half = content_w / 2 - 2
+    _pdf_draw_box(c, margin, y - meta_h, half, meta_h, stroke=rule)
+    _pdf_draw_box(c, margin + half + 4, y - meta_h, half, meta_h, stroke=rule)
+    c.setFont('Helvetica', 7)
+    c.setFillColor(light_gray)
+    c.drawString(margin + 8, y - 8, 'RECEIPT NUMBER')
+    c.drawString(margin + half + 12, y - 8, 'DATE')
+    c.setFont('Helvetica-Bold', 10)
+    c.setFillColor(black)
+    c.drawString(margin + 8, y - 18, payment.receipt_number or bill.bill_number)
+    c.drawString(margin + half + 12, y - 18, payment.payment_date.strftime('%d-%m-%Y'))
+    y -= meta_h + 12
+
+    client_lines = []
+    client = bill.client
+    lead = bill.lead
+    if client is not None:
+        primary = (client.contact_person or client.business_name or '').strip()
+        if primary:
+            client_lines.append(('bold', primary))
+        if client.phone:
+            client_lines.append(('normal', f'Phone: {client.phone}'))
+    elif lead is not None:
+        client_lines.append(('bold', lead.name))
+        if lead.phone:
+            client_lines.append(('normal', f'Phone: {lead.phone}'))
+    else:
+        client_lines.append(('bold', 'Walk-in Customer'))
+
+    prep_h = 16 + len(client_lines) * 11
+    _pdf_draw_box(c, margin, y - prep_h, content_w, prep_h, fill=fill_soft, stroke=rule, radius=3)
+    c.setFont('Helvetica-Bold', 7)
+    c.setFillColor(light_gray)
+    c.drawString(margin + 8, y - 10, 'RECEIVED FROM')
+    cy = y - 22
+    for style, text in client_lines:
+        c.setFont('Helvetica-Bold' if style == 'bold' else 'Helvetica', 9 if style == 'bold' else 8.5)
+        c.setFillColor(black if style == 'bold' else gray)
+        c.drawString(margin + 8, cy, text[:90])
+        cy -= 11
+    y -= prep_h + 12
+
+    summary_rows = [
+        ('Against Bill', bill.bill_number, False),
+        ('Payment Method', payment.get_payment_method_display(), False),
+    ]
+    if payment.transaction_id:
+        summary_rows.append(('Transaction ID', payment.transaction_id, False))
+    summary_rows.append(('Amount Received', fmt_inr(payment.amount), True))
+    summary_rows.append(('Bill Total', fmt_inr(bill.total_amount), False))
+    summary_rows.append(('Total Paid To Date', fmt_inr(bill.amount_paid), False))
+    summary_rows.append((
+        'Balance Due', fmt_inr(bill.balance_due) if bill.balance_due > 0 else 'Nil — Fully Paid',
+        bill.balance_due > 0,
+    ))
+
+    sum_w = content_w * 0.6
+    sum_x = right_x - sum_w
+    sum_h = 12 + len(summary_rows) * 14 + 8
+    _pdf_draw_box(c, sum_x, y - sum_h, sum_w, sum_h, stroke=rule, radius=3)
+
+    sy = y - 14
+    for label, value, bold in summary_rows:
+        c.setFont('Helvetica-Bold' if bold else 'Helvetica', 9 if bold else 8.5)
+        c.setFillColor(black)
+        c.drawString(sum_x + 8, sy, label + ':')
+        c.drawRightString(right_x - 8, sy, value)
+        sy -= 14
+    y -= sum_h + 10
+
+    words_h = 22
+    _pdf_draw_box(c, margin, y - words_h, content_w * 0.75, words_h, fill=fill_soft, stroke=rule, radius=2)
+    c.setFont('Helvetica-Oblique', 8)
+    c.setFillColor(gray)
+    c.drawString(margin + 8, y - 14, f'Amount in words: {amount_in_words(payment.amount)}')
+    y -= words_h + 8
+
+    if payment.notes:
+        c.setFont('Helvetica', 8)
+        c.setFillColor(gray)
+        c.drawString(margin, y, f'Notes: {payment.notes[:100]}')
+        y -= 12
+
+    _pdf_draw_footer_block(
+        c,
+        page_w=page_w,
+        margin=margin,
+        right_x=right_x,
+        bill_date=payment.payment_date,
         black=black,
         gray=gray,
         light_gray=light_gray,

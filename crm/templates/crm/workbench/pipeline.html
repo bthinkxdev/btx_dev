@@ -1,21 +1,53 @@
 {% extends "crm/base.html" %}
+{% load crm_extras %}
 {% block title %}Pipeline{% endblock %}
 {% block page_title %}Pipeline{% endblock %}
 
 {% block content %}
 <div class="wb-page">
+  <div class="page-header">
+    <div>
+      <h1>Pipeline</h1>
+      <p>{{ total_leads }} lead{{ total_leads|pluralize }}</p>
+    </div>
+    <div class="pipe-toolbar">
+      <form method="get" action="{{ pipeline_base }}" class="pipe-toolbar__search">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="search" name="q" value="{{ filters.q }}" placeholder="Search leads, phone or name…">
+        <input type="hidden" name="package" value="{{ filters.package }}">
+        <input type="hidden" name="employee" value="{{ filters.employee }}">
+        <input type="hidden" name="sort" value="{{ filters.sort }}">
+      </form>
+      <select class="pipe-toolbar__select" aria-label="Filter by package" onchange="if(this.value) window.location.href=this.value;">
+        {% for pill in package_pills %}
+        <option value="{{ pipeline_base }}?{{ pill.qs }}" {% if pill.id == package_filter %}selected{% elif not pill.id and not package_filter %}selected{% endif %}>{{ pill.label }}</option>
+        {% endfor %}
+      </select>
+      <select class="pipe-toolbar__select" aria-label="Sort" onchange="if(this.value) window.location.href=this.value;">
+        {% for value, label in sort_options %}
+        <option value="{{ pipeline_base }}?{{ sort_links|dict_get:value }}" {% if value == current_sort %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <button type="button" class="btn btn-primary" id="pipeline-open-add-modal" aria-haspopup="dialog" aria-controls="add-lead-modal">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add lead
+      </button>
+    </div>
+  </div>
+
   {% if manager_mode_scope %}
   <div class="wb-exec-picker">
     <span class="wb-exec-picker__label">Viewing:</span>
-    <a class="pill {% if not selected_employee %}on{% endif %}" href="?">My team (all)</a>
+    <a class="pill {% if not selected_employee %}on{% endif %}" href="{{ pipeline_base }}?{{ exec_picker_links.all }}">My team (all)</a>
     {% for e in scope_employees %}
-    <a class="pill {% if selected_employee.id == e.id %}on{% endif %}" href="?employee={{ e.id }}">{{ e.get_full_name|default:e.username }}</a>
+    <a class="pill {% if selected_employee.id == e.id %}on{% endif %}" href="{{ pipeline_base }}?{{ exec_picker_links|dict_get:e.id }}">{{ e.get_full_name|default:e.username }}</a>
     {% endfor %}
   </div>
   {% endif %}
+
   <div class="pipeline-board" id="pipeline-board">
     {% for col in columns %}
-    <div class="pipeline-col" data-col-value="{{ col.value }}">
+    <div class="pipeline-col pipeline-col--{{ col.value }} {% if col.terminal %}pipeline-col--terminal{% endif %}" data-col-value="{{ col.value }}">
       <div class="pipeline-col__head">
         <span class="pipeline-col__title">{{ col.label }}</span>
         <span class="pipeline-col__count" id="pipeline-col-count-{{ col.value }}">{{ col.count }}</span>
@@ -23,21 +55,43 @@
       <div class="pipeline-col__value" id="pipeline-col-value-{{ col.value }}" {% if not col.value_sum %}hidden{% endif %}>Rs. {{ col.value_sum|floatformat:0 }}</div>
       <div class="pipeline-col__body" id="pipeline-col-body-{{ col.value }}" data-col-value="{{ col.value }}">
         {% for lead in col.leads %}
-        <div class="pipeline-card" id="pipeline-card-{{ lead.pk }}" draggable="true"
-             data-lead-id="{{ lead.pk }}" data-deal-value="{{ lead.deal_value|stringformat:'d' }}">
-          <a href="{% url 'crm:lead_detail' lead.pk %}" class="pipeline-card__name">{{ lead.name }}</a>
+        <div class="pipeline-card" id="pipeline-card-{{ lead.pk }}" {% if not col.terminal %}draggable="true"{% endif %}
+             data-lead-id="{{ lead.pk }}" data-deal-value="{{ lead.deal_value|stringformat:'d' }}"
+             data-status-url="{% url 'crm:lead_status_detail' lead.pk %}"
+             data-won-url="{% url 'crm:lead_mark_won' lead.pk %}"
+             data-lost-url="{% url 'crm:lead_mark_lost' lead.pk %}">
+          <div class="pipeline-card__top">
+            <a href="{% url 'crm:lead_detail' lead.pk %}" class="pipeline-card__name">{{ lead.name }}</a>
+            <details class="pipeline-card__menu">
+              <summary class="pipeline-card__menu-btn" aria-label="More actions">&#8942;</summary>
+              <div class="pipeline-card__menu-body">
+                <a href="{% url 'crm:lead_detail' lead.pk %}">View detail</a>
+                {% if lead.phone %}<a href="tel:{{ lead.phone }}">Call</a>{% endif %}
+                {% with wa=lead.phone|whatsapp_wa_url %}{% if wa %}<a href="{{ wa }}" target="_blank" rel="noopener">WhatsApp</a>{% endif %}{% endwith %}
+              </div>
+            </details>
+          </div>
           <div class="pipeline-card__meta">
             {% if lead.package %}{{ lead.package.name }} · {% endif %}Rs. {{ lead.deal_value|floatformat:0 }}
           </div>
-          <div class="pipeline-card__owner">{{ lead.employee.get_full_name|default:lead.employee.username }}</div>
-          <form class="pipeline-card__move" data-status-url="{% url 'crm:lead_status_detail' lead.pk %}">
+          <div class="pipeline-card__owner">
+            <span class="pipeline-card__avatar">{{ lead.employee.username|slice:":2"|upper }}</span>
+            {{ lead.employee.get_full_name|default:lead.employee.username }}
+          </div>
+          {% if col.value == 'lost' %}
+          <div class="pipeline-card__lost-reason">{{ lead.lost_reason|default:"No reason given" }}</div>
+          {% elif col.value == 'won' %}
+          <span class="lt-status-select lt-status-select--won pipeline-card__badge">Won</span>
+          {% else %}
+          <form class="pipeline-card__move">
             {% csrf_token %}
-            <select name="status" class="pipeline-card__select" data-pipeline-move>
-              {% for c2 in columns %}
-              <option value="{{ c2.value }}" {% if c2.value == col.value %}selected{% endif %}>{{ c2.label }}</option>
+            <select name="status" class="pipeline-card__select lt-status-select lt-status-select--{{ col.value }}" data-pipeline-move>
+              {% for value, label in move_options %}
+              <option value="{{ value }}" {% if value == col.value %}selected{% endif %}>{{ label }}</option>
               {% endfor %}
             </select>
           </form>
+          {% endif %}
         </div>
         {% endfor %}
       </div>
@@ -47,10 +101,20 @@
   </div>
 </div>
 
+{% include "crm/partials/add_lead_modal.html" %}
+
 <script>
 (function () {
   var board = document.getElementById('pipeline-board');
   if (!board) return;
+
+  var openBtn = document.getElementById('pipeline-open-add-modal');
+  if (openBtn) {
+    openBtn.addEventListener('click', function () {
+      var d = document.getElementById('add-lead-modal');
+      if (d && d.showModal) d.showModal();
+    });
+  }
 
   function fmtInr(n) {
     return 'Rs. ' + Math.round(n).toLocaleString('en-IN');
@@ -73,53 +137,101 @@
     if (emptyEl) emptyEl.hidden = cards.length > 0;
   }
 
-  function persistStage(card, newStage, onFail) {
-    var form = card.querySelector('.pipeline-card__move');
-    var url = form.getAttribute('data-status-url');
-    var token = form.querySelector('[name=csrfmiddlewaretoken]').value;
+  function postForm(url, token, fields) {
     var body = new URLSearchParams();
-    body.set('status', newStage);
     body.set('csrfmiddlewaretoken', token);
-    fetch(url, {
+    Object.keys(fields).forEach(function (k) { body.set(k, fields[k]); });
+    return fetch(url, {
       method: 'POST',
       headers: { 'X-Requested-With': 'XMLHttpRequest', 'HX-Request': 'true' },
       body: body,
-    }).then(function (r) {
+    });
+  }
+
+  // Returns true if the move should proceed, false to abort (revert, no request sent).
+  function persistStage(card, newStage, onFail, onTerminalSuccess) {
+    var token = card.querySelector('[name=csrfmiddlewaretoken]') ? card.querySelector('[name=csrfmiddlewaretoken]').value
+      : document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    if (newStage === 'lost') {
+      var reason = window.prompt('Lost reason (required):', '');
+      if (!reason || !reason.trim()) return false;
+      postForm(card.getAttribute('data-lost-url'), token, { reason: reason.trim() }).then(function (r) {
+        if (!r.ok) return r.text().then(function (t) { throw new Error(t || 'save failed'); });
+        onTerminalSuccess();
+      }).catch(function (e) {
+        onFail(e.message);
+      });
+      return true;
+    }
+
+    if (newStage === 'won') {
+      postForm(card.getAttribute('data-won-url'), token, {}).then(function (r) {
+        if (!r.ok) return r.text().then(function (t) { throw new Error(t || 'save failed'); });
+        onTerminalSuccess();
+      }).catch(function (e) {
+        onFail(e.message);
+      });
+      return true;
+    }
+
+    postForm(card.getAttribute('data-status-url'), token, { status: newStage }).then(function (r) {
       if (!r.ok) throw new Error('save failed');
     }).catch(function () {
-      if (onFail) onFail();
+      onFail();
     });
+    return true;
   }
 
   function moveCard(card, fromStage, toStage, persist) {
     if (fromStage === toStage) return;
     var targetBody = document.getElementById('pipeline-col-body-' + toStage);
     if (!targetBody) return;
+    var terminal = toStage === 'won' || toStage === 'lost';
+
+    if (!persist) {
+      targetBody.appendChild(card);
+      recalcColumn(fromStage);
+      recalcColumn(toStage);
+      return;
+    }
+
+    var revert = function (msg) {
+      if (msg && window.alert) window.alert(msg);
+      recalcColumn(fromStage);
+      recalcColumn(toStage);
+    };
+
+    if (terminal) {
+      // Don't move the DOM yet for terminal columns — ask first (prompt for
+      // Lost), then reload so the card re-renders in its final, read-only
+      // terminal form (no drag, no dropdown).
+      var proceeded = persistStage(card, toStage, revert, function () {
+        window.location.reload();
+      });
+      return;
+    }
+
     targetBody.appendChild(card);
     var select = card.querySelector('[data-pipeline-move]');
     if (select) select.value = toStage;
     recalcColumn(fromStage);
     recalcColumn(toStage);
-    if (persist) {
-      persistStage(card, toStage, function () {
-        // revert on failure
-        var originBody = document.getElementById('pipeline-col-body-' + fromStage);
-        if (originBody) {
-          originBody.appendChild(card);
-          if (select) select.value = fromStage;
-          recalcColumn(fromStage);
-          recalcColumn(toStage);
-        }
-        if (window.crmToast) window.crmToast('Could not save — reverted');
-      });
-    }
+    persistStage(card, toStage, function () {
+      var originBody = document.getElementById('pipeline-col-body-' + fromStage);
+      if (originBody) {
+        originBody.appendChild(card);
+        if (select) select.value = fromStage;
+      }
+      revert('Could not save — reverted');
+    }, function () {});
   }
 
   // Drag and drop
   var dragCard = null;
   board.addEventListener('dragstart', function (e) {
     var card = e.target.closest('.pipeline-card');
-    if (!card) return;
+    if (!card || !card.hasAttribute('draggable')) return;
     dragCard = card;
     card.classList.add('is-dragging');
     e.dataTransfer.effectAllowed = 'move';
@@ -135,6 +247,7 @@
   });
   board.querySelectorAll('.pipeline-col__body').forEach(function (bodyEl) {
     bodyEl.addEventListener('dragover', function (e) {
+      if (!dragCard) return;
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
       bodyEl.classList.add('is-dragover');
@@ -153,7 +266,7 @@
     });
   });
 
-  // Dropdown fallback (keyboard/mobile) — same move, no reload
+  // Dropdown fallback (keyboard/mobile) — same move, no reload for normal stages.
   board.addEventListener('change', function (e) {
     var select = e.target.closest('[data-pipeline-move]');
     if (!select) return;
@@ -161,27 +274,110 @@
     var fromCol = card.closest('.pipeline-col__body');
     var fromStage = fromCol ? fromCol.getAttribute('data-col-value') : null;
     var toStage = select.value;
+    if ((toStage === 'lost' || toStage === 'won') && select) {
+      // Reset the visible dropdown immediately; the card only actually
+      // leaves this column once the server confirms (page reloads).
+      select.value = fromStage;
+    }
     moveCard(card, fromStage, toStage, true);
+  });
+
+  // Close any open card menu when clicking elsewhere.
+  document.addEventListener('click', function (e) {
+    board.querySelectorAll('.pipeline-card__menu[open]').forEach(function (d) {
+      if (!d.contains(e.target)) d.removeAttribute('open');
+    });
   });
 })();
 </script>
 
 {% include "crm/workbench/_workbench_styles.html" %}
+{% include "crm/partials/_add_lead_modal_styles.html" %}
 
 <style>
+  .pipe-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .pipe-toolbar__search {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+    background: var(--surface); color: var(--text-muted); min-width: 220px;
+  }
+  .pipe-toolbar__search input {
+    border: none; outline: none; background: transparent; font-size: 13px; width: 100%; color: var(--neutral-800);
+  }
+  .pipe-toolbar__select {
+    padding: 8px 10px; font-size: 13px; font-weight: 600; font-family: inherit;
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    background: var(--surface); color: var(--neutral-700);
+  }
+
   .pipeline-board { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 12px; }
-  .pipeline-col { flex: 0 0 240px; background: var(--neutral-50); border: 1px solid var(--border); border-radius: var(--radius); display: flex; flex-direction: column; max-height: calc(100vh - 160px); }
-  .pipeline-col__head { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--border); font-weight: 700; font-size: 13px; }
-  .pipeline-col__count { background: var(--neutral-200); border-radius: 999px; padding: 1px 8px; font-size: 11px; }
+  .pipeline-col { flex: 0 0 240px; background: var(--neutral-50); border: 1px solid var(--border); border-top: 4px solid var(--neutral-300); border-radius: var(--radius); display: flex; flex-direction: column; max-height: calc(100vh - 220px); }
+  .pipeline-col--new           { border-top-color: var(--primary-400); }
+  .pipeline-col--contacted     { border-top-color: #60a5fa; }
+  .pipeline-col--qualified     { border-top-color: #2dd4bf; }
+  .pipeline-col--demo          { border-top-color: #22d3ee; }
+  .pipeline-col--proposal      { border-top-color: #a78bfa; }
+  .pipeline-col--negotiation   { border-top-color: #fbbf24; }
+  .pipeline-col--won           { border-top-color: var(--success-500); }
+  .pipeline-col--lost          { border-top-color: var(--danger-500); }
+  .pipeline-col--won .pipeline-col__head { background: var(--success-50); }
+  .pipeline-col--lost .pipeline-col__head { background: var(--danger-50); }
+  .pipeline-col__head { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--border); font-weight: 700; font-size: 13px; border-radius: var(--radius) var(--radius) 0 0; }
+  .pipeline-col__count { background: var(--neutral-200); border-radius: 999px; padding: 1px 9px; font-size: 11px; font-weight: 700; }
   .pipeline-col__value { font-size: 11px; color: var(--text-muted); padding: 0 12px 8px; }
   .pipeline-col__body { padding: 8px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 60px; transition: background-color 0.15s ease; }
   .pipeline-col__body.is-dragover { background: var(--primary-50); outline: 2px dashed var(--primary-300); outline-offset: -4px; }
   .pipeline-col__empty { text-align: center; color: var(--text-muted); font-size: 12px; padding: 16px 0; }
-  .pipeline-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 10px; box-shadow: var(--shadow-sm); cursor: grab; }
+  .pipeline-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 10px 9px; box-shadow: var(--shadow-sm); cursor: grab; }
+  .pipeline-card[draggable="true"] { cursor: grab; }
+  .pipeline-card:not([draggable="true"]) { cursor: default; }
   .pipeline-card.is-dragging { opacity: 0.4; }
-  .pipeline-card__name { display: block; font-weight: 700; font-size: 13px; text-decoration: none; color: var(--neutral-900); }
-  .pipeline-card__meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
-  .pipeline-card__owner { font-size: 10px; color: var(--text-light); margin-top: 2px; }
-  .pipeline-card__select { width: 100%; margin-top: 6px; font-size: 11px; padding: 4px; border-radius: var(--radius-sm); border: 1px solid var(--border); }
+  .pipeline-card__top { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; }
+  .pipeline-card__name { display: block; font-weight: 700; font-size: 13px; text-decoration: none; color: var(--neutral-900); min-width: 0; }
+  .pipeline-card__meta { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+  .pipeline-card__owner { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-light); margin-top: 6px; }
+  .pipeline-card__avatar {
+    width: 18px; height: 18px; min-width: 18px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-200), var(--primary-100)); color: var(--primary-700);
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 9px;
+  }
+  .pipeline-card__select { width: 100%; margin-top: 8px; }
+  .pipeline-card__badge { display: inline-flex; margin-top: 8px; }
+  .pipeline-card__lost-reason { font-size: 10px; color: var(--danger-600); margin-top: 8px; font-style: italic; }
+
+  .pipeline-card__menu { position: relative; flex-shrink: 0; }
+  .pipeline-card__menu-btn {
+    list-style: none; display: flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; border-radius: 5px; cursor: pointer; color: var(--text-muted); font-size: 14px;
+  }
+  .pipeline-card__menu-btn::-webkit-details-marker { display: none; }
+  .pipeline-card__menu-btn:hover { background: var(--neutral-100); color: var(--neutral-700); }
+  .pipeline-card__menu-body {
+    position: absolute; right: 0; top: 24px; z-index: 5; min-width: 130px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-lg); padding: 4px; display: flex; flex-direction: column;
+  }
+  .pipeline-card__menu-body a {
+    padding: 7px 9px; font-size: 12px; font-weight: 600; color: var(--neutral-700);
+    text-decoration: none; border-radius: 5px;
+  }
+  .pipeline-card__menu-body a:hover { background: var(--neutral-50); }
+
+  /* ── Mobile ─────────────────────────────────────────────── */
+  @media (max-width: 768px) {
+    .page-header { align-items: stretch; }
+    .pipe-toolbar { width: 100%; flex-direction: column; align-items: stretch; }
+    .pipe-toolbar__search { min-width: 0; width: 100%; }
+    .pipe-toolbar__select { width: 100%; }
+    #pipeline-open-add-modal { width: 100%; justify-content: center; }
+
+    /* One column at a time, swipeable, snapping neatly into place —
+       a kanban board can't become a stacked list without losing the
+       drag-between-stages interaction, so it stays horizontal but is
+       tuned for a single thumb-width column per screen on phones. */
+    .pipeline-board { gap: 10px; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
+    .pipeline-col { flex: 0 0 86vw; max-width: 86vw; scroll-snap-align: start; max-height: none; }
+    .pipeline-col__body { max-height: calc(100vh - 320px); }
+  }
 </style>
 {% endblock %}

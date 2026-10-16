@@ -26,53 +26,32 @@ ACTIVITY_LABELS = {
 
 
 @register.filter
-def crm_activity_line(action, created_at):
-    """Human-readable last activity + relative time."""
-    if not created_at:
-        return '—'
+def activity_label(action):
+    """Human-readable label for an ActivityLog action code."""
     label = ACTIVITY_LABELS.get(action or '', None)
-    if not label:
-        if action:
-            label = action.replace('_', ' ').title()
-        else:
-            label = 'Activity'
+    if label:
+        return label
+    if action:
+        return action.replace('_', ' ').title()
+    return 'Activity'
+
+
+@register.filter
+def activity_when(created_at):
+    """Relative time for recent activity, absolute date once it's a week old."""
+    if not created_at:
+        return ''
     now = timezone.now()
-    if timezone.is_aware(created_at) and timezone.is_naive(now):
-        pass
-    delta = now - created_at
-    secs = int(delta.total_seconds())
+    secs = int((now - created_at).total_seconds())
     if secs < 60:
-        rel = 'just now'
-    elif secs < 3600:
-        rel = f'{secs // 60}m ago'
-    elif secs < 86400:
-        rel = f'{secs // 3600}h ago'
-    elif secs < 604800:
-        rel = f'{secs // 86400}d ago'
-    else:
-        rel = created_at.strftime('%b %d')
-    # Refine copy per action
-    if action == 'follow_up_scheduled':
-        return f'Follow-up added {rel}'
-    if action == 'follow_up_done':
-        return f'Follow-up done {rel}'
-    if action == 'note':
-        return f'Note added {rel}'
-    if action == 'task_updated' and 'Done' in str(action):
-        return f'Task completed {rel}'
-    if action == 'task_updated':
-        return f'Task updated {rel}'
-    if action == 'task_added':
-        return f'Task added {rel}'
-    if action == 'created':
-        return f'Created {rel}'
-    if action == 'imported':
-        return f'Imported {rel}'
-    if action == 'contact_updated':
-        return f'Contact updated {rel}'
-    if action == 'call':
-        return f'Call logged {rel}'
-    return f'{label} {rel}'
+        return 'just now'
+    if secs < 3600:
+        return f'{secs // 60}m ago'
+    if secs < 86400:
+        return f'{secs // 3600}h ago'
+    if secs < 604800:
+        return f'{secs // 86400}d ago'
+    return created_at.strftime('%b %d')
 
 
 @register.filter
@@ -117,6 +96,15 @@ def fu_relative_phrase(dt):
     if h > 0:
         return f'in {h}h' if m < 15 else f'in {h}h {m}m'
     return f'in {m}m'
+
+
+@register.filter
+def days_until(dt):
+    """Whole calendar days from today to dt's local date (negative if in the past)."""
+    if not dt:
+        return None
+    target = timezone.localtime(dt).date() if timezone.is_aware(dt) else dt.date()
+    return (target - timezone.localdate()).days
 
 
 @register.filter

@@ -32,7 +32,7 @@
     </div>
   </div>
   <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-    {% with s=lead.status %}{% include "crm/partials/status_badge.html" %}{% endwith %}
+    {% with s=lead.status lc=lead.lifecycle_state %}{% include "crm/partials/status_badge.html" %}{% endwith %}
     <span class="next-fu-chip {% if not lead.next_followup or lead.next_followup < fu_start %}overdue next-fu-pulse{% elif lead.next_followup < fu_end %}next-fu-today{% endif %}">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;">
         <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
@@ -44,33 +44,62 @@
 
 <!-- Controls row -->
 <div class="lead-info-controls">
+  {% if lead.lifecycle_state == 'active' %}
   <div class="lead-ctrl-group">
-    <label>Pipeline stage</label>
-    <select name="status" class="sticky-select"
-      hx-post="{% url 'crm:lead_patch' lead.pk %}"
-      hx-vals='{"_tpl":"sticky"}'
-      hx-target="#lead-sticky"
-      hx-swap="outerHTML"
-      hx-include="this">
-      {% for val, lbl in status_choices %}
-      <option value="{{ val }}" {% if status_to_stage|dict_get:val == lead.pipeline_stage %}selected{% endif %}>{{ lbl }}</option>
-      {% endfor %}
-    </select>
-  </div>
-
-  <div class="lead-ctrl-group">
-    <label>Detailed status</label>
+    <label>Status</label>
     <select name="status" class="sticky-select"
       hx-post="{% url 'crm:lead_status_detail' lead.pk %}"
       hx-target="#lead-sticky"
       hx-swap="outerHTML"
       hx-include="this"
-      title="Finer-grained status — only affects internal tracking, not the pipeline stage shown in the leads list">
+      title="Same status used everywhere — Pipeline board, Workbench, Leads list">
       {% for val, lbl in detailed_status_choices %}
       <option value="{{ val }}" {% if lead.status == val %}selected{% endif %}>{{ lbl }}</option>
       {% endfor %}
     </select>
   </div>
+  <div class="lead-ctrl-group">
+    <label>&nbsp;</label>
+    <button type="button" class="btn btn-outline btn-sm" id="lead-mark-lost-btn"
+      data-lost-url="{% url 'crm:lead_mark_lost' lead.pk %}"
+      data-csrf="{{ csrf_token }}">Mark Lost</button>
+  </div>
+  <script>
+  (function () {
+    var btn = document.getElementById('lead-mark-lost-btn');
+    if (!btn || btn.dataset.bound) return;
+    btn.dataset.bound = '1';
+    btn.addEventListener('click', function () {
+      var reason = window.prompt('Lost reason (required):', '');
+      if (!reason || !reason.trim()) return;
+      var body = new URLSearchParams();
+      body.set('reason', reason.trim());
+      body.set('csrfmiddlewaretoken', btn.getAttribute('data-csrf'));
+      fetch(btn.getAttribute('data-lost-url'), {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: body,
+      }).then(function (r) {
+        if (!r.ok) return r.text().then(function (t) { throw new Error(t || 'Could not save'); });
+        window.location.reload();
+      }).catch(function (e) { window.alert(e.message); });
+    });
+  })();
+  </script>
+  {% else %}
+  <div class="lead-ctrl-group">
+    <label>Status</label>
+    <div style="padding-top:4px;">
+      {% if lead.lifecycle_state == 'won' %}
+      <span class="crm-badge crm-badge--green">Won{% if lead.won_at %} — {{ lead.won_at|date:"d M Y" }}{% endif %}</span>
+      {% elif lead.lifecycle_state == 'lost_final' %}
+      <span class="crm-badge crm-badge--red">Lost{% if lead.lost_reason %} — {{ lead.lost_reason }}{% endif %}</span>
+      {% elif lead.lifecycle_state == 'nurture' %}
+      <span class="crm-badge crm-badge--orange">Nurture{% if lead.nurture_next_review %} — review {{ lead.nurture_next_review|date:"d M Y" }}{% endif %}</span>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
 
   <div class="lead-ctrl-group">
     <label>Package</label>

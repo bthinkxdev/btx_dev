@@ -232,3 +232,87 @@ class WorkbenchViewTests(TestCase):
         EmployeeProfile.objects.filter(user=self.rep).update(is_sales_manager=True)
         r = self.client.get('/crm/workbench/team/')
         self.assertEqual(r.status_code, 200)
+
+
+class CentralizedStatusEndpointTests(TestCase):
+    """lead_mark_won / lead_mark_lost — the same crm.services.pipeline
+    functions the Workbench outcome engine uses, reachable directly from
+    the Pipeline board and lead detail too."""
+
+    def setUp(self):
+        self.rep = User.objects.create_user('pipe_rep6', password='x')
+        EmployeeProfile.objects.filter(user=self.rep).update(crm_role='sales')
+        self.client.force_login(self.rep)
+        self.lead = Lead.objects.create(
+            employee=self.rep, name='Centralized Co', phone='10', deal_value=Decimal('2000'),
+        )
+
+    def test_mark_won_endpoint(self):
+        r = self.client.post(f'/crm/leads/{self.lead.pk}/mark-won/')
+        self.assertEqual(r.status_code, 200)
+        self.lead.refresh_from_db()
+        self.assertEqual(self.lead.lifecycle_state, Lead.LifecycleState.WON)
+        self.assertEqual(self.lead.status, Lead.Status.WON)
+        self.assertIsNotNone(self.lead.won_at)
+
+    def test_mark_won_endpoint_rejects_zero_deal_value(self):
+        self.lead.deal_value = Decimal('0')
+        self.lead.save(update_fields=['deal_value'])
+        r = self.client.post(f'/crm/leads/{self.lead.pk}/mark-won/')
+        self.assertEqual(r.status_code, 400)
+        self.lead.refresh_from_db()
+        self.assertEqual(self.lead.lifecycle_state, Lead.LifecycleState.ACTIVE)
+
+    def test_mark_lost_endpoint_requires_reason(self):
+        r = self.client.post(f'/crm/leads/{self.lead.pk}/mark-lost/', {})
+        self.assertEqual(r.status_code, 400)
+
+    def test_mark_lost_endpoint(self):
+        r = self.client.post(
+            f'/crm/leads/{self.lead.pk}/mark-lost/', {'reason': 'Budget cut', 'note': 'Will revisit next year'},
+        )
+        self.assertEqual(r.status_code, 200)
+        self.lead.refresh_from_db()
+        self.assertEqual(self.lead.lifecycle_state, Lead.LifecycleState.LOST)
+        self.assertEqual(self.lead.lost_reason, 'Budget cut')
+
+    def test_lead_detail_shows_mark_lost_button_for_active_lead(self):
+        r = self.client.get(f'/crm/leads/{self.lead.pk}/')
+        self.assertIn('Mark Lost', r.content.decode())
+
+    def test_lead_detail_hides_status_dropdown_once_lost(self):
+        self.client.post(
+            f'/crm/leads/{self.lead.pk}/mark-lost/', {'reason': 'No budget'},
+        )
+        r = self.client.get(f'/crm/leads/{self.lead.pk}/')
+        body = r.content.decode()
+        self.assertNotIn('Mark Lost', body)
+        self.assertIn('No budget', body)
+
+
+class PipelineBoardTerminalColumnsTests(TestCase):
+    def setUp(self):
+        self.rep = User.objects.create_user('pipe_rep7', password='x')
+        EmployeeProfile.objects.filter(user=self.rep).update(crm_role='sales')
+        self.client.force_login(self.rep)
+
+    def test_won_and_lost_columns_render(self):
+        from crm.services.pipeline import mark_lost, mark_won
+
+        won_lead = Lead.objects.create(employee=self.rep, name='Won Co', phone='11', deal_value=Decimal('1000'))
+        lost_lead = Lead.objects.create(employee=self.rep, name='Lost Co', phone='12')
+        mark_won(won_lead, user=self.rep)
+        mark_lost(lost_lead, reason='Too expensive', user=self.rep)
+
+        body = self.client.get('/crm/pipeline/').content.decode()
+        self.assertIn('Won Co', body)
+        self.assertIn('Lost Co', body)
+        self.assertIn('Too expensive', body)
+
+    def test_won_stage_excluded_from_progress_columns(self):
+        lead = Lead.objects.create(employee=self.rep, name='Qual Co', phone='13', status=Lead.Status.QUALIFIED)
+        body = self.client.get('/crm/pipeline/').content.decode()
+        # The move dropdown must offer Won/Lost as destinations even though
+        # Won isn't one of the draggable progress columns.
+        self.assertIn('>Won<', body)
+        self.assertIn('>Lost<', body)

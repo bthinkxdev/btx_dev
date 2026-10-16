@@ -1,17 +1,19 @@
 """
 Leads-listing behavior:
-- Every period (Today / Yesterday / This week / This month) uses the exact
-  same rule: leads created within the window, OR leads with a follow-up
-  scheduled exactly within the window. No overdue-folding, no "no follow-up
-  set" catch-all — a lead that's simply never had a follow-up scheduled does
-  NOT get swept into every period forever just because it has nothing set.
-  Overdue tracking is the dedicated Follow-ups page's job, not this list's.
-- Default landing (no ?date_scope= at all) is "Today".
-- Explicit ?date_scope=all shows everyone, newest-created-first.
+- Default landing (no ?date_scope= at all) is "All time" — every lead in
+  scope, newest-created-first. Nothing is hidden by default.
+- Every explicit period (Today / Yesterday / This week / This month) uses
+  the exact same rule: leads created within the window, OR leads with a
+  follow-up scheduled exactly within the window. No overdue-folding, no
+  "no follow-up set" catch-all — a lead that's simply never had a
+  follow-up scheduled does NOT get swept into every period forever just
+  because it has nothing set. Overdue tracking is the dedicated
+  Follow-ups page's job, not this list's.
 - There is no separate command-strip UI — "From" (Today/Yesterday/This
   week/This month/All time) is the only period control.
-- Ordering within a period is by time (follow-up time, or creation time for
-  rows with none). Lead age is surfaced so nothing quietly ages out of sight.
+- Within an explicit period, ordering is by time (follow-up time, or
+  creation time for rows with none). Lead age is surfaced so nothing
+  quietly ages out of sight.
 """
 
 from __future__ import annotations
@@ -77,8 +79,39 @@ class LeadsListingDateScopeDefaultTests(TestCase):
         self.yesterday_lead = Lead.objects.create(employee=self.rep, name='YesterdayLead', phone='8')
         Lead.objects.filter(pk=self.yesterday_lead.pk).update(created_at=start - timedelta(hours=6))
 
-    def test_default_landing_shows_only_todays_leads_and_followups(self):
+    def test_default_landing_shows_everyone(self):
         r = self.client.get('/crm/leads/')
+        content = r.content.decode()
+        for name in (
+            'TodayEarly', 'TodayLate', 'OverdueLead', 'FutureLead', 'OldNeverFollowedUp',
+            'NewLeadNoFollowup', 'NewLeadFutureFu', 'YesterdayLead',
+        ):
+            self.assertIn(name, content)
+
+    def test_default_landing_orders_newest_created_first(self):
+        r = self.client.get('/crm/leads/')
+        content = r.content.decode()
+        # YesterdayLead and NewLeadFutureFu were both created "now" (last in
+        # setUp, never backdated) — newest-created-first puts the later one
+        # earlier in the page than a lead backdated 30+ days ago.
+        self.assertLess(content.index('NewLeadFutureFu'), content.index('OldNeverFollowedUp'))
+
+    def test_default_landing_has_all_pill_active(self):
+        r = self.client.get('/crm/leads/')
+        content = r.content.decode().replace('\n', ' ')
+        self.assertIn('pill on" href="/crm/leads/?date_scope=all"', content)
+        self.assertNotIn('pill on" href="/crm/leads/?date_scope=today"', content)
+
+    def test_default_landing_does_not_flag_as_active_filter(self):
+        r = self.client.get('/crm/leads/')
+        self.assertNotIn('<span class="leads-filter-mob-btn__dot"', r.content.decode())
+
+    def test_command_strip_removed(self):
+        r = self.client.get('/crm/leads/')
+        self.assertNotIn('cmd-strip', r.content.decode())
+
+    def test_explicit_date_scope_today_shows_only_todays_leads_and_followups(self):
+        r = self.client.get('/crm/leads/?date_scope=today')
         content = r.content.decode()
 
         # Follow-ups scheduled exactly today -> included.
@@ -100,13 +133,16 @@ class LeadsListingDateScopeDefaultTests(TestCase):
         # An old lead whose follow-up is genuinely in the future -> not due yet.
         self.assertNotIn('FutureLead', content)
 
-    def test_default_landing_orders_by_time(self):
-        r = self.client.get('/crm/leads/')
+        # Explicit filter now, unlike the default landing -> flagged as active.
+        self.assertIn('<span class="leads-filter-mob-btn__dot"', content)
+
+    def test_explicit_date_scope_today_orders_by_time(self):
+        r = self.client.get('/crm/leads/?date_scope=today')
         content = r.content.decode()
         self.assertLess(content.index('TodayEarly'), content.index('TodayLate'))
 
     def test_new_lead_and_followup_labels_render_correctly(self):
-        r = self.client.get('/crm/leads/')
+        r = self.client.get('/crm/leads/?date_scope=today')
         content = r.content.decode()
 
         new_lead_pos = content.index('NewLeadNoFollowup')
@@ -119,20 +155,6 @@ class LeadsListingDateScopeDefaultTests(TestCase):
         self.assertIn('Follow-up</span>', fu_block)
         self.assertNotIn('New Lead', fu_block)  # created 30 days ago -> not a "new lead"
 
-    def test_default_landing_has_today_pill_active(self):
-        r = self.client.get('/crm/leads/')
-        content = r.content.decode().replace('\n', ' ')
-        self.assertIn('pill on" href="/crm/leads/?date_scope=today"', content)
-        self.assertNotIn('pill on" href="/crm/leads/?date_scope=all"', content)
-
-    def test_default_landing_does_not_flag_as_active_filter(self):
-        r = self.client.get('/crm/leads/')
-        self.assertNotIn('<span class="leads-filter-mob-btn__dot"', r.content.decode())
-
-    def test_command_strip_removed(self):
-        r = self.client.get('/crm/leads/')
-        self.assertNotIn('cmd-strip', r.content.decode())
-
     def test_explicit_date_scope_yesterday_is_a_pure_historical_window(self):
         r = self.client.get('/crm/leads/?date_scope=yesterday')
         content = r.content.decode()
@@ -144,7 +166,7 @@ class LeadsListingDateScopeDefaultTests(TestCase):
         self.assertNotIn('NewLeadNoFollowup', content)
         self.assertNotIn('NewLeadFutureFu', content)
 
-    def test_explicit_date_scope_all_shows_everyone(self):
+    def test_explicit_date_scope_all_is_same_as_default(self):
         r = self.client.get('/crm/leads/?date_scope=all')
         content = r.content.decode()
         for name in (
@@ -152,14 +174,16 @@ class LeadsListingDateScopeDefaultTests(TestCase):
             'NewLeadNoFollowup', 'NewLeadFutureFu', 'YesterdayLead',
         ):
             self.assertIn(name, content)
-        self.assertIn('<span class="leads-filter-mob-btn__dot"', content)  # explicit filter, not the default
+        # 'all' is treated the same whether implicit (no param) or explicit —
+        # not flagged as an active filter either way.
+        self.assertNotIn('<span class="leads-filter-mob-btn__dot"', content)
 
         # Badges only mean something inside a specific period — hidden under "All time".
         old_pos = content.index('OldNeverFollowedUp')
         self.assertNotIn('New Lead', content[old_pos:old_pos + 3000])
 
-    def test_clear_filters_link_returns_to_default_today_view(self):
-        r = self.client.get('/crm/leads/?date_scope=all')
+    def test_clear_filters_link_returns_to_default_all_view(self):
+        r = self.client.get('/crm/leads/?date_scope=today')
         content = r.content.decode()
         self.assertIn('href="/crm/leads/"', content)  # the "Clear" link's target
         r2 = self.client.get('/crm/leads/')
@@ -167,5 +191,5 @@ class LeadsListingDateScopeDefaultTests(TestCase):
         self.assertNotIn('<span class="leads-filter-mob-btn__dot"', r2.content.decode())
 
     def test_lead_age_indicator_present(self):
-        r = self.client.get('/crm/leads/?date_scope=all')
+        r = self.client.get('/crm/leads/')
         self.assertIn('old</span>', r.content.decode())

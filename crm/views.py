@@ -10,7 +10,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
-from django.db.models import Count, OuterRef, Q, Subquery, Sum
+from django.db.models import Case, Count, IntegerField, OuterRef, Q, Subquery, Sum, Value, When
 from django.db.models.functions import Coalesce, TruncDate, TruncMonth
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, render
@@ -25,7 +25,6 @@ from .forms import (
     LeadForm,
     PackageForm,
     QuickFollowUpForm,
-    QuickNoteForm,
     RescheduleFollowUpForm,
     TaskForm,
 )
@@ -254,10 +253,22 @@ INTERESTED_SORT_STATUSES = (
 )
 
 
-# Fixed leads-list order (newest created first) — no user-facing sort picker.
+# Default leads-list order (newest created first) when no column sort is chosen.
 LEAD_DEFAULT_ORDER = ('-created_at', '-id')
 
-LEADS_PER_PAGE = 20
+# Leads-table column sort: query-param key -> queryset field(s) to order by.
+# 'status' sorts by pipeline position (Status.choices order), not alphabetically.
+LEAD_SORT_FIELDS = {
+    'name': ('name',),
+    'phone': ('phone',),
+    'package': ('package__name',),
+    'value': ('deal_value',),
+    'last_activity': ('last_act_at',),
+    'next_followup': ('next_followup',),
+    'status': ('_status_order',),
+}
+
+LEADS_PER_PAGE = 10
 
 
 def _flag_lead_rows(leads_page, bounds):
@@ -537,17 +548,17 @@ def _leads_list_qs_and_meta(request, user):
         except ValueError:
             pass
 
-    # Default landing (no ?date_scope= at all) is "Today". Every period —
-    # Today / Yesterday / This week / This month — uses the exact same rule:
-    # leads created within the window, OR leads with a follow-up scheduled
-    # exactly within the window. No overdue-folding, no "no follow-up set"
-    # catch-all — those cases would otherwise leak months-old, never-touched
-    # leads into every single period forever. Overdue tracking is the
-    # dedicated Follow-ups page's job, not this one. Explicit ?date_scope=all
-    # opts out of date filtering entirely.
+    # Default landing (no ?date_scope= at all) is "All time" — every lead in
+    # scope, newest first. Picking a period — Today / Yesterday / This week /
+    # This month — uses the exact same rule: leads created within the
+    # window, OR leads with a follow-up scheduled exactly within the window.
+    # No overdue-folding, no "no follow-up set" catch-all — those cases
+    # would otherwise leak months-old, never-touched leads into every single
+    # period forever. Overdue tracking is the dedicated Follow-ups page's
+    # job, not this one.
     date_scope = request.GET.get('date_scope', None)
     if date_scope is None:
-        date_scope = 'today'
+        date_scope = 'all'
     date_start_s = request.GET.get('date_start', '').strip()
     date_end_s = request.GET.get('date_end', '').strip()
 
@@ -565,7 +576,27 @@ def _leads_list_qs_and_meta(request, user):
             period_bounds = (ds, de)
     # 'all' (or anything else) — no date filter at all, show everyone in scope.
 
-    if sort_by_time:
+    # Explicit column sort (click a table header) always wins over the
+    # default/period ordering below — it's a view preference the user just
+    # asked for, not part of the filtered result set.
+    sort = request.GET.get('sort', '').strip()
+    sort_dir = request.GET.get('dir', '').strip()
+    if sort_dir not in ('asc', 'desc'):
+        sort_dir = 'asc'
+    if sort not in LEAD_SORT_FIELDS:
+        sort = ''
+
+    if sort:
+        if sort == 'status':
+            status_order = Case(
+                *[When(status=code, then=Value(i)) for i, (code, _label) in enumerate(Lead.Status.choices)],
+                default=Value(len(Lead.Status.choices)),
+                output_field=IntegerField(),
+            )
+            qs = qs.annotate(_status_order=status_order)
+        order_fields = LEAD_SORT_FIELDS[sort]
+        qs = qs.order_by(*(f'-{f}' if sort_dir == 'desc' else f for f in order_fields), '-id')
+    elif sort_by_time:
         # One mixed list of leads + follow-ups: sort by whichever timestamp is
         # this row's actual moment — its scheduled follow-up, or (if it has none)
         # when the lead itself was created.
@@ -586,6 +617,8 @@ def _leads_list_qs_and_meta(request, user):
         'date_start': date_start_s,
         'date_end': date_end_s,
         'employee': str(scope['selected_employee'].id) if scope['selected_employee'] else '',
+        'sort': sort,
+        'dir': sort_dir if sort else '',
     }
 
     has_active_filters = bool(
@@ -597,7 +630,7 @@ def _leads_list_qs_and_meta(request, user):
         or closed_day
         or created_month
         or closed_month
-        or (date_scope and date_scope != 'today')  # 'today' is the default, not a user-applied filter
+        or (date_scope and date_scope != 'all')  # 'all' is the default, not a user-applied filter
     )
 
     return {
@@ -614,6 +647,8 @@ def _leads_list_qs_and_meta(request, user):
         'scope_employees': scope['scope_employees'],
         'selected_employee': scope['selected_employee'],
         'scope_ids': scope['scope_ids'],
+        'sort': sort,
+        'sort_dir': sort_dir,
     }
 
 
@@ -632,11 +667,12 @@ def leads_list(request):
     scope_employees = meta['scope_employees']
     selected_employee = meta['selected_employee']
     scope_ids = meta['scope_ids']
+    sort = meta['sort']
+    sort_dir = meta['sort_dir']
 
     packages = Package.objects.all()
 
-    # Full document always starts at batch 1 (ignore ?page=). Infinite scroll uses /leads/more/?page=…
-    page_raw = '1'
+    page_raw = (request.GET.get('page') or '1').strip()
     paginator = Paginator(qs, LEADS_PER_PAGE)
     try:
         page_obj = paginator.page(page_raw)
@@ -647,6 +683,8 @@ def leads_list(request):
         page_obj = paginator.page(last)
 
     leads_page = _flag_lead_rows(list(page_obj.object_list), period_bounds)
+    for i, lead in enumerate(leads_page):
+        lead.row_number = page_obj.start_index() + i
 
     form = LeadForm(employee=user)
     import_form = ExcelImportForm()
@@ -662,6 +700,25 @@ def leads_list(request):
         'high_hope_all': _lq(high_hope=''),
         'high_hope_on': _lq(high_hope='1'),
     }
+
+    # Sortable column headers: clicking a column sorts ascending; clicking the
+    # already-active column flips direction. Any other active filter/page is
+    # preserved in the link via filters_ctx.
+    sort_links = {}
+    for key in LEAD_SORT_FIELDS:
+        next_dir = 'desc' if (sort == key and sort_dir == 'asc') else 'asc'
+        sort_links[key] = _lq(sort=key, dir=next_dir, page='')
+
+    page_items = []
+    for n in paginator.get_elided_page_range(page_obj.number, on_each_side=2, on_ends=1):
+        if isinstance(n, int):
+            page_items.append({
+                'num': n,
+                'qs': _lq(page=n) if n != 1 else _lq(page=''),
+                'active': n == page_obj.number,
+            })
+        else:
+            page_items.append(None)  # ellipsis
 
     employee_pills = []
     if manager_mode and scope_employees:
@@ -693,12 +750,8 @@ def leads_list(request):
 
     pending_tasks_count = Task.objects.filter(employee_id__in=scope_ids, is_completed=False).count()
 
-    leads_more_url = reverse('crm:leads_more')
-    pagination_next_qs = (
-        _leads_url_query(filters_ctx, page=page_obj.next_page_number())
-        if page_obj.has_next()
-        else ''
-    )
+    prev_qs = _lq(page=page_obj.previous_page_number()) if page_obj.has_previous() else ''
+    next_qs = _lq(page=page_obj.next_page_number()) if page_obj.has_next() else ''
 
     return render(
         request,
@@ -707,9 +760,10 @@ def leads_list(request):
             'leads': leads_page,
             'paginator': paginator,
             'page_obj': page_obj,
+            'page_items': page_items,
+            'prev_qs': prev_qs,
+            'next_qs': next_qs,
             'all_leads_total': all_leads_total,
-            'leads_more_url': leads_more_url,
-            'pagination_next_qs': pagination_next_qs,
             'packages': packages,
             'status_choices': Lead.PRIMARY_STATUS_CHOICES,
             'status_to_stage': Lead.STATUS_TO_STAGE,
@@ -721,6 +775,9 @@ def leads_list(request):
             'filters': filters_ctx,
             'leads_base': leads_base,
             'lqs': lqs,
+            'sort_links': sort_links,
+            'current_sort': sort,
+            'current_dir': sort_dir,
             'stage_pills': stage_pills,
             'package_filter': package_filter,
             'has_active_filters': has_active_filters,
@@ -732,72 +789,6 @@ def leads_list(request):
             'package_pills': package_pills,
         },
     )
-
-
-@login_required
-@sales_pipeline_required
-def leads_more_json(request):
-    """JSON chunk for infinite scroll (next page of lead rows)."""
-    user = request.user
-    meta = _leads_list_qs_and_meta(request, user)
-    qs = meta['qs']
-    start, end = meta['start'], meta['end']
-    period_bounds = meta['period_bounds']
-    filters_ctx = meta['filters_ctx']
-
-    page_raw = (request.GET.get('page') or '1').strip()
-    paginator = Paginator(qs, LEADS_PER_PAGE)
-    try:
-        page_obj = paginator.page(page_raw)
-    except PageNotAnInteger:
-        page_obj = paginator.page(1)
-    except EmptyPage:
-        return JsonResponse(
-            {
-                'desktop_html': '',
-                'mobile_html': '',
-                'has_more': False,
-                'next_querystring': '',
-            }
-        )
-
-    leads_page = _flag_lead_rows(list(page_obj.object_list), period_bounds)
-    packages = Package.objects.all()
-    base_ctx = {
-        'fu_start': start,
-        'fu_end': end,
-        'fu_bounds': (start, end),
-        'status_choices': Lead.PRIMARY_STATUS_CHOICES,
-            'status_to_stage': Lead.STATUS_TO_STAGE,
-        'packages': packages,
-        'manager_mode': meta['manager_mode'],
-    }
-    desk_parts = []
-    mob_parts = []
-    for lead in leads_page:
-        ctx = {**base_ctx, 'lead': lead}
-        desk_parts.append(
-            render_to_string('crm/partials/lead_exec_board.html', ctx, request=request)
-        )
-        mob_parts.append(
-            render_to_string('crm/partials/lead_mobile_card.html', ctx, request=request)
-        )
-
-    next_qs = ''
-    if page_obj.has_next():
-        next_qs = _leads_url_query(filters_ctx, page=page_obj.next_page_number())
-
-    resp = JsonResponse(
-        {
-            'desktop_html': ''.join(desk_parts),
-            'mobile_html': ''.join(mob_parts),
-            'has_more': page_obj.has_next(),
-            'next_querystring': next_qs,
-        }
-    )
-    resp['Cache-Control'] = 'no-store, no-cache, must-revalidate'
-    resp['Pragma'] = 'no-cache'
-    return resp
 
 
 @login_required
@@ -911,14 +902,8 @@ def lead_patch(request, pk):
     ctx = _exec_board_ctx(lead, user)
     if tpl == 'sticky':
         body = render_to_string('crm/partials/lead_detail_sticky.html', ctx, request)
-    elif tpl == 'mobile_card':
-        body = render_to_string('crm/partials/lead_mobile_card.html', ctx, request)
     else:
-        # exec_row (desktop) and the mobile card are two DOM copies of the same
-        # lead sitting on the leads-list page at once — refresh both from one
-        # response so the mobile view never shows a stale package/status/etc.
-        body = render_to_string('crm/partials/lead_exec_board.html', ctx, request)
-        body += render_to_string('crm/partials/lead_mobile_card.html', {**ctx, 'oob': True}, request)
+        body = render_to_string('crm/partials/lead_table_row.html', ctx, request)
     resp = HttpResponse(body)
     if request.headers.get('HX-Request'):
         _hx_toast(resp, 'Updated')
@@ -942,17 +927,10 @@ def lead_high_hope_toggle(request, pk):
         tpl = request.POST.get('_tpl', 'exec_row')
         lead_ann = _lead_for_exec(user, pk)
         ctx = _exec_board_ctx(lead_ann, user)
-        # exec_row (desktop) and mobile_card are both on the leads-list page at
-        # once and the high-hope star is toggleable from either — keep both in
-        # sync from a single response, whichever one was clicked.
         if tpl == 'sticky':
             body = render_to_string('crm/partials/lead_detail_sticky.html', ctx, request)
-        elif tpl == 'mobile_card':
-            body = render_to_string('crm/partials/lead_mobile_card.html', ctx, request)
-            body += render_to_string('crm/partials/lead_exec_board.html', {**ctx, 'oob': True}, request)
         else:
-            body = render_to_string('crm/partials/lead_exec_board.html', ctx, request)
-            body += render_to_string('crm/partials/lead_mobile_card.html', {**ctx, 'oob': True}, request)
+            body = render_to_string('crm/partials/lead_table_row.html', ctx, request)
         resp = HttpResponse(body)
         _hx_toast(resp, 'Updated')
         return resp
@@ -985,55 +963,13 @@ def lead_quick_followup(request, pk):
         err = 'Invalid date/time'
 
     if request.headers.get('HX-Request'):
-        tpl = request.POST.get('_tpl', 'exec_row')
         lead_ann = _lead_for_exec(user, pk)
         ctx = _exec_board_ctx(lead_ann, user, quick_fu_error=err)
-        tmpl = (
-            'crm/partials/lead_mobile_card.html'
-            if tpl == 'mobile_card'
-            else 'crm/partials/lead_exec_board.html'
-        )
-        resp = render(request, tmpl, ctx)
-        # Scheduled via the global "Schedule Followup" modal (desktop + mobile).
+        resp = render(request, 'crm/partials/lead_table_row.html', ctx)
         if err:
             resp['HX-Trigger'] = json.dumps({'crmFuModalError': err})
         else:
             resp['HX-Trigger'] = json.dumps({'crmToast': 'Scheduled', 'crmCloseFuModal': True})
-        return resp
-    return HttpResponse(status=204)
-
-
-@login_required
-@sales_pipeline_required
-@require_POST
-def lead_quick_note(request, pk):
-    user = request.user
-    lead = get_object_or_404(_lead_scope_qs(user), pk=pk)
-    form = QuickNoteForm(request.POST)
-    err = None
-    if form.is_valid():
-        line = (form.cleaned_data.get('quick_note') or '').strip()
-        if line:
-            ts = timezone.localtime(timezone.now()).strftime('%Y-%m-%d %H:%M')
-            lead.notes = (lead.notes + f'\n[{ts}] {line}').strip()[:10000]
-            lead.save(update_fields=['notes', 'updated_at'])
-            log_activity(lead, 'note', line[:200])
-        lead.refresh_from_db()
-    else:
-        err = 'Too long or empty'
-
-    if request.headers.get('HX-Request'):
-        tpl = request.POST.get('_tpl', 'exec_row')
-        lead_ann = _lead_for_exec(user, pk)
-        ctx = _exec_board_ctx(lead_ann, user, quick_note_error=err)
-        tmpl = (
-            'crm/partials/lead_mobile_card.html'
-            if tpl == 'mobile_card'
-            else 'crm/partials/lead_exec_board.html'
-        )
-        resp = render(request, tmpl, ctx)
-        if not err:
-            _hx_toast(resp, 'Updated')
         return resp
     return HttpResponse(status=204)
 
@@ -1119,6 +1055,7 @@ def lead_detail(request, pk):
     activities = lead.activities.all()[:100]
     followups = lead.followups.all().order_by('-datetime')[:50]
     tasks = lead.tasks.all()
+    bills = lead.bills.all().order_by('-bill_date', '-created_at')
     fu_form = FollowUpForm()
     task_form = TaskForm()
     start, end, _ = _local_today_bounds()
@@ -1130,6 +1067,7 @@ def lead_detail(request, pk):
             'activities': activities,
             'followups': followups,
             'tasks': tasks,
+            'bills': bills,
             'fu_form': fu_form,
             'task_form': task_form,
             'status_choices': Lead.PRIMARY_STATUS_CHOICES,
@@ -1179,6 +1117,45 @@ def lead_status_detail(request, pk):
         _hx_toast(resp, 'Updated')
         return resp
     return HttpResponse(status=204)
+
+
+@login_required
+@sales_pipeline_required
+@require_POST
+def lead_mark_won(request, pk):
+    """
+    Centralized Won transition — same crm.services.pipeline.mark_won used
+    by the Daily Workbench's outcome engine, reachable here too (Pipeline
+    board, lead detail) so there is one single path to "Won" everywhere.
+    """
+    from .services.pipeline import PipelineError, mark_won
+
+    user = request.user
+    lead = get_object_or_404(_lead_scope_qs(user), pk=pk)
+    try:
+        mark_won(lead, user=user)
+    except PipelineError as e:
+        return HttpResponse(str(e), status=400)
+    return HttpResponse(status=200)
+
+
+@login_required
+@sales_pipeline_required
+@require_POST
+def lead_mark_lost(request, pk):
+    """Centralized Lost transition — same crm.services.pipeline.mark_lost
+    the Daily Workbench's outcome engine uses."""
+    from .services.pipeline import PipelineError, mark_lost
+
+    user = request.user
+    lead = get_object_or_404(_lead_scope_qs(user), pk=pk)
+    reason = (request.POST.get('reason') or '').strip()
+    note = (request.POST.get('note') or '').strip()
+    try:
+        mark_lost(lead, reason=reason, note=note, user=user)
+    except PipelineError as e:
+        return HttpResponse(str(e), status=400)
+    return HttpResponse(status=200)
 
 
 @login_required

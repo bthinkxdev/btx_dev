@@ -197,7 +197,7 @@
     clearHint.style.display = 'none';
     var q = searchInput.value.trim();
     if (t) clearTimeout(t);
-    if (q.length < 1) { resultsBox.hidden = true; return; }
+    if (q.length < 1) { resultsBox.classList.remove('open'); resultsBox.hidden = true; return; }
     t = setTimeout(function () {
       fetch(searchUrl + '?q=' + encodeURIComponent(q))
         .then(function (r) { return r.json(); })
@@ -206,6 +206,7 @@
           if (!data.results.length) {
             resultsBox.innerHTML = '<div style="padding:10px 12px;font-size:13px;color:var(--text-muted);">No leads found</div>';
             resultsBox.hidden = false;
+            resultsBox.classList.add('open');
             return;
           }
           data.results.forEach(function (row) {
@@ -216,11 +217,13 @@
               searchInput.value = row.name;
               leadIdInput.value = row.id;
               resultsBox.hidden = true;
+              resultsBox.classList.remove('open');
               clearHint.style.display = '';
             });
             resultsBox.appendChild(item);
           });
           resultsBox.hidden = false;
+          resultsBox.classList.add('open');
         });
     }, 200);
   });
@@ -235,6 +238,7 @@
   document.addEventListener('click', function (e) {
     if (!resultsBox.contains(e.target) && e.target !== searchInput) {
       resultsBox.hidden = true;
+      resultsBox.classList.remove('open');
     }
   });
 })();

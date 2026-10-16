@@ -19,14 +19,12 @@ urlpatterns = [
     path('', views.dashboard, name='dashboard'),
 
     path('leads/', views.leads_list, name='leads'),
-    path('leads/more/', views.leads_more_json, name='leads_more'),
     path('leads/search/', views.lead_search, name='lead_search'),
     path('leads/quick-add/', views.lead_quick_add, name='lead_quick_add'),
     path('leads/create/', views.lead_create, name='lead_create'),
     path('leads/import/', views.leads_import_excel, name='leads_import'),
     path('leads/<int:pk>/patch/', views.lead_patch, name='lead_patch'),
     path('leads/<int:pk>/quick-fu/', views.lead_quick_followup, name='lead_quick_fu'),
-    path('leads/<int:pk>/quick-note/', views.lead_quick_note, name='lead_quick_note'),
     path('leads/<int:pk>/', views.lead_detail, name='lead_detail'),
     path('leads/<int:pk>/notes/', views.lead_notes_save, name='lead_notes_save'),
     path(
@@ -35,6 +33,8 @@ urlpatterns = [
         name='lead_contact_save',
     ),
     path('leads/<int:pk>/status/', views.lead_status_detail, name='lead_status_detail'),
+    path('leads/<int:pk>/mark-won/', views.lead_mark_won, name='lead_mark_won'),
+    path('leads/<int:pk>/mark-lost/', views.lead_mark_lost, name='lead_mark_lost'),
     path('leads/<int:lead_pk>/followup/', views.followup_add, name='followup_add'),
     path('leads/<int:lead_pk>/task/', views.task_add, name='task_add'),
     path(
@@ -86,6 +86,16 @@ urlpatterns = [
     path('billing/create/', billing_views.bill_create, name='bill_create'),
     path('billing/bills/<int:pk>/', billing_views.bill_detail, name='bill_detail'),
     path('billing/bills/<int:pk>/pdf/', billing_views.bill_pdf, name='bill_pdf'),
+    path(
+        'billing/bills/<int:pk>/payments/add/',
+        billing_views.bill_payment_create,
+        name='bill_payment_create',
+    ),
+    path(
+        'billing/payments/<int:pk>/receipt/',
+        billing_views.bill_payment_receipt,
+        name='bill_payment_receipt',
+    ),
 
     # Daily Workbench — Activity-based work queue (additive, v1).
     path('workbench/', workbench_views.workbench, name='workbench'),

@@ -8,22 +8,44 @@ are untouched and keep working exactly as they do today.
 from datetime import datetime
 
 from django.contrib.auth.decorators import login_required
-from django.db.models import Sum
+from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
+from django.db.models import Q, Sum
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from .models import Activity, Cadence, Lead
+from .forms import LeadForm
+from .models import Activity, Cadence, Lead, Package
 from .rbac import can_view_all_sales_data
 from .services.pipeline import PipelineError, complete_activity
 from .views import (
+    _leads_url_query,
     _local_today_bounds,
     _sales_scope_context,
     _sales_scope_user_ids,
     _sales_team_users_qs,
     sales_pipeline_required,
 )
+
+# Pipeline board sort — a small, fixed set (not a full column-sort grid like
+# the Leads table, since cards are already grouped by stage into columns).
+PIPELINE_SORT_OPTIONS = [
+    ('-created_at', 'Newest first'),
+    ('created_at', 'Oldest first'),
+    ('-deal_value', 'Highest value'),
+    ('deal_value', 'Lowest value'),
+]
+
+WORKBENCH_PER_PAGE = 10
+WORKBENCH_TABS = ('overdue', 'today', 'new', 'upcoming', 'no_action', 'all')
+# Column sort on the Workbench table — opt-in, overrides the tab's priority
+# ordering when present (same pattern as the Leads table's column sort).
+WORKBENCH_SORT_FIELDS = {
+    'package': ('package__name',),
+    'value': ('deal_value',),
+}
 
 
 def _active_leads_qs(scope_ids):
@@ -85,10 +107,70 @@ def workbench(request):
     user = request.user
     scope = _sales_scope_context(request, user)
     tab = (request.GET.get('tab') or 'overdue').strip()
-    if tab not in ('overdue', 'today', 'new', 'upcoming', 'no_action', 'all'):
+    if tab not in WORKBENCH_TABS:
         tab = 'overdue'
-    leads = list(_tab_qs(scope['scope_ids'], tab)[:200])
+
+    sort = request.GET.get('sort', '').strip()
+    sort_dir = request.GET.get('dir', '').strip()
+    if sort_dir not in ('asc', 'desc'):
+        sort_dir = 'asc'
+    if sort not in WORKBENCH_SORT_FIELDS:
+        sort = ''
+
+    qs = _tab_qs(scope['scope_ids'], tab)
+    if sort:
+        fields = WORKBENCH_SORT_FIELDS[sort]
+        qs = qs.order_by(*(f'-{f}' if sort_dir == 'desc' else f for f in fields), '-id')
+
     counts = _bucket_counts(scope['scope_ids'])
+
+    filters_ctx = {
+        'tab': tab,
+        'employee': str(scope['selected_employee'].id) if scope['selected_employee'] else '',
+        'sort': sort,
+        'dir': sort_dir if sort else '',
+    }
+    _wq = lambda **kw: _leads_url_query(filters_ctx, **kw)
+    wb_base = reverse('crm:workbench')
+
+    page_raw = (request.GET.get('page') or '1').strip()
+    paginator = Paginator(qs, WORKBENCH_PER_PAGE)
+    try:
+        page_obj = paginator.page(page_raw)
+    except PageNotAnInteger:
+        page_obj = paginator.page(1)
+    except EmptyPage:
+        page_obj = paginator.page(paginator.num_pages or 1)
+
+    leads = list(page_obj.object_list)
+
+    tab_links = {t: _wq(tab=t, page='', sort='', dir='') for t in WORKBENCH_TABS}
+    exec_picker_links = {
+        'all': _wq(employee='', page=''),
+    }
+    if scope['scope_employees']:
+        for e in scope['scope_employees']:
+            exec_picker_links[e.id] = _wq(employee=e.id, page='')
+
+    sort_links = {
+        key: _wq(sort=key, dir=('desc' if (sort == key and sort_dir == 'asc') else 'asc'), page='')
+        for key in WORKBENCH_SORT_FIELDS
+    }
+
+    page_items = []
+    for n in paginator.get_elided_page_range(page_obj.number, on_each_side=2, on_ends=1):
+        if isinstance(n, int):
+            page_items.append({
+                'num': n,
+                'qs': _wq(page=n) if n != 1 else _wq(page=''),
+                'active': n == page_obj.number,
+            })
+        else:
+            page_items.append(None)  # ellipsis
+
+    prev_qs = _wq(page=page_obj.previous_page_number()) if page_obj.has_previous() else ''
+    next_qs = _wq(page=page_obj.next_page_number()) if page_obj.has_next() else ''
+
     return render(
         request,
         'crm/workbench/workbench.html',
@@ -97,12 +179,22 @@ def workbench(request):
             'counts': counts,
             'total_active': _active_leads_qs(scope['scope_ids']).count(),
             'tab': tab,
+            'wb_base': wb_base,
+            'tab_links': tab_links,
+            'exec_picker_links': exec_picker_links,
+            'sort_links': sort_links,
+            'current_sort': sort,
+            'current_dir': sort_dir,
+            'paginator': paginator,
+            'page_obj': page_obj,
+            'page_items': page_items,
+            'prev_qs': prev_qs,
+            'next_qs': next_qs,
             'outcome_choices': Activity.Outcome.choices,
             'type_choices': Activity.Type.choices,
             'manager_mode_scope': scope['manager_mode'],
             'scope_employees': scope['scope_employees'],
             'selected_employee': scope['selected_employee'],
-            'employee_qs_suffix': f"&employee={scope['selected_employee'].id}" if scope['selected_employee'] else '',
         },
     )
 
@@ -226,32 +318,102 @@ def workbench_team(request):
 @login_required
 @sales_pipeline_required
 def pipeline_board(request):
-    """Visual kanban: one column per pipeline stage, active leads only."""
+    """
+    Visual kanban. One column per active pipeline stage, plus two terminal
+    columns (Won / Lost) driven by lifecycle_state — the same single source
+    of truth the Daily Workbench's outcome engine writes to
+    (crm.services.pipeline), so a lead's status is the same everywhere.
+    """
     user = request.user
     scope = _sales_scope_context(request, user)
-    leads = (
-        Lead.objects.filter(employee_id__in=scope['scope_ids'])
-        .filter(lifecycle_state=Lead.LifecycleState.ACTIVE)
-        .select_related('package', 'employee', 'next_activity')
-        .order_by('-deal_value', '-updated_at')
+    base = Lead.objects.filter(employee_id__in=scope['scope_ids']).select_related(
+        'package', 'employee', 'next_activity',
     )
+
+    q = (request.GET.get('q') or '').strip()
+    if q:
+        base = base.filter(Q(name__icontains=q) | Q(phone__icontains=q))
+
+    pkg = (request.GET.get('package') or '').strip()
+    package_filter = int(pkg) if pkg.isdigit() else None
+    if package_filter:
+        base = base.filter(package_id=package_filter)
+
+    sort_values = dict(PIPELINE_SORT_OPTIONS)
+    sort = request.GET.get('sort', '').strip()
+    if sort not in sort_values:
+        sort = '-created_at'
+
+    active_leads = base.filter(lifecycle_state=Lead.LifecycleState.ACTIVE).order_by(sort, '-id')
+
     columns = []
+    move_options = []
     for value, label in Lead.PIPELINE_STAGES:
-        stage_leads = [l for l in leads if l.status == value]
+        if value == Lead.Status.WON:
+            continue  # Won is a terminal lifecycle column below, not a progress stage
+        move_options.append((value, label))
+        stage_leads = [l for l in active_leads if l.status == value]
         columns.append({
             'value': value,
             'label': label,
             'leads': stage_leads,
             'count': len(stage_leads),
             'value_sum': sum((l.deal_value for l in stage_leads), start=0),
+            'terminal': False,
         })
+
+    move_options.append(('won', 'Won'))
+    move_options.append(('lost', 'Lost'))
+
+    won_leads = list(base.filter(lifecycle_state=Lead.LifecycleState.WON).order_by('-won_at')[:50])
+    lost_leads = list(base.filter(lifecycle_state=Lead.LifecycleState.LOST).order_by('-lost_at')[:50])
+    columns.append({
+        'value': 'won', 'label': 'Won', 'leads': won_leads, 'count': len(won_leads),
+        'value_sum': sum((l.deal_value for l in won_leads), start=0), 'terminal': True,
+    })
+    columns.append({
+        'value': 'lost', 'label': 'Lost', 'leads': lost_leads, 'count': len(lost_leads),
+        'value_sum': 0, 'terminal': True,
+    })
+
+    filters_ctx = {
+        'q': q,
+        'package': pkg,
+        'employee': str(scope['selected_employee'].id) if scope['selected_employee'] else '',
+        'sort': sort,
+    }
+    _pq = lambda **kw: _leads_url_query(filters_ctx, **kw)
+    pipeline_base = reverse('crm:pipeline_board')
+
+    exec_picker_links = {'all': _pq(employee='')}
+    if scope['scope_employees']:
+        for e in scope['scope_employees']:
+            exec_picker_links[e.id] = _pq(employee=e.id)
+
+    sort_links = {value: _pq(sort=value) for value, _label in PIPELINE_SORT_OPTIONS}
+
+    package_pills = [{'id': None, 'label': 'All packages', 'qs': _pq(package='')}]
+    for p in Package.objects.all():
+        package_pills.append({'id': p.id, 'label': p.name, 'qs': _pq(package=p.id)})
+
     return render(
         request,
         'crm/workbench/pipeline.html',
         {
             'columns': columns,
+            'move_options': move_options,
             'manager_mode_scope': scope['manager_mode'],
             'scope_employees': scope['scope_employees'],
             'selected_employee': scope['selected_employee'],
+            'total_leads': base.count(),
+            'pipeline_base': pipeline_base,
+            'filters': filters_ctx,
+            'exec_picker_links': exec_picker_links,
+            'sort_options': PIPELINE_SORT_OPTIONS,
+            'sort_links': sort_links,
+            'current_sort': sort,
+            'package_filter': package_filter,
+            'package_pills': package_pills,
+            'form': LeadForm(employee=user),
         },
     )

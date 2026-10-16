@@ -8,87 +8,145 @@
   {% if manager_mode_scope %}
   <div class="wb-exec-picker">
     <span class="wb-exec-picker__label">Viewing:</span>
-    <a class="pill {% if not selected_employee %}on{% endif %}" href="?tab={{ tab }}">My team (all)</a>
+    <a class="pill {% if not selected_employee %}on{% endif %}" href="{{ wb_base }}?{{ exec_picker_links.all }}">My team (all)</a>
     {% for e in scope_employees %}
-    <a class="pill {% if selected_employee.id == e.id %}on{% endif %}" href="?tab={{ tab }}&employee={{ e.id }}">{{ e.get_full_name|default:e.username }}</a>
+    <a class="pill {% if selected_employee.id == e.id %}on{% endif %}" href="{{ wb_base }}?{{ exec_picker_links|dict_get:e.id }}">{{ e.get_full_name|default:e.username }}</a>
     {% endfor %}
   </div>
   {% endif %}
 
   <div class="wb-stats">
-    <a class="wb-stat wb-stat--danger {% if tab == 'overdue' %}is-active{% endif %}" href="?tab=overdue{{ employee_qs_suffix }}">
+    <a class="wb-stat wb-stat--danger {% if tab == 'overdue' %}is-active{% endif %}" href="{{ wb_base }}?{{ tab_links.overdue }}">
       <span class="wb-stat__value">{{ counts.overdue }}</span>
       <span class="wb-stat__label">Overdue</span>
+      <span class="wb-stat__icon wb-stat__icon--danger"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5"/><path d="M5 3 2 6M19 3l3 3"/></svg></span>
     </a>
-    <a class="wb-stat wb-stat--info {% if tab == 'today' %}is-active{% endif %}" href="?tab=today{{ employee_qs_suffix }}">
+    <a class="wb-stat wb-stat--info {% if tab == 'today' %}is-active{% endif %}" href="{{ wb_base }}?{{ tab_links.today }}">
       <span class="wb-stat__value">{{ counts.today }}</span>
       <span class="wb-stat__label">Today</span>
+      <span class="wb-stat__icon wb-stat__icon--info"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
     </a>
-    <a class="wb-stat wb-stat--success {% if tab == 'new' %}is-active{% endif %}" href="?tab=new{{ employee_qs_suffix }}">
+    <a class="wb-stat wb-stat--success {% if tab == 'new' %}is-active{% endif %}" href="{{ wb_base }}?{{ tab_links.new }}">
       <span class="wb-stat__value">{{ counts.new }}</span>
       <span class="wb-stat__label">New Leads</span>
+      <span class="wb-stat__icon wb-stat__icon--success"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
     </a>
-    <a class="wb-stat wb-stat--muted {% if tab == 'upcoming' %}is-active{% endif %}" href="?tab=upcoming{{ employee_qs_suffix }}">
+    <a class="wb-stat wb-stat--muted {% if tab == 'upcoming' %}is-active{% endif %}" href="{{ wb_base }}?{{ tab_links.upcoming }}">
       <span class="wb-stat__value">{{ counts.upcoming }}</span>
       <span class="wb-stat__label">Upcoming</span>
+      <span class="wb-stat__icon wb-stat__icon--muted"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 3.5"/></svg></span>
     </a>
-    <a class="wb-stat wb-stat--warn {% if tab == 'no_action' %}is-active{% endif %}" href="?tab=no_action{{ employee_qs_suffix }}">
+    <a class="wb-stat wb-stat--warn {% if tab == 'no_action' %}is-active{% endif %}" href="{{ wb_base }}?{{ tab_links.no_action }}">
       <span class="wb-stat__value">{{ counts.no_action }}</span>
       <span class="wb-stat__label">No Next Action</span>
+      <span class="wb-stat__icon wb-stat__icon--warn"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 20h20L12 3z"/><line x1="12" y1="10" x2="12" y2="14"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
     </a>
   </div>
 
   <div class="wb-tabs">
-    <a class="wb-tab {% if tab == 'overdue' %}is-active{% endif %}" href="?tab=overdue{{ employee_qs_suffix }}">Overdue ({{ counts.overdue }})</a>
-    <a class="wb-tab {% if tab == 'today' %}is-active{% endif %}" href="?tab=today{{ employee_qs_suffix }}">Today ({{ counts.today }})</a>
-    <a class="wb-tab {% if tab == 'new' %}is-active{% endif %}" href="?tab=new{{ employee_qs_suffix }}">New Leads ({{ counts.new }})</a>
-    <a class="wb-tab {% if tab == 'upcoming' %}is-active{% endif %}" href="?tab=upcoming{{ employee_qs_suffix }}">Upcoming ({{ counts.upcoming }})</a>
-    <a class="wb-tab {% if tab == 'no_action' %}is-active{% endif %}" href="?tab=no_action{{ employee_qs_suffix }}">No Next Action ({{ counts.no_action }})</a>
-    <a class="wb-tab {% if tab == 'all' %}is-active{% endif %}" href="?tab=all{{ employee_qs_suffix }}">All ({{ total_active }})</a>
+    <a class="wb-tab {% if tab == 'overdue' %}is-active{% endif %}" href="{{ wb_base }}?{{ tab_links.overdue }}">Overdue</a>
+    <a class="wb-tab {% if tab == 'today' %}is-active{% endif %}" href="{{ wb_base }}?{{ tab_links.today }}">Today</a>
+    <a class="wb-tab {% if tab == 'new' %}is-active{% endif %}" href="{{ wb_base }}?{{ tab_links.new }}">New Leads</a>
+    <a class="wb-tab {% if tab == 'upcoming' %}is-active{% endif %}" href="{{ wb_base }}?{{ tab_links.upcoming }}">Upcoming</a>
+    <a class="wb-tab {% if tab == 'no_action' %}is-active{% endif %}" href="{{ wb_base }}?{{ tab_links.no_action }}">No Next Action</a>
+    <a class="wb-tab {% if tab == 'all' %}is-active{% endif %}" href="{{ wb_base }}?{{ tab_links.all }}">All</a>
   </div>
 
-  <div class="wb-list" id="wb-list">
-    {% for lead in leads %}
-    <div class="wb-row" id="wb-row-{{ lead.pk }}">
-      <div class="wb-row__main">
-        <div class="wb-row__name-line">
-          <a href="{% url 'crm:lead_detail' lead.pk %}" class="wb-row__name">{{ lead.name }}</a>
-          {% if lead.high_hope %}<span class="wb-badge wb-badge--hot">HOT</span>{% endif %}
-          <span class="wb-badge">{{ lead.get_status_display }}</span>
-        </div>
-        <div class="wb-row__meta">
-          {% if lead.phone %}<span>{{ lead.phone }}</span>{% endif %}
-          {% if lead.package %}<span>· {{ lead.package.name }}</span>{% endif %}
-          {% if lead.deal_value %}<span>· Rs. {{ lead.deal_value|floatformat:0 }}</span>{% endif %}
-        </div>
-      </div>
-      <div class="wb-row__activity">
-        {% if lead.next_activity %}
-          <span class="wb-badge {% if lead.next_activity.is_overdue %}wb-badge--danger{% endif %}">
-            {{ lead.next_activity.get_activity_type_display }} · {{ lead.next_activity.scheduled_at|date:"d M, H:i" }}
-          </span>
-        {% else %}
-          <span class="wb-badge wb-badge--warn">No next action</span>
-        {% endif %}
-      </div>
-      <div class="wb-row__actions">
-        {% if lead.phone %}
-        <a href="tel:{{ lead.phone }}" class="btn btn-outline btn-sm">Call</a>
-        {% with wa=lead.phone|whatsapp_wa_url %}{% if wa %}
-        <a href="{{ wa }}" target="_blank" rel="noopener" class="btn btn-outline btn-sm">WhatsApp</a>
-        {% endif %}{% endwith %}
-        {% endif %}
-        <button type="button" class="btn btn-primary btn-sm"
-                hx-get="{% url 'crm:workbench_lead_panel' lead.pk %}"
-                hx-target="#wb-modal-body"
-                hx-swap="innerHTML"
-                onclick="document.getElementById('wb-work-modal').showModal()">Work</button>
-      </div>
-    </div>
-    {% empty %}
-    <div class="wb-empty">Nothing here — clear queue.</div>
-    {% endfor %}
+  {% if leads %}
+  <div class="wb-wrap">
+    <table class="wb-table">
+      <thead>
+        <tr>
+          <th class="wb-th-check"><input type="checkbox" id="wb-check-all" aria-label="Select all"></th>
+          <th>Lead</th>
+          <th><a href="{{ wb_base }}?{{ sort_links.package }}" class="lt-sort-link lt-sort--{% if current_sort == 'package' %}{{ current_dir }}{% else %}inactive{% endif %}">Package<span class="lt-sort-ico"><svg viewBox="0 0 24 24" width="8" height="8" fill="currentColor"><polygon points="12,5 18,13 6,13"/></svg><svg viewBox="0 0 24 24" width="8" height="8" fill="currentColor"><polygon points="12,19 18,11 6,11"/></svg></span></a></th>
+          <th><a href="{{ wb_base }}?{{ sort_links.value }}" class="lt-sort-link lt-sort--{% if current_sort == 'value' %}{{ current_dir }}{% else %}inactive{% endif %}">Value<span class="lt-sort-ico"><svg viewBox="0 0 24 24" width="8" height="8" fill="currentColor"><polygon points="12,5 18,13 6,13"/></svg><svg viewBox="0 0 24 24" width="8" height="8" fill="currentColor"><polygon points="12,19 18,11 6,11"/></svg></span></a></th>
+          <th>Next task / due</th>
+          <th class="wb-th-actions">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for lead in leads %}
+        <tr id="wb-row-{{ lead.pk }}">
+          <td class="wb-th-check"><input type="checkbox" class="wb-row-check" aria-label="Select {{ lead.name }}"></td>
+          <td class="wb-cell-lead">
+            <div class="wb-lead-name-line">
+              <a href="{% url 'crm:lead_detail' lead.pk %}" class="wb-row__name">{{ lead.name }}</a>
+              {% if lead.high_hope %}<span class="wb-badge wb-badge--hot">HOT</span>{% endif %}
+              {% with s=lead.status lc=lead.lifecycle_state %}{% include "crm/partials/status_badge.html" %}{% endwith %}
+            </div>
+            {% if lead.phone %}
+            <div class="wb-lead-phone">
+              <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.99 12 19.79 19.79 0 0 1 1.93 3.28 2 2 0 0 1 3.91 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 15.92z"/></svg>
+              {{ lead.phone }}
+            </div>
+            {% endif %}
+          </td>
+          <td class="wb-cell-package" data-label="Package">{{ lead.package.name|default:'—' }}</td>
+          <td class="wb-cell-value" data-label="Value">{{ lead.deal_value }}</td>
+          <td class="wb-cell-next" data-label="Next task / due">
+            {% if lead.next_activity %}
+            <span class="wb-task-badge {% if lead.next_activity.is_overdue %}wb-task-badge--danger{% endif %}">
+              <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.99 12 19.79 19.79 0 0 1 1.93 3.28 2 2 0 0 1 3.91 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 15.92z"/></svg>
+              {{ lead.next_activity.get_activity_type_display }}
+            </span>
+            <span class="wb-task-due {% if lead.next_activity.is_overdue %}wb-task-due--danger{% endif %}">
+              <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 3.5"/></svg>
+              {{ lead.next_activity.scheduled_at|date:"d M, H:i" }}
+            </span>
+            {% else %}
+            <span class="wb-badge wb-badge--warn">No next action</span>
+            {% endif %}
+          </td>
+          <td class="wb-cell-actions">
+            <div class="wb-actions">
+              {% if lead.phone %}
+              <button type="button" class="wb-act-btn exec-call-btn" data-tel="tel:{{ lead.phone }}" data-log-url="{% url 'crm:lead_log_call' lead.pk %}">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.99 12 19.79 19.79 0 0 1 1.93 3.28 2 2 0 0 1 3.91 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 15.92z"/></svg>
+                Call
+              </button>
+              {% endif %}
+              {% with wa=lead.phone|whatsapp_wa_url %}{% if wa %}
+              <button type="button" class="wb-act-btn exec-wa-btn" data-wa-url="{{ wa }}" data-log-url="{% url 'crm:lead_log_whatsapp' lead.pk %}">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="#25d366" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.883 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                WhatsApp
+              </button>
+              {% endif %}{% endwith %}
+              <button type="button" class="wb-act-btn wb-act-btn--primary"
+                      hx-get="{% url 'crm:workbench_lead_panel' lead.pk %}"
+                      hx-target="#wb-modal-body"
+                      hx-swap="innerHTML"
+                      onclick="document.getElementById('wb-work-modal').showModal()">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                Work
+              </button>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
+
+  <div class="lt-pagination">
+    <span class="lt-pagination__count">Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ paginator.count }} lead{{ paginator.count|pluralize }}</span>
+    <div class="lt-pagination__pages">
+      <a class="lt-page-btn lt-page-btn--arrow{% if not page_obj.has_previous %} is-disabled{% endif %}"
+         href="{% if page_obj.has_previous %}{{ wb_base }}?{{ prev_qs }}{% else %}#{% endif %}" aria-label="Previous page">&lsaquo;</a>
+      {% for item in page_items %}
+        {% if item %}
+        <a class="lt-page-btn{% if item.active %} is-active{% endif %}" href="{{ wb_base }}?{{ item.qs }}">{{ item.num }}</a>
+        {% else %}
+        <span class="lt-page-ellipsis">&hellip;</span>
+        {% endif %}
+      {% endfor %}
+      <a class="lt-page-btn lt-page-btn--arrow{% if not page_obj.has_next %} is-disabled{% endif %}"
+         href="{% if page_obj.has_next %}{{ wb_base }}?{{ next_qs }}{% else %}#{% endif %}" aria-label="Next page">&rsaquo;</a>
+    </div>
+  </div>
+  {% else %}
+  <div class="wb-empty">Nothing here — clear queue.</div>
+  {% endif %}
 </div>
 
 <dialog id="wb-work-modal" class="wb-modal">
@@ -99,7 +157,6 @@
 
 <script>
 (function () {
-  document.body.addEventListener('htmx:trigger', function () {});
   document.body.addEventListener('crmWorkbenchRefresh', function () {
     window.location.reload();
   });
@@ -111,6 +168,14 @@
       window.location.reload();
     }
   });
+  var checkAll = document.getElementById('wb-check-all');
+  if (checkAll) {
+    checkAll.addEventListener('change', function () {
+      document.querySelectorAll('.wb-row-check').forEach(function (cb) {
+        cb.checked = checkAll.checked;
+      });
+    });
+  }
 })();
 </script>
 {% endblock %}

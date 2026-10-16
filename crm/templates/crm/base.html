@@ -30,6 +30,16 @@
       htmx.config.historyCacheSize = 0;
       htmx.config.refreshOnHistoryMiss = true;
     }
+    // historyCacheSize=0 above only stops NEW snapshots from being saved —
+    // it does nothing about snapshots already sitting in localStorage from
+    // before this config existed. getCachedHistory() in htmx reads that
+    // cache directly and will happily serve a years-old snapshot (stale
+    // CSS, stale markup) on back/forward forever, bypassing the server and
+    // every fix since. Purge it unconditionally on every load so a user's
+    // browser can never replay an outdated page.
+    try {
+      localStorage.removeItem('htmx-history-cache');
+    } catch (e) {}
   </script>
   <style>
     /* ─── Design Tokens ─────────────────────────────────────────── */
@@ -2438,15 +2448,9 @@
           if (!dlg || !form) return;
           if (errEl) errEl.textContent = '';
           form.reset();
-          var isMobileCard = !!(openBtn.closest && openBtn.closest('.lead-mcard'));
           var tplField = document.getElementById('crm-fu-tpl');
-          if (isMobileCard) {
-            form.setAttribute('hx-target', '#lead-mcard-' + pk);
-            if (tplField) tplField.value = 'mobile_card';
-          } else {
-            form.setAttribute('hx-target', '#lead-exec-' + pk);
-            if (tplField) tplField.value = 'exec_row';
-          }
+          form.setAttribute('hx-target', '#lead-exec-' + pk);
+          if (tplField) tplField.value = 'exec_row';
           form.setAttribute('hx-post', fuAddUrl(pk));
           form.setAttribute('hx-swap', 'outerHTML');
           if (typeof htmx !== 'undefined') htmx.process(form);
@@ -2487,6 +2491,25 @@
               window.open(wa, '_blank', 'noopener,noreferrer');
             }
           }
+          return;
+        }
+        var lostBtn = e.target.closest && e.target.closest('.exec-mark-lost-btn');
+        if (lostBtn) {
+          e.preventDefault();
+          var reason = window.prompt('Lost reason (required):', '');
+          if (!reason || !reason.trim()) return;
+          var tok = document.querySelector('[name=csrfmiddlewaretoken]');
+          var body = new URLSearchParams();
+          body.set('reason', reason.trim());
+          if (tok) body.set('csrfmiddlewaretoken', tok.value);
+          fetch(lostBtn.getAttribute('data-lost-url'), {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: body,
+          }).then(function (r) {
+            if (!r.ok) return r.text().then(function (t) { throw new Error(t || 'Could not save'); });
+            window.location.reload();
+          }).catch(function (e2) { window.alert(e2.message); });
         }
       });
 
@@ -2499,173 +2522,6 @@
             var el = d.querySelector('#id_name') || d.querySelector('input[name="name"]');
             if (el) { el.focus(); try { el.select(); } catch (ex) {} }
           }, 100);
-        }
-        function crmLeadsCleanupInfScroll() {
-          if (typeof window.__crmLeadsInfCleanup === 'function') {
-            try { window.__crmLeadsInfCleanup(); } catch (er) {}
-            window.__crmLeadsInfCleanup = null;
-          }
-        }
-        function crmLeadsMountInfScroll() {
-          var infSentinel = document.getElementById('leads-infinite-sentinel');
-          var infDesk = document.getElementById('leads-desktop-list');
-          var infMob = document.getElementById('leads-mobile-list');
-          var infEnd = document.getElementById('leads-infinite-end');
-          if (!infSentinel || !infDesk || !infMob) return;
-          crmLeadsCleanupInfScroll();
-          var infLoading = false;
-          var infMoreBase = infSentinel.getAttribute('data-more-base') || '';
-          var infIo = null;
-          var infScrollRaf = null;
-          function findScrollableAncestor(el) {
-            var n = el ? el.parentElement : null;
-            while (n && n !== document.body) {
-              var st = window.getComputedStyle(n);
-              var oy = st.overflowY;
-              if ((oy === 'auto' || oy === 'scroll' || oy === 'overlay') &&
-                  n.scrollHeight > n.clientHeight + 2) {
-                return n;
-              }
-              n = n.parentElement;
-            }
-            return null;
-          }
-          function resolveScrollRoot(el) {
-            var inner = findScrollableAncestor(el);
-            if (inner) return inner;
-            var html = document.documentElement;
-            if (html && html.scrollHeight > (window.innerHeight || html.clientHeight) + 8) {
-              return html;
-            }
-            return null;
-          }
-          var infScrollRoot = resolveScrollRoot(infSentinel);
-          var infIoRoot = infScrollRoot === document.documentElement ? null : infScrollRoot;
-          function infDetach() {
-            if (infIo && infSentinel) {
-              try { infIo.unobserve(infSentinel); } catch (e0) {}
-            }
-          }
-          function infAttach() {
-            if (infIo && infSentinel && infSentinel.parentNode && infSentinel.getAttribute('data-fetch')) {
-              try { infIo.observe(infSentinel); } catch (e0b) {}
-            }
-          }
-          function infNearEnd() {
-            if (!infSentinel || !infSentinel.parentNode || infLoading) return false;
-            var pad = 320;
-            var tr = infSentinel.getBoundingClientRect();
-            if (!infScrollRoot || infScrollRoot === document.documentElement) {
-              var vh = window.innerHeight || document.documentElement.clientHeight || 0;
-              return tr.top < vh + pad;
-            }
-            var sr = infScrollRoot.getBoundingClientRect();
-            return tr.top < sr.bottom + pad;
-          }
-          function infFinishNoMore() {
-            infSentinel.removeAttribute('data-fetch');
-            if (infEnd) infEnd.removeAttribute('hidden');
-            try { if (infIo) infIo.disconnect(); } catch (e1) {}
-            infIo = null;
-            if (infSentinel.parentNode) infSentinel.parentNode.removeChild(infSentinel);
-          }
-          function infTryLoad() {
-            var url = infSentinel.getAttribute('data-fetch');
-            if (!url || infLoading || !infSentinel.parentNode) return;
-            infLoading = true;
-            infDetach();
-            infSentinel.setAttribute('aria-busy', 'true');
-            infSentinel.classList.add('is-loading');
-            var ctrl = new AbortController();
-            var to = setTimeout(function() { ctrl.abort(); }, 30000);
-            fetch(url, {
-              credentials: 'same-origin',
-              signal: ctrl.signal,
-              headers: {
-                Accept: 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-              },
-            })
-              .then(function(r) {
-                if (!r.ok) throw new Error('load failed');
-                return r.json();
-              })
-              .then(function(data) {
-                if (data.desktop_html) infDesk.insertAdjacentHTML('beforeend', data.desktop_html);
-                if (data.mobile_html) infMob.insertAdjacentHTML('beforeend', data.mobile_html);
-                if (window.htmx && typeof htmx.process === 'function') {
-                  htmx.process(infDesk);
-                  htmx.process(infMob);
-                }
-                if (data.has_more && data.next_querystring) {
-                  infSentinel.setAttribute('data-fetch', infMoreBase + '?' + data.next_querystring);
-                } else {
-                  infFinishNoMore();
-                }
-              })
-              .catch(function() {
-                infSentinel.removeAttribute('data-fetch');
-                var err = document.createElement('p');
-                err.className = 'leads-infinite-error';
-                err.textContent = 'Could not load more leads. Reload the page or try again.';
-                if (infSentinel.parentNode) infSentinel.parentNode.insertBefore(err, infSentinel);
-                if (infEnd) infEnd.removeAttribute('hidden');
-                try { if (infIo) infIo.disconnect(); } catch (e3) {}
-                infIo = null;
-                if (infSentinel.parentNode) infSentinel.parentNode.removeChild(infSentinel);
-              })
-              .finally(function() {
-                clearTimeout(to);
-                infLoading = false;
-                if (infSentinel.parentNode) {
-                  infSentinel.setAttribute('aria-busy', 'false');
-                  infSentinel.classList.remove('is-loading');
-                  if (infSentinel.getAttribute('data-fetch')) {
-                    requestAnimationFrame(function() {
-                      requestAnimationFrame(infAttach);
-                    });
-                  }
-                }
-              });
-          }
-          infIo = new IntersectionObserver(
-            function(entries) {
-              entries.forEach(function(entry) {
-                if (entry.isIntersecting) infTryLoad();
-              });
-            },
-            { root: infIoRoot, rootMargin: '0px 0px 400px 0px', threshold: 0 }
-          );
-          infAttach();
-          var infOnScroll = function() {
-            if (infScrollRaf) cancelAnimationFrame(infScrollRaf);
-            infScrollRaf = requestAnimationFrame(function() {
-              infScrollRaf = null;
-              if (infNearEnd()) infTryLoad();
-            });
-          };
-          var scrollOpts = { passive: true };
-          window.addEventListener('scroll', infOnScroll, scrollOpts);
-          if (infScrollRoot && infScrollRoot !== document.documentElement) {
-            infScrollRoot.addEventListener('scroll', infOnScroll, scrollOpts);
-          }
-          window.__crmLeadsInfCleanup = function() {
-            window.removeEventListener('scroll', infOnScroll, scrollOpts);
-            if (infScrollRoot && infScrollRoot !== document.documentElement) {
-              infScrollRoot.removeEventListener('scroll', infOnScroll, scrollOpts);
-            }
-            try { if (infIo) infIo.disconnect(); } catch (e4) {}
-            infIo = null;
-          };
-          requestAnimationFrame(function() {
-            requestAnimationFrame(function() {
-              if (infNearEnd()) infTryLoad();
-            });
-          });
-        }
-        function crmInitLeadsPage() {
-          if (!document.getElementById('leads-desktop-list')) return;
-          crmLeadsMountInfScroll();
         }
         if (!window.__crmLeadsDelegated) {
           window.__crmLeadsDelegated = true;
@@ -2693,12 +2549,6 @@
             }
           }, true);
         }
-        document.body.addEventListener('htmx:beforeSwap', function(evt) {
-          if (evt.detail.target && evt.detail.target.id === 'crm-main-content') {
-            crmLeadsCleanupInfScroll();
-            // Dialogs / overlays / charts cleared by window.crmPrepareMainSwap
-          }
-        });
         (function() {
           if (window.__billingModalBound) return;
           window.__billingModalBound = true;
@@ -3223,7 +3073,6 @@
         });
         document.body.addEventListener('htmx:afterSwap', function (evt) {
           if (!evt.detail.target || evt.detail.target.id !== 'crm-main-content') return;
-          crmInitLeadsPage();
           crmInitBillingPage(evt.detail.target);
         });
         document.body.addEventListener('htmx:historyRestore', function () {
@@ -3231,12 +3080,10 @@
         });
         if (document.readyState === 'loading') {
           document.addEventListener('DOMContentLoaded', function () {
-            crmInitLeadsPage();
             crmInitBillingPage(document.getElementById('crm-main-content'));
             crmInitFinanceModals(document.getElementById('crm-main-content'));
           });
         } else {
-          crmInitLeadsPage();
           crmInitBillingPage(document.getElementById('crm-main-content'));
           crmInitFinanceModals(document.getElementById('crm-main-content'));
         }
