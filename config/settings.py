@@ -202,6 +202,17 @@ WHATSAPP_HUMAN_TAKEOVER_COOLDOWN_MINUTES = int(
 GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY', '').strip()
 GOOGLE_PLACES_REQUEST_TIMEOUT = int(os.environ.get('GOOGLE_PLACES_REQUEST_TIMEOUT', '15'))
 
+# Google Analytics 4 (public site only — gtag.js is only injected when this is set,
+# so local/dev environments that leave it blank don't pollute real traffic data).
+GA_MEASUREMENT_ID = os.environ.get('GA_MEASUREMENT_ID', '').strip()
+
+# CRM Web Push (VAPID) — same keypair must be used everywhere a subscribed device
+# should keep receiving push, so copy these into production rather than
+# regenerating there (regenerating invalidates every existing subscription).
+VAPID_PUBLIC_KEY = os.environ.get('VAPID_PUBLIC_KEY', '').strip()
+VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', '').strip()
+VAPID_CLAIM_EMAIL = os.environ.get('VAPID_CLAIM_EMAIL', 'mailto:hr@bthinkx.com').strip()
+
 # WhatsApp Web.js reply buttons are DEPRECATED by Meta — often invisible on phones.
 # Keep false; use numbered text menus (reliable). Set true only if buttons work on your account.
 WHATSAPP_USE_REPLY_BUTTONS = os.environ.get('WHATSAPP_USE_REPLY_BUTTONS', 'false').lower() in (
@@ -244,3 +255,13 @@ CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', '').strip() or (REDIS_UR
 CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', '').strip() or (REDIS_URL or '')
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_ENABLE_UTC = True
+# Only takes effect where Celery beat + a worker are actually running (needs
+# REDIS_URL/CELERY_BROKER_URL set) — otherwise harmless to define. Where
+# Celery/Redis isn't deployed yet, a plain cron/Task Scheduler entry running
+# `python manage.py send_followup_reminders` every minute does the same job.
+CELERY_BEAT_SCHEDULE = {
+    'crm-send-followup-reminders': {
+        'task': 'crm.tasks.send_followup_reminders',
+        'schedule': 60.0,
+    },
+}

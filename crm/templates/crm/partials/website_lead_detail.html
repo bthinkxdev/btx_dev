@@ -1,0 +1,41 @@
+{% load crm_extras %}
+<div class="wb-modal__head">
+  <div>
+    <h2>{{ lead.name }}</h2>
+    <p class="wb-modal__sub">
+      {% if lead.lead_type == 'contact' %}Contact form submission{% else %}Quotation PDF request{% endif %}
+      &middot; {{ lead.created_at|date:"d M Y, H:i" }}
+    </p>
+  </div>
+</div>
+
+{% if lead.lead_type == 'contact' %}
+<div class="wl-detail-grid">
+  <div class="wl-field"><label>Email</label><a href="mailto:{{ lead.email }}">{{ lead.email }}</a></div>
+  {% if lead.company %}<div class="wl-field"><label>Company</label><span>{{ lead.company }}</span></div>{% endif %}
+  {% if lead.budget %}<div class="wl-field"><label>Budget</label><span>{{ lead.budget }}</span></div>{% endif %}
+  <div class="wl-field"><label>Project type</label><span>{{ lead.project_type|default:'—' }}</span></div>
+  {% if lead.timeline %}<div class="wl-field"><label>Timeline</label><span>{{ lead.timeline }}</span></div>{% endif %}
+</div>
+<div class="wl-field wl-field--full">
+  <label>Message</label>
+  <p class="wl-message">{{ lead.message|linebreaksbr }}</p>
+</div>
+{% else %}
+<div class="wl-detail-grid">
+  <div class="wl-field"><label>Phone</label><a href="tel:{{ lead.phone }}">{{ lead.phone }}</a></div>
+  <div class="wl-field"><label>Business name</label><span>{{ lead.business_name }}</span></div>
+  <div class="wl-field"><label>Business type</label><span>{{ lead.get_business_type_display }}</span></div>
+  <div class="wl-field"><label>Package</label><span>{{ lead.get_package_display }}</span></div>
+</div>
+{% endif %}
+
+<div class="wb-modal__foot">
+  {% if lead.lead_type == 'contact' %}
+  <a href="mailto:{{ lead.email }}" class="btn btn-outline">Email</a>
+  {% else %}
+  {% with wa=lead.phone|whatsapp_wa_url %}{% if wa %}<a href="{{ wa }}" target="_blank" rel="noopener" class="btn btn-outline">WhatsApp</a>{% endif %}{% endwith %}
+  <a href="tel:{{ lead.phone }}" class="btn btn-outline">Call</a>
+  {% endif %}
+  <button type="button" class="btn btn-primary" onclick="document.getElementById('wl-modal').close()">Close</button>
+</div>

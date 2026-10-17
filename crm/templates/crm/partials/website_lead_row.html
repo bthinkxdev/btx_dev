@@ -1,0 +1,62 @@
+{% load crm_extras %}
+<tr id="wlead-row-{{ lead.lead_type }}-{{ lead.pk }}" {% if oob %}hx-swap-oob="outerHTML"{% endif %}
+    class="wl-row{% if not lead.is_read %} wl-row--unseen{% endif %}">
+  <td class="wl-cell-dot">
+    <span class="wl-dot{% if not lead.is_read %} wl-dot--on{% endif %}" title="{% if lead.is_read %}Seen{% else %}Unseen{% endif %}"></span>
+  </td>
+
+  <td class="wl-cell-type" data-label="Type">
+    {% if lead.lead_type == 'contact' %}
+    <span class="crm-badge crm-badge--blue">Contact form</span>
+    {% else %}
+    <span class="crm-badge crm-badge--violet">Quotation PDF</span>
+    {% endif %}
+  </td>
+
+  <td class="wl-cell-lead">
+    <div class="wl-lead-name">{{ lead.name }}</div>
+    <div class="wl-lead-sub">
+      {% if lead.lead_type == 'contact' %}{{ lead.email }}{% else %}{{ lead.phone }}{% endif %}
+    </div>
+  </td>
+
+  <td class="wl-cell-info" data-label="Details">
+    {% if lead.lead_type == 'contact' %}
+    <span class="wl-main">{{ lead.project_type|default:'—' }}</span>
+    {% if lead.budget %}<span class="wl-sub">{{ lead.budget }}</span>{% endif %}
+    {% else %}
+    <span class="wl-main">{{ lead.get_package_display }}</span>
+    <span class="wl-sub">{{ lead.get_business_type_display }}</span>
+    {% endif %}
+  </td>
+
+  <td class="wl-cell-when" data-label="Submitted">
+    <span class="wl-main">{{ lead.created_at|date:"d M, H:i" }}</span>
+    <span class="wl-sub">{{ lead.created_at|timesince }} ago</span>
+  </td>
+
+  <td class="wl-cell-actions">
+    <div class="wl-actions">
+      <button type="button" class="wl-act wl-act--view" title="View details" aria-label="View details"
+        hx-get="{% url 'crm:website_lead_detail' lead.lead_type lead.pk %}"
+        hx-target="#wl-modal-body"
+        hx-swap="innerHTML"
+        onclick="document.getElementById('wl-modal').showModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        View
+      </button>
+      <button type="button" class="wl-act wl-act--toggle" title="{% if lead.is_read %}Mark unseen{% else %}Mark seen{% endif %}" aria-label="Toggle seen"
+        hx-post="{% url 'crm:website_lead_toggle_seen' lead.lead_type lead.pk %}"
+        hx-target="#wlead-row-{{ lead.lead_type }}-{{ lead.pk }}"
+        hx-swap="outerHTML">
+        {% if lead.is_read %}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M20 6L9 17l-5-5"/></svg>
+        Seen
+        {% else %}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="9"/></svg>
+        Unseen
+        {% endif %}
+      </button>
+    </div>
+  </td>
+</tr>

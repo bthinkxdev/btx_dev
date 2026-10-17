@@ -464,6 +464,11 @@ class FollowUp(models.Model):
     is_done = models.BooleanField(default=False, db_index=True)
     # Set when the 5-minute reminder was pushed (one per follow-up).
     reminder_sent_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    # Set when the 30-minute reminder was pushed (one per follow-up).
+    reminder_30_sent_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    # Set the first time this follow-up is pushed as overdue, so the
+    # overdue/due-today job notifies once instead of every run.
+    overdue_notified_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
     class Meta:
         ordering = ['datetime']
@@ -2859,3 +2864,69 @@ class ExtractionLead(models.Model):
 
     def __str__(self):
         return f'{self.business_name} ({self.qualification_status})'
+
+
+class PushSubscription(models.Model):
+    """One row per browser/device a user has enabled push on (a user can have
+    several — phone + desktop). Deleted automatically once the browser's own
+    endpoint reports it gone (404/410 from the push service)."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='push_subscriptions',
+    )
+    endpoint = models.URLField(max_length=512, unique=True)
+    p256dh = models.CharField(max_length=255)
+    auth = models.CharField(max_length=255)
+    user_agent = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_seen_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.user} · {self.endpoint[:60]}'
+
+
+class NotificationEvent(models.Model):
+    """Log of every push notification attempted, successful or not — the
+    extensible home for every notification scenario (current and future),
+    and what lets the reminder jobs tell 'already sent' from 'not yet'."""
+
+    class Kind(models.TextChoices):
+        NEW_WEBSITE_LEAD = 'new_website_lead', 'New website lead'
+        FOLLOWUP_OVERDUE = 'followup_overdue', 'Follow-up overdue / due today'
+        FOLLOWUP_REMINDER_30 = 'followup_reminder_30', 'Follow-up reminder (30 min)'
+        FOLLOWUP_REMINDER_5 = 'followup_reminder_5', 'Follow-up reminder (5 min)'
+        LEAD_ASSIGNED = 'lead_assigned', 'Lead assigned to you'
+        LEAD_WON = 'lead_won', 'Lead marked won'
+        TEST = 'test', 'Test notification'
+        OTHER = 'other', 'Other'
+
+    kind = models.CharField(max_length=32, choices=Kind.choices, db_index=True)
+    recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='notification_events',
+    )
+    title = models.CharField(max_length=200)
+    body = models.CharField(max_length=500, blank=True)
+    url = models.CharField(max_length=500, blank=True)
+    lead = models.ForeignKey(
+        Lead,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='notification_events',
+    )
+    is_success = models.BooleanField(default=True)
+    error = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.get_kind_display()} → {self.recipient} ({"ok" if self.is_success else "failed"})'

@@ -13,6 +13,16 @@ ROLE_SALES = 'sales'
 ROLE_FINANCE = 'finance'
 
 
+def is_crm_admin(user) -> bool:
+    """Superusers and users with CRM role *admin* — gates admin-only screens
+    like Website Leads."""
+    if not user or not user.is_authenticated:
+        return False
+    if user.is_superuser:
+        return True
+    return get_crm_role(user) == ROLE_ADMIN
+
+
 def is_crm_developer(user) -> bool:
     """Logged-in users with CRM role *dev* (not superusers)."""
     return bool(

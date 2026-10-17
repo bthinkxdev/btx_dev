@@ -32,10 +32,12 @@ from .models import (
     LedgerEntry,
     Lead,
     MonthlyTarget,
+    NotificationEvent,
     OnboardingSubmission,
     Package,
     PackageScope,
     Place,
+    PushSubscription,
     Project,
     ProjectCredential,
     ProjectMember,
@@ -626,3 +628,20 @@ class ChangeRequestAdmin(admin.ModelAdmin):
     ]
     list_filter = ['status', 'request_type', 'scope_verdict']
     search_fields = ['title', 'project__client__business_name']
+
+
+@admin.register(PushSubscription)
+class PushSubscriptionAdmin(admin.ModelAdmin):
+    list_display = ('user', 'endpoint', 'user_agent', 'created_at', 'last_seen_at')
+    list_filter = ('created_at',)
+    search_fields = ('user__username', 'endpoint')
+    autocomplete_fields = ('user',)
+
+
+@admin.register(NotificationEvent)
+class NotificationEventAdmin(admin.ModelAdmin):
+    list_display = ('created_at', 'kind', 'recipient', 'title', 'is_success', 'lead')
+    list_filter = ('kind', 'is_success', 'created_at')
+    search_fields = ('title', 'body', 'recipient__username', 'error')
+    autocomplete_fields = ('recipient', 'lead')
+    date_hierarchy = 'created_at'

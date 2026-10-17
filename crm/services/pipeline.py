@@ -161,6 +161,21 @@ def mark_won(lead, *, user=None):
     lead.save(update_fields=['lifecycle_state', 'status', 'won_at', 'next_activity', 'updated_at'])
     _cancel_other_pending(lead)
     log_activity(lead, 'lead_won', '')
+
+    if lead.employee_id:
+        from django.urls import reverse
+
+        from ..models import NotificationEvent
+        from ..push import send_push_to_user
+
+        send_push_to_user(
+            lead.employee,
+            kind=NotificationEvent.Kind.LEAD_WON,
+            title='Lead marked Won 🎉',
+            body=f'{lead.name} — {lead.deal_value}',
+            url=reverse('crm:lead_detail', args=[lead.pk]),
+            lead=lead,
+        )
     return lead
 
 

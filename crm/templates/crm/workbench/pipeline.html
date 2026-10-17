@@ -295,20 +295,29 @@
 {% include "crm/partials/_add_lead_modal_styles.html" %}
 
 <style>
-  .pipe-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  /* Title + search/filters/Add-lead all stay on one row down to a fairly
+     narrow desktop width — compact control sizing instead of letting each
+     one claim its natural (wide) size, which is what was forcing the whole
+     toolbar to wrap underneath the title. */
+  .wb-page .page-header { flex-wrap: nowrap; gap: 16px; }
+  .wb-page .page-header > div:first-child { flex-shrink: 0; }
+  .pipe-toolbar { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; flex-shrink: 1; min-width: 0; }
   .pipe-toolbar__search {
     display: flex; align-items: center; gap: 6px;
-    padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm);
-    background: var(--surface); color: var(--text-muted); min-width: 220px;
+    padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+    background: var(--surface); color: var(--text-muted);
+    width: 180px; min-width: 100px; flex-shrink: 1;
   }
   .pipe-toolbar__search input {
-    border: none; outline: none; background: transparent; font-size: 13px; width: 100%; color: var(--neutral-800);
+    border: none; outline: none; background: transparent; font-size: 12.5px; width: 100%; color: var(--neutral-800); min-width: 0;
   }
   .pipe-toolbar__select {
-    padding: 8px 10px; font-size: 13px; font-weight: 600; font-family: inherit;
+    padding: 7px 8px; font-size: 12.5px; font-weight: 600; font-family: inherit;
     border: 1px solid var(--border); border-radius: var(--radius-sm);
     background: var(--surface); color: var(--neutral-700);
+    max-width: 128px; flex-shrink: 1; min-width: 0;
   }
+  #pipeline-open-add-modal { flex-shrink: 0; white-space: nowrap; padding: 7px 14px !important; font-size: 12.5px !important; }
 
   .pipeline-board { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 12px; }
   .pipeline-col { flex: 0 0 240px; background: var(--neutral-50); border: 1px solid var(--border); border-top: 4px solid var(--neutral-300); border-radius: var(--radius); display: flex; flex-direction: column; max-height: calc(100vh - 220px); }
@@ -365,10 +374,10 @@
 
   /* ── Mobile ─────────────────────────────────────────────── */
   @media (max-width: 768px) {
-    .page-header { align-items: stretch; }
+    .wb-page .page-header { flex-wrap: wrap; align-items: stretch; }
     .pipe-toolbar { width: 100%; flex-direction: column; align-items: stretch; }
     .pipe-toolbar__search { min-width: 0; width: 100%; }
-    .pipe-toolbar__select { width: 100%; }
+    .pipe-toolbar__select { width: 100%; max-width: none; }
     #pipeline-open-add-modal { width: 100%; justify-content: center; }
 
     /* One column at a time, swipeable, snapping neatly into place —

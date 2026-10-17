@@ -1,0 +1,169 @@
+{% extends "crm/base.html" %}
+{% block title %}Website Leads{% endblock %}
+{% block page_title %}Website Leads{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Website Leads</h1>
+    <p>{{ counts.total }} total &middot; {{ counts.unread }} unseen</p>
+  </div>
+</div>
+
+<div class="wl-filters">
+  <div class="wl-filter-grp">
+    <span class="wl-filter-grp__lbl">Type</span>
+    <div class="leads-pill-row">
+      <a class="pill {% if not current_type %}on{% endif %}" href="{{ base_url }}?{{ type_links.all }}">All ({{ counts.total }})</a>
+      <a class="pill {% if current_type == 'contact' %}on{% endif %}" href="{{ base_url }}?{{ type_links.contact }}">Contact form ({{ counts.contact }})</a>
+      <a class="pill {% if current_type == 'quote' %}on{% endif %}" href="{{ base_url }}?{{ type_links.quote }}">Quotation PDF ({{ counts.quote }})</a>
+    </div>
+  </div>
+  <div class="wl-filter-grp">
+    <span class="wl-filter-grp__lbl">Status</span>
+    <div class="leads-pill-row">
+      <a class="pill {% if not current_seen %}on{% endif %}" href="{{ base_url }}?{{ seen_links.all }}">All</a>
+      <a class="pill {% if current_seen == 'unseen' %}on{% endif %}" href="{{ base_url }}?{{ seen_links.unseen }}">Unseen ({{ counts.unread }})</a>
+      <a class="pill {% if current_seen == 'seen' %}on{% endif %}" href="{{ base_url }}?{{ seen_links.seen }}">Seen</a>
+    </div>
+  </div>
+</div>
+
+{% if leads %}
+<div class="wl-wrap">
+  <table class="wl-table">
+    <thead>
+      <tr>
+        <th class="wl-th-dot"></th>
+        <th>Type</th>
+        <th>Lead</th>
+        <th>Details</th>
+        <th>Submitted</th>
+        <th class="wl-th-actions">Actions</th>
+      </tr>
+    </thead>
+    <tbody id="website-leads-body">
+      {% for lead in leads %}
+      {% include "crm/partials/website_lead_row.html" %}
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="lt-pagination">
+  <span class="lt-pagination__count">Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ paginator.count }} lead{{ paginator.count|pluralize }}</span>
+  <div class="lt-pagination__pages">
+    <a class="lt-page-btn lt-page-btn--arrow{% if not page_obj.has_previous %} is-disabled{% endif %}"
+       href="{% if page_obj.has_previous %}{{ base_url }}?{{ prev_qs }}{% else %}#{% endif %}" aria-label="Previous page">&lsaquo;</a>
+    {% for item in page_items %}
+      {% if item %}
+      <a class="lt-page-btn{% if item.active %} is-active{% endif %}" href="{{ base_url }}?{{ item.qs }}">{{ item.num }}</a>
+      {% else %}
+      <span class="lt-page-ellipsis">&hellip;</span>
+      {% endif %}
+    {% endfor %}
+    <a class="lt-page-btn lt-page-btn--arrow{% if not page_obj.has_next %} is-disabled{% endif %}"
+       href="{% if page_obj.has_next %}{{ base_url }}?{{ next_qs }}{% else %}#{% endif %}" aria-label="Next page">&rsaquo;</a>
+  </div>
+</div>
+{% else %}
+<div class="empty-state" style="padding:40px 24px;">
+  <strong>No leads here</strong>
+  {% if current_seen or current_type %}
+  Try clearing filters.
+  <div style="margin-top:16px;">
+    <a href="{{ base_url }}" class="btn btn-outline">Clear filters</a>
+  </div>
+  {% else %}
+  Contact form submissions and quotation PDF requests from the website will show up here.
+  {% endif %}
+</div>
+{% endif %}
+
+<dialog id="wl-modal" class="wb-modal">
+  <div id="wl-modal-body" class="wb-modal__body"></div>
+</dialog>
+
+{% include "crm/workbench/_workbench_styles.html" %}
+
+<style>
+  .wl-filters { display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: center; margin-bottom: 18px; }
+  .wl-filter-grp { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .wl-filter-grp__lbl { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
+
+  .wl-wrap {
+    width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch;
+    border: 1px solid var(--border); border-radius: 10px;
+    background: var(--surface); box-shadow: var(--shadow-sm);
+  }
+  .wl-table { width: 100%; min-width: 760px; border-collapse: collapse; font-size: 13px; }
+  .wl-table thead th {
+    text-align: left; padding: 10px 12px; font-size: 11px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted);
+    background: var(--neutral-50); border-bottom: 1px solid var(--border); white-space: nowrap;
+  }
+  .wl-th-dot { width: 24px; }
+  .wl-th-actions { width: 180px; }
+  .wl-table tbody tr { border-bottom: 1px solid var(--neutral-100); transition: background 0.1s; }
+  .wl-table tbody tr:last-child { border-bottom: none; }
+  .wl-table tbody tr:hover { background: var(--neutral-50); }
+  .wl-row--unseen { background: rgba(99,102,241,0.04); }
+  .wl-table td { padding: 10px 12px; vertical-align: middle; }
+
+  .wl-dot { display: block; width: 8px; height: 8px; border-radius: 50%; background: transparent; }
+  .wl-dot--on { background: var(--primary-500); box-shadow: 0 0 0 3px rgba(99,102,241,0.18); }
+
+  .wl-lead-name { font-weight: 700; color: var(--neutral-900); }
+  .wl-row--unseen .wl-lead-name { font-weight: 800; }
+  .wl-lead-sub { font-size: 11.5px; color: var(--text-muted); margin-top: 1px; }
+
+  .wl-main { display: block; font-size: 12.5px; font-weight: 700; color: var(--neutral-800); white-space: nowrap; }
+  .wl-sub { display: block; font-size: 11px; color: var(--text-muted); font-weight: 600; margin-top: 1px; white-space: nowrap; }
+
+  .wl-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .wl-act {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--neutral-600);
+    font-size: 11.5px; font-weight: 700; cursor: pointer; text-decoration: none !important;
+  }
+  .wl-act:hover { background: var(--neutral-50); border-color: var(--primary-300); color: var(--primary-600); }
+  .wl-act--toggle svg { color: inherit; }
+
+  .wl-detail-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px 16px; margin: 16px 0; }
+  .wl-field { display: flex; flex-direction: column; gap: 3px; }
+  .wl-field--full { grid-column: 1 / -1; margin: 0 0 14px; }
+  .wl-field label { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
+  .wl-field span, .wl-field a { font-size: 13px; color: var(--neutral-800); font-weight: 600; }
+  .wl-message {
+    font-size: 13px; line-height: 1.6; color: var(--neutral-700); white-space: pre-wrap;
+    background: var(--neutral-50); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px;
+  }
+
+  @media (max-width: 768px) {
+    .wl-wrap { border: none; box-shadow: none; background: transparent; overflow: visible; }
+    .wl-table { min-width: 0; width: 100%; }
+    .wl-table thead { display: none; }
+    .wl-table, .wl-table tbody, .wl-table tr, .wl-table td { display: block; width: 100%; }
+    .wl-table tbody tr {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      padding: 14px 16px; margin-bottom: 10px; box-shadow: var(--shadow-sm);
+    }
+    .wl-table td { padding: 0; }
+    .wl-table td.wl-th-dot, .wl-table td.wl-cell-dot { display: none; }
+    .wl-row--unseen { background: var(--surface); border-left: 3px solid var(--primary-500) !important; }
+    .wl-cell-type { padding-bottom: 10px !important; }
+    .wl-cell-lead { padding-bottom: 12px !important; margin-bottom: 10px; border-bottom: 1px solid var(--neutral-100); }
+    .wl-cell-info, .wl-cell-when {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      padding: 7px 0 !important; border-bottom: 1px solid var(--neutral-100);
+    }
+    .wl-cell-info::before, .wl-cell-when::before {
+      content: attr(data-label); font-size: 10.5px; font-weight: 800; text-transform: uppercase;
+      letter-spacing: 0.04em; color: var(--text-muted); flex-shrink: 0;
+    }
+    .wl-cell-actions { padding-top: 12px !important; }
+    .wl-detail-grid { grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock %}

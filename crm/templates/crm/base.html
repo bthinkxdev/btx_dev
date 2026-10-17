@@ -7,13 +7,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}CRM{% endblock %} · BThinkX</title>
   <link rel="icon" href="{% static 'assets/images/logo.jpg' %}" type="image/jpeg" sizes="any">
+  <link rel="manifest" href="{% url 'crm:manifest' %}">
+  <link rel="apple-touch-icon" href="{% static 'assets/images/pwa/icon-192.png' %}">
+  <meta name="theme-color" content="#000000">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  {# htmx/Chart.js are vendored locally (new/assets/vendor/) rather than loaded from unpkg/jsdelivr —
-     every hx-* attribute on every page depends on htmx alone, so a slow/blocked/flaky CDN (unpkg.com
-     even 301-redirects before serving the file) used to mean every nav click silently did nothing
-     until the script eventually arrived, if it ever did. Self-hosting removes that single point of failure. #}
+  {% comment %}
+  htmx/Chart.js are vendored locally (new/assets/vendor/) rather than loaded from unpkg/jsdelivr —
+  every hx-* attribute on every page depends on htmx alone, so a slow/blocked/flaky CDN (unpkg.com
+  even 301-redirects before serving the file) used to mean every nav click silently did nothing
+  until the script eventually arrived, if it ever did. Self-hosting removes that single point of failure.
+  {% endcomment %}
   <script src="{% static 'assets/vendor/htmx-1.9.10.js' %}"></script>
   <script src="{% static 'assets/vendor/chart-4.4.1.umd.js' %}"></script>
   <script>
@@ -175,6 +180,36 @@
       gap: 2px;
     }
 
+    .sidebar-install {
+      padding: 12px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .sidebar-install-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--neutral-50);
+      color: var(--neutral-800);
+      font-size: 13px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    .sidebar-install-btn:hover { background: var(--primary-50); border-color: var(--primary-200); color: var(--primary-700); }
+    .sidebar-install-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+    .sidebar-install-hint {
+      margin: 10px 2px 0;
+      font-size: 11.5px;
+      line-height: 1.5;
+      color: var(--text-muted);
+    }
+
     .nav-section-label {
       font-size: 10px;
       font-weight: 700;
@@ -224,6 +259,13 @@
       font-weight: 600;
     }
     .nav-item--with-badge { justify-content: flex-start; }
+    .nav-item-badge {
+      margin-left: auto;
+      min-width: 18px; height: 18px; padding: 0 5px;
+      display: inline-flex; align-items: center; justify-content: center;
+      background: var(--danger-500); color: #fff;
+      font-size: 10.5px; font-weight: 800; border-radius: 999px; line-height: 1;
+    }
 
     /* Nested Finance nav groups */
     .nav-group {
@@ -603,6 +645,9 @@
     }
     .header-bell:hover { background: var(--neutral-100); color: var(--neutral-800); text-decoration: none; }
     .header-bell svg { width: 20px; height: 20px; }
+    button.header-bell { border: none; background: none; padding: 0; cursor: pointer; font: inherit; }
+    .header-bell--push-ready { color: var(--success-600); }
+    .header-bell--push-ready:hover { background: var(--success-50); color: var(--success-600); }
     .header-bell-count--today {
       background: var(--warning-600);
     }
@@ -2044,6 +2089,22 @@
       </a>
       {% endif %}
 
+      {% if crm_is_admin %}
+      <a href="{% url 'crm:website_leads' %}"
+         hx-get="{% url 'crm:website_leads' %}"
+         hx-target="#crm-main-content"
+         hx-select="#crm-main-content"
+         hx-swap="outerHTML"
+         hx-push-url="true"
+         class="nav-item {% if request.resolver_match.url_name == 'website_leads' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+        <span>Website Leads</span>
+        {% if crm_website_leads_unread_n %}<span class="nav-item-badge">{{ crm_website_leads_unread_n }}</span>{% endif %}
+      </a>
+      {% endif %}
+
       <span class="nav-section-label nav-section-label--hint">Mobile</span>
       {% if crm_can_access_sales_pipeline %}
       <p class="sidebar-mobile-hint">Search by name or phone: open <strong>Leads</strong>, tap <strong>Filters</strong>, then Search.</p>
@@ -2051,6 +2112,16 @@
       <p class="sidebar-mobile-hint">Use the menu above.</p>
       {% endif %}
     </nav>
+
+    <div class="sidebar-install" id="sidebar-install" hidden>
+      <button type="button" class="sidebar-install-btn" id="sidebar-install-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/>
+        </svg>
+        <span>Install app</span>
+      </button>
+      <p class="sidebar-install-hint" id="sidebar-install-ios-hint" hidden>Tap <strong>Share</strong> → <strong>Add to Home Screen</strong> to install.</p>
+    </div>
 
   </aside>
 
@@ -2089,6 +2160,11 @@
         {% if crm_overdue_fu_count %}<span class="header-bell-count">{{ crm_overdue_fu_count }}</span>{% endif %}
       </a>
       {% endif %}
+      <button type="button" class="header-bell" id="crm-push-enable-btn" title="Enable push notifications" aria-label="Enable push notifications" hidden data-vapid-key="{{ vapid_public_key }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/><line x1="4" y1="4" x2="20" y2="20"/>
+        </svg>
+      </button>
       {% endif %}
       <div class="header-user">
         {% if crm_employee_profile and crm_employee_profile.photo %}
@@ -3220,6 +3296,138 @@
       }
     })();
 
+  </script>
+  <script>
+    (function () {
+      var btn = document.getElementById('crm-push-enable-btn');
+      if (!btn || !('serviceWorker' in navigator) || !('PushManager' in window)) return;
+
+      var vapidKey = btn.getAttribute('data-vapid-key') || '';
+
+      function csrfToken() {
+        var t = document.querySelector('[name=csrfmiddlewaretoken]');
+        return t ? t.value : '';
+      }
+
+      function urlBase64ToUint8Array(base64String) {
+        var padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+        var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        var raw = window.atob(base64);
+        var out = new Uint8Array(raw.length);
+        for (var i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+        return out;
+      }
+
+      function postJson(url, data) {
+        return fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken() },
+          body: JSON.stringify(data || {}),
+        });
+      }
+
+      function refreshButtonState() {
+        if (!vapidKey || Notification.permission === 'denied') {
+          btn.hidden = true;
+          return;
+        }
+        btn.hidden = false;
+        if (Notification.permission === 'granted') {
+          btn.title = 'Send a test notification';
+          btn.setAttribute('aria-label', 'Send a test notification');
+          btn.classList.add('header-bell--push-ready');
+        } else {
+          btn.title = 'Enable push notifications';
+          btn.setAttribute('aria-label', 'Enable push notifications');
+          btn.classList.remove('header-bell--push-ready');
+        }
+      }
+
+      function subscribe() {
+        return navigator.serviceWorker.register('/crm/sw.js', { scope: '/crm/' }).then(function (reg) {
+          return reg.pushManager.getSubscription().then(function (existing) {
+            if (existing) return existing;
+            return reg.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: urlBase64ToUint8Array(vapidKey),
+            });
+          });
+        }).then(function (sub) {
+          return postJson('/crm/push/subscribe/', sub.toJSON());
+        });
+      }
+
+      // Register the service worker up front (harmless, no permission needed)
+      // so it's ready the instant the user grants permission.
+      if (vapidKey) {
+        navigator.serviceWorker.register('/crm/sw.js', { scope: '/crm/' }).catch(function () {});
+      }
+
+      refreshButtonState();
+
+      btn.addEventListener('click', function () {
+        if (Notification.permission === 'granted') {
+          subscribe().then(function () {
+            return postJson('/crm/push/test/');
+          }).catch(function (err) {
+            console.error('Push test failed', err);
+          });
+          return;
+        }
+        Notification.requestPermission().then(function (perm) {
+          refreshButtonState();
+          if (perm !== 'granted') return;
+          subscribe().catch(function (err) {
+            console.error('Push subscribe failed', err);
+          });
+        });
+      });
+    })();
+  </script>
+  <script>
+    (function () {
+      var wrap = document.getElementById('sidebar-install');
+      if (!wrap) return;
+      var btn = document.getElementById('sidebar-install-btn');
+      var iosHint = document.getElementById('sidebar-install-ios-hint');
+
+      var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+      if (isStandalone) return; // already installed/running as an app — nothing to offer
+
+      var ua = window.navigator.userAgent || '';
+      var isIos = /iphone|ipad|ipod/i.test(ua);
+
+      var deferredPrompt = null;
+
+      window.addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault();
+        deferredPrompt = e;
+        wrap.hidden = false;
+        btn.hidden = false;
+        iosHint.hidden = true;
+      });
+
+      window.addEventListener('appinstalled', function () {
+        wrap.hidden = true;
+        deferredPrompt = null;
+      });
+
+      btn.addEventListener('click', function () {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.finally(function () {
+          deferredPrompt = null;
+          wrap.hidden = true;
+        });
+      });
+
+      // iOS Safari never fires beforeinstallprompt — show the manual steps instead.
+      if (isIos) {
+        wrap.hidden = false;
+        btn.hidden = true;
+        iosHint.hidden = false;
+      }
+    })();
   </script>
 </body>
 </html>

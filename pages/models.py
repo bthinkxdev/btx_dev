@@ -19,6 +19,10 @@ class ContactSubmission(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # Read/unread, surfaced in the CRM's Website Leads list.
+    is_read = models.BooleanField(default=False, db_index=True)
+    read_at = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         ordering = ['-created_at']
         verbose_name = 'Contact submission'
@@ -55,6 +59,10 @@ class QuoteRequest(models.Model):
     package = models.CharField(max_length=40, choices=PACKAGE_CHOICES)
 
     created_at = models.DateTimeField(auto_now_add=True)
+
+    # Read/unread, surfaced in the CRM's Website Leads list.
+    is_read = models.BooleanField(default=False, db_index=True)
+    read_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ['-created_at']

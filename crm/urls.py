@@ -1,7 +1,7 @@
 from django.contrib.auth import views as auth_views
 from django.urls import path
 
-from . import billing_views, views, workbench_views
+from . import billing_views, push_views, views, website_leads_views, workbench_views
 
 app_name = 'crm'
 
@@ -111,4 +111,24 @@ urlpatterns = [
         workbench_views.workbench_complete_activity,
         name='workbench_complete_activity',
     ),
+
+    # Website Leads — contact form + quotation PDF requests from the public site.
+    path('website-leads/', website_leads_views.website_leads, name='website_leads'),
+    path(
+        'website-leads/<str:lead_type>/<int:pk>/panel/',
+        website_leads_views.website_lead_detail,
+        name='website_lead_detail',
+    ),
+    path(
+        'website-leads/<str:lead_type>/<int:pk>/toggle-seen/',
+        website_leads_views.website_lead_toggle_seen,
+        name='website_lead_toggle_seen',
+    ),
+
+    # PWA + Web Push.
+    path('manifest.json', push_views.manifest_json, name='manifest'),
+    path('sw.js', push_views.service_worker_js, name='service_worker'),
+    path('push/subscribe/', push_views.push_subscribe, name='push_subscribe'),
+    path('push/unsubscribe/', push_views.push_unsubscribe, name='push_unsubscribe'),
+    path('push/test/', push_views.push_test, name='push_test'),
 ]

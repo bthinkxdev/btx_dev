@@ -1558,7 +1558,11 @@ def followup_reschedule(request, pk):
             ndt = timezone.make_aware(ndt)
         fu.datetime = ndt
         fu.reminder_sent_at = None
-        fu.save(update_fields=['datetime', 'reminder_sent_at'])
+        fu.reminder_30_sent_at = None
+        fu.overdue_notified_at = None
+        fu.save(update_fields=[
+            'datetime', 'reminder_sent_at', 'reminder_30_sent_at', 'overdue_notified_at',
+        ])
         recalc_lead_next_followup(fu.lead)
         log_activity(fu.lead, 'follow_up_rescheduled', str(ndt))
         if request.headers.get('HX-Request'):
