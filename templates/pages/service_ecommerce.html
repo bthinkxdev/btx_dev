@@ -2,9 +2,9 @@
 {% load static %}
 
 {% block title %}Ecommerce Website Development Company in Kerala | BThinkX{% endblock %}
-{% block meta_description %}BThinkX builds e-commerce websites for businesses in Trivandrum and across Kerala: payments, stock management, loyalty & marketing automation. Packages from ₹34,999.{% endblock %}
+{% block meta_description %}BThinkX builds e-commerce websites for businesses in Trivandrum and across Kerala: payments, stock management, loyalty & marketing automation. Get a free quote.{% endblock %}
 {% block og_title %}Ecommerce Website Development Company in Kerala | BThinkX{% endblock %}
-{% block og_description %}E-commerce websites with payments, stock management, and marketing automation built in. Packages from ₹34,999, serving Trivandrum and Kerala.{% endblock %}
+{% block og_description %}E-commerce websites with payments, stock management, and marketing automation built in, serving Trivandrum and Kerala. Get a free quote.{% endblock %}
 
 {% block extra_head %}
 <script type="application/ld+json">
@@ -19,9 +19,9 @@
     "@type": "OfferCatalog",
     "name": "Ecommerce Website Packages",
     "itemListElement": [
-      {"@type": "Offer", "name": "Online Store", "price": "34999", "priceCurrency": "INR"},
-      {"@type": "Offer", "name": "Online Store + Marketing", "price": "49999", "priceCurrency": "INR"},
-      {"@type": "Offer", "name": "Complete Growth", "price": "74999", "priceCurrency": "INR"}
+      {"@type": "Offer", "name": "Online Store"},
+      {"@type": "Offer", "name": "Online Store + Marketing"},
+      {"@type": "Offer", "name": "Complete Growth"}
     ]
   }
 }
@@ -42,10 +42,10 @@
   "@context": "https://schema.org",
   "@type": "FAQPage",
   "mainEntity": [
-    {"@type": "Question", "name": "How much does an ecommerce website cost?", "acceptedAnswer": {"@type": "Answer", "text": "BThinkX's ecommerce packages start at ₹34,999 for Online Store (up to 200 products) and go up to ₹74,999 for Complete Growth (unlimited products, loyalty & rewards). Online Store + Marketing sits in between at ₹49,999."}},
+    {"@type": "Question", "name": "How much does an ecommerce website cost?", "acceptedAnswer": {"@type": "Answer", "text": "Cost depends on your product catalog, features and growth goals. BThinkX offers three packages — Online Store, Online Store + Marketing, and Complete Growth — each scoped to a different stage of growth. Get a free personalized quote and we'll walk you through the right fit and pricing."}},
     {"@type": "Question", "name": "How long does ecommerce website development take?", "acceptedAnswer": {"@type": "Answer", "text": "Timelines depend on the package and your product catalog, but a typical e-commerce build takes 8 to 16 weeks from kickoff to launch."}},
     {"@type": "Question", "name": "Can you integrate payment gateways and Cash on Delivery?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. Every package includes UPI, card and netbanking payments plus Cash on Delivery, set up and tested before launch."}},
-    {"@type": "Question", "name": "Do you provide ongoing maintenance and support?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. First year support is included free with every package. After that, annual maintenance starts at ₹3,500/year depending on your package."}},
+    {"@type": "Question", "name": "Do you provide ongoing maintenance and support?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. First year support is included free with every package. After that, annual maintenance pricing depends on your package — ask us for details."}},
     {"@type": "Question", "name": "Can I upgrade to a higher package later?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. You can start with Online Store and upgrade to Online Store + Marketing or Complete Growth as your business grows — talk to us about migrating your existing catalog and data."}},
     {"@type": "Question", "name": "Do you offer SEO with the ecommerce website?", "acceptedAnswer": {"@type": "Answer", "text": "Every package includes a Google-ready, SEO-friendly setup, and the Online Store + Marketing and Complete Growth packages add Google Analytics and Meta Ads tracking for deeper visibility."}}
   ]
@@ -65,10 +65,10 @@
     </nav>
     <div class="badge animate-up" style="margin: 0 0 18px;">Ecommerce Website Development</div>
     <h1 class="animate-up delay-1">Ecommerce Website Development Company in Kerala</h1>
-    <p class="animate-up delay-2">If you're taking orders through WhatsApp messages and Instagram DMs, you're losing sales every day. BThinkX builds e-commerce websites for businesses in Trivandrum and across Kerala, from a straightforward online store to a full growth system with loyalty and marketing automation built in. <strong style="color:var(--text-primary)">Packages from ₹34,999.</strong></p>
+    <p class="animate-up delay-2">If you're taking orders through WhatsApp messages and Instagram DMs, you're losing sales every day. BThinkX builds e-commerce websites for businesses in Trivandrum and across Kerala, from a straightforward online store to a full growth system with loyalty and marketing automation built in.</p>
     <div class="cta-actions animate-up delay-3" style="margin-top: 24px;">
       <a href="{% url 'pages:contact' %}?service=complete-growth" class="btn btn-primary btn-lg">Get a Free Quote</a>
-      <button type="button" class="btn btn-secondary btn-lg" data-open-quote-popup data-package="complete-growth" data-package-label="Complete Growth · ₹74,999">Download a Quotation PDF</button>
+      <button type="button" class="btn btn-secondary btn-lg" data-open-quote-popup data-package="complete-growth" data-package-label="Complete Growth">Download a Quotation PDF</button>
     </div>
   </div>
 </div>
@@ -168,7 +168,7 @@
 <section style="padding-top: 0;">
   <div class="container">
     <div class="svc-intro animate-up">
-      <h2>Ecommerce Packages &amp; Pricing</h2>
+      <h2>Ecommerce Packages</h2>
       <p class="svc-intro-lead">A complete online shop from day one · UPI, cards &amp; COD · 1 year hosting, domain &amp; SSL · one-time build</p>
     </div>
 
@@ -177,8 +177,7 @@
         <span class="plan-tag">Launch</span>
         <h3>Online Store</h3>
         <p class="plan-sub">Your own online shop, ready to take orders and payments from day one.</p>
-        <div class="price">₹34,999</div>
-        <p class="price-note">Up to 200 products · ₹3,500/yr maintenance after year 1</p>
+        <p class="price-note">Up to 200 products</p>
         <ul class="pricing-list">
           <li>Mobile-friendly website, premium build quality</li>
           <li>UPI, cards, netbanking &amp; Cash on Delivery</li>
@@ -189,7 +188,7 @@
         </ul>
         <div style="display:flex;flex-direction:column;gap:10px;margin-top:auto;">
           <a href="{% url 'pages:contact' %}?service=online-store" class="btn btn-secondary">Start with Online Store</a>
-          <button type="button" class="btn btn-ghost" data-open-quote-popup data-package="online-store" data-package-label="Online Store · ₹34,999">Download Quotation PDF</button>
+          <button type="button" class="btn btn-ghost" data-open-quote-popup data-package="online-store" data-package-label="Online Store">Download Quotation PDF</button>
         </div>
       </article>
 
@@ -198,8 +197,7 @@
         <span class="plan-tag">Grow revenue</span>
         <h3>Online Store + Marketing</h3>
         <p class="plan-sub">A complete online shop, plus the tools that bring customers back and make your ads work.</p>
-        <div class="price">₹49,999</div>
-        <p class="price-note">Up to 500 products · ₹5,000/yr maintenance after year 1</p>
+        <p class="price-note">Up to 500 products</p>
         <ul class="pricing-list">
           <li>Premium custom design &amp; faster loading pages</li>
           <li>Abandoned cart recovery, coupons &amp; wishlist</li>
@@ -210,7 +208,7 @@
         </ul>
         <div style="display:flex;flex-direction:column;gap:10px;margin-top:auto;">
           <a href="{% url 'pages:contact' %}?service=online-store-marketing" class="btn btn-primary">Get Growth Store · Best Value</a>
-          <button type="button" class="btn btn-ghost" data-open-quote-popup data-package="online-store-marketing" data-package-label="Online Store + Marketing · ₹49,999">Download Quotation PDF</button>
+          <button type="button" class="btn btn-ghost" data-open-quote-popup data-package="online-store-marketing" data-package-label="Online Store + Marketing">Download Quotation PDF</button>
         </div>
       </article>
 
@@ -218,8 +216,7 @@
         <span class="plan-tag">Brand scale</span>
         <h3>Complete Growth</h3>
         <p class="plan-sub">Loyalty, rewards and insights that turn buyers into regulars.</p>
-        <div class="price">₹74,999</div>
-        <p class="price-note">Unlimited products · ₹7,500/yr maintenance after year 1</p>
+        <p class="price-note">Unlimited products</p>
         <ul class="pricing-list">
           <li>Unlimited products, no cap at any point</li>
           <li>Loyalty points, gift cards &amp; store wallet</li>
@@ -230,7 +227,7 @@
         </ul>
         <div style="display:flex;flex-direction:column;gap:10px;margin-top:auto;">
           <a href="{% url 'pages:contact' %}?service=complete-growth" class="btn btn-secondary">Build Complete Growth</a>
-          <button type="button" class="btn btn-ghost" data-open-quote-popup data-package="complete-growth" data-package-label="Complete Growth · ₹74,999">Download Quotation PDF</button>
+          <button type="button" class="btn btn-ghost" data-open-quote-popup data-package="complete-growth" data-package-label="Complete Growth">Download Quotation PDF</button>
         </div>
       </article>
     </div>
@@ -242,14 +239,12 @@
           <h4>Bulk Product Upload</h4>
           <p>Excel/CSV import, ideal for 100+ SKU catalogs. One-time setup.</p>
         </div>
-        <span class="addon-price">+ ₹5,000</span>
       </div>
       <div class="addon-card">
         <div>
           <h4>Dark &amp; Light Mode Toggle</h4>
           <p>Modern UI switch improves trust &amp; time-on-site.</p>
         </div>
-        <span class="addon-price">+ ₹5,000</span>
       </div>
     </div>
   </div>
@@ -270,7 +265,7 @@
     <div class="faq-grid">
       <div class="faq-item animate-up delay-1">
         <div class="faq-question">How much does an ecommerce website cost?<span class="faq-toggle">+</span></div>
-        <div class="faq-answer">Our ecommerce packages start at ₹34,999 for Online Store (up to 200 products) and go up to ₹74,999 for Complete Growth (unlimited products, loyalty &amp; rewards). Online Store + Marketing sits in between at ₹49,999.</div>
+        <div class="faq-answer">Cost depends on your product catalog, features and growth goals. We offer three packages — Online Store, Online Store + Marketing, and Complete Growth — each scoped to a different stage of growth. Get a free personalized quote and we'll walk you through the right fit and pricing.</div>
       </div>
       <div class="faq-item animate-up delay-2">
         <div class="faq-question">How long does ecommerce website development take?<span class="faq-toggle">+</span></div>
@@ -282,7 +277,7 @@
       </div>
       <div class="faq-item animate-up delay-4">
         <div class="faq-question">Do you provide ongoing maintenance and support?<span class="faq-toggle">+</span></div>
-        <div class="faq-answer">Yes. First year support is included free with every package. After that, annual maintenance starts at ₹3,500/year depending on your package.</div>
+        <div class="faq-answer">Yes. First year support is included free with every package. After that, annual maintenance pricing depends on your package — ask us for details.</div>
       </div>
       <div class="faq-item animate-up delay-1">
         <div class="faq-question">Can I upgrade to a higher package later?<span class="faq-toggle">+</span></div>
@@ -333,7 +328,7 @@
         <a href="{% url 'pages:service_digital_marketing' %}" style="color:var(--accent)">See our Digital Marketing packages →</a></p>
       <div class="cta-actions">
         <a href="{% url 'pages:contact' %}?service=complete-growth" class="btn btn-primary btn-lg">Get a Free Quote</a>
-        <button type="button" class="btn btn-secondary btn-lg" data-open-quote-popup data-package="complete-growth" data-package-label="Complete Growth · ₹74,999">Download a Quotation PDF</button>
+        <button type="button" class="btn btn-secondary btn-lg" data-open-quote-popup data-package="complete-growth" data-package-label="Complete Growth">Download a Quotation PDF</button>
       </div>
     </div>
   </div>
