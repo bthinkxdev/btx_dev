@@ -10,8 +10,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  {# htmx/Chart.js are vendored locally (new/assets/vendor/) rather than loaded from unpkg/jsdelivr —
+     every hx-* attribute on every page depends on htmx alone, so a slow/blocked/flaky CDN (unpkg.com
+     even 301-redirects before serving the file) used to mean every nav click silently did nothing
+     until the script eventually arrived, if it ever did. Self-hosting removes that single point of failure. #}
+  <script src="{% static 'assets/vendor/htmx-1.9.10.js' %}"></script>
+  <script src="{% static 'assets/vendor/chart-4.4.1.umd.js' %}"></script>
   <script>
     /*
      * historyCacheSize=0 means every back/forward navigation is a cache
