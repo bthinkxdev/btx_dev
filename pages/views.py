@@ -336,5 +336,153 @@ def robots_txt(request):
         'Disallow: /services/quote/',
         '',
         f"Sitemap: {request.build_absolute_uri('/sitemap.xml')}",
+        f"# llms.txt (AI/LLM summary): {request.build_absolute_uri('/llms.txt')}",
+        f"# llms-full.txt (AI/LLM full reference): {request.build_absolute_uri('/llms-full.txt')}",
     ]
     return HttpResponse('\n'.join(lines), content_type='text/plain')
+
+
+def llms_txt(request):
+    """
+    llms.txt (llmstxt.org): a plain-language summary for AI assistants and
+    generative-search crawlers (ChatGPT, Perplexity, Google AI Overviews,
+    Claude, etc.) to read and cite accurately — the GEO equivalent of
+    robots.txt/sitemap.xml being there for traditional search crawlers.
+    Every fact here must stay true to what's actually on the site.
+    """
+    def abs_url(name):
+        return request.build_absolute_uri(reverse(f'pages:{name}'))
+
+    lines = [
+        '# BThinkX',
+        '',
+        '> BThinkX is a software development, ecommerce website development and digital '
+        'marketing company based in Trivandrum, Kerala, India, founded in 2019. We build '
+        'ecommerce websites, custom software and SaaS products, and run Meta (Facebook & '
+        'Instagram) ad campaigns for businesses across Kerala and India. BThinkX positions '
+        'itself as a leading software company in Trivandrum and Kerala, with 50+ projects '
+        'delivered, 10+ clients worldwide, and a 99% client satisfaction rate.',
+        '',
+        f"For the complete, detailed version of this document (full service package "
+        f"breakdowns, every published blog post and portfolio project), see: "
+        f"{request.build_absolute_uri('/llms-full.txt')}",
+        '',
+        '## Services',
+        f'- [Ecommerce Website Development]({abs_url("service_ecommerce")}): online stores '
+        'with UPI/card/netbanking payments, Cash on Delivery, stock management, and loyalty '
+        '& marketing automation on higher tiers.',
+        f'- [Digital Marketing (Meta Ads)]({abs_url("service_digital_marketing")}): Facebook '
+        '& Instagram ad campaigns with ad spend, creatives, targeting and retargeting included.',
+        '- Custom software and SaaS development for businesses that need more than a website.',
+        '',
+        '## Company',
+        f'- [About BThinkX]({abs_url("about")}): who we are, our mission and values.',
+        f'- [Portfolio]({abs_url("portfolio")}): ecommerce websites, SaaS systems and '
+        'automation software we\'ve built.',
+        f'- [Services overview]({abs_url("services")})',
+        f'- [Contact / get a quote]({abs_url("contact")}): we respond within 24 hours.',
+        '',
+        '## Contact',
+        '- Address: 2nd Floor, Suffis Arcade, Pattom, Trivandrum, Kerala 695004, India',
+        '- Phone: +91 95441 96763',
+        '- Email: hr@bthinkx.com',
+        '',
+        '## Service area',
+        'Trivandrum, Kochi, Thrissur, Kozhikode, Kollam, and across Kerala and India.',
+        '',
+        '## Blog',
+        f'- [Blog]({abs_url("blog")}): guides on ecommerce website costs, digital marketing '
+        'budgets, payment gateway integration and online store growth.',
+        '',
+        f"Full sitemap: {request.build_absolute_uri('/sitemap.xml')}",
+    ]
+    return HttpResponse('\n'.join(lines), content_type='text/plain; charset=utf-8')
+
+
+def llms_full_txt(request):
+    """
+    llms-full.txt: the extended companion to llms.txt — full service package
+    breakdowns plus every published blog post and portfolio project, pulled
+    live from the database so it can't drift out of sync with the real site.
+    Lets an AI assistant answer detailed questions about BThinkX from a
+    single fetch instead of having to crawl every page individually.
+    """
+    def abs_url(name, *args):
+        return request.build_absolute_uri(reverse(f'pages:{name}', args=args or None))
+
+    lines = [
+        '# BThinkX — Full Reference',
+        '',
+        '> BThinkX is a software development, ecommerce website development and digital '
+        'marketing company based in Trivandrum, Kerala, India, founded in 2019. We build '
+        'ecommerce websites, custom software and SaaS products, and run Meta (Facebook & '
+        'Instagram) ad campaigns for businesses across Kerala and India. BThinkX positions '
+        'itself as a leading software company in Trivandrum and Kerala, with 50+ projects '
+        'delivered, 10+ clients worldwide, and a 99% client satisfaction rate.',
+        '',
+        '## Contact',
+        '- Address: 2nd Floor, Suffis Arcade, Pattom, Trivandrum, Kerala 695004, India',
+        '- Phone: +91 95441 96763',
+        '- Email: hr@bthinkx.com',
+        f'- Get a quote: {abs_url("contact")} (responds within 24 hours)',
+        '',
+        '## Service area',
+        'Trivandrum, Kochi, Thrissur, Kozhikode, Kollam, and across Kerala and India.',
+        '',
+        '## Ecommerce Website Development',
+        f'Page: {abs_url("service_ecommerce")}',
+        'Every package includes UPI/card/netbanking payments, Cash on Delivery, automatic '
+        'GST invoicing, an order & stock management dashboard, a free SSL certificate, '
+        'Google-ready SEO setup, and 1 year of free technical support. Pricing is quote-based '
+        '— exact cost depends on catalog size and features; contact us for current pricing.',
+        '',
+    ]
+
+    for pkg in PACKAGES.values():
+        lines.append(f'### {pkg["name"]}')
+        lines.append(pkg['tagline'])
+        for section_title, features in pkg['sections']:
+            lines.append(f'- {section_title}: ' + '; '.join(features))
+        lines.append('')
+
+    lines += [
+        '## Digital Marketing (Meta Ads)',
+        f'Page: {abs_url("service_digital_marketing")}',
+        'Facebook & Instagram ad campaigns with ad spend, creatives (posters, plus video on '
+        'higher tiers), targeting, retargeting, and Meta Pixel & conversion tracking included. '
+        'Four tiers scale from a single city/district test (Basic) to full state coverage '
+        '(Standard), South India + major cities (Growth), up to Pan-India reach (Premium). '
+        'Each runs a structured 30-day campaign. Pricing is quote-based; contact us for '
+        'current pricing.',
+        '',
+        '## Portfolio',
+        f'Page: {abs_url("portfolio")}',
+    ]
+
+    projects = (
+        Project.objects.filter(image__isnull=False)
+        .exclude(image='')
+        .order_by('sort_order', '-year', '-created_at')
+    )
+    for project in projects:
+        year = f' ({project.year})' if project.year else ''
+        category = project.get_category_display() if hasattr(project, 'get_category_display') else project.category
+        lines.append(f'- {project.title}{year} — {category}: {project.short_description}')
+    if not projects:
+        lines.append('- See the portfolio page for current projects.')
+    lines.append('')
+
+    lines.append('## Blog')
+    lines.append(f'Page: {abs_url("blog")}')
+    all_posts = list(get_static_posts()) + list(BlogPost.objects.filter(is_published=True))
+    all_posts.sort(key=lambda p: p.published_at, reverse=True)
+    for post in all_posts:
+        url = abs_url('blog_post', post.slug)
+        excerpt = post.excerpt.strip().replace('\n', ' ')
+        lines.append(f'- [{post.title}]({url}): {excerpt}')
+    lines.append('')
+
+    lines.append(f"Full sitemap: {request.build_absolute_uri('/sitemap.xml')}")
+    lines.append(f"Short summary: {request.build_absolute_uri('/llms.txt')}")
+
+    return HttpResponse('\n'.join(lines), content_type='text/plain; charset=utf-8')

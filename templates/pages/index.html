@@ -1,10 +1,25 @@
 {% extends 'pages/base.html' %}
 {% load static %}
 
-{% block title %}Ecommerce Website Development & Digital Marketing Company in Kerala | BThinkX{% endblock %}
+{% block title %}Ecommerce Website & Digital Marketing Company in Kerala | BThinkX{% endblock %}
 {% block meta_description %}BThinkX builds high-converting e-commerce websites and runs Meta & Google ad campaigns for businesses in Trivandrum and across Kerala. Get a free quote.{% endblock %}
 {% block og_title %}Ecommerce Website Development & Digital Marketing Company in Kerala | BThinkX{% endblock %}
 {% block og_description %}High-converting e-commerce websites and performance marketing for businesses in Trivandrum and across Kerala. Get a free quote.{% endblock %}
+
+{% block extra_head %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {"@type": "Question", "name": "Which areas does BThinkX serve?", "acceptedAnswer": {"@type": "Answer", "text": "We're based in Trivandrum and work with businesses across Kerala, including Kochi, Thrissur, Kozhikode and Kollam, as well as clients elsewhere in India."}},
+    {"@type": "Question", "name": "What services does BThinkX offer?", "acceptedAnswer": {"@type": "Answer", "text": "Two focused service lines: ecommerce website development (online stores with payments, stock management and loyalty tools) and digital marketing (Facebook & Instagram ad campaigns), plus custom software engineering for businesses that need more than a website."}},
+    {"@type": "Question", "name": "How do I get a quote for my project?", "acceptedAnswer": {"@type": "Answer", "text": "Fill out the contact form with a bit about your business and goals, and we'll get back to you within 24 hours with next steps and pricing."}},
+    {"@type": "Question", "name": "Can I get an ecommerce website and digital marketing together?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. Our Online Store + Marketing and Complete Growth packages bundle a conversion-ready website with Meta ad tracking and automation, so your store and your ad campaigns work together from day one."}}
+  ]
+}
+</script>
+{% endblock %}
 
 {% block content %}
 <!-- HERO -->
@@ -14,7 +29,7 @@
       <div class="hero-left">
         <div class="hero-eyebrow animate-up">
           <span class="hero-eyebrow-dot" aria-hidden="true"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.4h7.6l-6 4.6 2.3 7-6.3-4.6L12 21l-6.3-4.6 2.3-7-6-4.6h7.6L12 2z"/></svg></span>
-          Technology Studio
+          Trivandrum's Leading Software Company
         </div>
         <h1 class="animate-up delay-1">
           Ecommerce Website Development &amp;<br>
@@ -321,6 +336,33 @@
         <div class="process-num">04</div>
         <h3>Launch &amp; Growth</h3>
         <p>Deployment, performance monitoring, and ongoing iteration to grow your product post-launch.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="faq-section z-content">
+  <div class="container">
+    <div class="section-header">
+      <div class="badge animate-up">FAQ</div>
+      <h2 class="animate-up delay-1">Common Questions</h2>
+    </div>
+    <div class="faq-grid">
+      <div class="faq-item animate-up delay-1">
+        <div class="faq-question">Which areas does BThinkX serve?<span class="faq-toggle">+</span></div>
+        <div class="faq-answer">We're based in Trivandrum and work with businesses across Kerala, including Kochi, Thrissur, Kozhikode and Kollam, as well as clients elsewhere in India.</div>
+      </div>
+      <div class="faq-item animate-up delay-2">
+        <div class="faq-question">What services does BThinkX offer?<span class="faq-toggle">+</span></div>
+        <div class="faq-answer">Two focused service lines: <a href="{% url 'pages:service_ecommerce' %}">ecommerce website development</a> and <a href="{% url 'pages:service_digital_marketing' %}">digital marketing (Meta ads)</a>, plus custom software engineering for businesses that need more than a website.</div>
+      </div>
+      <div class="faq-item animate-up delay-3">
+        <div class="faq-question">How do I get a quote for my project?<span class="faq-toggle">+</span></div>
+        <div class="faq-answer">Fill out the <a href="{% url 'pages:contact' %}">contact form</a> with a bit about your business and goals, and we'll get back to you within 24 hours with next steps and pricing.</div>
+      </div>
+      <div class="faq-item animate-up delay-4">
+        <div class="faq-question">Can I get an ecommerce website and digital marketing together?<span class="faq-toggle">+</span></div>
+        <div class="faq-answer">Yes. Our Online Store + Marketing and Complete Growth packages bundle a conversion-ready website with Meta ad tracking and automation, so your store and your ad campaigns work together from day one.</div>
       </div>
     </div>
   </div>

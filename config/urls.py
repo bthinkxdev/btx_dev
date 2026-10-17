@@ -4,7 +4,7 @@ from django.contrib import admin
 from django.contrib.sitemaps.views import sitemap
 from django.urls import path, include
 
-from pages.views import page_404, robots_txt
+from pages.views import llms_full_txt, llms_txt, page_404, robots_txt
 from pages.sitemaps import sitemaps
 
 urlpatterns = [
@@ -12,6 +12,8 @@ urlpatterns = [
     path('crm/', include('crm.urls')),
     path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='sitemap'),
     path('robots.txt', robots_txt, name='robots_txt'),
+    path('llms.txt', llms_txt, name='llms_txt'),
+    path('llms-full.txt', llms_full_txt, name='llms_full_txt'),
     path('', include('pages.urls')),
 ]
 

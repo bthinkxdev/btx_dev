@@ -39,7 +39,7 @@
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "ProfessionalService",
+    "@type": ["ProfessionalService", "LocalBusiness"],
     "@id": "{{ canonical_url }}#organization",
     "name": "BThinkX",
     "alternateName": "BThinkX Dev",
@@ -56,7 +56,39 @@
       "postalCode": "695004",
       "addressCountry": "IN"
     },
-    "areaServed": ["Trivandrum", "Kochi", "Thrissur", "Kerala", "India"],
+    "areaServed": ["Trivandrum", "Kochi", "Thrissur", "Kozhikode", "Kollam", "Kerala", "India"],
+    "knowsAbout": [
+      "Software development",
+      "Custom software development",
+      "Ecommerce website development",
+      "Online store development",
+      "SaaS development",
+      "Digital marketing",
+      "Meta ads",
+      "Facebook advertising",
+      "Instagram advertising",
+      "Payment gateway integration",
+      "Web design",
+      "SEO"
+    ],
+    "makesOffer": [
+      {
+        "@type": "Offer",
+        "itemOffered": {
+          "@type": "Service",
+          "name": "Ecommerce Website Development",
+          "url": "{{ request.scheme }}://{{ request.get_host }}{% url 'pages:service_ecommerce' %}"
+        }
+      },
+      {
+        "@type": "Offer",
+        "itemOffered": {
+          "@type": "Service",
+          "name": "Digital Marketing (Meta Ads)",
+          "url": "{{ request.scheme }}://{{ request.get_host }}{% url 'pages:service_digital_marketing' %}"
+        }
+      }
+    ],
     "sameAs": [
       "https://www.linkedin.com/showcase/bthinkx-dev/",
       "https://www.instagram.com/bthinkx_dev/",

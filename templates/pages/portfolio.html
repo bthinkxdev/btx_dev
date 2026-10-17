@@ -1,12 +1,22 @@
 {% extends 'pages/base.html' %}
 {% load static %}
 
-{% block title %}Portfolio | BThinkX Dev{% endblock %}
-{% block meta_description %}Explore BThinkX Dev's portfolio of e-commerce platforms, SaaS systems, AI dashboards, and automation software.{% endblock %}
-{% block og_title %}Portfolio | BThinkX Dev{% endblock %}
-{% block og_description %}Explore BThinkX Dev's portfolio of e-commerce platforms, SaaS systems, AI dashboards, and automation software.{% endblock %}
+{% block title %}Ecommerce Website & Digital Marketing Portfolio | BThinkX Kerala{% endblock %}
+{% block meta_description %}See real ecommerce websites and Meta ad campaigns BThinkX has built for businesses in Trivandrum, Kochi and across Kerala — online stores, SaaS systems, and automation software.{% endblock %}
+{% block og_title %}Ecommerce Website & Digital Marketing Portfolio | BThinkX Kerala{% endblock %}
+{% block og_description %}Real ecommerce websites and Meta ad campaigns BThinkX has built for businesses across Kerala — online stores, SaaS systems, and automation software.{% endblock %}
 
 {% block extra_head %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {"@type": "ListItem", "position": 1, "name": "Home", "item": "{{ request.scheme }}://{{ request.get_host }}/"},
+    {"@type": "ListItem", "position": 2, "name": "Portfolio", "item": "{{ canonical_url }}"}
+  ]
+}
+</script>
 <style>
 :root { --font-display: "Inter Tight", "Inter", system-ui, sans-serif; }
 

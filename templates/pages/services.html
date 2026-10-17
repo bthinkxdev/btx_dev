@@ -1,12 +1,34 @@
 {% extends 'pages/base.html' %}
 {% load static %}
 
-{% block title %}Our Services | Ecommerce Development & Digital Marketing | BThinkX{% endblock %}
-{% block meta_description %}BThinkX builds ecommerce websites and runs Meta ad campaigns for businesses in Trivandrum & Kerala. Explore our packages and what's included in each service.{% endblock %}
-{% block og_title %}Our Services | Ecommerce Development & Digital Marketing | BThinkX{% endblock %}
+{% block title %}Ecommerce Website & Digital Marketing Services | BThinkX Kerala{% endblock %}
+{% block meta_description %}BThinkX builds ecommerce websites and runs Meta ad campaigns for businesses in Trivandrum, Kochi and across Kerala. Explore our packages and what's included in each service.{% endblock %}
+{% block og_title %}Ecommerce Website & Digital Marketing Services | BThinkX Kerala{% endblock %}
 {% block og_description %}Ecommerce website development and Meta ads digital marketing by BThinkX in Trivandrum, Kerala. Get a free quote.{% endblock %}
 
 {% block extra_head %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {"@type": "ListItem", "position": 1, "name": "Home", "item": "{{ request.scheme }}://{{ request.get_host }}/"},
+    {"@type": "ListItem", "position": 2, "name": "Services", "item": "{{ canonical_url }}"}
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {"@type": "Question", "name": "What's the difference between the Ecommerce and Digital Marketing services?", "acceptedAnswer": {"@type": "Answer", "text": "Ecommerce Website Development builds the online store itself (payments, stock management, checkout). Digital Marketing runs Facebook & Instagram ad campaigns to bring traffic and orders to a store. Many clients use both together via our Online Store + Marketing or Complete Growth packages."}},
+    {"@type": "Question", "name": "Which service should I start with?", "acceptedAnswer": {"@type": "Answer", "text": "If you don't have a website yet, start with Ecommerce Website Development. If you already have a store and just need more orders, start with Digital Marketing. If you're unsure, tell us on the contact form and we'll recommend a starting point."}},
+    {"@type": "Question", "name": "Does BThinkX offer custom software development too?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. Alongside our ecommerce and digital marketing packages, BThinkX builds custom software and SaaS products for businesses whose needs go beyond a standard online store."}},
+    {"@type": "Question", "name": "Is BThinkX a good software company in Kerala for small businesses?", "acceptedAnswer": {"@type": "Answer", "text": "BThinkX is a Trivandrum-based software, ecommerce and digital marketing company serving businesses of all sizes across Kerala, with packages designed to fit businesses just moving off WhatsApp and Instagram DMs as well as established brands scaling statewide or Pan-India."}}
+  ]
+}
+</script>
 <style>
 .service-line-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 8px; }
 .service-line-card {
@@ -98,6 +120,33 @@
         <div class="tech-card-icon" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></div>
         <h4>Analytics &amp; GA4</h4>
         <p>Full-funnel visibility from click to purchase.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="faq-section">
+  <div class="container">
+    <div class="section-header">
+      <div class="badge animate-up">FAQ</div>
+      <h2 class="animate-up delay-1">Common Questions</h2>
+    </div>
+    <div class="faq-grid">
+      <div class="faq-item animate-up delay-1">
+        <div class="faq-question">What's the difference between the Ecommerce and Digital Marketing services?<span class="faq-toggle">+</span></div>
+        <div class="faq-answer">Ecommerce Website Development builds the online store itself (payments, stock management, checkout). Digital Marketing runs Facebook &amp; Instagram ad campaigns to bring traffic and orders to a store. Many clients use both together via our Online Store + Marketing or Complete Growth packages.</div>
+      </div>
+      <div class="faq-item animate-up delay-2">
+        <div class="faq-question">Which service should I start with?<span class="faq-toggle">+</span></div>
+        <div class="faq-answer">If you don't have a website yet, start with Ecommerce Website Development. If you already have a store and just need more orders, start with Digital Marketing. If you're unsure, tell us on the contact form and we'll recommend a starting point.</div>
+      </div>
+      <div class="faq-item animate-up delay-3">
+        <div class="faq-question">Does BThinkX offer custom software development too?<span class="faq-toggle">+</span></div>
+        <div class="faq-answer">Yes. Alongside our ecommerce and digital marketing packages, BThinkX builds custom software and SaaS products for businesses whose needs go beyond a standard online store.</div>
+      </div>
+      <div class="faq-item animate-up delay-4">
+        <div class="faq-question">Is BThinkX a good software company in Kerala for small businesses?<span class="faq-toggle">+</span></div>
+        <div class="faq-answer">BThinkX is a Trivandrum-based software, ecommerce and digital marketing company serving businesses of all sizes across Kerala, with packages designed to fit businesses just moving off WhatsApp and Instagram DMs as well as established brands scaling statewide or Pan-India.</div>
       </div>
     </div>
   </div>

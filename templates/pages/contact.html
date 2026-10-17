@@ -1,12 +1,36 @@
 {% extends 'pages/base.html' %}
 {% load static %}
 
-{% block title %}Contact | BThinkX Dev{% endblock %}
-{% block meta_description %}Start your project with BThinkX Dev. Tell us about your idea and we'll get back to you within 24 hours.{% endblock %}
-{% block og_title %}Contact | BThinkX Dev{% endblock %}
-{% block og_description %}Start your project with BThinkX Dev. Tell us about your idea and we'll get back to you within 24 hours.{% endblock %}
+{% block title %}Contact BThinkX | Ecommerce Website & Digital Marketing Quotes, Trivandrum{% endblock %}
+{% block meta_description %}Get a free quote for an ecommerce website or Meta ad campaign from BThinkX, Trivandrum. Tell us about your business and we'll get back to you within 24 hours.{% endblock %}
+{% block og_title %}Contact BThinkX | Ecommerce Website & Digital Marketing Quotes, Trivandrum{% endblock %}
+{% block og_description %}Get a free quote for an ecommerce website or Meta ad campaign from BThinkX, Trivandrum. We respond within 24 hours.{% endblock %}
 
 {% block extra_head %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {"@type": "ListItem", "position": 1, "name": "Home", "item": "{{ request.scheme }}://{{ request.get_host }}/"},
+    {"@type": "ListItem", "position": 2, "name": "Contact", "item": "{{ canonical_url }}"}
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {"@type": "Question", "name": "How long does a typical project take?", "acceptedAnswer": {"@type": "Answer", "text": "It depends on the scope. A basic web application takes 4-8 weeks. A full e-commerce platform or SaaS product typically takes 8-16 weeks. We'll give you a precise timeline after the discovery call."}},
+    {"@type": "Question", "name": "Do you work with international clients?", "acceptedAnswer": {"@type": "Answer", "text": "Yes, 100%. We work with clients across Europe, North America, the Middle East, and beyond. All communication is in English, and we're used to async collaboration across time zones."}},
+    {"@type": "Question", "name": "What's your pricing model?", "acceptedAnswer": {"@type": "Answer", "text": "We offer fixed-price projects for well-scoped work, and time-and-materials engagements for longer, evolving products. We'll recommend the right model during the scoping call."}},
+    {"@type": "Question", "name": "Will I own the code and IP?", "acceptedAnswer": {"@type": "Answer", "text": "Absolutely. Upon full payment, all source code, assets, and intellectual property are fully transferred to you. We include this in every contract, no exceptions."}},
+    {"@type": "Question", "name": "Do you provide ongoing support after launch?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. We offer monthly retainer packages for maintenance, feature development, and technical support. We also provide a 30-day bug fix guarantee on all projects after launch."}},
+    {"@type": "Question", "name": "Can you work with an existing codebase?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. We frequently take on existing Django, React, or Node.js projects to add features, fix issues, or scale the architecture. We'll start with a code audit to understand what you have."}}
+  ]
+}
+</script>
 <style>
   .contact-grid { display: grid; grid-template-columns: 1fr 1.6fr; gap: 60px; align-items: flex-start; }
   .contact-info h2 { margin-bottom: 16px; }

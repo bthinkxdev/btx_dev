@@ -1,12 +1,22 @@
 {% extends 'pages/base.html' %}
 {% load static %}
 
-{% block title %}Blog | BThinkX Dev{% endblock %}
-{% block meta_description %}Insights on scaling e-commerce platforms, AI in business automation, modern web development, and digital growth systems.{% endblock %}
-{% block og_title %}Blog | BThinkX Dev{% endblock %}
-{% block og_description %}Insights on scaling e-commerce platforms, AI in business automation, modern web development, and digital growth systems.{% endblock %}
+{% block title %}Ecommerce & Digital Marketing Blog | BThinkX Kerala{% endblock %}
+{% block meta_description %}Practical guides on ecommerce website costs, Meta ads budgets, payment gateways and online store growth for businesses in Kerala and India.{% endblock %}
+{% block og_title %}Ecommerce & Digital Marketing Blog | BThinkX Kerala{% endblock %}
+{% block og_description %}Practical guides on ecommerce website costs, Meta ads budgets, payment gateways and online store growth for businesses in Kerala and India.{% endblock %}
 
 {% block extra_head %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {"@type": "ListItem", "position": 1, "name": "Home", "item": "{{ request.scheme }}://{{ request.get_host }}/"},
+    {"@type": "ListItem", "position": 2, "name": "Blog", "item": "{{ canonical_url }}"}
+  ]
+}
+</script>
 <style>
 :root { --font-display: "Inter Tight", "Inter", system-ui, sans-serif; }
 
