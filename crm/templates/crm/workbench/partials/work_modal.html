@@ -39,9 +39,25 @@
         {% endfor %}
       </select>
     </div>
-    <div class="wb-field">
-      <label for="wb-next-when">Date &amp; time</label>
-      <input type="datetime-local" name="next_scheduled_at" id="wb-next-when">
+    <div class="wb-field-row">
+      <div class="wb-field fu-dt">
+        <label>Date</label>
+        <button type="button" class="fu-dt__trigger" data-fu-date-trigger data-default="{{ next_step_default_date|date:'Y-m-d' }}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <span data-fu-date-display>Select date</span>
+        </button>
+        <input type="hidden" name="next_date" id="wb-next-date" data-fu-date-input>
+        <div class="fu-dt__pop fu-dt__pop--date" data-fu-date-pop hidden></div>
+      </div>
+      <div class="wb-field fu-dt">
+        <label>Time</label>
+        <button type="button" class="fu-dt__trigger" data-fu-time-trigger>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
+          <span data-fu-time-display>10:00 AM</span>
+        </button>
+        <input type="hidden" name="next_time" id="wb-next-time" data-fu-time-input value="10:00">
+        <div class="fu-dt__pop fu-dt__pop--time" data-fu-time-pop hidden></div>
+      </div>
     </div>
   </div>
 
@@ -73,7 +89,6 @@
   var form = document.getElementById('wb-complete-form');
   var nextFields = document.getElementById('wb-next-action-fields');
   var lostFields = document.getElementById('wb-lost-fields');
-  var nextWhen = document.getElementById('wb-next-when');
   var lostReason = document.getElementById('wb-lost-reason');
 
   form.querySelectorAll('[data-outcome-radio]').forEach(function (r) {
@@ -83,8 +98,10 @@
       var lost = v === 'lost';
       nextFields.hidden = !manual;
       lostFields.hidden = !lost;
-      nextWhen.required = manual;
       lostReason.required = lost;
+      // next_date/next_time are hidden inputs filled by the custom date/time
+      // picker (base.html) — the server enforces 'required' for manual
+      // outcomes since native `required` has no effect on hidden inputs.
     });
   });
 })();

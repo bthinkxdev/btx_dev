@@ -1,0 +1,63 @@
+<div class="wb-modal__head">
+  <div>
+    <h2>Edit {{ staff_user.get_full_name|default:staff_user.username }}</h2>
+    <p class="wb-modal__sub">@{{ staff_user.username }}</p>
+  </div>
+  <button type="button" onclick="document.getElementById('staff-modal').close()" class="btn btn-outline btn-sm">&times;</button>
+</div>
+
+{% if form.non_field_errors %}<div class="wb-modal-error">{{ form.non_field_errors }}</div>{% endif %}
+
+<form hx-post="{% url 'crm:staff_update' staff_user.pk %}" hx-target="#staff-modal-body" hx-swap="innerHTML" hx-encoding="multipart/form-data">
+  {% csrf_token %}
+  <div class="staff-form-grid">
+    <div class="wb-field">
+      <label for="se-first">First name</label>
+      {{ form.first_name }}
+      {% if form.first_name.errors %}<p class="exec-err">{{ form.first_name.errors|join:" " }}</p>{% endif %}
+    </div>
+    <div class="wb-field">
+      <label for="se-last">Last name</label>
+      {{ form.last_name }}
+    </div>
+    <div class="wb-field">
+      <label for="se-email">Email</label>
+      {{ form.email }}
+      {% if form.email.errors %}<p class="exec-err">{{ form.email.errors|join:" " }}</p>{% endif %}
+    </div>
+    <div class="wb-field">
+      <label for="se-role">CRM role</label>
+      {{ form.crm_role }}
+    </div>
+    <div class="wb-field">
+      <label for="se-target">Target amount (₹)</label>
+      {{ form.target_amount }}
+      {% if form.target_amount.errors %}<p class="exec-err">{{ form.target_amount.errors|join:" " }}</p>{% endif %}
+    </div>
+    <div class="wb-field">
+      <label for="se-pass">New password <span class="staff-optional">(leave blank to keep current)</span></label>
+      {{ form.new_password }}
+      {% if form.new_password.errors %}<p class="exec-err">{{ form.new_password.errors|join:" " }}</p>{% endif %}
+    </div>
+    <div class="wb-field">
+      <label for="se-photo">Photo</label>
+      {{ form.photo }}
+    </div>
+  </div>
+
+  <div class="staff-checkbox-row">
+    <label class="staff-checkbox"><input type="checkbox" name="is_sales_manager" {% if form.is_sales_manager.value %}checked{% endif %}> Sales manager</label>
+    <label class="staff-checkbox"><input type="checkbox" name="eligible_for_leads" {% if form.eligible_for_leads.value %}checked{% endif %}> Eligible for auto-assigned leads</label>
+    <label class="staff-checkbox"><input type="checkbox" name="whatsapp_bot_enabled" {% if form.whatsapp_bot_enabled.value %}checked{% endif %}> WhatsApp bot enabled</label>
+    {% if not is_self %}
+    <label class="staff-checkbox"><input type="checkbox" name="is_active" {% if form.is_active.value %}checked{% endif %}> Account active</label>
+    {% else %}
+    <span class="staff-optional">You can't deactivate your own account here.</span>
+    {% endif %}
+  </div>
+
+  <div class="wb-modal__foot">
+    <button type="button" onclick="document.getElementById('staff-modal').close()" class="btn btn-outline btn-sm">Cancel</button>
+    <button type="submit" class="btn btn-primary btn-sm">Save</button>
+  </div>
+</form>

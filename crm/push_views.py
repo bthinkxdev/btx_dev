@@ -9,6 +9,8 @@ import json
 
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, JsonResponse
+from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from .models import NotificationEvent, PushSubscription
@@ -62,7 +64,7 @@ self.addEventListener('push', (event) => {
     icon: '/static/assets/images/pwa/icon-192.png',
     badge: '/static/assets/images/pwa/icon-192.png',
     tag: data.tag || 'btx-crm',
-    data: { url: data.url || '/crm/' },
+    data: { url: data.url || '/crm/', id: data.id || null },
   };
   event.waitUntil(self.registration.showNotification(title, options));
 });
@@ -70,6 +72,12 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const url = (event.notification.data && event.notification.data.url) || '/crm/';
+  const id = event.notification.data && event.notification.data.id;
+  if (id) {
+    // Fire-and-forget click acknowledgement — best-effort delivery/engagement
+    // tracking, never blocks opening the page.
+    fetch('/crm/push/ack/' + id + '/', { method: 'POST', credentials: 'include' }).catch(() => {});
+  }
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
       for (const client of clients) {
@@ -154,4 +162,19 @@ def push_test(request):
     ).order_by('-created_at').first()
     if last and not last.is_success:
         return JsonResponse({'ok': False, 'error': last.error or 'Delivery failed.'}, status=502)
+    return JsonResponse({'ok': True})
+
+
+@csrf_exempt
+@login_required
+@require_POST
+def push_ack(request, pk):
+    """Beaconed by the service worker's notificationclick handler — a service
+    worker has no page/DOM to pull a CSRF token from, so this is exempted
+    and kept safe by scoping the update strictly to the logged-in user's own
+    notification. Best-effort: if it's missed, delivery tracking just has one
+    less data point, nothing else depends on it."""
+    NotificationEvent.objects.filter(pk=pk, recipient=request.user, clicked_at__isnull=True).update(
+        clicked_at=timezone.now(),
+    )
     return JsonResponse({'ok': True})

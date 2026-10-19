@@ -105,6 +105,7 @@
 </div>
 
 <!-- Billing -->
+{% if crm_is_admin %}
 <div class="panel-block">
   <div class="panel-h" style="display:flex;align-items:center;justify-content:space-between;">
     <span style="display:flex;align-items:center;gap:8px;">
@@ -151,6 +152,26 @@
   {% endif %}
 </div>
 {% include "crm/billing/_billing_styles.html" %}
+{% endif %}
+
+<dialog id="wb-work-modal" class="wb-modal">
+  <div id="wb-modal-body" class="wb-modal__body"></div>
+</dialog>
+{% include "crm/workbench/_workbench_styles.html" %}
+<script>
+  (function () {
+    if (window.__leadWorkModalInit) return;
+    window.__leadWorkModalInit = true;
+    document.body.addEventListener('htmx:afterRequest', function (evt) {
+      var trig = evt.detail && evt.detail.xhr && evt.detail.xhr.getResponseHeader('HX-Trigger');
+      if (trig && trig.indexOf('crmWorkbenchRefresh') !== -1) {
+        var dlg = document.getElementById('wb-work-modal');
+        if (dlg && dlg.open) dlg.close();
+        window.location.reload();
+      }
+    });
+  })();
+</script>
 {% endblock %}
 
 {% block extra_css %}

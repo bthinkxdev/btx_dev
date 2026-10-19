@@ -214,6 +214,7 @@ def workbench_lead_panel(request, pk):
             'activity': lead.next_activity,
             'outcome_choices': Activity.Outcome.choices,
             'type_choices': Activity.Type.choices,
+            'next_step_default_date': timezone.localdate() + timezone.timedelta(days=1),
         },
     )
 
@@ -231,13 +232,14 @@ def workbench_complete_activity(request, pk):
 
     outcome = request.POST.get('outcome')
     next_type = request.POST.get('next_type') or None
-    next_dt_raw = (request.POST.get('next_scheduled_at') or '').strip()
+    next_date_raw = (request.POST.get('next_date') or '').strip()
+    next_time_raw = (request.POST.get('next_time') or '').strip()
     next_scheduled_at = None
-    if next_dt_raw:
+    if next_date_raw:
         try:
-            next_scheduled_at = datetime.strptime(next_dt_raw, '%Y-%m-%dT%H:%M')
-            if timezone.is_naive(next_scheduled_at):
-                next_scheduled_at = timezone.make_aware(next_scheduled_at)
+            d = datetime.strptime(next_date_raw, '%Y-%m-%d').date()
+            t = datetime.strptime(next_time_raw, '%H:%M').time() if next_time_raw else datetime.min.time()
+            next_scheduled_at = timezone.make_aware(datetime.combine(d, t))
         except ValueError:
             next_scheduled_at = None
 

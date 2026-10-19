@@ -1,7 +1,7 @@
 from django.contrib.auth import views as auth_views
 from django.urls import path
 
-from . import billing_views, push_views, views, website_leads_views, workbench_views
+from . import billing_views, notifications_views, push_views, staff_views, views, website_leads_views, workbench_views
 
 app_name = 'crm'
 
@@ -66,6 +66,8 @@ urlpatterns = [
         name='tasks_header_badges',
     ),
     path('followups/', views.followups_page, name='followups'),
+    path('followups/calendar/', views.followups_calendar_month, name='followups_calendar_month'),
+    path('followups/day/', views.followups_day_panel, name='followups_day_panel'),
     path('followups/<int:pk>/done/', views.followup_done, name='followup_done'),
     path('followups/<int:pk>/reschedule/', views.followup_reschedule, name='followup_reschedule'),
 
@@ -131,4 +133,16 @@ urlpatterns = [
     path('push/subscribe/', push_views.push_subscribe, name='push_subscribe'),
     path('push/unsubscribe/', push_views.push_unsubscribe, name='push_unsubscribe'),
     path('push/test/', push_views.push_test, name='push_test'),
+    path('push/ack/<int:pk>/', push_views.push_ack, name='push_ack'),
+
+    # In-app notification history.
+    path('notifications/', notifications_views.notifications_list, name='notifications'),
+    path('notifications/mark-all-read/', notifications_views.notifications_mark_all_read, name='notifications_mark_all_read'),
+
+    # Staff management (admin-only).
+    path('staff/', staff_views.staff_list, name='staff_list'),
+    path('staff/create/', staff_views.staff_create, name='staff_create'),
+    path('staff/<int:pk>/edit/', staff_views.staff_edit_panel, name='staff_edit_panel'),
+    path('staff/<int:pk>/update/', staff_views.staff_update, name='staff_update'),
+    path('staff/<int:pk>/toggle-active/', staff_views.staff_toggle_active, name='staff_toggle_active'),
 ]

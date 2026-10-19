@@ -1,0 +1,43 @@
+{% if form.non_field_errors %}<div class="wb-modal-error">{{ form.non_field_errors }}</div>{% endif %}
+<div class="staff-form-grid">
+  <div class="wb-field">
+    <label for="sc-username">Username</label>
+    {{ form.username }}
+    {% if form.username.errors %}<p class="exec-err">{{ form.username.errors|join:" " }}</p>{% endif %}
+  </div>
+  <div class="wb-field">
+    <label for="sc-first">First name</label>
+    {{ form.first_name }}
+  </div>
+  <div class="wb-field">
+    <label for="sc-last">Last name</label>
+    {{ form.last_name }}
+  </div>
+  <div class="wb-field">
+    <label for="sc-email">Email</label>
+    {{ form.email }}
+    {% if form.email.errors %}<p class="exec-err">{{ form.email.errors|join:" " }}</p>{% endif %}
+  </div>
+  <div class="wb-field">
+    <label for="sc-password">Password</label>
+    {{ form.password }}
+    {% if form.password.errors %}<p class="exec-err">{{ form.password.errors|join:" " }}</p>{% endif %}
+  </div>
+  <div class="wb-field">
+    <label for="sc-role">CRM role</label>
+    {{ form.crm_role }}
+  </div>
+  <div class="wb-field">
+    <label for="sc-target">Target amount (₹)</label>
+    {{ form.target_amount }}
+  </div>
+  <div class="wb-field">
+    <label for="sc-photo">Photo</label>
+    {{ form.photo }}
+  </div>
+</div>
+<div class="staff-checkbox-row">
+  <label class="staff-checkbox"><input type="checkbox" name="is_sales_manager" {% if form.is_sales_manager.value %}checked{% endif %}> Sales manager</label>
+  <label class="staff-checkbox"><input type="checkbox" name="eligible_for_leads" {% if form.eligible_for_leads.value %}checked{% endif %}> Eligible for auto-assigned leads</label>
+  <label class="staff-checkbox"><input type="checkbox" name="whatsapp_bot_enabled" {% if form.whatsapp_bot_enabled.value %}checked{% endif %}> WhatsApp bot enabled</label>
+</div>

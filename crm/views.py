@@ -1,3 +1,4 @@
+import calendar as calendar_module
 import json
 import re
 from functools import wraps
@@ -29,6 +30,7 @@ from .forms import (
     TaskForm,
 )
 from .models import (
+    Activity,
     ActivityLog,
     EmployeeProfile,
     FollowUp,
@@ -264,7 +266,7 @@ LEAD_SORT_FIELDS = {
     'package': ('package__name',),
     'value': ('deal_value',),
     'last_activity': ('last_act_at',),
-    'next_followup': ('next_followup',),
+    'next_followup': ('next_activity__scheduled_at',),
     'status': ('_status_order',),
 }
 
@@ -284,7 +286,8 @@ def _flag_lead_rows(leads_page, bounds):
         if bounds:
             ds, de = bounds
             lead.is_new_in_period = ds <= lead.created_at < de
-            lead.is_followup_in_period = bool(lead.next_followup) and ds <= lead.next_followup < de
+            next_at = lead.next_activity.scheduled_at if lead.next_activity_id else None
+            lead.is_followup_in_period = bool(next_at) and ds <= next_at < de
         else:
             lead.is_new_in_period = False
             lead.is_followup_in_period = False
@@ -297,7 +300,7 @@ def _lead_for_exec(user, pk):
     latest = ActivityLog.objects.filter(lead_id=OuterRef('pk')).order_by('-created_at')
     return (
         _lead_scope_qs(user).filter(pk=pk)
-        .select_related('package', 'employee')
+        .select_related('package', 'employee', 'next_activity')
         .annotate(
             last_act=Subquery(latest.values('action')[:1]),
             last_act_at=Subquery(latest.values('created_at')[:1]),
@@ -478,7 +481,7 @@ def _leads_list_qs_and_meta(request, user):
     latest = ActivityLog.objects.filter(lead_id=OuterRef('pk')).order_by('-created_at')
     qs = (
         Lead.objects.filter(employee_id__in=scope['scope_ids'])
-        .select_related('package', 'employee')
+        .select_related('package', 'employee', 'next_activity')
         .annotate(
             last_act=Subquery(latest.values('action')[:1]),
             last_act_at=Subquery(latest.values('created_at')[:1]),
@@ -570,7 +573,7 @@ def _leads_list_qs_and_meta(request, user):
             ds, de = bounds
             qs = qs.filter(
                 Q(created_at__gte=ds, created_at__lt=de)
-                | (active_q & Q(next_followup__gte=ds, next_followup__lt=de))
+                | (active_q & Q(next_activity__scheduled_at__gte=ds, next_activity__scheduled_at__lt=de))
             )
             sort_by_time = True
             period_bounds = (ds, de)
@@ -600,7 +603,7 @@ def _leads_list_qs_and_meta(request, user):
         # One mixed list of leads + follow-ups: sort by whichever timestamp is
         # this row's actual moment — its scheduled follow-up, or (if it has none)
         # when the lead itself was created.
-        qs = qs.annotate(_sort_time=Coalesce('next_followup', 'created_at')).order_by('_sort_time')
+        qs = qs.annotate(_sort_time=Coalesce('next_activity__scheduled_at', 'created_at')).order_by('_sort_time')
     else:
         qs = qs.order_by(*LEAD_DEFAULT_ORDER)
 
@@ -1321,6 +1324,7 @@ def task_update(request, pk):
     task = get_object_or_404(_task_scope_qs(user), pk=pk)
     title = (request.POST.get('title') or '').strip()[:300]
     due = (request.POST.get('due_date') or '').strip()
+    due_time = (request.POST.get('due_time') or '').strip()
     if title:
         task.title = title
     if due:
@@ -1330,6 +1334,19 @@ def task_update(request, pk):
             pass
     elif 'due_date' in request.POST and not due:
         task.due_date = None
+    if due_time:
+        try:
+            task.due_time = datetime.strptime(due_time, '%H:%M').time()
+        except ValueError:
+            pass
+    elif 'due_time' in request.POST and not due_time:
+        task.due_time = None
+    if 'due_date' in request.POST or 'due_time' in request.POST:
+        # Due moment changed — let the reminder job re-evaluate from scratch.
+        task.reminder_30_sent_at = None
+        task.reminder_sent_at = None
+        task.overdue_notified_at = None
+        task.escalated_at = None
     task.save()
     log_activity(task.lead, 'task_updated', task.title[:200])
     if request.headers.get('HX-Request') and request.POST.get('_from') == 'exec':
@@ -1506,16 +1523,151 @@ def tasks_header_badges(request):
     )
 
 
+def _add_months(year, month, delta):
+    m = month - 1 + delta
+    y = year + m // 12
+    m = m % 12 + 1
+    return y, m
+
+
+def _parse_calendar_ym(request):
+    today = timezone.localdate()
+    try:
+        year = int(request.GET.get('y') or today.year)
+        month = int(request.GET.get('m') or today.month)
+        date(year, month, 1)  # validates the month is real
+    except (TypeError, ValueError):
+        year, month = today.year, today.month
+    return year, month
+
+
+def _parse_calendar_date(value, fallback):
+    try:
+        return date.fromisoformat(value) if value else fallback
+    except (TypeError, ValueError):
+        return fallback
+
+
+def _followup_calendar_ctx(scope_ids, year, month, selected_date):
+    """Month grid (Sun-first, padded with adjacent-month days) with a
+    pending-activity count + dominant type (for the badge color) per day.
+    Activity (crm.services.pipeline) is the one source of truth for 'what's
+    next' across the whole CRM — the same records the Daily Workbench and
+    Pipeline board read — so this calendar is just another view onto them,
+    not a separate schedule."""
+    today = timezone.localdate()
+    cal = calendar_module.Calendar(firstweekday=calendar_module.SUNDAY)
+    month_weeks = cal.monthdatescalendar(year, month)
+    grid_start, grid_end = month_weeks[0][0], month_weeks[-1][-1]
+
+    rows = (
+        Activity.objects.filter(
+            owner_id__in=scope_ids,
+            status=Activity.Status.PENDING,
+            scheduled_at__date__gte=grid_start,
+            scheduled_at__date__lte=grid_end,
+        )
+        .annotate(day=TruncDate('scheduled_at'))
+        .values('day', 'activity_type')
+        .annotate(n=Count('id'))
+    )
+    day_meta = {}
+    for row in rows:
+        meta = day_meta.setdefault(row['day'], {'count': 0, 'types': {}})
+        meta['count'] += row['n']
+        meta['types'][row['activity_type']] = meta['types'].get(row['activity_type'], 0) + row['n']
+    for meta in day_meta.values():
+        meta['dominant_type'] = max(meta['types'].items(), key=lambda kv: kv[1])[0]
+
+    weeks = []
+    for week in month_weeks:
+        days = []
+        for d in week:
+            meta = day_meta.get(d)
+            days.append({
+                'date': d,
+                'day': d.day,
+                'in_month': d.month == month,
+                'is_today': d == today,
+                'is_selected': d == selected_date,
+                'count': meta['count'] if meta else 0,
+                'dominant_type': meta['dominant_type'] if meta else '',
+            })
+        weeks.append(days)
+
+    prev_y, prev_m = _add_months(year, month, -1)
+    next_y, next_m = _add_months(year, month, 1)
+    return {
+        'year': year,
+        'month': month,
+        'month_label': date(year, month, 1).strftime('%B %Y'),
+        'weeks': weeks,
+        'prev_y': prev_y, 'prev_m': prev_m,
+        'next_y': next_y, 'next_m': next_m,
+        'today_y': today.year, 'today_m': today.month, 'today_iso': today.isoformat(),
+        'selected_date': selected_date,
+    }
+
+
+def _followup_day_panel_ctx(scope_ids, selected_date):
+    start = timezone.make_aware(datetime.combine(selected_date, time.min))
+    end = start + timedelta(days=1)
+    day_activities = list(
+        Activity.objects.filter(
+            owner_id__in=scope_ids, status=Activity.Status.PENDING,
+            scheduled_at__gte=start, scheduled_at__lt=end,
+        )
+        .select_related('lead', 'owner')
+        .order_by('scheduled_at')
+    )
+    return {
+        'selected_date': selected_date,
+        'day_activities': day_activities,
+    }
+
+
 @login_required
 @sales_pipeline_required
 def followups_page(request):
     user = request.user
     scope = _sales_scope_context(request, user)
-    ctx = _followups_queue_context(user, scope_ids=scope['scope_ids'])
+    today = timezone.localdate()
+    year, month = _parse_calendar_ym(request)
+    selected_date = _parse_calendar_date(request.GET.get('date'), today)
+
+    ctx = _followup_calendar_ctx(scope['scope_ids'], year, month, selected_date)
+    ctx.update(_followup_day_panel_ctx(scope['scope_ids'], selected_date))
     ctx['manager_mode'] = scope['manager_mode']
     ctx['scope_employees'] = scope['scope_employees']
     ctx['selected_employee'] = scope['selected_employee']
     return render(request, 'crm/followups.html', ctx)
+
+
+@login_required
+@sales_pipeline_required
+def followups_calendar_month(request):
+    """HTMX partial: the calendar grid only, for prev/next month navigation."""
+    user = request.user
+    scope = _sales_scope_context(request, user)
+    year, month = _parse_calendar_ym(request)
+    selected_date = _parse_calendar_date(request.GET.get('date'), date(year, month, 1))
+    ctx = _followup_calendar_ctx(scope['scope_ids'], year, month, selected_date)
+    return render(request, 'crm/partials/followups_calendar_grid.html', ctx)
+
+
+@login_required
+@sales_pipeline_required
+def followups_day_panel(request):
+    """HTMX partial: the selected day's pending activities. Completing one
+    goes through the exact same Workbench 'Work' modal/endpoint
+    (crm:workbench_lead_panel / crm:workbench_complete_activity) — one
+    completion flow for the whole CRM, not a second copy of it here."""
+    user = request.user
+    scope = _sales_scope_context(request, user)
+    selected_date = _parse_calendar_date(request.GET.get('date'), timezone.localdate())
+    ctx = _followup_day_panel_ctx(scope['scope_ids'], selected_date)
+    ctx['manager_mode'] = scope['manager_mode']
+    return render(request, 'crm/partials/followups_day_panel.html', ctx)
 
 
 @login_required
@@ -1560,8 +1712,9 @@ def followup_reschedule(request, pk):
         fu.reminder_sent_at = None
         fu.reminder_30_sent_at = None
         fu.overdue_notified_at = None
+        fu.escalated_at = None
         fu.save(update_fields=[
-            'datetime', 'reminder_sent_at', 'reminder_30_sent_at', 'overdue_notified_at',
+            'datetime', 'reminder_sent_at', 'reminder_30_sent_at', 'overdue_notified_at', 'escalated_at',
         ])
         recalc_lead_next_followup(fu.lead)
         log_activity(fu.lead, 'follow_up_rescheduled', str(ndt))

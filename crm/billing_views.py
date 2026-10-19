@@ -14,12 +14,14 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from .models import Bill, BillPayment, Lead, Package
+from .rbac import admin_required
 from .services.simple_billing import add_payment_to_bill, create_quick_bill
 
 BILLS_PER_PAGE = 20
 
 
 @login_required
+@admin_required
 def billing_dashboard(request):
     bills = Bill.objects.select_related('lead').order_by('-bill_date', '-created_at')
     paginator = Paginator(bills, BILLS_PER_PAGE)
@@ -38,6 +40,7 @@ def billing_dashboard(request):
 
 
 @login_required
+@admin_required
 def bill_create(request):
     if request.method == 'POST':
         lead_id = (request.POST.get('lead_id') or '').strip()
@@ -129,6 +132,7 @@ def bill_create(request):
 
 
 @login_required
+@admin_required
 def bill_detail(request, pk):
     bill = get_object_or_404(
         Bill.objects.select_related('lead').prefetch_related('line_items', 'payments'),
@@ -146,6 +150,7 @@ def bill_detail(request, pk):
 
 
 @login_required
+@admin_required
 def bill_pdf(request, pk):
     bill = get_object_or_404(Bill, pk=pk)
     if not bill.pdf_file:
@@ -158,6 +163,7 @@ def bill_pdf(request, pk):
 
 
 @login_required
+@admin_required
 @require_POST
 def bill_payment_create(request, pk):
     bill = get_object_or_404(Bill, pk=pk)
@@ -191,6 +197,7 @@ def bill_payment_create(request, pk):
 
 
 @login_required
+@admin_required
 def bill_payment_receipt(request, pk):
     payment = get_object_or_404(BillPayment, pk=pk)
     if not payment.receipt_pdf:

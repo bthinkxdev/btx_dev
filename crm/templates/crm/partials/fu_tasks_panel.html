@@ -35,6 +35,9 @@
       <div class="form-row" style="margin-bottom:0;">
         {{ fu_form.datetime.label_tag }}{{ fu_form.datetime }}
       </div>
+      <div class="form-row" style="margin-bottom:0;">
+        {{ fu_form.type.label_tag }}{{ fu_form.type }}
+      </div>
     </div>
     <div class="form-row" style="margin-top:8px;">{{ fu_form.note.label_tag }}{{ fu_form.note }}</div>
     <button type="submit" class="btn btn-primary btn-sm" style="margin-top:8px;">
@@ -68,9 +71,10 @@
 
   <form class="stack-form" hx-post="{% url 'crm:task_add' lead.pk %}" hx-target="#fu-tasks-block" hx-swap="outerHTML">
     {% csrf_token %}
-    <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end;">
+    <div style="display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:end;">
       <div class="form-row" style="margin-bottom:0;">{{ task_form.title.label_tag }}{{ task_form.title }}</div>
       <div class="form-row" style="margin-bottom:0;">{{ task_form.due_date.label_tag }}{{ task_form.due_date }}</div>
+      <div class="form-row" style="margin-bottom:0;">{{ task_form.due_time.label_tag }}{{ task_form.due_time }}</div>
     </div>
     <button type="submit" class="btn btn-outline btn-sm" style="margin-top:8px;">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

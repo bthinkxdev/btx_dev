@@ -28,23 +28,25 @@
     {% endif %}
   </td>
 
-  <td class="lt-cell-fu" data-label="Next follow-up">
-    {% with fu_state=lead.next_followup|fu_time_context:fu_bounds %}
-    {% if not lead.next_followup %}
+  <td class="lt-cell-fu" data-label="Next step">
+    {% with next_at=lead.next_activity.scheduled_at %}
+    {% with fu_state=next_at|fu_time_context:fu_bounds %}
+    {% if not next_at %}
     <span class="lt-main lt-main--danger">Not set</span>
     <span class="lt-sub">Lead: {{ lead.created_at|timesince }} old</span>
     {% elif fu_state == 'overdue' %}
     <span class="lt-main lt-main--danger">Overdue</span>
-    <span class="lt-sub">{{ lead.next_followup|date:"M j, Y" }}</span>
+    <span class="lt-sub">{{ lead.next_activity.get_activity_type_display }} &middot; {{ next_at|date:"M j, Y" }}</span>
     {% elif fu_state == 'today' %}
     <span class="lt-main">Today</span>
-    <span class="lt-sub">{{ lead.next_followup|date:"M j, Y" }}</span>
+    <span class="lt-sub">{{ lead.next_activity.get_activity_type_display }} &middot; {{ next_at|date:"M j, Y" }}</span>
     {% else %}
-    <span class="lt-main">{{ lead.next_followup|date:"M j, Y" }}</span>
-    {% with d=lead.next_followup|days_until %}
-    <span class="lt-sub">{{ d }} day{{ d|pluralize }} left</span>
+    <span class="lt-main">{{ next_at|date:"M j, Y" }}</span>
+    {% with d=next_at|days_until %}
+    <span class="lt-sub">{{ lead.next_activity.get_activity_type_display }} &middot; {{ d }} day{{ d|pluralize }} left</span>
     {% endwith %}
     {% endif %}
+    {% endwith %}
     {% endwith %}
   </td>
 

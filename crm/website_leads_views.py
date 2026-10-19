@@ -7,11 +7,9 @@ layer over that data, not a separate copy of it.
 """
 from __future__ import annotations
 
-from functools import wraps
-
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
-from django.http import HttpResponse, HttpResponseForbidden
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -20,25 +18,12 @@ from django.views.decorators.http import require_POST
 
 from pages.models import ContactSubmission, QuoteRequest
 
-from .rbac import is_crm_admin
+from .rbac import admin_required
 from .views import _leads_url_query
 
 WEBSITE_LEADS_PER_PAGE = 20
 
 _MODELS_BY_TYPE = {'contact': ContactSubmission, 'quote': QuoteRequest}
-
-
-def admin_required(view_fn):
-    """Website Leads is admin-only — these are the business's own inbound
-    sales leads, not something every CRM role needs visibility into."""
-
-    @wraps(view_fn)
-    def _wrapped(request, *args, **kwargs):
-        if not is_crm_admin(request.user):
-            return HttpResponseForbidden('This area is not available for your account role.')
-        return view_fn(request, *args, **kwargs)
-
-    return _wrapped
 
 
 def _tag(items, lead_type):

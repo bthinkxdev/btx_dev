@@ -18,7 +18,7 @@
           aria-label="Mark complete">Done</button>
         <div class="exec-task-item__body">
           <span class="exec-task-item__title">{{ t.title }}</span>
-          <span class="exec-task-item__due">{% if t.due_date %}Due {{ t.due_date|date:"M j" }}{% else %}No date{% endif %}</span>
+          <span class="exec-task-item__due">{% if t.due_date %}Due {{ t.due_date|date:"M j" }}{% if t.due_time %} {{ t.due_time|time:"H:i" }}{% endif %}{% else %}No date{% endif %}</span>
         </div>
         <details class="exec-task-edit">
           <summary class="exec-task-edit-sum">Edit</summary>
@@ -27,6 +27,7 @@
             <input type="hidden" name="_from" value="exec">
             <input type="text" name="title" value="{{ t.title }}" maxlength="300" class="exec-task-edit-in">
             <input type="date" name="due_date" value="{% if t.due_date %}{{ t.due_date|date:'Y-m-d' }}{% endif %}" class="exec-task-edit-in">
+            <input type="time" name="due_time" value="{% if t.due_time %}{{ t.due_time|time:'H:i' }}{% endif %}" class="exec-task-edit-in">
             <button type="submit" class="btn btn-sm btn-outline">Save</button>
           </form>
         </details>

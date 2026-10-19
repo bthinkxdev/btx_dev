@@ -23,10 +23,35 @@ from datetime import timedelta
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
-from crm.models import EmployeeProfile, Lead
+from crm.models import Activity, EmployeeProfile, Lead
 from crm.views import _local_today_bounds
 
 User = get_user_model()
+
+
+def _schedule_next_activity(lead, when):
+    """Test helper: replace a lead's auto-created 'fresh lead' Activity
+    (crm.signals always makes one at scheduled_at=now()) with one at an
+    explicit time — this is what Lead.next_activity is the single source of
+    truth for everywhere now, so tests drive it the same way production does."""
+    Activity.objects.filter(lead=lead).update(status=Activity.Status.CANCELLED)
+    act = Activity.objects.create(
+        lead=lead, owner=lead.employee, activity_type=Activity.Type.CALL,
+        scheduled_at=when, status=Activity.Status.PENDING,
+    )
+    Lead.objects.filter(pk=lead.pk).update(next_activity=act)
+    lead.refresh_from_db()
+    return act
+
+
+def _clear_next_activity(lead):
+    """Test helper: simulate a lead with genuinely no next action set (the
+    Workbench's 'No Next Action' case) — cancels the auto-created activity
+    instead of leaving it pending at 'now', which would otherwise always
+    count as 'due today'."""
+    Activity.objects.filter(lead=lead).update(status=Activity.Status.CANCELLED)
+    Lead.objects.filter(pk=lead.pk).update(next_activity=None)
+    lead.refresh_from_db()
 
 
 class LeadsListingDateScopeDefaultTests(TestCase):
@@ -37,33 +62,30 @@ class LeadsListingDateScopeDefaultTests(TestCase):
 
         start, end, _ = _local_today_bounds()
 
-        self.today_late = Lead.objects.create(
-            employee=self.rep, name='TodayLate', phone='1', next_followup=start + timedelta(hours=18),
-        )
-        self.today_early = Lead.objects.create(
-            employee=self.rep, name='TodayEarly', phone='2', next_followup=start + timedelta(hours=9),
-        )
+        self.today_late = Lead.objects.create(employee=self.rep, name='TodayLate', phone='1')
+        _schedule_next_activity(self.today_late, start + timedelta(hours=18))
+        self.today_early = Lead.objects.create(employee=self.rep, name='TodayEarly', phone='2')
+        _schedule_next_activity(self.today_early, start + timedelta(hours=9))
         # Backdate both so only their follow-up date (not creation) puts them in scope.
         Lead.objects.filter(pk__in=[self.today_late.pk, self.today_early.pk]).update(
             created_at=start - timedelta(days=30),
         )
 
-        self.overdue = Lead.objects.create(
-            employee=self.rep, name='OverdueLead', phone='3', next_followup=start - timedelta(days=2),
-        )
+        self.overdue = Lead.objects.create(employee=self.rep, name='OverdueLead', phone='3')
+        _schedule_next_activity(self.overdue, start - timedelta(days=2))
         Lead.objects.filter(pk=self.overdue.pk).update(created_at=start - timedelta(days=30))
 
-        self.future = Lead.objects.create(
-            employee=self.rep, name='FutureLead', phone='4', next_followup=end + timedelta(days=5),
-        )
+        self.future = Lead.objects.create(employee=self.rep, name='FutureLead', phone='4')
+        _schedule_next_activity(self.future, end + timedelta(days=5))
         Lead.objects.filter(pk=self.future.pk).update(created_at=start - timedelta(days=10))
 
         # The exact reported bug: a lead created months ago that has never had a
         # follow-up scheduled must NOT appear in "today" (or any other period)
-        # forever just because next_followup is null.
+        # forever just because next_activity is null.
         self.old_no_followup = Lead.objects.create(
             employee=self.rep, name='OldNeverFollowedUp', phone='5',
         )
+        _clear_next_activity(self.old_no_followup)
         Lead.objects.filter(pk=self.old_no_followup.pk).update(created_at=start - timedelta(days=120))
 
         # Created today with no follow-up yet -> included via creation date, not
@@ -71,12 +93,13 @@ class LeadsListingDateScopeDefaultTests(TestCase):
         self.new_no_followup = Lead.objects.create(
             employee=self.rep, name='NewLeadNoFollowup', phone='6',
         )
+        _clear_next_activity(self.new_no_followup)
 
-        self.new_lead_future_fu = Lead.objects.create(
-            employee=self.rep, name='NewLeadFutureFu', phone='7', next_followup=end + timedelta(days=5),
-        )
+        self.new_lead_future_fu = Lead.objects.create(employee=self.rep, name='NewLeadFutureFu', phone='7')
+        _schedule_next_activity(self.new_lead_future_fu, end + timedelta(days=5))
 
         self.yesterday_lead = Lead.objects.create(employee=self.rep, name='YesterdayLead', phone='8')
+        _clear_next_activity(self.yesterday_lead)
         Lead.objects.filter(pk=self.yesterday_lead.pk).update(created_at=start - timedelta(hours=6))
 
     def test_default_landing_shows_everyone(self):

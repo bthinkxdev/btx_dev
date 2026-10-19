@@ -41,14 +41,27 @@ def _capture_lead_old_employee(sender, instance, **kwargs):
 @receiver(post_save, sender=Lead)
 def notify_lead_assigned(sender, instance, created, **kwargs):
     """'Lead assigned to you' push — fires on any future reassignment flow
-    automatically, since it watches the field itself rather than one view."""
+    automatically, since it watches the field itself rather than one view.
+
+    Also moves the lead's own open work (pending FollowUp/Activity/Task rows)
+    to the new employee. Without this, reassigning a lead would leave its
+    scheduled work pointing at the former owner forever — reminders would
+    keep notifying someone no longer responsible for it, which is exactly
+    the stale-owner problem 'notify the current responsible executive, not
+    a former owner' is about.
+    """
     if created:
         return
     old_employee_id = getattr(instance, '_old_employee_id', None)
     if instance.employee_id and instance.employee_id != old_employee_id:
         from django.urls import reverse
 
+        from .models import Activity, FollowUp, Task
         from .push import send_push_to_user
+
+        FollowUp.objects.filter(lead=instance, is_done=False).update(employee=instance.employee)
+        Activity.objects.filter(lead=instance, status=Activity.Status.PENDING).update(owner=instance.employee)
+        Task.objects.filter(lead=instance, is_completed=False).update(employee=instance.employee)
 
         send_push_to_user(
             instance.employee,

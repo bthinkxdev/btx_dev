@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 from decimal import Decimal
 
 from django.conf import settings
@@ -449,6 +450,15 @@ class WhatsAppMessage(models.Model):
 
 
 class FollowUp(models.Model):
+    class Type(models.TextChoices):
+        CALL = 'call', 'Call'
+        MEETING = 'meeting', 'Meeting'
+        WHATSAPP = 'whatsapp', 'WhatsApp'
+        DEMO = 'demo', 'Demo'
+        EMAIL = 'email', 'Email'
+        QUOTATION = 'quotation', 'Quotation'
+        OTHER = 'other', 'Other'
+
     lead = models.ForeignKey(
         Lead,
         on_delete=models.CASCADE,
@@ -460,6 +470,7 @@ class FollowUp(models.Model):
         related_name='crm_followups',
     )
     datetime = models.DateTimeField(db_index=True)
+    type = models.CharField(max_length=20, choices=Type.choices, default=Type.CALL, db_index=True)
     note = models.TextField(blank=True)
     is_done = models.BooleanField(default=False, db_index=True)
     # Set when the 5-minute reminder was pushed (one per follow-up).
@@ -469,6 +480,9 @@ class FollowUp(models.Model):
     # Set the first time this follow-up is pushed as overdue, so the
     # overdue/due-today job notifies once instead of every run.
     overdue_notified_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    # Set when this follow-up has been overdue long enough to escalate to
+    # the sales team leader/admins — one escalation per follow-up, not one per run.
+    escalated_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
     class Meta:
         ordering = ['datetime']
@@ -490,13 +504,32 @@ class Task(models.Model):
     )
     title = models.CharField(max_length=300)
     due_date = models.DateField(null=True, blank=True)
+    # Optional — most tasks only ever had a date. When set, the task gets the
+    # same 30-min/5-min push reminders as follow-ups; without it, due_date
+    # alone still drives the due-today/overdue behaviour.
+    due_time = models.TimeField(null=True, blank=True)
     is_completed = models.BooleanField(default=False, db_index=True)
+
+    # Push reminder bookkeeping — mirrors FollowUp's fields.
+    reminder_30_sent_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    reminder_sent_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    overdue_notified_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    escalated_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
     class Meta:
         ordering = ['due_date', 'id']
 
     def __str__(self):
         return self.title
+
+    @property
+    def due_at(self):
+        """Combined due date+time, aware, or None if either half is missing —
+        the thing reminders actually count down to."""
+        if not (self.due_date and self.due_time):
+            return None
+        dt = datetime.combine(self.due_date, self.due_time)
+        return timezone.make_aware(dt) if timezone.is_naive(dt) else dt
 
 
 class ActivityLog(models.Model):
@@ -587,6 +620,13 @@ class Activity(models.Model):
     original_scheduled_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    # Push reminder bookkeeping — same pattern as FollowUp/Task, scoped to
+    # this Activity so rescheduling (see pipeline.py) resets them.
+    reminder_30_sent_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    reminder_sent_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    overdue_notified_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    escalated_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
     class Meta:
         ordering = ['scheduled_at']
@@ -2900,10 +2940,30 @@ class NotificationEvent(models.Model):
         FOLLOWUP_OVERDUE = 'followup_overdue', 'Follow-up overdue / due today'
         FOLLOWUP_REMINDER_30 = 'followup_reminder_30', 'Follow-up reminder (30 min)'
         FOLLOWUP_REMINDER_5 = 'followup_reminder_5', 'Follow-up reminder (5 min)'
+        ACTIVITY_OVERDUE = 'activity_overdue', 'Activity overdue / due today'
+        ACTIVITY_REMINDER_30 = 'activity_reminder_30', 'Activity reminder (30 min)'
+        ACTIVITY_REMINDER_5 = 'activity_reminder_5', 'Activity reminder (5 min)'
+        TASK_OVERDUE = 'task_overdue', 'Task overdue / due today'
+        TASK_REMINDER_30 = 'task_reminder_30', 'Task reminder (30 min)'
+        TASK_REMINDER_5 = 'task_reminder_5', 'Task reminder (5 min)'
+        ESCALATION = 'escalation', 'Escalation to team lead/admin'
+        LOGIN_REMINDER = 'login_reminder', 'Daily check-in reminder'
+        LOGOUT_REMINDER = 'logout_reminder', 'Daily sign-off reminder'
         LEAD_ASSIGNED = 'lead_assigned', 'Lead assigned to you'
         LEAD_WON = 'lead_won', 'Lead marked won'
         TEST = 'test', 'Test notification'
         OTHER = 'other', 'Other'
+
+    # Kinds tied to a specific appointment time the executive themself chose,
+    # or otherwise time-critical — these bypass quiet hours since muting them
+    # would defeat their purpose. Defined outside the Kind class itself so
+    # Django's TextChoices metaclass doesn't mistake it for another member.
+    URGENT_KINDS = {
+        Kind.FOLLOWUP_REMINDER_30, Kind.FOLLOWUP_REMINDER_5,
+        Kind.ACTIVITY_REMINDER_30, Kind.ACTIVITY_REMINDER_5,
+        Kind.TASK_REMINDER_30, Kind.TASK_REMINDER_5,
+        Kind.ESCALATION, Kind.LEAD_ASSIGNED, Kind.LEAD_WON, Kind.TEST,
+    }
 
     kind = models.CharField(max_length=32, choices=Kind.choices, db_index=True)
     recipient = models.ForeignKey(
@@ -2923,6 +2983,16 @@ class NotificationEvent(models.Model):
     )
     is_success = models.BooleanField(default=True)
     error = models.TextField(blank=True)
+    # Set when the push service (FCM/Mozilla/etc.) accepted the message — the
+    # closest thing to a "delivered" signal the Web Push protocol exposes;
+    # there is no browser API that reports whether it was actually displayed.
+    delivered_at = models.DateTimeField(null=True, blank=True)
+    # Set from the service worker's notificationclick handler — real
+    # evidence the user saw and tapped it (see crm/push_views.py:push_ack).
+    clicked_at = models.DateTimeField(null=True, blank=True)
+    # Set when the recipient opens/views it in the in-app notification list
+    # (separate from clicked_at, which is specifically the OS push tap).
+    read_at = models.DateTimeField(null=True, blank=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:

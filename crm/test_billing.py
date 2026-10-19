@@ -98,9 +98,14 @@ class SimpleBillingServiceTests(TestCase):
 
 class BillCreateViewTests(TestCase):
     def setUp(self):
+        # Billing is admin-only — the lead's own owner can still be a plain
+        # sales rep (self.rep), but whoever is logged in and hitting these
+        # views must be an admin.
         self.rep = User.objects.create_user('billing_view_rep', password='x')
         EmployeeProfile.objects.filter(user=self.rep).update(crm_role='sales')
-        self.client.force_login(self.rep)
+        self.admin = User.objects.create_user('billing_view_admin', password='x')
+        EmployeeProfile.objects.filter(user=self.admin).update(crm_role='admin')
+        self.client.force_login(self.admin)
         self.lead = Lead.objects.create(employee=self.rep, name='Beta Co', phone='9990002222')
 
     def test_create_bill_via_view_redirects_to_detail(self):
@@ -190,6 +195,11 @@ class BillCreateViewTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertIn(self.lead.name, resp.content.decode())
 
+    def test_non_admin_cannot_access_billing(self):
+        self.client.force_login(self.rep)
+        resp = self.client.get('/crm/billing/create/')
+        self.assertEqual(resp.status_code, 403)
+
 
 class AddPaymentServiceTests(TestCase):
     def setUp(self):
@@ -255,7 +265,9 @@ class BillPaymentViewTests(TestCase):
     def setUp(self):
         self.rep = User.objects.create_user('billing_pay_view_rep', password='x')
         EmployeeProfile.objects.filter(user=self.rep).update(crm_role='sales')
-        self.client.force_login(self.rep)
+        self.admin = User.objects.create_user('billing_pay_view_admin', password='x')
+        EmployeeProfile.objects.filter(user=self.admin).update(crm_role='admin')
+        self.client.force_login(self.admin)
         self.lead = Lead.objects.create(employee=self.rep, name='Delta Co', phone='9990004444')
         self.bill = create_quick_bill(
             created_by=self.rep,
@@ -295,6 +307,11 @@ class BillPaymentViewTests(TestCase):
         body = resp.content.decode()
         self.assertIn(self.bill.bill_number, body)
         self.assertIn('New bill', body)
+
+    def test_lead_detail_hides_billing_panel_for_non_admin(self):
+        self.client.force_login(self.rep)
+        resp = self.client.get(f'/crm/leads/{self.lead.pk}/')
+        self.assertNotIn('New bill', resp.content.decode())
 
 
 class StampImageProcessingTests(TestCase):

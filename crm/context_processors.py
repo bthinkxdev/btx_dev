@@ -7,7 +7,7 @@ from django.utils import timezone
 
 from pages.models import ContactSubmission, QuoteRequest
 
-from .models import EmployeeProfile, FollowUp, Task
+from .models import EmployeeProfile, FollowUp, NotificationEvent, Task
 from .rbac import (
     can_access_sales_pipeline,
     can_view_all_sales_data,
@@ -31,6 +31,7 @@ def crm_header(request):
         'crm_manager_mode': False,
         'crm_is_admin': False,
         'crm_website_leads_unread_n': 0,
+        'crm_notifications_unread_n': 0,
         'vapid_public_key': settings.VAPID_PUBLIC_KEY,
     }
     user = getattr(request, 'user', None)
@@ -69,6 +70,9 @@ def crm_header(request):
         employee=user,
         is_completed=False,
         due_date__isnull=True,
+    ).count()
+    out['crm_notifications_unread_n'] = NotificationEvent.objects.filter(
+        recipient=user, read_at__isnull=True,
     ).count()
     out['crm_employee_profile'] = EmployeeProfile.objects.filter(user=user).first()
     out['crm_is_developer'] = is_crm_developer(user)

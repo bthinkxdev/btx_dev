@@ -1,6 +1,9 @@
 """CRM role-based access: sales pipeline vs. developer role."""
 
+from functools import wraps
+
 from django.contrib.auth import get_user_model
+from django.http import HttpResponseForbidden
 
 from .models import EmployeeProfile
 
@@ -68,6 +71,33 @@ def can_view_all_sales_data(user) -> bool:
     if user.is_superuser:
         return True
     return get_crm_role(user) == ROLE_ADMIN or is_sales_manager(user)
+
+
+def admin_required(view_fn):
+    """Gate a view to CRM admins only — shared by every admin-only screen
+    (Website Leads, Staff Management, ...) so there's one definition of
+    'what admin-only means' instead of a copy per view module."""
+
+    @wraps(view_fn)
+    def _wrapped(request, *args, **kwargs):
+        if not is_crm_admin(request.user):
+            return HttpResponseForbidden('This area is not available for your account role.')
+        return view_fn(request, *args, **kwargs)
+
+    return _wrapped
+
+
+def is_notification_eligible(user) -> bool:
+    """Push notifications (daily check-in/sign-off, escalations, etc. that
+    aren't tied to a specific owned record) go to sales executives, sales
+    managers and admins only — not support/finance/dev."""
+    if not user or not user.is_authenticated or not user.is_active:
+        return False
+    if user.is_superuser:
+        return True
+    if is_sales_manager(user):
+        return True
+    return get_crm_role(user) in (ROLE_SALES, ROLE_ADMIN)
 
 
 def get_crm_role(user) -> str:

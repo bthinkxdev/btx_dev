@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.sitemaps',
+    'django.contrib.humanize',
     'pages',
     'crm',
 ]
@@ -212,6 +213,17 @@ GA_MEASUREMENT_ID = os.environ.get('GA_MEASUREMENT_ID', '').strip()
 VAPID_PUBLIC_KEY = os.environ.get('VAPID_PUBLIC_KEY', '').strip()
 VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', '').strip()
 VAPID_CLAIM_EMAIL = os.environ.get('VAPID_CLAIM_EMAIL', 'mailto:hr@bthinkx.com').strip()
+
+# CRM push notification tuning (all times are local/Asia-Kolkata, matching TIME_ZONE above).
+# Routine nudges (overdue, escalation) are suppressed inside this window; reminders tied to
+# an executive's own chosen appointment time (30/5-min) are exempt — see NotificationEvent.URGENT_KINDS.
+NOTIFICATION_QUIET_HOURS_START = int(os.environ.get('NOTIFICATION_QUIET_HOURS_START', '21'))  # 9 PM
+NOTIFICATION_QUIET_HOURS_END = int(os.environ.get('NOTIFICATION_QUIET_HOURS_END', '9'))  # 9 AM
+# How overdue (in minutes) a high_hope lead's pending work must be before the
+# sales team leads/admins get escalated to, on top of the owner's own reminder.
+NOTIFICATION_ESCALATION_SLA_MINUTES = int(os.environ.get('NOTIFICATION_ESCALATION_SLA_MINUTES', '120'))
+NOTIFICATION_LOGIN_REMINDER_HOUR = int(os.environ.get('NOTIFICATION_LOGIN_REMINDER_HOUR', '11'))
+NOTIFICATION_LOGOUT_REMINDER_HOUR = int(os.environ.get('NOTIFICATION_LOGOUT_REMINDER_HOUR', '21'))
 
 # WhatsApp Web.js reply buttons are DEPRECATED by Meta — often invisible on phones.
 # Keep false; use numbered text menus (reliable). Set true only if buttons work on your account.

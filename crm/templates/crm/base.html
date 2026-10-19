@@ -2074,7 +2074,7 @@
         <span>Performance</span>
       </a>
 
-      {% if crm_can_access_sales_pipeline %}
+      {% if crm_is_admin %}
       <a href="{% url 'crm:billing_dashboard' %}"
          hx-get="{% url 'crm:billing_dashboard' %}"
          hx-target="#crm-main-content"
@@ -2105,6 +2105,35 @@
       </a>
       {% endif %}
 
+      <a href="{% url 'crm:notifications' %}"
+         hx-get="{% url 'crm:notifications' %}"
+         hx-target="#crm-main-content"
+         hx-select="#crm-main-content"
+         hx-swap="outerHTML"
+         hx-push-url="true"
+         class="nav-item {% if request.resolver_match.url_name == 'notifications' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+        <span>Notifications</span>
+        {% if crm_notifications_unread_n %}<span class="nav-item-badge">{{ crm_notifications_unread_n }}</span>{% endif %}
+      </a>
+
+      {% if crm_is_admin %}
+      <a href="{% url 'crm:staff_list' %}"
+         hx-get="{% url 'crm:staff_list' %}"
+         hx-target="#crm-main-content"
+         hx-select="#crm-main-content"
+         hx-swap="outerHTML"
+         hx-push-url="true"
+         class="nav-item {% if request.resolver_match.url_name == 'staff_list' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        <span>Staff</span>
+      </a>
+      {% endif %}
+
       <span class="nav-section-label nav-section-label--hint">Mobile</span>
       {% if crm_can_access_sales_pipeline %}
       <p class="sidebar-mobile-hint">Search by name or phone: open <strong>Leads</strong>, tap <strong>Filters</strong>, then Search.</p>
@@ -2113,7 +2142,7 @@
       {% endif %}
     </nav>
 
-    <div class="sidebar-install" id="sidebar-install" hidden>
+    <div class="sidebar-install" id="sidebar-install">
       <button type="button" class="sidebar-install-btn" id="sidebar-install-btn">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/>
@@ -2221,6 +2250,10 @@
         <div class="crm-add-task-field">
           <label for="crm-task-due">Due date <span class="crm-add-task-optional">(optional)</span></label>
           <input id="crm-task-due" type="date" name="due_date">
+        </div>
+        <div class="crm-add-task-field">
+          <label for="crm-task-due-time">Due time <span class="crm-add-task-optional">(optional — needed for the 30/5-min reminder)</span></label>
+          <input id="crm-task-due-time" type="time" name="due_time">
         </div>
         <div class="crm-add-task-dialog__foot">
           <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('crm-add-task-modal').close()">Cancel</button>
@@ -3392,7 +3425,7 @@
       var iosHint = document.getElementById('sidebar-install-ios-hint');
 
       var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-      if (isStandalone) return; // already installed/running as an app — nothing to offer
+      if (isStandalone) { wrap.hidden = true; return; } // already installed/running as an app — nothing to offer
 
       var ua = window.navigator.userAgent || '';
       var isIos = /iphone|ipad|ipod/i.test(ua);
@@ -3402,9 +3435,6 @@
       window.addEventListener('beforeinstallprompt', function (e) {
         e.preventDefault();
         deferredPrompt = e;
-        wrap.hidden = false;
-        btn.hidden = false;
-        iosHint.hidden = true;
       });
 
       window.addEventListener('appinstalled', function () {
@@ -3412,21 +3442,305 @@
         deferredPrompt = null;
       });
 
-      btn.addEventListener('click', function () {
-        if (!deferredPrompt) return;
-        deferredPrompt.prompt();
-        deferredPrompt.userChoice.finally(function () {
-          deferredPrompt = null;
-          wrap.hidden = true;
-        });
-      });
-
-      // iOS Safari never fires beforeinstallprompt — show the manual steps instead.
+      // iOS Safari never fires beforeinstallprompt — show the manual steps
+      // instead, permanently (there is no programmatic install there).
       if (isIos) {
-        wrap.hidden = false;
         btn.hidden = true;
         iosHint.hidden = false;
+        return;
       }
+
+      // Chrome/Edge/Android: the button is visible from the start (not
+      // waiting on beforeinstallprompt, which only fires once per load and
+      // sometimes not at all depending on engagement heuristics — a button
+      // that silently never appears is as good as a missing one). If the
+      // real prompt has arrived, use it; otherwise fall back to a short
+      // explanation so the click is never a dead end.
+      btn.addEventListener('click', function () {
+        if (deferredPrompt) {
+          var p = deferredPrompt;
+          deferredPrompt = null;
+          p.prompt();
+          p.userChoice.finally(function () {});
+          return;
+        }
+        window.alert(
+          'To install: open your browser menu (⋮ or ...) and choose '
+          + '"Install app" / "Add to Home screen". If that option is '
+          + 'missing, this browser may not support installing this app.'
+        );
+      });
+    })();
+  </script>
+
+  {% comment %}
+  Shared custom date/time pickers — used wherever a form needs to pick a date
+  and/or time (Follow-up Calendar, the Workbench's Complete Activity modal, …).
+  Markup contract: a `.fu-dt` wrapper containing a `[data-fu-date-trigger]` or
+  [data-fu-time-trigger] button, a hidden `[data-fu-date-input]`/
+  `[data-fu-time-input]`, a `[data-fu-date-display]`/`[data-fu-time-display]`
+  span inside the trigger, and a sibling `[data-fu-date-pop]`/
+  `[data-fu-time-pop]` div. Event-delegated on document.body so it keeps
+  working across htmx swaps/dialogs without re-initialization.
+  {% endcomment %}
+  <style>
+    .fu-dt { position: relative; }
+    .fu-dt__trigger {
+      display: flex; align-items: center; gap: 6px; width: 100%;
+      padding: 8px 10px; border: 1px solid var(--border); border-radius: 7px;
+      background: var(--surface); font-size: 12.5px; font-weight: 700; color: var(--neutral-800);
+      cursor: pointer; text-align: left; font-family: inherit;
+    }
+    .fu-dt__trigger:hover, .fu-dt__trigger[aria-expanded="true"] { border-color: var(--primary-400); box-shadow: 0 0 0 3px var(--primary-100); }
+    .fu-dt__trigger svg { width: 14px; height: 14px; color: var(--text-muted); flex-shrink: 0; }
+    .fu-dt__trigger span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .fu-dt__pop {
+      position: absolute; top: calc(100% + 6px); left: 0; z-index: 9000;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      box-shadow: var(--shadow-lg); padding: 12px;
+    }
+    .fu-dt__pop--date { width: 272px; }
+    .fu-dt__pop--time { width: 150px; max-height: 240px; overflow-y: auto; padding: 6px; }
+
+    .fu-mc__nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .fu-mc__nav-btn { background: none; border: none; cursor: pointer; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--neutral-600); }
+    .fu-mc__nav-btn:hover { background: var(--neutral-100); }
+    .fu-mc__nav-btn svg { width: 14px; height: 14px; }
+    .fu-mc__label { font-size: 12.5px; font-weight: 800; color: var(--neutral-900); }
+    .fu-mc__grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
+    .fu-mc__wd { font-size: 9.5px; font-weight: 800; color: var(--text-light); text-align: center; padding: 4px 0; text-transform: uppercase; }
+    .fu-mc__day {
+      display: flex; align-items: center; justify-content: center; width: 100%; min-width: 0;
+      height: 30px; border-radius: 7px; font-size: 12px; font-weight: 700; color: var(--neutral-800);
+      cursor: pointer; background: none; border: none; font-family: inherit; padding: 0;
+    }
+    .fu-mc__day:hover { background: var(--primary-50); }
+    .fu-mc__day--out { color: var(--text-light); font-weight: 600; }
+    .fu-mc__day--today { box-shadow: inset 0 0 0 1.5px var(--neutral-400); }
+    .fu-mc__day--selected { background: var(--primary-600) !important; color: #fff !important; }
+    .fu-mc__foot { display: flex; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+    .fu-mc__foot button { background: none; border: none; color: var(--primary-600); font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; padding: 4px; }
+    .fu-mc__foot button:hover { text-decoration: underline; }
+
+    .fu-ts__btn { display: block; width: 100%; text-align: left; padding: 8px 10px; border-radius: 7px; border: none; background: none; font-size: 12.5px; font-weight: 700; color: var(--neutral-800); cursor: pointer; font-family: inherit; }
+    .fu-ts__btn:hover { background: var(--primary-50); }
+    .fu-ts__btn--active { background: var(--primary-600) !important; color: #fff !important; }
+
+    @media (max-width: 640px) {
+      .fu-dt__pop {
+        position: fixed; left: 16px; right: 16px; top: auto; bottom: 16px; width: auto !important;
+        max-height: 70vh; z-index: 9000;
+      }
+      .fu-dt__pop--time { max-height: 50vh; }
+      .fu-mc__day { height: 38px; font-size: 13px; }
+    }
+  </style>
+  <script>
+    (function () {
+      if (window.__fuPickerInit) return;
+      window.__fuPickerInit = true;
+
+      var WD = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+      var MO = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+      function pad(n) { return n < 10 ? '0' + n : '' + n; }
+      function isoOf(y, m, d) { return y + '-' + pad(m + 1) + '-' + pad(d); }
+      function todayISO() { var t = new Date(); return isoOf(t.getFullYear(), t.getMonth(), t.getDate()); }
+      function parseISO(iso) {
+        var p = (iso || '').split('-');
+        if (p.length !== 3) return null;
+        return { y: parseInt(p[0], 10), m: parseInt(p[1], 10) - 1, d: parseInt(p[2], 10) };
+      }
+      function formatDateDisplay(iso) {
+        var d = parseISO(iso);
+        if (!d) return 'Select date';
+        return d.d + ' ' + MO[d.m].slice(0, 3) + ' ' + d.y;
+      }
+      function formatTimeDisplay(hhmm) {
+        var p = (hhmm || '10:00').split(':');
+        var h = parseInt(p[0], 10), m = p[1] || '00';
+        var ap = h >= 12 ? 'PM' : 'AM';
+        var h12 = h % 12; if (h12 === 0) h12 = 12;
+        return h12 + ':' + m + ' ' + ap;
+      }
+
+      function closeAllPickers(exceptPop) {
+        document.querySelectorAll('[data-fu-date-pop], [data-fu-time-pop]').forEach(function (pop) {
+          if (pop !== exceptPop) {
+            pop.hidden = true;
+            var trig = pop.parentElement.querySelector('.fu-dt__trigger');
+            if (trig) trig.setAttribute('aria-expanded', 'false');
+          }
+        });
+      }
+
+      function renderMonthGrid(pop, year, month, selectedISO) {
+        var today = todayISO();
+        var first = new Date(year, month, 1);
+        var startWeekday = first.getDay();
+        var daysInMonth = new Date(year, month + 1, 0).getDate();
+        var daysInPrevMonth = new Date(year, month, 0).getDate();
+
+        var html = '';
+        html += '<div class="fu-mc__nav">';
+        html += '<button type="button" class="fu-mc__nav-btn" data-fu-mc-prev><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>';
+        html += '<span class="fu-mc__label">' + MO[month] + ' ' + year + '</span>';
+        html += '<button type="button" class="fu-mc__nav-btn" data-fu-mc-next><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>';
+        html += '</div><div class="fu-mc__grid">';
+        for (var w = 0; w < 7; w++) html += '<div class="fu-mc__wd">' + WD[w] + '</div>';
+
+        var cells = [];
+        for (var i = 0; i < startWeekday; i++) {
+          cells.push({ day: daysInPrevMonth - startWeekday + 1 + i, out: true, iso: null });
+        }
+        for (var d2 = 1; d2 <= daysInMonth; d2++) {
+          cells.push({ day: d2, out: false, iso: isoOf(year, month, d2) });
+        }
+        while (cells.length % 7 !== 0) {
+          cells.push({ day: cells.length - (startWeekday + daysInMonth) + 1, out: true, iso: null });
+        }
+        cells.forEach(function (c) {
+          var cls = 'fu-mc__day';
+          if (c.out) cls += ' fu-mc__day--out';
+          if (c.iso && c.iso === today) cls += ' fu-mc__day--today';
+          if (c.iso && c.iso === selectedISO) cls += ' fu-mc__day--selected';
+          if (c.iso) {
+            html += '<button type="button" class="' + cls + '" data-fu-mc-day data-date="' + c.iso + '">' + c.day + '</button>';
+          } else {
+            html += '<span class="' + cls + '">' + c.day + '</span>';
+          }
+        });
+        html += '</div><div class="fu-mc__foot"><button type="button" data-fu-mc-clear>Clear</button><button type="button" data-fu-mc-today>Today</button></div>';
+
+        pop.innerHTML = html;
+        pop.dataset.year = year;
+        pop.dataset.month = month;
+      }
+
+      function renderTimeSlots(pop, selectedHHMM) {
+        var html = '';
+        for (var h = 7; h <= 21; h++) {
+          [0, 30].forEach(function (m) {
+            if (h === 21 && m === 30) return;
+            var hhmm = pad(h) + ':' + pad(m);
+            var active = hhmm === selectedHHMM ? ' fu-ts__btn--active' : '';
+            html += '<button type="button" class="fu-ts__btn' + active + '" data-fu-ts-slot data-time="' + hhmm + '">' + formatTimeDisplay(hhmm) + '</button>';
+          });
+        }
+        pop.innerHTML = html;
+      }
+
+      document.body.addEventListener('click', function (e) {
+        var dateTrigger = e.target.closest('[data-fu-date-trigger]');
+        var timeTrigger = e.target.closest('[data-fu-time-trigger]');
+        var mcDay = e.target.closest('[data-fu-mc-day]');
+        var mcPrev = e.target.closest('[data-fu-mc-prev]');
+        var mcNext = e.target.closest('[data-fu-mc-next]');
+        var mcToday = e.target.closest('[data-fu-mc-today]');
+        var mcClear = e.target.closest('[data-fu-mc-clear]');
+        var tsSlot = e.target.closest('[data-fu-ts-slot]');
+        var insideDt = e.target.closest('.fu-dt');
+
+        if (dateTrigger) {
+          var dPop = dateTrigger.parentElement.querySelector('[data-fu-date-pop]');
+          var dInput = dateTrigger.parentElement.querySelector('[data-fu-date-input]');
+          var opening = dPop.hidden;
+          closeAllPickers();
+          if (opening) {
+            var baseIso = dInput.value || dateTrigger.getAttribute('data-default') || todayISO();
+            var baseD = parseISO(baseIso) || parseISO(todayISO());
+            renderMonthGrid(dPop, baseD.y, baseD.m, dInput.value);
+            dPop.hidden = false;
+            dateTrigger.setAttribute('aria-expanded', 'true');
+          }
+          return;
+        }
+
+        if (timeTrigger) {
+          var tPop = timeTrigger.parentElement.querySelector('[data-fu-time-pop]');
+          var tInput = timeTrigger.parentElement.querySelector('[data-fu-time-input]');
+          var opening2 = tPop.hidden;
+          closeAllPickers();
+          if (opening2) {
+            renderTimeSlots(tPop, tInput.value);
+            tPop.hidden = false;
+            timeTrigger.setAttribute('aria-expanded', 'true');
+            var active = tPop.querySelector('.fu-ts__btn--active');
+            if (active) active.scrollIntoView({ block: 'center' });
+          }
+          return;
+        }
+
+        if (mcPrev || mcNext) {
+          var pop2 = e.target.closest('[data-fu-date-pop]');
+          var y = parseInt(pop2.dataset.year, 10), m = parseInt(pop2.dataset.month, 10);
+          m += mcPrev ? -1 : 1;
+          if (m < 0) { m = 11; y -= 1; } else if (m > 11) { m = 0; y += 1; }
+          var curInput = pop2.parentElement.querySelector('[data-fu-date-input]');
+          renderMonthGrid(pop2, y, m, curInput.value);
+          return;
+        }
+
+        if (mcDay) {
+          var wrap = mcDay.closest('.fu-dt');
+          var input = wrap.querySelector('[data-fu-date-input]');
+          var display = wrap.querySelector('[data-fu-date-display]');
+          input.value = mcDay.getAttribute('data-date');
+          display.textContent = formatDateDisplay(input.value);
+          closeAllPickers();
+          return;
+        }
+
+        if (mcToday) {
+          var wrap2 = mcToday.closest('.fu-dt');
+          var input2 = wrap2.querySelector('[data-fu-date-input]');
+          var display2 = wrap2.querySelector('[data-fu-date-display]');
+          input2.value = todayISO();
+          display2.textContent = formatDateDisplay(input2.value);
+          closeAllPickers();
+          return;
+        }
+
+        if (mcClear) {
+          var wrap3 = mcClear.closest('.fu-dt');
+          wrap3.querySelector('[data-fu-date-input]').value = '';
+          wrap3.querySelector('[data-fu-date-display]').textContent = 'Select date';
+          closeAllPickers();
+          return;
+        }
+
+        if (tsSlot) {
+          var wrap4 = tsSlot.closest('.fu-dt');
+          var tInput2 = wrap4.querySelector('[data-fu-time-input]');
+          var tDisplay = wrap4.querySelector('[data-fu-time-display]');
+          tInput2.value = tsSlot.getAttribute('data-time');
+          tDisplay.textContent = formatTimeDisplay(tInput2.value);
+          closeAllPickers();
+          return;
+        }
+
+        if (!insideDt) closeAllPickers();
+      });
+
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeAllPickers();
+      });
+
+      // Pre-fill any date trigger's display text (and value) with its server-supplied
+      // default the moment it appears, so it never starts empty.
+      function prefillDefaults() {
+        document.querySelectorAll('[data-fu-date-trigger]').forEach(function (trig) {
+          var input = trig.parentElement.querySelector('[data-fu-date-input]');
+          var display = trig.parentElement.querySelector('[data-fu-date-display]');
+          if (input && !input.value && trig.getAttribute('data-default')) {
+            input.value = trig.getAttribute('data-default');
+            display.textContent = formatDateDisplay(input.value);
+          }
+        });
+      }
+      document.body.addEventListener('htmx:afterSettle', prefillDefaults);
+      prefillDefaults();
     })();
   </script>
 </body>
