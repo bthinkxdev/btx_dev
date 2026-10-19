@@ -8,6 +8,7 @@ from .models import (
     JobApplication,
     JobPosting,
     NewsletterSubscriber,
+    OfferSignup,
     Project,
     QuoteRequest,
     TeamMember,
@@ -239,6 +240,15 @@ class JobApplicationAdmin(admin.ModelAdmin):
         if obj.pk and obj.resume:
             return format_html('<a href="{}" target="_blank" rel="noopener">{}</a>', obj.resume.url, obj.resume.name)
         return '-'
+
+
+@admin.register(OfferSignup)
+class OfferSignupAdmin(admin.ModelAdmin):
+    list_display = ('business_name', 'name', 'phone', 'place', 'offer_slug', 'amount', 'status', 'created_at', 'paid_at')
+    list_filter = ('offer_slug', 'status', 'created_at')
+    search_fields = ('business_name', 'name', 'phone', 'place', 'cashfree_order_id')
+    readonly_fields = ('created_at', 'paid_at', 'cashfree_order_id', 'cashfree_payment_id')
+    date_hierarchy = 'created_at'
 
 
 @admin.register(NewsletterSubscriber)

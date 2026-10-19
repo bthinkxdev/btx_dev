@@ -1,7 +1,16 @@
 from django.contrib.auth import views as auth_views
 from django.urls import path
 
-from . import billing_views, notifications_views, push_views, staff_views, views, website_leads_views, workbench_views
+from . import (
+    billing_views,
+    multybtx_views,
+    notifications_views,
+    push_views,
+    staff_views,
+    views,
+    website_leads_views,
+    workbench_views,
+)
 
 app_name = 'crm'
 
@@ -145,4 +154,7 @@ urlpatterns = [
     path('staff/<int:pk>/edit/', staff_views.staff_edit_panel, name='staff_edit_panel'),
     path('staff/<int:pk>/update/', staff_views.staff_update, name='staff_update'),
     path('staff/<int:pk>/toggle-active/', staff_views.staff_toggle_active, name='staff_toggle_active'),
+
+    # MultyBTX (Navaratri offer) onboardings — admin-only.
+    path('multybtx/', multybtx_views.multybtx_list, name='multybtx_list'),
 ]

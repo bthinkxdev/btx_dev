@@ -1,0 +1,44 @@
+{% extends "pages/base.html" %}
+{% block title %}
+{% if status == 'paid' %}Payment Successful — Navaratri Offer | BThinkX{% elif status == 'failed' %}Payment Failed — Navaratri Offer | BThinkX{% else %}Payment Processing — Navaratri Offer | BThinkX{% endif %}
+{% endblock %}
+{% block meta_robots %}noindex, nofollow{% endblock %}
+
+{% block content %}
+<section class="nvr-hero" style="min-height: 70vh; display: flex; align-items: center;">
+  <div class="nvr-wrap">
+    {% if status == 'paid' %}
+    <div class="nvr-result-icon nvr-result-icon--ok">✓</div>
+    <h1 class="nvr-title">You're onboarded! 🎉</h1>
+    <p class="nvr-sub">
+      Thanks{% if signup %}, {{ signup.name }}{% endif %}! Your payment of ₹{{ signup.amount|floatformat:0 }} was received.
+      Our team will reach out on {% if signup %}{{ signup.phone }}{% else %}your registered number{% endif %} within 24 hours to kick off your e-commerce website.
+    </p>
+    {% elif status == 'failed' %}
+    <div class="nvr-result-icon nvr-result-icon--fail">✕</div>
+    <h1 class="nvr-title">Payment didn't go through</h1>
+    <p class="nvr-sub">No worries — no amount was charged, or it will be auto-reversed. Please try again to claim your seat before it's gone.</p>
+    <a href="{% url 'pages:navaratri_offer' %}" class="nvr-submit-btn" style="display:inline-flex;text-decoration:none;max-width:280px;margin:0 auto;">Try again</a>
+    {% elif status == 'processing' %}
+    <div class="nvr-result-icon nvr-result-icon--pending">⏳</div>
+    <h1 class="nvr-title">Confirming your payment…</h1>
+    <p class="nvr-sub">This can take a minute. Refresh this page shortly — if the amount was debited, your seat is safe.</p>
+    {% else %}
+    <div class="nvr-result-icon nvr-result-icon--fail">?</div>
+    <h1 class="nvr-title">We couldn't find that payment</h1>
+    <p class="nvr-sub">If an amount was debited, please contact us with your phone number and we'll sort it out right away.</p>
+    <a href="{% url 'pages:contact' %}" class="nvr-submit-btn" style="display:inline-flex;text-decoration:none;max-width:280px;margin:0 auto;">Contact us</a>
+    {% endif %}
+  </div>
+</section>
+
+<style>
+  .nvr-result-icon {
+    width: 72px; height: 72px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 34px; font-weight: 900; margin: 0 auto 20px;
+  }
+  .nvr-result-icon--ok { background: linear-gradient(135deg, #34d399, #059669); color: #fff; }
+  .nvr-result-icon--fail { background: linear-gradient(135deg, #f87171, #dc2626); color: #fff; }
+  .nvr-result-icon--pending { background: linear-gradient(135deg, #f5a623, #e8590c); color: #1a0613; }
+</style>
+{% endblock %}

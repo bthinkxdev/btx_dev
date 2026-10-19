@@ -225,6 +225,14 @@ NOTIFICATION_ESCALATION_SLA_MINUTES = int(os.environ.get('NOTIFICATION_ESCALATIO
 NOTIFICATION_LOGIN_REMINDER_HOUR = int(os.environ.get('NOTIFICATION_LOGIN_REMINDER_HOUR', '11'))
 NOTIFICATION_LOGOUT_REMINDER_HOUR = int(os.environ.get('NOTIFICATION_LOGOUT_REMINDER_HOUR', '21'))
 
+# Cashfree Payment Gateway — public-site offer landing pages (e.g. the Navaratri
+# offer). 'sandbox' hits sandbox.cashfree.com with test credentials; 'production'
+# hits api.cashfree.com with live credentials. Never commit real keys — set them
+# in .env only.
+CASHFREE_APP_ID = os.environ.get('CASHFREE_APP_ID', '').strip()
+CASHFREE_SECRET_KEY = os.environ.get('CASHFREE_SECRET_KEY', '').strip()
+CASHFREE_ENV = os.environ.get('CASHFREE_ENV', 'sandbox').strip().lower()
+
 # WhatsApp Web.js reply buttons are DEPRECATED by Meta — often invisible on phones.
 # Keep false; use numbered text menus (reliable). Set true only if buttons work on your account.
 WHATSAPP_USE_REPLY_BUTTONS = os.environ.get('WHATSAPP_USE_REPLY_BUTTONS', 'false').lower() in (

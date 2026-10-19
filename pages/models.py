@@ -391,3 +391,42 @@ class JobApplication(models.Model):
     def __str__(self) -> str:
         role = self.job.title if self.job else 'General'
         return f'{self.full_name} → {role} ({self.created_at:%Y-%m-%d})'
+
+
+class OfferSignup(models.Model):
+    """A paid signup from a limited-seats campaign landing page (e.g. the
+    Navaratri offer). One row per attempt — a retried/abandoned payment just
+    leaves an earlier row PENDING/FAILED rather than overwriting anything."""
+
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        PAID = 'paid', 'Paid'
+        FAILED = 'failed', 'Failed'
+
+    class Plan(models.TextChoices):
+        STANDARD = 'standard', 'Up to 100 products'
+        UNLIMITED = 'unlimited', 'Unlimited products'
+
+    offer_slug = models.SlugField(max_length=60, db_index=True)
+    name = models.CharField(max_length=200)
+    phone = models.CharField(max_length=20)
+    place = models.CharField(max_length=200)
+    business_name = models.CharField(max_length=200)
+
+    plan = models.CharField(max_length=10, choices=Plan.choices, default=Plan.STANDARD)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING, db_index=True)
+
+    cashfree_order_id = models.CharField(max_length=80, unique=True, db_index=True)
+    cashfree_payment_id = models.CharField(max_length=80, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Offer signup'
+        verbose_name_plural = 'Offer signups'
+
+    def __str__(self) -> str:
+        return f'{self.business_name} — {self.offer_slug} ({self.get_status_display()})'

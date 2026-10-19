@@ -1,7 +1,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
 
-from .models import ContactSubmission, JobApplication, JobPosting, NewsletterSubscriber, QuoteRequest
+from .models import ContactSubmission, JobApplication, JobPosting, NewsletterSubscriber, OfferSignup, QuoteRequest
 
 MAX_RESUME_BYTES = 5 * 1024 * 1024
 
@@ -107,3 +107,26 @@ class NewsletterSubscribeForm(forms.ModelForm):
             if commit:
                 sub.save(update_fields=['is_active', 'source'])
         return sub
+
+
+class OfferSignupForm(forms.ModelForm):
+    """Name/phone/place/business name/plan — the Navaratri-style offer forms.
+    `amount` is deliberately not a form field: the view maps `plan` to a
+    price server-side so a tampered client-submitted amount is never trusted."""
+
+    class Meta:
+        model = OfferSignup
+        fields = ['name', 'phone', 'place', 'business_name', 'plan']
+        widgets = {
+            'name': forms.TextInput(attrs={'placeholder': 'Your name', 'autocomplete': 'name'}),
+            'phone': forms.TextInput(attrs={'placeholder': '9876543210', 'autocomplete': 'tel', 'inputmode': 'tel'}),
+            'place': forms.TextInput(attrs={'placeholder': 'City / town', 'autocomplete': 'address-level2'}),
+            'business_name': forms.TextInput(attrs={'placeholder': 'Your business name'}),
+            'plan': forms.RadioSelect,
+        }
+
+    def clean_phone(self):
+        phone = ''.join(ch for ch in self.cleaned_data['phone'] if ch.isdigit())
+        if len(phone) < 10:
+            raise ValidationError('Enter a valid phone number.')
+        return phone

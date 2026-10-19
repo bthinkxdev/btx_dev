@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views
+from . import offer_views, views
 
 app_name = 'pages'
 
@@ -26,4 +26,9 @@ urlpatterns = [
     path('services/quote/<slug:package>/pdf/', views.quote_pdf, name='quote_pdf'),
     path('careers/', views.careers, name='careers'),
     path('careers/apply/', views.career_apply, name='career_apply'),
+
+    path('offers/navaratri/', offer_views.navaratri_offer, name='navaratri_offer'),
+    path('offers/navaratri/submit/', offer_views.navaratri_offer_submit, name='navaratri_offer_submit'),
+    path('offers/navaratri/return/', offer_views.navaratri_offer_return, name='navaratri_offer_return'),
+    path('offers/navaratri/webhook/', offer_views.navaratri_offer_webhook, name='navaratri_offer_webhook'),
 ]

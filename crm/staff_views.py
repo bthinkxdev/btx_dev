@@ -6,6 +6,7 @@ flags, photo) — previously only reachable through Django admin.
 from __future__ import annotations
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.decorators import login_required
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.db import transaction
 from django.db.models import Count, Q, Sum
@@ -42,6 +43,7 @@ def _staff_queryset():
     )
 
 
+@login_required
 @admin_required
 def staff_list(request):
     qs = _staff_queryset()
@@ -86,6 +88,7 @@ def staff_list(request):
     })
 
 
+@login_required
 @admin_required
 @require_POST
 def staff_create(request):
@@ -119,6 +122,7 @@ def staff_create(request):
     return resp
 
 
+@login_required
 @admin_required
 def staff_edit_panel(request, pk):
     user = get_object_or_404(User.objects.select_related('crm_profile'), pk=pk)
@@ -139,6 +143,7 @@ def staff_edit_panel(request, pk):
     })
 
 
+@login_required
 @admin_required
 @require_POST
 def staff_update(request, pk):
@@ -175,6 +180,7 @@ def staff_update(request, pk):
     return resp
 
 
+@login_required
 @admin_required
 @require_POST
 def staff_toggle_active(request, pk):
