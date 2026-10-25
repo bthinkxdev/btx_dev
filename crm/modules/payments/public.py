@@ -55,7 +55,14 @@ def _state(link, attempt=None) -> str:
     return 'active'
 
 
+@csrf_exempt
 def pay_page(request, token):
+    """No session/login backs this page - starting an attempt is gated by the unguessable
+    link token and rate-limited. Exempt because some in-app browsers (WhatsApp, Messenger,
+    Instagram) send `Origin: null` on the POST, which Django's CSRF Origin check always
+    rejects with no way to allowlist that value - and forging this POST gains an attacker
+    nothing, since real fund movement still requires completing payment at the gateway or a
+    signature-verified webhook, not anything this view trusts from the client."""
     if _limited(request, 'pay-page'):
         return HttpResponse('Too many requests. Try again in a minute.', status=429)
     link = _get_link(token)
@@ -132,8 +139,11 @@ def pay_receipt(request, token, pk):
     return resp
 
 
+@csrf_exempt
 def pay_sandbox(request, token, order):
-    """Built-in test checkout: lets a tester choose the outcome; sends a signed event through the real webhook pipeline."""
+    """Built-in test checkout: lets a tester choose the outcome; sends a signed event through
+    the real webhook pipeline. Exempt for the same in-app-browser Origin:null reason as
+    pay_page - this is sandbox-provider-only anyway, never reachable in live mode."""
     adapter = gateway.get_adapter()
     if adapter.provider != 'sandbox':
         raise Http404

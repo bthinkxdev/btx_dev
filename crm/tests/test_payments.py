@@ -137,6 +137,35 @@ class PaymentLinkTests(CrmTestCase):
         r = self.client.get(reverse('crm:pay_page', args=[token]) + f'?order={attempt.gateway_order_id}')
         self.assertContains(r, 'Payment received')
 
+    def test_pay_page_post_survives_in_app_browser_origin_null(self):
+        """Regression: WhatsApp/Messenger/Instagram in-app browsers send `Origin: null` on a
+        same-origin POST, which Django's CSRF Origin check always rejects (403, no way to
+        allowlist that value) - pay_page is exempted from CSRF for this reason; prove a POST
+        with Origin: null still works end to end, using a client that actually enforces CSRF
+        (the default test client doesn't, so it wouldn't have caught this)."""
+        from django.test import Client
+        link = self._link()
+        token = ps.public_token(link)
+        csrf_client = Client(enforce_csrf_checks=True)
+        r = csrf_client.post(reverse('crm:pay_page', args=[token]), HTTP_ORIGIN='null')
+        self.assertEqual(r.status_code, 302, r.content[:300])
+        self.assertTrue(link.attempts.exists())
+
+    def test_public_quotation_accept_survives_in_app_browser_origin_null(self):
+        """Same in-app-browser Origin:null regression as pay_page, for the public quotation
+        acceptance page - a customer opening a shared quotation link from WhatsApp/Messenger
+        must be able to accept it."""
+        from django.test import Client
+        from crm.modules.quotations import services as qsvc
+        q = self.make_quotation(accepted=False)
+        token = qsvc.share_token(q)
+        csrf_client = Client(enforce_csrf_checks=True)
+        r = csrf_client.post(reverse('crm:public_quotation', args=[token]),
+                             {'action': 'accept', 'name': 'Priya', 'agree': 'on'}, HTTP_ORIGIN='null')
+        self.assertEqual(r.status_code, 200, r.content[:300])
+        q.refresh_from_db()
+        self.assertEqual(q.status, 'accepted')
+
 
 class ManualPaymentTests(CrmTestCase):
     def test_submitter_cannot_verify(self):

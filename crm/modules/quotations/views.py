@@ -9,6 +9,7 @@ from django.db import transaction
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from crm.core import approvals, audit, gst, india, pdf, permissions, ratelimit
@@ -392,7 +393,14 @@ def quotation_compare(request, pk):
 
 # ---------------------------------------------------------------- public share page (no login)
 
+@csrf_exempt
 def public_quotation(request, token):
+    """No session/login backs this page - acceptance is gated by the unguessable token,
+    rate-limited, and the CSRF token's own cookie is still set and ignored harmlessly.
+    Exempt because some in-app browsers (WhatsApp, Messenger, Instagram) send
+    `Origin: null` on the POST, which Django's CSRF Origin check always rejects - there is
+    no way to allowlist that value, and a real attacker gains nothing by forging this POST
+    since they would need the same unguessable link anyway."""
     ip = client_ip(request) or ''
     if not ratelimit.hit('public-quote', ip, limit=60, window_seconds=60):
         return HttpResponse('Too many requests. Try again in a minute.', status=429)

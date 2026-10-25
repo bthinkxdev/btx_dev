@@ -1,5 +1,6 @@
 {% load static crm_tags %}
 <aside
+  x-cloak
   :class="sidebarToggle ? 'translate-x-0 xl:w-22.5' : '-translate-x-full'"
   class="sidebar shadow-theme-sm fixed top-0 left-0 z-9999 flex h-screen w-72.5 flex-col border-r border-gray-200 bg-white px-5 transition-all duration-300 xl:static xl:translate-x-0 dark:border-gray-800 dark:bg-black dark:shadow-none"
   @click.outside="if (window.innerWidth < 1280) sidebarToggle = false"

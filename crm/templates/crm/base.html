@@ -41,7 +41,7 @@
     {% include "crm/partials/sidebar.html" %}
 
     <div class="relative flex flex-1 flex-col overflow-x-hidden overflow-y-auto" id="scroll-root">
-      <div @click="sidebarToggle = false" :class="sidebarToggle ? 'block xl:hidden' : 'hidden'" class="fixed z-9 h-screen w-full bg-gray-900/50"></div>
+      <div x-cloak @click="sidebarToggle = false" :class="sidebarToggle ? 'block xl:hidden' : 'hidden'" class="fixed z-9 h-screen w-full bg-gray-900/50"></div>
 
       {% include "crm/partials/header.html" %}
 

@@ -393,6 +393,22 @@
     });
   }
 
+  /* ------------------------------------------------------------ deep-linked modal (2.6) */
+  // Registered at script-load time, not inside boot(): Alpine fires 'alpine:initialized'
+  // before 'DOMContentLoaded' (deferred scripts run before that event), so a listener
+  // added only once DOMContentLoaded fires always misses it and the modal never opens —
+  // which is exactly how a server-side validation error silently failed to show itself.
+  (function () {
+    var params = new URLSearchParams(window.location.search);
+    var modal = params.get('modal') || (document.body && document.body.dataset.openModal);
+    if (!modal) return;
+    if (window.Alpine && window.Alpine.store('modal')) {
+      window.Alpine.store('modal').show(modal);
+    } else {
+      document.addEventListener('alpine:initialized', function () { window.Alpine.store('modal').show(modal); });
+    }
+  })();
+
   /* ------------------------------------------------------------ boot */
   function boot() {
     Array.prototype.forEach.call(document.querySelectorAll('[data-href]'), function (el) {
@@ -406,12 +422,6 @@
     var firstInvalid = document.querySelector('[aria-invalid="true"]');
     if (firstInvalid && !firstInvalid.closest('[data-modal]')) firstInvalid.focus();
     else if (summary) summary.focus();
-    // Deep-link a popup: ?modal=<id> (2.6).
-    var params = new URLSearchParams(window.location.search);
-    var modal = params.get('modal') || document.body.dataset.openModal;
-    if (modal) {
-      document.addEventListener('alpine:initialized', function () { window.Alpine.store('modal').show(modal); });
-    }
     var off = document.getElementById('offline-banner');
     if (off) {
       window.addEventListener('offline', function () { off.classList.remove('hidden'); });
