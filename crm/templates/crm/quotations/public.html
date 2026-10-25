@@ -1,0 +1,27 @@
+{% load static crm_tags %}<!doctype html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="robots" content="noindex, nofollow">
+<title>Quotation {{ q.display_number }} | {{ company.legal_name }}</title>
+<link rel="stylesheet" href="{% static 'crm/css/crm.css' %}"></head>
+<body class="bg-gray-50">
+<main class="mx-auto max-w-4xl px-4 py-8">
+  <header class="mb-6 flex items-center justify-between gap-4">
+    <div class="flex items-center gap-3"><img src="{% static 'crm/images/logo.jpg' %}" alt="" class="h-12 w-10 rounded-lg object-cover object-top"><div><p class="text-lg font-semibold text-gray-900">{{ company.legal_name }}</p><p class="text-theme-sm text-gray-500">Quotation {{ q.display_number }}</p></div></div>
+    {% if q.pdf_file %}<a href="{% url 'crm:public_quotation_pdf' token %}" class="btn btn-secondary">{% icon 'download' 18 %} Download PDF</a>{% endif %}
+  </header>
+  {% if accepted_now %}<div class="alert alert-success mb-5" role="status"><p class="text-sm">Thank you. Your acceptance has been recorded and our team will contact you shortly.</p></div>{% endif %}
+  {% if superseded %}<div class="alert alert-warning mb-5"><p class="text-sm">A newer version of this quotation has been issued. Please contact us for the latest copy.</p></div>
+  {% elif expired and q.status != 'accepted' %}<div class="alert alert-warning mb-5"><p class="text-sm">This quotation has expired. Contact {{ company.display_name }} at {{ company.phone|phone }} for an updated quotation.</p></div>{% endif %}
+  <div class="card p-5 sm:p-8">{% include "crm/quotations/_document.html" with show_internal=False %}</div>
+  {% if q.status == 'sent' or q.status == 'viewed' %}{% if not expired %}
+  <form method="post" class="card mt-6 space-y-4 p-5 sm:p-6">{% csrf_token %}
+    <h2 class="text-base font-semibold text-gray-800">Accept this quotation</h2>
+    {% if error %}<p class="form-error">{{ error }}</p>{% endif %}
+    <input type="hidden" name="action" value="accept">
+    <div><label for="acc-name" class="form-label">Your full name <span class="text-error-500">*</span></label><input id="acc-name" name="name" maxlength="120" required class="form-input"></div>
+    <label class="flex items-start gap-2 text-sm text-gray-700"><input type="checkbox" name="agree" value="1" required class="form-checkbox-box mt-0.5"> I accept quotation {{ q.display_number }} for {{ q.grand_total|inr }} and its terms.</label>
+    <button class="btn btn-primary">Accept quotation</button>
+  </form>
+  {% endif %}{% endif %}
+  <p class="mt-8 text-center text-theme-sm text-gray-500">Questions? Call {{ company.phone|phone }} or email {{ company.email }}.</p>
+</main>
+</body></html>

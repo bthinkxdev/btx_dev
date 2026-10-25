@@ -26,7 +26,8 @@ def coming(request, **kwargs):
 
 
 PK_NAMES = ['quotation_create', 'quotation_detail', 'link_detail', 'contract_create', 'project_create', 'client_detail',
-            'task_detail', 'invoice_detail']
+            'task_detail', 'invoice_detail', 'client_statement', 'invoice_create', 'project_detail', 'contract_detail',
+            'payment_detail', 'ticket_detail', 'link_create']
 
 
 def patterns(existing: set):

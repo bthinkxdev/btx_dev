@@ -1,0 +1,153 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{{ client.display_name }}{% endblock %}
+{% block banners %}
+  {% if client.status == 'restricted' %}<div class="alert alert-error mb-5" role="alert"><span class="text-error-500">{% icon 'lock' 20 %}</span><p class="text-sm text-gray-700 dark:text-gray-300"><strong>Restricted client.</strong> New quotations and payment links are blocked. {{ client.status_reason }}</p></div>
+  {% elif client.status == 'on_hold' %}<div class="alert alert-warning mb-5"><span class="text-warning-500">{% icon 'alert' 20 %}</span><p class="text-sm text-gray-700 dark:text-gray-300">On hold: {{ client.status_reason }}</p></div>{% endif %}
+  {% if client.archived_at %}<div class="alert alert-info mb-5"><p class="text-sm">Archived {{ client.archived_at|d }}. {{ client.archive_reason }}</p></div>{% endif %}
+  {% if client.credit_limit and summary.outstanding > client.credit_limit %}<div class="alert alert-warning mb-5"><span class="text-warning-500">{% icon 'alert' 20 %}</span><p class="text-sm">Outstanding {{ summary.outstanding|inr }} is above the credit limit of {{ client.credit_limit|inr }}.</p></div>{% endif %}
+{% endblock %}
+{% block content %}
+<div class="card mb-6">
+  <div class="flex flex-col gap-4 p-5 sm:p-6 xl:flex-row xl:items-start xl:justify-between">
+    <div>
+      <h1 class="text-xl font-semibold text-gray-800 dark:text-white/90">{{ client.display_name }}</h1>
+      <p class="muted">{{ client.legal_name }} · {{ client.get_client_type_display }} · {{ client.get_customer_type_display }}{% if show_tax and client.gstin %} · {{ client.gstin }}{% endif %}</p>
+      <div class="mt-2 flex flex-wrap items-center gap-2">{% badge client.status client.get_status_display %}<span class="text-theme-sm text-gray-500">Owner {{ client.owner|uname }}</span></div>
+    </div>
+    <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div><p class="dl-label">Outstanding</p><p class="dl-value text-lg">{{ summary.outstanding|inr0 }}</p></div>
+      <div><p class="dl-label">Collected</p><p class="dl-value text-lg">{{ summary.collected|inr0 }}</p></div>
+      <div><p class="dl-label">Last payment</p><p class="dl-value">{% if summary.last_payment %}{{ summary.last_payment.payment_date|d }}{% else %}—{% endif %}</p></div>
+      <div><p class="dl-label">Next renewal</p><p class="dl-value">{% if next_renewal %}{{ next_renewal.end_date|d }}{% else %}—{% endif %}</p></div>
+    </div>
+  </div>
+  <div class="flex flex-wrap gap-2 border-t border-gray-100 px-5 py-4 sm:px-6 dark:border-gray-800">
+    {% if can_edit and not client.archived_at %}
+      <a href="{% url 'crm:client_edit' client.pk %}" class="btn btn-secondary btn-sm">{% icon 'edit' 16 %} Edit</a>
+      <button type="button" class="btn btn-secondary btn-sm" @click="$store.modal.show('contact')">{% icon 'user' 16 %} Add contact</button>
+      {% can 'quotations' 'create' as cq %}{% if cq %}{% if client.status == 'restricted' %}<span class="btn btn-secondary btn-sm opacity-50" title="Client is restricted">Create quotation</span>{% else %}<a href="{% url 'crm:quotation_create' %}?client={{ client.pk }}" class="btn btn-secondary btn-sm">{% icon 'document' 16 %} Create quotation</a>{% endif %}{% endif %}
+      {% can 'invoices' 'create' as ci %}{% if ci %}<a href="{% url 'crm:invoice_create' %}?client={{ client.pk }}" class="btn btn-secondary btn-sm">{% icon 'invoice' 16 %} Create invoice</a>{% endif %}
+      {% can 'projects' 'create' as cp %}{% if cp %}<a href="{% url 'crm:project_create' %}?client={{ client.pk }}" class="btn btn-secondary btn-sm">{% icon 'tasks' 16 %} Create project</a>{% endif %}
+      {% can 'contracts' 'create' as cc %}{% if cc %}<a href="{% url 'crm:contract_create' %}?client={{ client.pk }}" class="btn btn-secondary btn-sm">{% icon 'folder' 16 %} Create contract</a>{% endif %}
+      <a href="{% url 'crm:client_statement' client.pk %}" class="btn btn-secondary btn-sm">{% icon 'download' 16 %} Statement</a>
+      <div class="relative" x-data="{ o: false }" @click.outside="o = false">
+        <button type="button" class="btn btn-secondary btn-sm" @click="o = !o">More {% icon 'chevron_down' 14 %}</button>
+        <div x-show="o" x-cloak class="shadow-theme-lg absolute left-0 z-99 mt-1 w-56 rounded-xl border border-gray-200 bg-white p-2 dark:border-gray-800 dark:bg-gray-900">
+          {% if client.status != 'active' %}<form method="post" action="{% url 'crm:client_status' client.pk %}">{% csrf_token %}<input type="hidden" name="status" value="active"><button class="menu-dropdown-item menu-dropdown-item-inactive w-full">Set active</button></form>{% endif %}
+          {% if client.status != 'on_hold' %}<form method="post" action="{% url 'crm:client_status' client.pk %}" data-confirm="Put this client on hold?" data-confirm-reason="required">{% csrf_token %}<input type="hidden" name="status" value="on_hold"><button class="menu-dropdown-item menu-dropdown-item-inactive w-full">Put on hold</button></form>{% endif %}
+          {% if client.status != 'restricted' %}<form method="post" action="{% url 'crm:client_status' client.pk %}" data-confirm="Restrict this client?" data-confirm-body="New quotations and payment links are blocked, and everyone who opens the client sees a banner." data-confirm-reason="required" data-confirm-danger="1">{% csrf_token %}<input type="hidden" name="status" value="restricted"><button class="menu-dropdown-item w-full text-error-600">Restrict</button></form>{% endif %}
+          {% if can_merge %}<a class="menu-dropdown-item menu-dropdown-item-inactive" href="{% url 'crm:client_merge' client.pk %}">Merge duplicate</a>{% endif %}
+          {% if can_archive %}{% if archive_blockers %}<span class="menu-dropdown-item text-gray-400" title="Has {{ archive_blockers|join:', ' }}">Archive (blocked)</span>{% else %}<form method="post" action="{% url 'crm:client_archive' client.pk %}" data-confirm="Archive this client?" data-confirm-reason="required" data-confirm-danger="1">{% csrf_token %}<button class="menu-dropdown-item w-full text-error-600">Archive</button></form>{% endif %}{% endif %}
+          <button type="button" class="menu-dropdown-item menu-dropdown-item-inactive w-full" data-copy="{{ request.build_absolute_uri }}">Copy link</button>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+  <nav class="flex gap-6 overflow-x-auto border-t border-gray-100 px-5 sm:px-6 dark:border-gray-800" aria-label="Client sections">
+    {% for t in tabs %}
+      <a href="?tab={{ t }}" class="tab {% if tab == t %}tab-active{% else %}tab-inactive{% endif %}">{% if t == 'deals' %}Leads and deals{% elif t == 'projects' %}Projects and tasks{% elif t == 'contracts' %}Contracts and services{% elif t == 'payments' %}Payments and links{% else %}{{ t|capfirst }}{% endif %}{% with n=counts|get_item:t %}{% if n %} <span class="badge badge-grey">{{ n }}</span>{% endif %}{% endwith %}</a>
+    {% endfor %}
+  </nav>
+</div>
+
+{% if tab == 'overview' %}
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+  <div class="card">
+    <div class="card-header"><h2 class="card-title">Contacts</h2>{% if can_edit %}<button type="button" class="btn-link text-sm" @click="$store.modal.show('contact')">Add</button>{% endif %}</div>
+    <ul class="card-body space-y-4">
+      {% for c in contacts %}
+        <li class="flex items-start justify-between gap-2">
+          <div><p class="text-sm font-medium text-gray-800 dark:text-white/90">{{ c.name }} {% if c.is_primary %}{% badge 'active' 'Primary' %}{% endif %}{% if c.is_billing %}{% badge 'draft' 'Billing' %}{% endif %}</p>
+            <p class="text-theme-xs text-gray-500">{{ c.designation }}</p>
+            <p class="text-theme-sm">{% if c.phone %}<a href="tel:{{ c.phone }}" class="hover:text-brand-500">{{ c.phone|phone }}</a>{% endif %} {% if c.email %}<a href="mailto:{{ c.email }}" class="block hover:text-brand-500">{{ c.email }}</a>{% endif %}</p></div>
+          {% if can_edit %}<div class="flex gap-1">{% if not c.is_primary %}<form method="post" action="{% url 'crm:contact_action' client.pk c.pk 'primary' %}">{% csrf_token %}<button class="btn-link text-xs">Set primary</button></form>{% endif %}
+            <form method="post" action="{% url 'crm:contact_action' client.pk c.pk 'archive' %}" data-confirm="Remove {{ c.name }}?">{% csrf_token %}<button class="btn-icon-sm" aria-label="Remove">{% icon 'trash' 14 %}</button></form></div>{% endif %}
+        </li>
+      {% empty %}<li class="muted">No contacts.</li>{% endfor %}
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-header"><h2 class="card-title">Details</h2></div>
+    <dl class="card-body space-y-3 text-sm">
+      <div><dt class="dl-label">Billing address</dt><dd class="dl-value">{{ client.billing_address|default:"—" }}</dd></div>
+      <div><dt class="dl-label">Shipping address</dt><dd class="dl-value">{{ client.shipping_address|default:"—" }}</dd></div>
+      {% if show_tax %}<div><dt class="dl-label">PAN</dt><dd class="dl-value">{{ client.pan|masked|default:"—" }}</dd></div>{% endif %}
+      <div><dt class="dl-label">TDS</dt><dd class="dl-value">{% if client.tds_applicable %}Deducts TDS {{ client.tds_section }}{% else %}No{% endif %}</dd></div>
+      <div><dt class="dl-label">Payment terms</dt><dd class="dl-value">{{ client.payment_terms_days }} days{% if client.credit_limit %} · credit limit {{ client.credit_limit|inr0 }}{% endif %}{% if client.dunning_paused %} · reminders paused{% endif %}</dd></div>
+      {% if client.source_lead %}<div><dt class="dl-label">Origin</dt><dd><a class="link" href="{% url 'crm:lead_detail' client.source_lead_id %}">Lead #{{ client.source_lead_id }}</a></dd></div>{% endif %}
+      {% if show_notes and client.notes %}<div><dt class="dl-label">Internal notes</dt><dd class="whitespace-pre-line text-gray-700 dark:text-gray-300">{{ client.notes }}</dd></div>{% endif %}
+    </dl>
+  </div>
+  <div class="card">
+    <div class="card-header"><h2 class="card-title">Financial summary</h2></div>
+    <dl class="card-body grid grid-cols-2 gap-4 text-sm">
+      <div><dt class="dl-label">Billed</dt><dd class="dl-value">{{ summary.billed|inr0 }}</dd></div>
+      <div><dt class="dl-label">Collected</dt><dd class="dl-value">{{ summary.collected|inr0 }}</dd></div>
+      <div><dt class="dl-label">Outstanding</dt><dd class="dl-value">{{ summary.outstanding|inr0 }}</dd></div>
+      <div><dt class="dl-label">Advances held</dt><dd class="dl-value">{{ summary.advances|inr0 }}</dd></div>
+      <div><dt class="dl-label">TDS receivable</dt><dd class="dl-value">{{ summary.tds|inr0 }}</dd></div>
+      <div><dt class="dl-label">Credit notes</dt><dd class="dl-value">{{ summary.credited|inr0 }}</dd></div>
+      <div class="col-span-2"><dt class="dl-label mb-1">Ageing</dt><dd class="flex flex-wrap gap-2">{% for k, v in summary.ageing.items %}<span class="badge {% if v and k != 'Current' %}badge-amber{% else %}badge-grey{% endif %}">{{ k }}: {{ v|inr0 }}</span>{% endfor %}</dd></div>
+    </dl>
+  </div>
+  <div class="card xl:col-span-3">
+    <div class="card-header"><h2 class="card-title">Recent invoices and open quotations</h2></div>
+    <div class="card-body grid grid-cols-1 gap-6 md:grid-cols-2">
+      <ul class="space-y-2">{% for i in recent_invoices %}<li class="flex justify-between text-sm"><a class="link" href="{% url 'crm:invoice_detail' i.pk %}">{{ i.display_number }}</a><span>{{ i.grand_total|inr0 }} {% status_badge i %}</span></li>{% empty %}<li class="muted">No invoices.</li>{% endfor %}</ul>
+      <ul class="space-y-2">{% for q in open_quotes %}<li class="flex justify-between text-sm"><a class="link" href="{% url 'crm:quotation_detail' q.pk %}">{{ q.display_number }}</a><span>{{ q.grand_total|inr0 }} {% badge q.status q.get_status_display %}</span></li>{% empty %}<li class="muted">No open quotations.</li>{% endfor %}</ul>
+    </div>
+  </div>
+</div>
+{% elif tab == 'documents' %}
+  {% include "crm/components/attachments.html" with model_name="client" obj=client can_upload=can_edit %}
+{% elif tab == 'profitability' %}
+  <div class="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+    <div class="card p-5"><p class="muted">Revenue (invoiced, net of credit notes)</p><p class="text-title-xs font-bold text-gray-800 dark:text-white/90">{{ profit.revenue|inr0 }}</p></div>
+    <div class="card p-5"><p class="muted">Direct and allocated cost</p><p class="text-title-xs font-bold text-gray-800 dark:text-white/90">{{ profit.direct_cost|inr0 }}</p></div>
+    <div class="card p-5"><p class="muted">Margin</p><p class="text-title-xs font-bold {% if profit.margin < 0 %}text-error-600{% else %}text-success-600{% endif %}">{{ profit.margin|inr0 }}</p></div>
+    <div class="card p-5"><p class="muted">Margin %</p><p class="text-title-xs font-bold text-gray-800 dark:text-white/90">{% if profit.margin_pct is not None %}{{ profit.margin_pct }}%{% else %}—{% endif %}</p></div>
+  </div>
+  <div class="card"><div class="table-wrap"><table class="data-table"><thead><tr><th class="th">Project</th><th class="th text-right">Revenue</th><th class="th text-right">Cost</th><th class="th text-right">Margin</th></tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for p in profit.projects %}<tr><td class="td"><a class="link" href="{% url 'crm:project_detail' p.project.pk %}">{{ p.project }}</a></td><td class="td text-right">{{ p.revenue|inr0 }}</td><td class="td text-right">{{ p.cost|inr0 }}</td><td class="td text-right">{{ p.margin|inr0 }}</td></tr>{% empty %}<tr><td class="td" colspan="4">No projects yet.</td></tr>{% endfor %}</tbody></table></div></div>
+{% else %}
+  <div class="card"><div class="table-wrap">
+  {% if tab == 'deals' %}
+    <table class="data-table responsive-cards"><thead><tr><th class="th">Lead / deal</th><th class="th">Owner</th><th class="th">Stage</th><th class="th text-right">Value</th><th class="th">Created</th></tr></thead><tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+      {% for r in rows %}<tr><td class="td" data-label="Lead"><a class="td-strong hover:text-brand-500" href="{% url 'crm:lead_detail' r.pk %}">{{ r }}</a></td><td class="td" data-label="Owner">{{ r.owner|uname }}</td><td class="td" data-label="Stage">{% badge r.stage r.get_stage_display %}</td><td class="td text-right" data-label="Value">{{ r.value|inr0 }}</td><td class="td" data-label="Created">{{ r.created_at|d }}</td></tr>{% empty %}<tr><td class="td" colspan="5">No leads.</td></tr>{% endfor %}</tbody></table>
+  {% elif tab == 'quotations' %}
+    <table class="data-table responsive-cards"><thead><tr><th class="th">Number</th><th class="th">Date</th><th class="th text-right">Total</th><th class="th">Status</th><th class="th">Owner</th></tr></thead><tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+      {% for r in rows %}<tr><td class="td" data-label="Number"><a class="td-strong hover:text-brand-500" href="{% url 'crm:quotation_detail' r.pk %}">{{ r.display_number }}</a></td><td class="td" data-label="Date">{{ r.quotation_date|d }}</td><td class="td text-right" data-label="Total">{{ r.grand_total|inr }}</td><td class="td" data-label="Status">{% badge r.status r.get_status_display %}</td><td class="td" data-label="Owner">{{ r.owner|uname }}</td></tr>{% empty %}<tr><td class="td" colspan="5">No quotations.</td></tr>{% endfor %}</tbody></table>
+  {% elif tab == 'projects' %}
+    <table class="data-table responsive-cards"><thead><tr><th class="th">Project</th><th class="th">Manager</th><th class="th">Status</th><th class="th">Due</th><th class="th text-right">Open tasks</th></tr></thead><tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+      {% for r in rows %}<tr><td class="td" data-label="Project"><a class="td-strong hover:text-brand-500" href="{% url 'crm:project_detail' r.pk %}">{{ r }}</a></td><td class="td" data-label="Manager">{{ r.manager|uname }}</td><td class="td" data-label="Status">{% badge r.status r.get_status_display %}</td><td class="td" data-label="Due">{{ r.due_date|d }}</td><td class="td text-right" data-label="Open tasks">{{ r.open_tasks }}</td></tr>{% empty %}<tr><td class="td" colspan="5">No projects.</td></tr>{% endfor %}</tbody></table>
+  {% elif tab == 'contracts' %}
+    <table class="data-table responsive-cards"><thead><tr><th class="th">Contract</th><th class="th">Start</th><th class="th">End</th><th class="th">Status</th></tr></thead><tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+      {% for r in rows %}<tr><td class="td" data-label="Contract"><a class="td-strong hover:text-brand-500" href="{% url 'crm:contract_detail' r.pk %}">{{ r }} · {{ r.title }}</a></td><td class="td" data-label="Start">{{ r.start_date|d }}</td><td class="td" data-label="End">{{ r.end_date|d }}</td><td class="td" data-label="Status">{% badge r.status r.get_status_display %}</td></tr>{% empty %}<tr><td class="td" colspan="4">No contracts.</td></tr>{% endfor %}</tbody></table>
+  {% elif tab == 'invoices' %}
+    <table class="data-table responsive-cards"><thead><tr><th class="th">Invoice</th><th class="th">Date</th><th class="th">Due</th><th class="th text-right">Total</th><th class="th text-right">Balance</th><th class="th">Status</th></tr></thead><tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+      {% for r in rows %}<tr><td class="td" data-label="Invoice"><a class="td-strong hover:text-brand-500" href="{% url 'crm:invoice_detail' r.pk %}">{{ r.display_number }}</a></td><td class="td" data-label="Date">{{ r.invoice_date|d }}</td><td class="td" data-label="Due">{{ r.due_date|d }}</td><td class="td text-right" data-label="Total">{{ r.grand_total|inr }}</td><td class="td text-right" data-label="Balance">{{ r.balance|inr }}</td><td class="td" data-label="Status">{% status_badge r %}</td></tr>{% empty %}<tr><td class="td" colspan="6">No invoices.</td></tr>{% endfor %}</tbody></table>
+  {% elif tab == 'payments' %}
+    <table class="data-table responsive-cards"><thead><tr><th class="th">Receipt</th><th class="th">Date</th><th class="th">Method</th><th class="th text-right">Amount</th><th class="th">Status</th></tr></thead><tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+      {% for r in rows %}<tr><td class="td" data-label="Receipt"><a class="td-strong hover:text-brand-500" href="{% url 'crm:payment_detail' r.pk %}">{{ r }}</a></td><td class="td" data-label="Date">{{ r.payment_date|d }}</td><td class="td" data-label="Method">{{ r.get_method_display }}</td><td class="td text-right" data-label="Amount">{{ r.amount|inr }}</td><td class="td" data-label="Status">{% badge r.status r.get_status_display %}</td></tr>{% empty %}<tr><td class="td" colspan="5">No payments.</td></tr>{% endfor %}</tbody></table>
+    <h3 class="px-5 pt-6 text-sm font-semibold text-gray-800 dark:text-white/90">Payment links</h3>
+    <table class="data-table"><tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for l in links %}<tr><td class="td"><a class="link" href="{% url 'crm:link_detail' l.pk %}">{{ l.code }}</a></td><td class="td">{{ l.amount|inr }}</td><td class="td">{% badge l.status l.get_status_display %}</td></tr>{% empty %}<tr><td class="td">No links.</td></tr>{% endfor %}</tbody></table>
+  {% elif tab == 'tickets' %}
+    <table class="data-table responsive-cards"><thead><tr><th class="th">Ticket</th><th class="th">Priority</th><th class="th">Assignee</th><th class="th">Status</th></tr></thead><tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+      {% for r in rows %}<tr><td class="td" data-label="Ticket"><a class="td-strong hover:text-brand-500" href="{% url 'crm:ticket_detail' r.pk %}">{{ r }}</a></td><td class="td" data-label="Priority">{{ r.get_priority_display }}</td><td class="td" data-label="Assignee">{{ r.assignee|uname }}</td><td class="td" data-label="Status">{% badge r.status r.get_status_display %}</td></tr>{% empty %}<tr><td class="td" colspan="4">No tickets.</td></tr>{% endfor %}</tbody></table>
+  {% elif tab == 'communication' %}
+    <ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for a in rows %}<li class="px-5 py-3 text-sm"><span class="font-medium text-gray-800 dark:text-white/90">{{ a.get_kind_display }}</span> · <a class="link" href="{% url 'crm:lead_detail' a.lead_id %}">{{ a.lead.name }}</a><p class="text-gray-600 dark:text-gray-400">{{ a.summary|truncatechars:200 }}</p><p class="text-theme-xs text-gray-400">{{ a.occurred_at|dt }} · {{ a.actor|uname }}</p></li>{% endfor %}
+      {% for e in emails %}<li class="px-5 py-3 text-sm"><span class="font-medium">Email</span> · {{ e.subject }} {% badge e.status e.get_status_display %}<p class="text-theme-xs text-gray-400">{{ e.created_at|dt }} to {{ e.recipient }}</p></li>{% endfor %}
+      {% if not rows and not emails %}<li class="px-5 py-6 text-sm text-gray-500">No communication recorded.</li>{% endif %}</ul>
+  {% elif tab == 'activity' %}
+    <ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for a in rows %}<li class="px-5 py-3 text-sm"><span class="font-medium text-gray-800 dark:text-white/90">{{ a.action }}</span> · {{ a.actor_name|default:a.actor_type }}<p class="text-theme-xs text-gray-400">{{ a.created_at|dt }}{% if a.reason %} · {{ a.reason }}{% endif %}</p></li>{% empty %}<li class="px-5 py-6 text-sm text-gray-500">No activity.</li>{% endfor %}</ul>
+  {% endif %}
+  </div></div>
+{% endif %}
+
+{% if can_edit %}
+{% include "crm/components/modal_start.html" with id="contact" title="Add contact" %}
+  <form method="post" action="{% url 'crm:contact_add' client.pk %}" novalidate data-dirty-check>{% csrf_token %}{% idem %}
+    {% include "crm/components/modal_form.html" with form=contact_form %}{% include "crm/components/modal_actions.html" with label="Save contact" %}</form>
+{% include "crm/components/modal_end.html" %}
+{% endif %}
+{% endblock %}

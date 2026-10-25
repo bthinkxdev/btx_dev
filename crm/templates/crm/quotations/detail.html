@@ -1,0 +1,122 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{{ q.display_number }}{% endblock %}
+{% block banners %}
+  {% if q.status == 'awaiting_approval' %}<div class="alert alert-info mb-5"><span class="text-blue-light-500">{% icon 'clock' 20 %}</span><p class="text-sm text-gray-700 dark:text-gray-300">Awaiting approval — the quotation is frozen.{% if pending %} <a class="link" href="{% url 'crm:approval_detail' pending.pk %}">View request</a>{% endif %}</p></div>{% endif %}
+  {% if q.status == 'superseded' %}<div class="alert alert-info mb-5"><p class="text-sm">You are viewing version {{ q.version }} of {{ versions|length }}. A newer version was sent.</p></div>{% endif %}
+  {% if q.status in 'sent,viewed,accepted,converted,superseded,expired,rejected' %}<div class="alert alert-info mb-5"><span class="text-blue-light-500">{% icon 'lock' 18 %}</span><p class="text-sm text-gray-700 dark:text-gray-300">Locked: version {{ q.version }} was sent and cannot change. Use “New version” to revise it.</p></div>{% endif %}
+  {% if q.gst_overridden %}<div class="alert alert-warning mb-5"><p class="text-sm">GST overridden: {{ q.gst_override_reason }}</p></div>{% endif %}
+  {% if q.status == 'draft' and q.is_expired_by_date %}<div class="alert alert-warning mb-5"><p class="text-sm">The validity date has passed. Edit the draft and set a new validity date.</p></div>{% endif %}
+{% endblock %}
+{% block content %}
+<div class="card mb-6">
+  <div class="flex flex-col gap-4 p-5 sm:p-6 xl:flex-row xl:items-start xl:justify-between">
+    <div>
+      <h1 class="text-xl font-semibold text-gray-800 dark:text-white/90">{{ q.display_number }} {% badge q.status q.get_status_display %}</h1>
+      <p class="muted">{{ q.customer_display }}{% if q.lead_id %} · <a class="link" href="{% url 'crm:lead_detail' q.lead_id %}">lead</a>{% endif %}{% if q.client_id %} · <a class="link" href="{% url 'crm:client_detail' q.client_id %}">client</a>{% endif %} · Owner {{ q.owner|uname }}</p>
+      <p class="mt-1 text-2xl font-bold text-gray-800 dark:text-white/90">{{ q.grand_total|inr }}</p>
+      {% if q.view_count %}<p class="text-theme-sm text-blue-light-600">{% icon 'eye' 14 %} Viewed {{ q.view_count }}× · last {{ q.last_viewed_at|ago }}</p>{% endif %}
+    </div>
+    <div class="flex flex-wrap gap-2">
+      {% if can_edit %}
+        {% if q.status == 'draft' %}
+          <a href="{% url 'crm:quotation_edit' q.pk %}" class="btn btn-secondary">{% icon 'edit' 18 %} Edit</a>
+          {% if reasons %}<button type="button" class="btn btn-primary" @click="$store.modal.show('approval')">Request approval</button>
+          {% elif blockers %}<span class="btn btn-primary opacity-50" title="{{ blockers|join:'; ' }}" aria-disabled="true">Send quotation</span>
+          {% else %}<button type="button" class="btn btn-primary" @click="$store.modal.show('send')">Send quotation</button>{% endif %}
+        {% elif q.status == 'awaiting_approval' %}
+          {% if can_decide %}<a href="{% url 'crm:approval_detail' pending.pk %}" class="btn btn-primary">Review and approve</a>{% else %}<span class="btn btn-secondary opacity-60" aria-disabled="true">Awaiting approval</span>{% endif %}
+          {% if pending and pending.requested_by_id == request.user.pk %}<form method="post" action="{% url 'crm:quotation_action' q.pk 'cancel_approval' %}" data-confirm="Cancel the approval request?" data-confirm-body="The quotation returns to draft so you can edit it. Approval restarts when you resubmit.">{% csrf_token %}<button class="btn btn-secondary">Cancel approval to edit</button></form>{% endif %}
+        {% elif q.status == 'approved' %}
+          {% if blockers %}<span class="btn btn-primary opacity-50" title="{{ blockers|join:'; ' }}">Send quotation</span>{% else %}<button type="button" class="btn btn-primary" @click="$store.modal.show('send')">Send quotation</button>{% endif %}
+        {% elif q.status == 'sent' or q.status == 'viewed' %}
+          <button type="button" class="btn btn-success" @click="$store.modal.show('accept')">Mark accepted</button>
+          <button type="button" class="btn btn-danger-outline" @click="$store.modal.show('reject')">Mark rejected</button>
+        {% endif %}
+        {% if q.status in 'approved,sent,viewed,accepted' and can_link and not q.is_expired_by_date %}<a href="{% url 'crm:link_create' %}?quotation={{ q.pk }}" class="btn btn-secondary">{% icon 'link' 18 %} Generate payment link</a>{% endif %}
+        {% if q.status == 'accepted' %}
+          {% if can_invoice %}<a href="{% url 'crm:invoice_create' %}?quotation={{ q.pk }}" class="btn btn-primary">{% icon 'invoice' 18 %} Create invoice</a>{% endif %}
+          <a href="{% url 'crm:contract_create' %}?quotation={{ q.pk }}" class="btn btn-secondary">Create contract</a>
+          <a href="{% url 'crm:project_create' %}?quotation={{ q.pk }}" class="btn btn-secondary">Create project</a>
+        {% endif %}
+      {% endif %}
+      <a href="{% url 'crm:quotation_pdf' q.pk %}?download=1" class="btn btn-secondary">{% icon 'download' 18 %} PDF</a>
+      <div class="relative" x-data="{ o: false }" @click.outside="o = false">
+        <button type="button" class="btn btn-secondary" @click="o = !o" aria-label="More">{% icon 'kebab' 18 %}</button>
+        <div x-show="o" x-cloak class="shadow-theme-lg absolute right-0 z-99 mt-2 w-60 rounded-xl border border-gray-200 bg-white p-2 dark:border-gray-800 dark:bg-gray-900">
+          {% if can_edit %}
+            {% if q.status in 'sent,viewed,expired,rejected,approved' %}<form method="post" action="{% url 'crm:quotation_action' q.pk 'new_version' %}">{% csrf_token %}{% idem %}<button class="menu-dropdown-item menu-dropdown-item-inactive w-full">{% icon 'edit' 16 %} New version</button></form>{% endif %}
+            <form method="post" action="{% url 'crm:quotation_action' q.pk 'duplicate' %}">{% csrf_token %}{% idem %}<button class="menu-dropdown-item menu-dropdown-item-inactive w-full">{% icon 'copy' 16 %} Duplicate</button></form>
+            {% if q.status in 'sent,viewed,accepted' and q.contact_email %}<form method="post" action="{% url 'crm:quotation_action' q.pk 'resend' %}"><input type="hidden" name="to" value="{{ q.contact_email }}">{% csrf_token %}{% idem %}<button class="menu-dropdown-item menu-dropdown-item-inactive w-full">{% icon 'mail' 16 %} Resend to {{ q.contact_email }}</button></form>{% endif %}
+            {% if can_override and q.status == 'draft' %}<button type="button" class="menu-dropdown-item menu-dropdown-item-inactive w-full" @click="o=false; $store.modal.show('override')">{% icon 'settings' 16 %} Choose tax treatment</button>{% endif %}
+          {% endif %}
+          {% if share_link %}<button type="button" class="menu-dropdown-item menu-dropdown-item-inactive w-full" data-copy="{{ share_link }}" data-copy-message="Share link copied">{% icon 'link' 16 %} Copy share link</button>{% endif %}
+          {% if versions|length > 1 %}<a class="menu-dropdown-item menu-dropdown-item-inactive" href="{% url 'crm:quotation_compare' q.pk %}">{% icon 'swap' 16 %} Compare versions</a>{% endif %}
+          {% if can_cancel and q.status in 'draft,approved,awaiting_approval' %}<form method="post" action="{% url 'crm:quotation_action' q.pk 'void' %}" data-confirm="Void this quotation?" data-confirm-body="It can no longer be sent." data-confirm-reason="required" data-confirm-danger="1" data-confirm-ok="Yes, void quotation">{% csrf_token %}<button class="menu-dropdown-item w-full text-error-600">{% icon 'x' 16 %} Void</button></form>{% endif %}
+          <button type="button" class="menu-dropdown-item menu-dropdown-item-inactive w-full" data-copy="{{ request.build_absolute_uri }}">{% icon 'link' 16 %} Copy page link</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% if blockers and q.status in 'draft,approved' and not reasons %}
+    <div class="border-t border-gray-100 px-5 py-3 sm:px-6 dark:border-gray-800"><p class="text-theme-sm text-warning-700 dark:text-orange-400">Before sending: {{ blockers|join:"; " }}.</p></div>
+  {% endif %}
+</div>
+
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+  <div class="card p-5 sm:p-6 xl:col-span-2">{% include "crm/quotations/_document.html" %}</div>
+  <div class="space-y-6">
+    {% if share_link %}<div class="card"><div class="card-header"><h2 class="card-title">Share link</h2></div><div class="card-body space-y-3"><p class="font-mono text-theme-xs break-all text-gray-600 dark:text-gray-400">{{ share_link }}</p><button type="button" class="btn btn-secondary btn-sm" data-copy="{{ share_link }}" data-copy-message="Share link copied">{% icon 'copy' 16 %} Copy link</button></div></div>{% endif %}
+    {% if show_internal and q.internal_notes or show_cost and q.cost_estimate %}
+      <div class="card border-dashed"><div class="card-header"><h2 class="card-title">Internal</h2></div><div class="card-body space-y-2 text-sm">
+        {% if show_internal and q.internal_notes %}<p class="whitespace-pre-line text-gray-700 dark:text-gray-300">{{ q.internal_notes }}</p>{% endif %}
+        {% if show_cost and q.cost_estimate %}<p>Cost estimate {{ q.cost_estimate|inr }} · margin <strong class="{% if q.margin_percent < margin_floor %}text-error-600{% endif %}">{{ q.margin_percent }}%</strong></p>{% endif %}
+      </div></div>
+    {% endif %}
+    <div class="card"><div class="card-header"><h2 class="card-title">Versions</h2></div>
+      <ul class="card-body space-y-2">{% for v in versions %}<li class="flex items-center justify-between text-sm"><a class="{% if v.pk == q.pk %}font-semibold text-gray-800 dark:text-white/90{% else %}link{% endif %}" href="{% url 'crm:quotation_detail' v.pk %}">v{{ v.version }} · {{ v.quotation_date|d }}</a><span>{{ v.grand_total|inr0 }} {% badge v.status v.get_status_display %}</span></li>{% endfor %}</ul></div>
+    <div class="card"><div class="card-header"><h2 class="card-title">Payment links</h2></div>
+      <ul class="card-body space-y-2">{% for l in links %}<li class="flex items-center justify-between text-sm"><a class="link" href="{% url 'crm:link_detail' l.pk %}">{{ l.code }}</a><span>{{ l.amount_paid|inr0 }} / {{ l.amount|inr0 }} {% badge l.status l.get_status_display %}</span></li>{% empty %}<li class="muted">No links yet.</li>{% endfor %}</ul></div>
+    <div class="card"><div class="card-header"><h2 class="card-title">Tracking</h2></div>
+      <dl class="card-body space-y-2 text-sm">
+        <div class="flex justify-between"><dt class="text-gray-500">Sent</dt><dd>{{ q.sent_at|dt }}{% if q.sent_to %} · {{ q.sent_to }}{% endif %}</dd></div>
+        <div class="flex justify-between"><dt class="text-gray-500">First viewed</dt><dd>{{ q.first_viewed_at|dt }}</dd></div>
+        {% if q.accepted_at %}<div class="flex justify-between"><dt class="text-gray-500">Accepted</dt><dd>{{ q.accepted_at|dt }} by {{ q.accepted_by_name }} ({{ q.acceptance_evidence }})</dd></div>{% endif %}
+        {% if q.rejected_at %}<div class="flex justify-between"><dt class="text-gray-500">Rejected</dt><dd>{{ q.get_rejection_reason_display }}</dd></div>{% endif %}
+        {% if q.pdf_sha256 %}<div><dt class="text-gray-500">Sent PDF fingerprint</dt><dd class="font-mono text-theme-xs break-all">{{ q.pdf_sha256 }}</dd></div>{% endif %}
+      </dl></div>
+    {% if history %}<div class="card"><div class="card-header"><h2 class="card-title">Approvals</h2></div><ul class="card-body space-y-2">{% for h in history %}<li class="text-sm"><a class="link" href="{% url 'crm:approval_detail' h.pk %}">{{ h.requested_at|d }}</a> {% badge h.status h.get_status_display %}{% if h.comment %}<span class="block text-theme-xs text-gray-500">“{{ h.comment }}”</span>{% endif %}</li>{% endfor %}</ul></div>{% endif %}
+  </div>
+</div>
+
+{% include "crm/components/modal_start.html" with id="send" title="Send quotation" subtitle="The exact PDF sent is stored. A share link with an unguessable token is included." %}
+  <form method="post" action="{% url 'crm:quotation_action' q.pk 'send' %}" novalidate x-data="{ ch: '{{ forms.send.channel.value|default:'email' }}' }">{% csrf_token %}{% idem %}
+    {% for e in forms.send.non_field_errors %}<div class="alert alert-error mb-4"><p class="text-sm">{{ e }}</p></div>{% endfor %}
+    <fieldset class="mb-4 space-y-2">{% for r in forms.send.channel %}<label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"><input type="radio" name="{{ r.data.name }}" value="{{ r.data.value }}" x-model="ch" class="text-brand-500" {% if r.data.selected %}checked{% endif %}> {{ r.choice_label }}</label>{% endfor %}</fieldset>
+    <div class="grid grid-cols-1 gap-4" x-show="ch === 'email'">{% field forms.send.to %}{% field forms.send.cc %}{% field forms.send.subject %}{% field forms.send.message %}</div>
+    {% include "crm/components/modal_actions.html" with label="Send quotation" loading="Sending…" %}
+  </form>
+{% include "crm/components/modal_end.html" %}
+
+{% include "crm/components/modal_start.html" with id="approval" title="Request approval" subtitle="The quotation becomes read-only until the approver decides." %}
+  {% if reasons %}<ul class="mb-4 list-disc pl-5 text-sm text-gray-700 dark:text-gray-300">{% for r in reasons %}<li>{{ r }}</li>{% endfor %}</ul>{% endif %}
+  <form method="post" action="{% url 'crm:quotation_action' q.pk 'approval' %}" novalidate>{% csrf_token %}{% idem %}
+    {% include "crm/components/modal_form.html" with form=forms.approval %}{% include "crm/components/modal_actions.html" with label="Submit request" loading="Submitting…" %}</form>
+{% include "crm/components/modal_end.html" %}
+
+{% include "crm/components/modal_start.html" with id="accept" title="Record acceptance" %}
+  <form method="post" action="{% url 'crm:quotation_action' q.pk 'accept' %}" novalidate>{% csrf_token %}{% idem %}
+    {% include "crm/components/modal_form.html" with form=forms.accept %}{% include "crm/components/modal_actions.html" with label="Record acceptance" %}</form>
+{% include "crm/components/modal_end.html" %}
+
+{% include "crm/components/modal_start.html" with id="reject" title="Record rejection" %}
+  <form method="post" action="{% url 'crm:quotation_action' q.pk 'reject' %}" novalidate>{% csrf_token %}{% idem %}
+    {% include "crm/components/modal_form.html" with form=forms.reject %}{% include "crm/components/modal_actions.html" with label="Record rejection" danger=True %}</form>
+{% include "crm/components/modal_end.html" %}
+
+{% if can_override %}
+{% include "crm/components/modal_start.html" with id="override" title="Choose tax treatment" subtitle="Overrides every line. The engine result is kept, the document is flagged, and Accountant or Owner approval is required." %}
+  <form method="post" action="{% url 'crm:quotation_action' q.pk 'override' %}" novalidate>{% csrf_token %}{% idem %}
+    {% include "crm/components/modal_form.html" with form=forms.override %}{% include "crm/components/modal_actions.html" with label="Apply override" danger=True %}</form>
+{% include "crm/components/modal_end.html" %}
+{% endif %}
+{% endblock %}

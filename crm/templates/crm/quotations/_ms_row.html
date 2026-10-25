@@ -1,0 +1,10 @@
+{% load crm_tags %}
+<div class="grid grid-cols-1 gap-3 rounded-xl border border-gray-100 p-3 sm:grid-cols-12 dark:border-gray-800" data-ms-row {% if mf.DELETE.value %}style="display:none"{% endif %}>
+  {% for h in mf.hidden_fields %}{{ h }}{% endfor %}
+  <input name="{{ mf.name.html_name }}" value="{{ mf.name.value|default_if_none:'' }}" class="form-input h-10 sm:col-span-4" placeholder="Advance" maxlength="120" aria-label="Milestone name">
+  <div class="relative sm:col-span-2"><input name="{{ mf.percent.html_name }}" value="{{ mf.percent.value|default_if_none:'' }}" type="number" step="0.01" min="0" max="100" class="form-input h-10 pr-8" data-pct aria-label="Percent"><span class="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm text-gray-400">%</span></div>
+  <select name="{{ mf.trigger.html_name }}" class="form-select h-10 sm:col-span-3" aria-label="Trigger">{% for v, l in mf.trigger.field.choices %}<option value="{{ v }}" {% if mf.trigger.value == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+  <input name="{{ mf.due_rule.html_name }}" value="{{ mf.due_rule.value|default_if_none:'' }}" class="form-input h-10 sm:col-span-2" placeholder="Within 7 days" maxlength="120" aria-label="Due rule">
+  <label class="btn-icon-sm cursor-pointer sm:col-span-1" title="Remove"><input type="checkbox" name="{{ mf.DELETE.html_name }}" class="sr-only" data-delete {% if mf.DELETE.value %}checked{% endif %}>{% icon 'trash' 16 %}<span class="sr-only">Remove milestone</span></label>
+  {% for f in mf %}{% for e in f.errors %}<p class="form-error sm:col-span-12">{{ f.label }}: {{ e }}</p>{% endfor %}{% endfor %}
+</div>

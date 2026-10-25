@@ -1,0 +1,45 @@
+{% load crm_tags %}
+{# Customer-facing document body: never shows internal notes, cost or margin (Part 5.9). #}
+<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+  <div><p class="dl-label">Quotation for</p><p class="dl-value">{{ q.customer_display }}</p>
+    {% if q.billing_address %}<p class="text-sm text-gray-600 dark:text-gray-400">{{ q.billing_address|linebreaksbr }}</p>{% endif %}
+    {% if q.customer_gstin %}<p class="text-sm text-gray-600 dark:text-gray-400">GSTIN {{ q.customer_gstin }}</p>{% endif %}
+    {% if q.contact_name %}<p class="text-sm text-gray-600 dark:text-gray-400">Attn: {{ q.contact_name }}</p>{% endif %}</div>
+  <div class="md:text-right"><p class="dl-label">From</p><p class="dl-value">{{ company.legal_name }}</p><p class="text-sm text-gray-600 dark:text-gray-400">{{ company.address_text }}{% if company.gstin %}<br>GSTIN {{ company.gstin }}{% endif %}</p></div>
+</div>
+<div class="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+  <div><p class="dl-label">Date</p><p class="dl-value">{{ q.quotation_date|d }}</p></div>
+  <div><p class="dl-label">Valid until</p><p class="dl-value">{{ q.valid_until|d }}</p></div>
+  <div><p class="dl-label">Place of supply</p><p class="dl-value">{{ q.place_of_supply|state_name|default:"—" }}</p></div>
+  <div><p class="dl-label">Prices</p><p class="dl-value">{{ q.get_price_mode_display }}</p></div>
+</div>
+{% if q.title %}<h3 class="mt-5 text-base font-semibold text-gray-800 dark:text-white/90">{{ q.title }}</h3>{% endif %}
+<div class="table-wrap mt-4 rounded-xl border border-gray-200 dark:border-gray-800">
+  <table class="data-table">
+    <thead class="bg-gray-50 dark:bg-white/3"><tr><th class="th">#</th><th class="th">Description</th><th class="th">SAC</th><th class="th text-right">Qty</th><th class="th text-right">Rate</th><th class="th text-right">Discount</th><th class="th text-right">Taxable</th><th class="th text-right">GST</th><th class="th text-right">Total</th></tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+      {% for l in lines %}<tr><td class="td">{{ forloop.counter }}</td><td class="td text-gray-800 dark:text-white/90">{{ l.description }}{% if l.price_changed and show_internal %} <span class="badge badge-amber" title="Catalogue price {{ l.catalogue_price|inr }}">Price changed</span>{% endif %}</td><td class="td">{{ l.sac_code }}</td><td class="td text-right">{{ l.quantity|floatformat:"-2" }} {{ l.unit }}</td><td class="td text-right">{{ l.unit_price|inr }}</td><td class="td text-right">{% if l.discount_amount %}{{ l.discount_amount|inr }}{% else %}—{% endif %}</td><td class="td text-right">{{ l.taxable_value|inr }}</td><td class="td text-right">{% if l.taxability == 'taxable' %}{{ l.tax_rate|pct }}{% else %}{{ l.get_taxability_display }}{% endif %}</td><td class="td-strong px-5 py-3.5 text-right">{{ l.total|inr }}</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+<div class="mt-4 flex justify-end">
+  <dl class="w-full max-w-sm space-y-1.5 text-sm">
+    <div class="flex justify-between"><dt class="text-gray-500">Subtotal</dt><dd>{{ q.subtotal|inr }}</dd></div>
+    {% if q.discount_total %}<div class="flex justify-between"><dt class="text-gray-500">Discount</dt><dd>-{{ q.discount_total|inr }}</dd></div>{% endif %}
+    <div class="flex justify-between"><dt class="text-gray-500">Taxable amount</dt><dd>{{ q.taxable_total|inr }}</dd></div>
+    {% if q.supply_type == 'intra' %}<div class="flex justify-between"><dt class="text-gray-500">CGST</dt><dd>{{ q.cgst_total|inr }}</dd></div><div class="flex justify-between"><dt class="text-gray-500">SGST</dt><dd>{{ q.sgst_total|inr }}</dd></div>
+    {% elif q.igst_total %}<div class="flex justify-between"><dt class="text-gray-500">IGST</dt><dd>{{ q.igst_total|inr }}</dd></div>{% endif %}
+    {% if q.round_off %}<div class="flex justify-between"><dt class="text-gray-500">Round-off</dt><dd>{{ q.round_off|inr }}</dd></div>{% endif %}
+    <div class="flex justify-between border-t border-gray-200 pt-2 text-base font-semibold text-gray-800 dark:border-gray-700 dark:text-white/90"><dt>Grand total</dt><dd>{{ q.grand_total|inr }}</dd></div>
+    {% if q.advance_amount %}<div class="flex justify-between"><dt class="text-gray-500">Advance ({{ q.advance_percent|pct }})</dt><dd>{{ q.advance_amount|inr }}</dd></div>{% endif %}
+    <p class="pt-1 text-theme-xs text-gray-400">{{ q.grand_total|words }}</p>
+  </dl>
+</div>
+{% if milestones %}<div class="mt-5"><p class="dl-label mb-2">Payment milestones</p><ul class="space-y-1 text-sm">{% for m in milestones %}<li class="flex justify-between"><span>{{ m.name }} — {{ m.get_trigger_display }} {{ m.due_rule }}</span><span>{{ m.percent|pct }}</span></li>{% endfor %}</ul></div>{% endif %}
+<div class="mt-5 grid grid-cols-1 gap-5 text-sm text-gray-700 md:grid-cols-2 dark:text-gray-300">
+  {% if q.deliverables %}<div><p class="dl-label">Deliverables</p><p class="whitespace-pre-line">{{ q.deliverables }}</p></div>{% endif %}
+  {% if q.exclusions %}<div><p class="dl-label">Exclusions</p><p class="whitespace-pre-line">{{ q.exclusions }}</p></div>{% endif %}
+  {% if q.assumptions %}<div><p class="dl-label">Assumptions</p><p class="whitespace-pre-line">{{ q.assumptions }}</p></div>{% endif %}
+  {% if q.timeline %}<div><p class="dl-label">Timeline</p><p>{{ q.timeline }}</p></div>{% endif %}
+  {% if q.terms %}<div class="md:col-span-2"><p class="dl-label">Terms</p><p class="whitespace-pre-line">{{ q.terms }}</p></div>{% endif %}
+</div>

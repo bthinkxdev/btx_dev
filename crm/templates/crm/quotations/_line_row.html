@@ -1,0 +1,25 @@
+{% load crm_tags %}
+<tr class="align-top" data-line-row {% if lf.DELETE.value %}style="display:none"{% endif %}>
+  <td class="px-2 py-3">{% for h in lf.hidden_fields %}{{ h }}{% endfor %}<span class="text-theme-xs text-gray-400" data-line-no></span></td>
+  <td class="px-2 py-3 min-w-56">
+    <select name="{{ lf.service.html_name }}" id="{{ lf.service.auto_id }}" class="form-select mb-2 h-10" data-service aria-label="Service">
+      <option value="">Custom line</option>
+      {% for value, label in lf.service.field.choices %}{% if value %}<option value="{{ value }}" {% if lf.service.value|stringformat:'s' == value|stringformat:'s' %}selected{% endif %}>{{ label }}</option>{% endif %}{% endfor %}
+    </select>
+    <input name="{{ lf.description.html_name }}" value="{{ lf.description.value|default_if_none:'' }}" class="form-input h-10 {% if lf.description.errors %}form-invalid{% endif %}" placeholder="Description" maxlength="500" data-description aria-label="Description">
+    {% for e in lf.non_field_errors %}<p class="form-error">{{ e }}</p>{% endfor %}{% for f in lf %}{% for e in f.errors %}<p class="form-error">{{ f.label }}: {{ e }}</p>{% endfor %}{% endfor %}
+  </td>
+  <td class="px-2 py-3 w-24"><input name="{{ lf.sac_code.html_name }}" value="{{ lf.sac_code.value|default_if_none:'' }}" class="form-input h-10 px-2" maxlength="8" data-sac aria-label="SAC"></td>
+  <td class="px-2 py-3 w-24"><input name="{{ lf.quantity.html_name }}" value="{{ lf.quantity.value|default_if_none:'1' }}" type="number" step="0.01" min="0.01" class="form-input h-10 px-2" data-calc aria-label="Quantity">
+    <input name="{{ lf.unit.html_name }}" value="{{ lf.unit.value|default_if_none:'Nos' }}" class="form-input mt-2 h-9 px-2 text-xs" maxlength="20" data-unit aria-label="Unit"></td>
+  <td class="px-2 py-3 w-32"><input name="{{ lf.unit_price.html_name }}" value="{{ lf.unit_price.value|default_if_none:'' }}" type="number" step="0.01" min="0" class="form-input h-10 px-2" data-calc data-price aria-label="Unit price">
+    <p class="text-theme-xs text-warning-600 hidden" data-floor-warn>Below floor price</p></td>
+  <td class="px-2 py-3 w-32">
+    <select name="{{ lf.discount_mode.html_name }}" class="form-select h-10 px-2 pr-8" data-calc aria-label="Discount type"><option value="">No discount</option><option value="percent" {% if lf.discount_mode.value == 'percent' %}selected{% endif %}>%</option><option value="amount" {% if lf.discount_mode.value == 'amount' %}selected{% endif %}>₹</option></select>
+    <input name="{{ lf.discount_value.html_name }}" value="{{ lf.discount_value.value|default_if_none:'' }}" type="number" step="0.01" min="0" class="form-input mt-2 h-9 px-2" data-calc aria-label="Discount value"></td>
+  <td class="px-2 py-3 w-36">
+    <select name="{{ lf.taxability.html_name }}" class="form-select h-10 px-2 pr-8" data-calc data-taxability {% if not can_override %}data-locked{% endif %} aria-label="Taxability">{% for value, label in lf.taxability.field.choices %}<option value="{{ value }}" {% if lf.taxability.value == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+    <select name="{{ lf.tax_rate.html_name }}" class="form-select mt-2 h-9 px-2 pr-8 text-xs" data-calc data-rate {% if not can_override %}data-locked{% endif %} aria-label="GST rate">{% for value, label in lf.tax_rate.field.choices %}<option value="{{ value }}" {% if lf.tax_rate.value|stringformat:'s' == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></td>
+  <td class="px-2 py-3 w-32 text-right text-sm font-medium text-gray-800 dark:text-white/90" data-line-total>—</td>
+  <td class="px-2 py-3"><label class="btn-icon-sm cursor-pointer" title="Remove line"><input type="checkbox" name="{{ lf.DELETE.html_name }}" class="sr-only" data-delete {% if lf.DELETE.value %}checked{% endif %}>{% icon 'trash' 16 %}<span class="sr-only">Remove</span></label></td>
+</tr>

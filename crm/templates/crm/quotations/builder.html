@@ -1,0 +1,252 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{% if is_new %}New quotation{% else %}Edit {{ q.display_number }}{% endif %}{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+  <div>
+    <h1 class="page-title">{% if is_new %}New quotation{% else %}{{ q.display_number }}{% endif %}</h1>
+    <p class="muted mt-1">For {{ q.customer_display|default:"—" }}{% if q.lead_id %} · lead <a class="link" href="{% url 'crm:lead_detail' q.lead_id %}">{{ q.lead.name }}</a>{% endif %}{% if q.version > 1 %} · version {{ q.version }}{% endif %}</p>
+  </div>
+  {% badge q.status q.get_status_display %}
+</div>
+{% endblock %}
+{% block content %}
+<form method="post" novalidate data-dirty-check id="quote-form" class="pb-28">{% csrf_token %}{% idem %}
+  {{ form.row_version }}
+  {% if q.lead_id and is_new %}<input type="hidden" name="src_lead" value="{{ q.lead_id }}">{% endif %}
+  {% if q.client_id and is_new %}<input type="hidden" name="src_client" value="{{ q.client_id }}">{% endif %}
+  {% include "crm/components/form_errors.html" %}
+  {% if lines.non_form_errors %}<div class="alert alert-error mb-5" role="alert"><p class="text-sm">{{ lines.non_form_errors|join:" " }}</p></div>{% endif %}
+  {% if milestones.non_form_errors %}<div class="alert alert-error mb-5" role="alert"><p class="text-sm">{{ milestones.non_form_errors|join:" " }}</p></div>{% endif %}
+  {% if reasons %}<div class="alert alert-info mb-5"><span class="text-blue-light-500">{% icon 'shield' 20 %}</span><div class="text-sm text-gray-700 dark:text-gray-300"><p class="font-semibold">Needs approval before sending</p><ul class="list-disc pl-5">{% for r in reasons %}<li>{{ r }}</li>{% endfor %}</ul></div></div>{% endif %}
+
+  <div class="grid grid-cols-1 gap-6 2xl:grid-cols-12">
+    <div class="space-y-6 2xl:col-span-8">
+      <div class="card"><div class="card-header"><h2 class="card-title">Header</h2></div>
+        <div class="card-body grid grid-cols-1 gap-5 md:grid-cols-3">
+          {% field form.title wrapper_class="md:col-span-2" %}{% field form.reference %}
+          {% field form.quotation_date %}{% field form.valid_until help="Default 15 days." %}{% field form.owner %}
+          {% field form.contact_name %}{% field form.contact_email %}{% field form.contact_phone %}
+        </div></div>
+
+      <div class="card"><div class="card-header"><h2 class="card-title">Tax context</h2><p class="muted">Drives the GST engine</p></div>
+        <div class="card-body grid grid-cols-1 gap-5 md:grid-cols-3">
+          {% field form.customer_name %}{% field form.customer_type %}{% field form.customer_gstin %}
+          {% field form.customer_state %}{% field form.place_of_supply %}{% field form.price_mode %}
+          {% field form.billing_address wrapper_class="md:col-span-3" %}
+        </div></div>
+
+      <div class="card">
+        <div class="card-header"><h2 class="card-title">Line items</h2>
+          <button type="button" class="btn btn-secondary btn-sm" data-add-line>{% icon 'plus' 16 %} Add line</button></div>
+        {{ lines.management_form }}
+        <div class="table-wrap border-t border-gray-100 dark:border-gray-800">
+          <table class="w-full min-w-[980px] text-left">
+            <thead><tr class="text-theme-xs text-gray-500"><th class="px-2 py-2">#</th><th class="px-2 py-2">Service / description</th><th class="px-2 py-2">SAC</th><th class="px-2 py-2">Qty / unit</th><th class="px-2 py-2">Unit price</th><th class="px-2 py-2">Discount</th><th class="px-2 py-2">GST</th><th class="px-2 py-2 text-right">Line total</th><th></th></tr></thead>
+            <tbody id="line-rows" class="divide-y divide-gray-100 dark:divide-gray-800">
+              {% for lf in lines %}{% include "crm/quotations/_line_row.html" %}{% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <template id="line-template">{% with lf=lines.empty_form %}{% include "crm/quotations/_line_row.html" %}{% endwith %}</template>
+        {% if not can_override %}<p class="form-help px-5 pb-4">GST for catalogue services comes from the effective-dated service rule. A different treatment needs the override permission and approval.</p>{% endif %}
+      </div>
+
+      <div class="card"><div class="card-header"><h2 class="card-title">Discount and payment terms</h2></div>
+        <div class="card-body grid grid-cols-1 gap-5 md:grid-cols-3">
+          {% field form.discount_mode %}{% field form.discount_value %}{% field form.discount_reason help="Required above your discount limit." %}
+          {% field form.advance_percent suffix_text="%" %}{% field form.payment_terms_days %}{% field form.balance_terms %}
+          {% field form.late_fee_text wrapper_class="md:col-span-3" %}
+        </div>
+        <div class="border-t border-gray-100 px-5 py-4 dark:border-gray-800">
+          <div class="mb-3 flex items-center justify-between"><p class="text-sm font-medium text-gray-800 dark:text-white/90">Payment milestones <span class="muted">(must add to 100%)</span></p><button type="button" class="btn btn-secondary btn-sm" data-add-ms>{% icon 'plus' 16 %} Add milestone</button></div>
+          {{ milestones.management_form }}
+          <div id="ms-rows" class="space-y-3">
+            {% for mf in milestones %}{% include "crm/quotations/_ms_row.html" %}{% endfor %}
+          </div>
+          <template id="ms-template">{% with mf=milestones.empty_form %}{% include "crm/quotations/_ms_row.html" %}{% endwith %}</template>
+          <p class="mt-2 text-theme-sm text-gray-500">Milestones total: <span id="ms-total">0</span>%</p>
+        </div>
+      </div>
+
+      <div class="card"><div class="card-header"><h2 class="card-title">Scope and terms</h2></div>
+        <div class="card-body grid grid-cols-1 gap-5 md:grid-cols-2">
+          {% field form.deliverables wrapper_class="md:col-span-2" %}{% field form.exclusions %}{% field form.assumptions %}
+          {% field form.timeline %}{% field form.revision_limits %}
+          {% field form.terms wrapper_class="md:col-span-2" help="Changing the standard terms flags the quotation for approval." %}
+          {% field form.signatory_name %}
+        </div></div>
+
+      <div class="card border-dashed"><div class="card-header"><h2 class="card-title">Internal (never on the PDF)</h2></div>
+        <div class="card-body grid grid-cols-1 gap-5 md:grid-cols-2">{% field form.internal_notes %}{% if form.cost_estimate %}{% field form.cost_estimate prefix_text="₹" %}{% endif %}</div></div>
+    </div>
+
+    <aside class="2xl:col-span-4">
+      <div class="card sticky top-24" aria-live="polite">
+        <div class="card-header"><h2 class="card-title">Summary</h2><span class="text-theme-xs text-gray-400" id="calc-state">Calculated by the server</span></div>
+        <div class="card-body space-y-2 text-sm" id="summary">
+          <p class="text-theme-xs text-gray-500" id="sum-supply">—</p>
+          <p class="text-theme-xs text-gray-400" id="sum-why"></p>
+          <div class="flex justify-between"><span class="text-gray-500">Subtotal</span><span id="sum-subtotal">—</span></div>
+          <div class="flex justify-between"><span class="text-gray-500">Discount <span id="sum-disc-pct" class="text-theme-xs"></span></span><span id="sum-discount">—</span></div>
+          <div class="flex justify-between"><span class="text-gray-500">Taxable amount</span><span id="sum-taxable">—</span></div>
+          <div class="flex justify-between" data-intra><span class="text-gray-500">CGST</span><span id="sum-cgst">—</span></div>
+          <div class="flex justify-between" data-intra><span class="text-gray-500">SGST</span><span id="sum-sgst">—</span></div>
+          <div class="flex justify-between" data-inter><span class="text-gray-500">IGST</span><span id="sum-igst">—</span></div>
+          <div class="flex justify-between"><span class="text-gray-500">Round-off</span><span id="sum-round">—</span></div>
+          <div class="flex justify-between border-t border-gray-200 pt-2 text-base font-semibold text-gray-800 dark:border-gray-700 dark:text-white/90"><span>Grand total</span><span id="sum-total">—</span></div>
+          <div class="flex justify-between"><span class="text-gray-500">Advance</span><span id="sum-advance">—</span></div>
+          <div class="flex justify-between"><span class="text-gray-500">Balance</span><span id="sum-balance">—</span></div>
+          <p class="hidden rounded-lg bg-warning-50 p-2 text-theme-xs text-warning-700 dark:bg-warning-500/15" id="sum-limit">Discount is above your limit: needs manager approval.</p>
+          {% if can_cost %}<p class="text-theme-xs text-gray-500" id="sum-margin"></p>{% endif %}
+          <p class="hidden text-theme-xs text-error-600" id="sum-error"></p>
+          <p class="text-theme-xs text-gray-400" id="draft-local"></p>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="fixed right-0 bottom-0 left-0 z-999 border-t border-gray-200 bg-white/95 px-4 py-3 backdrop-blur xl:left-72.5 dark:border-gray-800 dark:bg-gray-900/95">
+    <div class="mx-auto flex max-w-(--breakpoint-2xl) flex-wrap items-center justify-end gap-2">
+      <a href="{% if q.pk %}{% url 'crm:quotation_detail' q.pk %}{% elif q.lead_id %}{% url 'crm:lead_detail' q.lead_id %}{% else %}{% url 'crm:quotation_list' %}{% endif %}" class="btn btn-secondary">Cancel</a>
+      {% if q.pk %}<a href="{% url 'crm:quotation_pdf' q.pk %}" target="_blank" rel="noopener" class="btn btn-secondary">{% icon 'eye' 18 %} Preview PDF</a>{% endif %}
+      <button class="btn btn-secondary" data-loading-text="Saving…">Save draft</button>
+      <button name="next" value="detail" class="btn btn-primary" data-loading-text="Saving…">Save and review</button>
+    </div>
+  </div>
+</form>
+{{ catalog|json_script:"service-catalog" }}
+{% endblock %}
+{% block extra_js %}
+<script>
+(function () {
+  var form = document.getElementById('quote-form');
+  var catalog = JSON.parse(document.getElementById('service-catalog').textContent);
+  var previewUrl = "{% url 'crm:quotation_preview_totals' %}";
+  var storeKey = 'crm-quote-draft-{{ q.pk|default:"new" }}-{{ request.user.pk }}';
+  var timer = null;
+
+  function rows() { return Array.prototype.slice.call(document.querySelectorAll('#line-rows [data-line-row]')); }
+  function renumber() {
+    var n = 0;
+    rows().forEach(function (r) { if (r.style.display !== 'none') { n++; r.querySelector('[data-line-no]').textContent = n; } });
+  }
+  function lockTax(row) {
+    var hasService = !!row.querySelector('[data-service]').value;
+    row.querySelectorAll('[data-locked]').forEach(function (el) {
+      el.classList.toggle('pointer-events-none', hasService);
+      el.classList.toggle('opacity-60', hasService);
+      el.tabIndex = hasService ? -1 : 0;
+      el.setAttribute('aria-readonly', hasService ? 'true' : 'false');
+    });
+  }
+  function floorCheck(row) {
+    var s = catalog[row.querySelector('[data-service]').value];
+    var price = row.querySelector('[data-price]').value;
+    var warn = row.querySelector('[data-floor-warn]');
+    // String compare via server-formatted decimals is unsafe; compare as integers of paise.
+    function paise(v) { if (!v) return null; var p = String(v).split('.'); return parseInt(p[0] || '0', 10) * 100 + parseInt(((p[1] || '') + '00').slice(0, 2), 10); }
+    warn.classList.toggle('hidden', !(s && paise(s.floor) && paise(price) !== null && paise(price) < paise(s.floor)));
+  }
+  function wireRow(row) {
+    var sel = row.querySelector('[data-service]');
+    sel.addEventListener('change', function () {
+      var s = catalog[sel.value];
+      if (s) {
+        row.querySelector('[data-description]').value = s.description;
+        row.querySelector('[data-sac]').value = s.sac;
+        row.querySelector('[data-unit]').value = s.unit;
+        row.querySelector('[data-price]').value = s.price;
+        row.querySelector('[data-taxability]').value = s.taxability;
+        row.querySelector('[data-rate]').value = s.rate;
+      }
+      lockTax(row); floorCheck(row); schedule();
+    });
+    row.querySelector('[data-delete]').addEventListener('change', function () {
+      row.style.display = this.checked ? 'none' : ''; renumber(); schedule();
+    });
+    row.querySelector('[data-price]').addEventListener('input', function () { floorCheck(row); });
+    lockTax(row); floorCheck(row);
+  }
+  function addFrom(templateId, containerId, prefix) {
+    var total = form.querySelector('[name="' + prefix + '-TOTAL_FORMS"]');
+    var idx = parseInt(total.value, 10);
+    var html = document.getElementById(templateId).innerHTML.replace(/__prefix__/g, idx);
+    var tmp = document.createElement(prefix === 'lines' ? 'tbody' : 'div');
+    tmp.innerHTML = html.trim();
+    var el = tmp.firstElementChild;
+    document.getElementById(containerId).appendChild(el);
+    total.value = idx + 1;
+    form.dataset.dirty = '1';
+    return el;
+  }
+  document.querySelector('[data-add-line]').addEventListener('click', function () {
+    var r = addFrom('line-template', 'line-rows', 'lines'); wireRow(r); renumber();
+    r.querySelector('[data-service]').focus();
+  });
+  document.querySelector('[data-add-ms]').addEventListener('click', function () {
+    var m = addFrom('ms-template', 'ms-rows', 'ms'); wireMs(m); msTotal();
+  });
+  function wireMs(m) {
+    m.querySelectorAll('input').forEach(function (i) { i.addEventListener('input', msTotal); });
+    var del = m.querySelector('[data-delete]');
+    if (del) del.addEventListener('change', function () { m.style.display = this.checked ? 'none' : ''; msTotal(); });
+  }
+  function msTotal() {
+    // Sum percentages in basis points to avoid floating point.
+    var bp = 0;
+    document.querySelectorAll('#ms-rows [data-ms-row]').forEach(function (m) {
+      if (m.style.display === 'none') return;
+      var v = (m.querySelector('[data-pct]').value || '0').split('.');
+      bp += parseInt(v[0] || '0', 10) * 100 + parseInt(((v[1] || '') + '00').slice(0, 2), 10);
+    });
+    var el = document.getElementById('ms-total');
+    el.textContent = (bp / 100).toFixed(2).replace(/\.00$/, '');
+    el.className = bp === 0 || bp === 10000 ? '' : 'font-semibold text-error-600';
+  }
+  function schedule() { clearTimeout(timer); timer = setTimeout(recalc, 400); saveLocal(); }
+  function set(id, v) { var el = document.getElementById(id); if (el) el.textContent = v; }
+  function recalc() {
+    var fd = new FormData(form);
+    document.getElementById('calc-state').textContent = 'Calculating…';
+    fetch(previewUrl, { method: 'POST', body: fd, credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var err = document.getElementById('sum-error');
+        document.getElementById('calc-state').textContent = 'Calculated by the server';
+        if (!d.ok) { err.textContent = d.error; err.classList.remove('hidden'); return; }
+        err.classList.add('hidden');
+        set('sum-supply', d.supply); set('sum-why', d.why);
+        set('sum-subtotal', d.subtotal); set('sum-discount', '-' + d.discount); set('sum-taxable', d.taxable);
+        set('sum-cgst', d.cgst); set('sum-sgst', d.sgst); set('sum-igst', d.igst); set('sum-round', d.round_off);
+        set('sum-total', d.total); set('sum-advance', d.advance); set('sum-balance', d.balance);
+        set('sum-disc-pct', d.discount_pct !== '0.00' ? '(' + d.discount_pct + '%)' : '');
+        document.querySelectorAll('[data-intra]').forEach(function (e) { e.style.display = d.intra ? '' : 'none'; });
+        document.querySelectorAll('[data-inter]').forEach(function (e) { e.style.display = d.intra ? 'none' : ''; });
+        document.getElementById('sum-limit').classList.toggle('hidden', !d.over_limit);
+        var mg = document.getElementById('sum-margin');
+        if (mg) { mg.textContent = d.margin !== null ? 'Estimated margin ' + d.margin + '%' + (d.margin_low ? ' — below the floor' : '') : ''; mg.className = 'text-theme-xs ' + (d.margin_low ? 'text-error-600' : 'text-gray-500'); }
+        var visible = rows().filter(function (r) { return r.style.display !== 'none'; });
+        var byKey = {}; (d.lines || []).forEach(function (l) { byKey[l.key] = l; });
+        rows().forEach(function (r, i) { var l = byKey[String(i)]; r.querySelector('[data-line-total]').textContent = l ? l.total : '—'; });
+      })
+      .catch(function () { document.getElementById('calc-state').textContent = 'Could not calculate (offline?)'; });
+  }
+  // Unsaved changes are kept on this device so nothing is lost if the tab closes.
+  function saveLocal() {
+    try {
+      var data = {};
+      new FormData(form).forEach(function (v, k) { if (k !== 'csrfmiddlewaretoken' && k !== '_idem') data[k] = v; });
+      localStorage.setItem(storeKey, JSON.stringify({ at: Date.now(), data: data }));
+      var t = new Date(); document.getElementById('draft-local').textContent = 'Unsaved changes kept on this device ' + t.toTimeString().slice(0, 5);
+    } catch (e) { /* storage unavailable */ }
+  }
+  form.addEventListener('submit', function () { try { localStorage.removeItem(storeKey); } catch (e) {} });
+  form.addEventListener('input', schedule);
+  form.addEventListener('change', schedule);
+  rows().forEach(wireRow);
+  document.querySelectorAll('#ms-rows [data-ms-row]').forEach(wireMs);
+  renumber(); msTotal(); recalc();
+  if (!rows().length) { document.querySelector('[data-add-line]').click(); }
+})();
+</script>
+{% endblock %}

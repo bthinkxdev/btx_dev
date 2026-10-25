@@ -1,0 +1,16 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Merge client{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Merge duplicate client" subtitle="All leads, quotations, invoices, payments, contracts and projects of the other client move to this one. The old record redirects here." %}{% endblock %}
+{% block content %}
+<div class="card max-w-3xl">
+  <div class="card-body space-y-5">
+    <p class="text-sm text-gray-700 dark:text-gray-300">Keeping: <strong>{{ client }}</strong>{% if client.gstin %} · {{ client.gstin }}{% endif %}</p>
+    <form method="get" class="flex gap-2"><input name="q" value="{{ q }}" class="form-input" placeholder="Search another client to merge in"><button class="btn btn-secondary">Search</button></form>
+    <form method="post" class="space-y-3" data-confirm="Merge the selected client into {{ client }}?" data-confirm-body="This cannot be undone. All child records move to {{ client }}." data-confirm-danger="1" data-confirm-ok="Yes, merge">{% csrf_token %}{% idem %}
+      {% for c in candidates %}<label class="flex items-center gap-3 rounded-lg border border-gray-200 p-3 text-sm dark:border-gray-800"><input type="radio" name="other" value="{{ c.pk }}" required class="text-brand-500"> {{ c }} {% if c.gstin %}· {{ c.gstin }}{% endif %} · {{ c.phone|phone }} <span class="badge badge-amber">Suggested</span></label>{% endfor %}
+      {% for c in search %}<label class="flex items-center gap-3 rounded-lg border border-gray-200 p-3 text-sm dark:border-gray-800"><input type="radio" name="other" value="{{ c.pk }}" required class="text-brand-500"> {{ c }} {% if c.gstin %}· {{ c.gstin }}{% endif %}</label>{% endfor %}
+      {% if candidates or search %}<button class="btn btn-danger" data-loading-text="Merging…">Merge into {{ client }}</button>{% else %}<p class="muted">No suggested duplicates. Search above.</p>{% endif %}
+    </form>
+  </div>
+</div>
+{% endblock %}

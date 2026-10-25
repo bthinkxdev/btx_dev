@@ -1,0 +1,31 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{% if obj %}{{ obj }}{% else %}Add service{% endif %}{% endblock %}
+{% block page_header %}{% if obj %}{% include "crm/components/page_header.html" with title="Edit service" subtitle=obj.name %}{% else %}{% include "crm/components/page_header.html" with title="Add service" %}{% endif %}{% endblock %}
+{% block content %}
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+  <form method="post" class="card xl:col-span-2" novalidate data-dirty-check>{% csrf_token %}{% idem %}{{ form.row_version }}
+    <div class="card-body grid grid-cols-1 gap-5 md:grid-cols-2">
+      {% include "crm/components/form_errors.html" %}
+      {% for f in form.visible_fields %}{% if f.name == 'description' or f.name == 'deliverables' or f.name == 'task_template' %}{% field f wrapper_class="md:col-span-2" %}{% else %}{% field f %}{% endif %}{% endfor %}
+    </div>
+    <div class="flex justify-end gap-3 border-t border-gray-100 p-5 dark:border-gray-800"><a href="{% url 'crm:service_list' %}" class="btn btn-secondary">Cancel</a><button class="btn btn-primary" data-loading-text="Saving…">Save service</button></div>
+  </form>
+  {% if obj %}
+  <div class="card">
+    <div class="card-header"><h2 class="card-title">Effective-dated tax rules</h2></div>
+    <div class="card-body space-y-4">
+      <p class="muted">Documents look up the rule valid on their date and store a snapshot. Changes need a CA reference.</p>
+      <ul class="space-y-2">
+        {% for r in rules %}<li class="rounded-lg border border-gray-100 p-3 text-sm dark:border-gray-800"><p class="font-medium text-gray-800 dark:text-white/90">{{ r.get_taxability_display }} {{ r.rate|pct }}</p><p class="text-theme-xs text-gray-500">{{ r.effective_from|d }} → {{ r.effective_to|d }} · {{ r.reason }}</p>
+          {% if not r.effective_to %}<form method="post" action="{% url 'crm:service_tax_rule_end' obj.pk r.pk %}" class="mt-2 flex gap-2">{% csrf_token %}<input type="date" name="end" required class="form-input h-9 py-1" aria-label="End date"><button class="btn btn-secondary btn-sm">Set end date</button></form>{% endif %}</li>
+        {% empty %}<li class="muted">No rules yet: the service's default rate applies.</li>{% endfor %}
+      </ul>
+      <form method="post" action="{% url 'crm:service_tax_rule' obj.pk %}" class="space-y-4 border-t border-gray-100 pt-4 dark:border-gray-800">{% csrf_token %}{% idem %}
+        {% for f in rule_form.visible_fields %}{% field f %}{% endfor %}
+        <button class="btn btn-secondary w-full" data-loading-text="Adding…">Add rule</button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

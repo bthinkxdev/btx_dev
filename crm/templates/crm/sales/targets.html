@@ -1,0 +1,60 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Targets and performance{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+  <div><h1 class="page-title">Targets and performance</h1><p class="muted mt-1">Default basis is collected value. Forecast = collected so far + weighted open deals closing this month.</p></div>
+  <div class="flex items-center gap-2">
+    <a class="btn btn-secondary btn-sm" href="?month={{ prev|date:'Y-m' }}" aria-label="Previous month">{% icon 'chevron_left' 16 %}</a>
+    <span class="min-w-28 text-center text-sm font-medium text-gray-800 dark:text-white/90">{{ month|date:"F Y" }}</span>
+    <a class="btn btn-secondary btn-sm" href="?month={{ next|date:'Y-m' }}" aria-label="Next month">{% icon 'chevron_right' 16 %}</a>
+    {% if can_configure %}<button type="button" class="btn btn-primary" @click="$store.modal.show('target')">{% icon 'target' 18 %} Set target</button>{% endif %}
+  </div>
+</div>
+{% endblock %}
+{% block content %}
+<div class="card mb-6">
+  <div class="card-header"><h2 class="card-title">Actual against target</h2></div>
+  <div class="table-wrap border-t border-gray-100 dark:border-gray-800"><table class="data-table responsive-cards">
+    <thead><tr><th class="th">Salesperson</th><th class="th text-right">Leads</th><th class="th text-right">Quotations sent</th><th class="th text-right">Won value</th><th class="th text-right">Collected</th><th class="th text-right">Target (collected)</th><th class="th">Achievement</th><th class="th text-right">Forecast</th><th class="th text-right">Gap</th></tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+    {% for r in rows %}
+      <tr>
+        <td class="td-strong px-5 py-3.5" data-label="Salesperson">{{ r.user|uname }}</td>
+        <td class="td text-right" data-label="Leads">{{ r.leads }}{% if r.target %} / {{ r.target.lead_count }}{% endif %}</td>
+        <td class="td text-right" data-label="Quotations">{{ r.quotes }}{% if r.target %} / {{ r.target.quotation_count }}{% endif %}</td>
+        <td class="td text-right" data-label="Won">{{ r.won|inr0 }}{% if r.target %}<span class="block text-theme-xs">of {{ r.target.won_value|inr0 }}</span>{% endif %}</td>
+        <td class="td text-right" data-label="Collected">{{ r.collected|inr0 }}</td>
+        <td class="td text-right" data-label="Target">{% if r.target %}{{ r.target.collected_value|inr0 }}{% else %}—{% endif %}</td>
+        <td class="td w-44" data-label="Achievement">{% if r.pct is not None %}<div class="h-2 w-full rounded-full bg-gray-100 dark:bg-gray-800"><div class="h-2 rounded-full {% if r.pct >= 100 %}bg-success-500{% elif r.pct >= 60 %}bg-brand-500{% else %}bg-warning-500{% endif %}" style="width: {% if r.pct > 100 %}100{% else %}{{ r.pct }}{% endif %}%"></div></div><span class="text-theme-xs">{{ r.pct }}%</span>{% else %}No target{% endif %}</td>
+        <td class="td text-right" data-label="Forecast">{{ r.forecast|inr0 }}</td>
+        <td class="td text-right" data-label="Gap">{% if r.gap is not None %}{{ r.gap|inr0 }}{% else %}—{% endif %}</td>
+      </tr>
+    {% empty %}<tr><td colspan="9" class="td">No salespeople set to receive leads yet. Turn on "Receives auto-assigned leads" in Users and roles.</td></tr>{% endfor %}
+    </tbody></table></div>
+</div>
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+  <div class="card">
+    <div class="card-header"><h2 class="card-title">Funnel (leads created this month)</h2></div>
+    <div class="card-body space-y-3">
+      {% for f in funnel %}
+        <a href="{% url 'crm:lead_list' %}?view=table&stage={{ f.stage }}" class="block">
+          <div class="mb-1 flex justify-between text-sm"><span class="text-gray-700 dark:text-gray-300">{{ f.label }}</span><span class="text-gray-500">{{ f.count }}{% if f.conv is not None %} · {{ f.conv }}% from previous{% endif %}</span></div>
+          <div class="h-6 rounded-md bg-gray-100 dark:bg-gray-800"><div class="bg-brand-500 h-6 rounded-md" style="width: {{ f.width }}%"></div></div>
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><h2 class="card-title">Activity quality</h2></div>
+    <div class="table-wrap border-t border-gray-100 dark:border-gray-800"><table class="data-table">
+      <thead><tr><th class="th">Person</th><th class="th text-right">Calls / day</th><th class="th text-right">First response</th><th class="th text-right">Overdue now</th><th class="th text-right">Quotations</th><th class="th text-right">Links paid</th></tr></thead>
+      <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for q in quality %}<tr><td class="td">{{ q.user|uname }}</td><td class="td text-right">{{ q.calls_per_day }}</td><td class="td text-right">{% if q.first_response_min is not None %}{{ q.first_response_min }} min{% else %}—{% endif %}</td><td class="td text-right {% if q.overdue %}text-error-600{% endif %}">{{ q.overdue }}</td><td class="td text-right">{{ q.quotes }}</td><td class="td text-right">{{ q.links_paid }}</td></tr>{% endfor %}</tbody></table></div>
+  </div>
+</div>
+{% if can_configure %}
+{% include "crm/components/modal_start.html" with id="target" title="Set monthly target" subtitle="Target changes are effective-dated by month and audited." %}
+  <form method="post" action="{% url 'crm:target_save' %}" novalidate>{% csrf_token %}{% idem %}
+    {% include "crm/components/modal_form.html" with form=form %}{% include "crm/components/modal_actions.html" with label="Save target" %}</form>
+{% include "crm/components/modal_end.html" %}
+{% endif %}
+{% endblock %}

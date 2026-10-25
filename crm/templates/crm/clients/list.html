@@ -1,0 +1,31 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Clients{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+  <div><h1 class="page-title">Clients <span class="ml-1 text-base font-normal text-gray-500">({{ total }})</span></h1><p class="muted mt-1">One record per client across quotations, contracts, projects, invoices and payments.</p></div>
+  {% if can_create %}<a href="{% url 'crm:client_create' %}" class="btn btn-primary">{% icon 'plus' 18 %} Add client</a>{% endif %}
+</div>
+{% endblock %}
+{% block content %}
+<div class="card">
+  {% include "crm/components/list_toolbar.html" %}
+  {% if object_list %}
+  <div class="table-wrap"><table class="data-table responsive-cards">
+    <thead class="border-b border-gray-100 dark:border-gray-800"><tr><th class="th">{% sort_link 'name' 'Client' %}</th><th class="th">Contact</th>{% if show_tax %}<th class="th">GSTIN</th>{% endif %}<th class="th">Location</th><th class="th">Owner</th><th class="th text-right">Outstanding</th><th class="th">Status</th></tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+    {% for c in object_list %}
+      <tr class="hover:bg-gray-50 dark:hover:bg-white/3">
+        <td class="td" data-label="Client"><a class="td-strong hover:text-brand-500" href="{% url 'crm:client_detail' c.pk %}">{{ c.display_name }}</a><span class="block text-theme-xs">{{ c.get_client_type_display }}{% if c.industry %} · {{ c.industry }}{% endif %}</span></td>
+        <td class="td" data-label="Contact">{% if c.phone %}<a href="tel:{{ c.phone }}" class="hover:text-brand-500">{{ c.phone|phone }}</a>{% endif %}{% if c.email %}<span class="block text-theme-xs">{{ c.email }}</span>{% endif %}</td>
+        {% if show_tax %}<td class="td font-mono text-theme-xs" data-label="GSTIN">{{ c.gstin|default:"—" }}</td>{% endif %}
+        <td class="td" data-label="Location">{{ c.billing_city|default:"—" }}{% if c.billing_state %}, {{ c.billing_state|state_name }}{% endif %}</td>
+        <td class="td" data-label="Owner">{{ c.owner|uname }}</td>
+        <td class="td text-right whitespace-nowrap" data-label="Outstanding">{{ c.outstanding|default:0|inr }}</td>
+        <td class="td" data-label="Status">{% badge c.status c.get_status_display %}</td>
+      </tr>
+    {% endfor %}
+    </tbody></table></div>
+  {% include "crm/components/pagination.html" %}
+  {% else %}{% url 'crm:client_create' as add_url %}{% include "crm/components/empty_state.html" with filtered=any_filter title="No clients yet" text="Clients are created when a lead is won, or you can add one directly." action_url=add_url action_label="Add client" icon="briefcase" %}{% endif %}
+</div>
+{% endblock %}

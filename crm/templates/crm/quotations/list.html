@@ -1,0 +1,29 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Quotations{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Quotations" subtitle="Versioned offers. A sent version never changes; edits create a new version." count=total %}{% endblock %}
+{% block content %}
+<div class="card">
+  {% include "crm/components/list_toolbar.html" %}
+  {% if object_list %}
+  <div class="table-wrap"><table class="data-table responsive-cards">
+    <thead class="border-b border-gray-100 dark:border-gray-800"><tr><th class="th">Number</th><th class="th">Customer</th><th class="th">Version</th><th class="th text-right">{% sort_link 'total' 'Total' %}</th><th class="th">Status</th><th class="th">Owner</th><th class="th">{% sort_link 'sent' 'Sent' %}</th><th class="th">{% sort_link 'valid' 'Valid until' %}</th><th class="th">Viewed</th><th class="th"></th></tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+    {% for q in object_list %}
+      <tr class="hover:bg-gray-50 dark:hover:bg-white/3">
+        <td class="td" data-label="Number"><a class="td-strong hover:text-brand-500" href="{% url 'crm:quotation_detail' q.pk %}">{{ q.number|default:"Draft" }}</a>{% if not q.number %}<span class="block text-theme-xs">#{{ q.pk }}</span>{% endif %}</td>
+        <td class="td" data-label="Customer">{{ q.customer_display }}{% if q.title %}<span class="block text-theme-xs">{{ q.title|truncatechars:40 }}</span>{% endif %}</td>
+        <td class="td" data-label="Version">v{{ q.version }}</td>
+        <td class="td text-right whitespace-nowrap" data-label="Total">{{ q.grand_total|inr }}</td>
+        <td class="td" data-label="Status">{% badge q.status q.get_status_display %}{% if q.status == 'sent' or q.status == 'viewed' %}{% if q.valid_until <= soon %} {% badge 'expiring' 'Expiring soon' %}{% endif %}{% endif %}</td>
+        <td class="td" data-label="Owner">{{ q.owner|uname }}</td>
+        <td class="td whitespace-nowrap" data-label="Sent">{{ q.sent_at|d }}</td>
+        <td class="td whitespace-nowrap" data-label="Valid until">{{ q.valid_until|d }}</td>
+        <td class="td" data-label="Viewed">{% if q.view_count %}<span class="inline-flex items-center gap-1 text-blue-light-500">{% icon 'eye' 14 %} {{ q.view_count }}</span>{% else %}No{% endif %}</td>
+        <td class="td text-right" data-label=""><a class="btn btn-secondary btn-sm" href="{% url 'crm:quotation_pdf' q.pk %}" target="_blank" rel="noopener" aria-label="PDF">{% icon 'download' 14 %}</a></td>
+      </tr>
+    {% endfor %}
+    </tbody></table></div>
+  {% include "crm/components/pagination.html" %}
+  {% else %}{% include "crm/components/empty_state.html" with filtered=any_filter title="No quotations yet" text="Create a quotation from a qualified lead or a client." icon="document" %}{% endif %}
+</div>
+{% endblock %}

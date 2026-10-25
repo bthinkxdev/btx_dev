@@ -63,7 +63,7 @@ class StyledFormMixin:
                 w.attrs['class'] = (base + ' ' + css).strip()
             if f.required and not isinstance(w, forms.CheckboxInput):
                 w.attrs['aria-required'] = 'true'
-            if self.is_bound and name in self.errors:
+            if self.is_bound and self._errors is not None and name in self._errors:
                 w.attrs['aria-invalid'] = 'true'
                 w.attrs['aria-describedby'] = f'{self.add_prefix(name)}-error'
                 if 'form-invalid' not in w.attrs.get('class', ''):

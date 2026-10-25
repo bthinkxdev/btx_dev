@@ -1,0 +1,15 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Compare versions{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Compare versions" subtitle=q.number %}{% endblock %}
+{% block content %}
+<form method="get" class="card mb-6 flex flex-wrap items-center gap-3 p-4">
+  <select name="a" class="form-select h-10 w-auto" aria-label="Version A">{% for v in versions %}<option value="{{ v.pk }}" {% if v.pk == a.pk %}selected{% endif %}>v{{ v.version }} ({{ v.get_status_display }})</option>{% endfor %}</select>
+  <span class="text-gray-400">vs</span>
+  <select name="b" class="form-select h-10 w-auto" aria-label="Version B">{% for v in versions %}<option value="{{ v.pk }}" {% if v.pk == b.pk %}selected{% endif %}>v{{ v.version }} ({{ v.get_status_display }})</option>{% endfor %}</select>
+  <button class="btn btn-secondary btn-sm">Compare</button>
+</form>
+<div class="card mb-6"><div class="table-wrap"><table class="data-table"><thead><tr><th class="th">Field</th><th class="th">v{{ a.version }}</th><th class="th">v{{ b.version }}</th></tr></thead>
+  <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for f in diff.fields %}<tr class="{% if f.changed %}bg-warning-25 dark:bg-warning-500/5{% endif %}"><td class="td font-medium">{{ f.label }}</td><td class="td whitespace-pre-line">{{ f.a }}</td><td class="td whitespace-pre-line">{{ f.b }}</td></tr>{% endfor %}</tbody></table></div></div>
+<div class="card"><div class="table-wrap"><table class="data-table"><thead><tr><th class="th">v{{ a.version }} line</th><th class="th">v{{ b.version }} line</th></tr></thead>
+  <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for r in diff.lines %}<tr class="{% if r.changed %}bg-warning-25 dark:bg-warning-500/5{% endif %}"><td class="td">{% if r.a %}{{ r.a.0 }} · {{ r.a.1 }} × {{ r.a.2|inr }} @ {{ r.a.3|pct }} = {{ r.a.4|inr }}{% else %}—{% endif %}</td><td class="td">{% if r.b %}{{ r.b.0 }} · {{ r.b.1 }} × {{ r.b.2|inr }} @ {{ r.b.3|pct }} = {{ r.b.4|inr }}{% else %}—{% endif %}</td></tr>{% endfor %}</tbody></table></div></div>
+{% endblock %}

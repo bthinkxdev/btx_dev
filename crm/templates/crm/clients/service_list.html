@@ -1,0 +1,27 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Service catalogue{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+  <div><h1 class="page-title">Service catalogue</h1><p class="muted mt-1">Default price, SAC code and effective-dated tax for each service. Inactive services stay on old documents.</p></div>
+  {% if can_configure %}<a href="{% url 'crm:service_create' %}" class="btn btn-primary">{% icon 'plus' 18 %} Add service</a>{% endif %}
+</div>
+{% endblock %}
+{% block content %}
+<div class="card">
+  {% include "crm/components/list_toolbar.html" %}
+  <div class="table-wrap"><table class="data-table responsive-cards">
+    <thead class="border-b border-gray-100 dark:border-gray-800"><tr><th class="th">Service</th><th class="th">Category</th><th class="th">SAC/HSN</th><th class="th">Tax</th><th class="th text-right">Price</th>{% if show_cost %}<th class="th text-right">Cost estimate</th>{% endif %}<th class="th">Billing</th><th class="th">Status</th></tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+    {% for s in object_list %}
+      <tr><td class="td" data-label="Service">{% if can_configure %}<a class="td-strong hover:text-brand-500" href="{% url 'crm:service_edit' s.pk %}">{{ s.name }}</a>{% else %}<span class="td-strong">{{ s.name }}</span>{% endif %}<span class="block text-theme-xs">{{ s.code }}</span></td>
+        <td class="td" data-label="Category">{{ s.category }}</td><td class="td" data-label="SAC">{{ s.sac_code|default:"—" }}</td>
+        <td class="td" data-label="Tax">{{ s.get_taxability_display }}{% if s.taxability == 'taxable' %} {{ s.tax_rate|pct }}{% endif %}</td>
+        <td class="td text-right" data-label="Price">{{ s.default_price|inr }} <span class="block text-theme-xs">{{ s.get_price_mode_display }}</span></td>
+        {% if show_cost %}<td class="td text-right" data-label="Cost">{{ s.cost_estimate|inr }}</td>{% endif %}
+        <td class="td" data-label="Billing">{{ s.get_billing_model_display }}</td>
+        <td class="td" data-label="Status">{% if s.is_active %}{% badge 'active' 'Active' %}{% else %}{% badge 'archived' 'Inactive' %}{% endif %}</td></tr>
+    {% empty %}<tr><td colspan="8">{% include "crm/components/empty_state.html" with filtered=any_filter title="No services yet" text="Add the services you sell so quotations default price and tax correctly." icon="store" %}</td></tr>{% endfor %}
+    </tbody></table></div>
+  {% include "crm/components/pagination.html" %}
+</div>
+{% endblock %}

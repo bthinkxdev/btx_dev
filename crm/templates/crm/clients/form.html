@@ -1,0 +1,31 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{% if client %}Edit {{ client }}{% else %}Add client{% endif %}{% endblock %}
+{% block page_header %}{% if client %}{% include "crm/components/page_header.html" with title="Edit client" subtitle=client.display_name %}{% else %}{% include "crm/components/page_header.html" with title="Add client" subtitle="GSTIN, PAN, phone and name are checked for duplicates." %}{% endif %}{% endblock %}
+{% block content %}
+<form method="post" novalidate data-dirty-check class="space-y-6" x-data="{ same: {{ form.shipping_same.value|yesno:'true,false' }} }">{% csrf_token %}{% idem %}
+  {{ form.row_version }}
+  {% include "crm/components/form_errors.html" %}
+  {% if dupes %}
+    <div class="alert alert-warning"><span class="text-warning-500">{% icon 'alert' 22 %}</span>
+      <div class="space-y-2 text-sm"><p class="font-semibold text-gray-800 dark:text-white/90">Possible duplicate</p>
+        <ul>{% for d in dupes %}<li><a class="link" target="_blank" rel="noopener" href="{% url 'crm:client_detail' d.pk %}">{{ d }}</a>{% if d.gstin %} · {{ d.gstin }}{% endif %}</li>{% endfor %}</ul>
+        <label class="flex items-center gap-2"><input type="checkbox" name="confirm_duplicate" value="1" class="form-checkbox-box"> This is a different client — save anyway</label></div></div>
+  {% endif %}
+  <div class="card"><div class="card-header"><h2 class="card-title">Identity</h2></div>
+    <div class="card-body grid grid-cols-1 gap-5 md:grid-cols-2">{% field form.legal_name %}{% field form.display_name %}{% field form.client_type %}{% field form.industry %}{% field form.website %}{% field form.phone %}{% field form.email %}</div></div>
+  <div class="card"><div class="card-header"><h2 class="card-title">Tax</h2></div>
+    <div class="card-body grid grid-cols-1 gap-5 md:grid-cols-2">{% field form.customer_type help="Drives the GST treatment on quotations and invoices." %}{% field form.gstin %}{% field form.pan %}{% field form.tds_section %}{% field form.tds_applicable %}</div></div>
+  <div class="card"><div class="card-header"><h2 class="card-title">Addresses</h2></div>
+    <div class="card-body grid grid-cols-1 gap-5 md:grid-cols-2">
+      {% field form.billing_line1 %}{% field form.billing_line2 %}{% field form.billing_city %}{% field form.billing_state help="Place of supply comes from this state." %}{% field form.billing_pincode %}{% field form.billing_country %}
+      <div class="md:col-span-2"><label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" name="shipping_same" class="form-checkbox-box" x-model="same" {% if form.shipping_same.value %}checked{% endif %}> Shipping address same as billing</label></div>
+      <div class="md:col-span-2 grid grid-cols-1 gap-5 md:grid-cols-2" x-show="!same" x-cloak>{% field form.shipping_line1 %}{% field form.shipping_line2 %}{% field form.shipping_city %}{% field form.shipping_state %}{% field form.shipping_pincode %}</div>
+    </div></div>
+  <div class="card"><div class="card-header"><h2 class="card-title">Commercial</h2></div>
+    <div class="card-body grid grid-cols-1 gap-5 md:grid-cols-2">{% field form.owner %}{% field form.payment_terms_days %}{% field form.credit_limit prefix_text="₹" help="Warning on new quotations and invoices above this." %}{% field form.dunning_paused %}<div class="md:col-span-2">{% field form.notes help="Internal. Never printed on documents." %}</div></div></div>
+  <div class="sticky bottom-0 z-9 -mx-4 flex justify-end gap-3 border-t border-gray-200 bg-white/95 px-4 py-4 backdrop-blur md:-mx-6 md:px-6 dark:border-gray-800 dark:bg-gray-900/95">
+    <a href="{% if client %}{% url 'crm:client_detail' client.pk %}{% else %}{% url 'crm:client_list' %}{% endif %}" class="btn btn-secondary">Cancel</a>
+    <button class="btn btn-primary" data-loading-text="Saving…">Save client</button>
+  </div>
+</form>
+{% endblock %}
