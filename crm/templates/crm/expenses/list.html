@@ -1,0 +1,15 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Expenses{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-start justify-between gap-3">
+  <div><h1 class="page-title">Expenses and bills <span class="ml-1 text-base font-normal text-gray-500 dark:text-gray-400">({{ total }})</span></h1><p class="muted mt-1">Approved and unpaid in this view: {{ to_pay|inr }}.</p></div>
+  {% if can_create %}<div class="flex gap-2"><a href="{% url 'crm:expense_create' %}?kind=reimbursement" class="btn btn-secondary">Claim reimbursement</a><a href="{% url 'crm:expense_create' %}?kind=vendor_bill" class="btn btn-secondary">Add vendor bill</a><a href="{% url 'crm:expense_create' %}" class="btn btn-primary">{% icon 'plus' 18 %} Add expense</a></div>{% endif %}
+</div>
+{% endblock %}
+{% block content %}
+<div class="card">
+  {% include "crm/components/list_toolbar.html" %}
+  {% if object_list %}{% include "crm/expenses/_table.html" %}{% include "crm/components/pagination.html" %}
+  {% else %}{% include "crm/components/empty_state.html" with filtered=any_filter title="No expenses yet" text="Record expenses, vendor bills and reimbursement claims. Each is entered once and can be split across projects." icon="receipt" %}{% endif %}
+</div>
+{% endblock %}

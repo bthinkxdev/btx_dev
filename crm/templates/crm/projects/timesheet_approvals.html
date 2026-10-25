@@ -1,0 +1,15 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Timesheet approvals{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Timesheet approvals" subtitle="Submitted weeks on projects you manage. You cannot approve your own time." %}{% endblock %}
+{% block content %}
+{% for g in groups %}
+<form method="post" class="card mb-6" data-bulk-scope>{% csrf_token %}{% idem %}
+  <div class="card-header"><h2 class="card-title">{{ g.user|uname }} · week of {{ g.week|d }} · {{ g.total|floatformat:"-2" }} h</h2><label class="flex items-center gap-2 text-sm"><input type="checkbox" class="form-checkbox-box" data-bulk-all checked> All</label></div>
+  <ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for e in g.entries %}<li class="flex items-center justify-between gap-2 px-5 py-3 text-sm"><label class="flex items-center gap-3"><input type="checkbox" name="ids" value="{{ e.pk }}" class="form-checkbox-box" data-bulk-item checked>{{ e.entry_date|date:"D d M" }} · {{ e.project.code }} {{ e.task|default:"" }}{% if e.note %} · {{ e.note }}{% endif %}</label><span>{{ e.hours|floatformat:"-2" }} h{% if not e.billable %} · non-billable{% endif %}</span></li>{% endfor %}</ul>
+  <div class="flex flex-wrap justify-end gap-2 border-t border-gray-100 p-4 dark:border-gray-800">
+    <button name="decision" value="reject" class="btn btn-danger-outline btn-sm" data-confirm="Send these entries back?" data-confirm-reason="required">Send back</button>
+    <button name="decision" value="approve" class="btn btn-primary btn-sm" data-loading-text="Approving…">Approve</button>
+  </div>
+</form>
+{% empty %}<div class="card">{% include "crm/components/empty_state.html" with title="Nothing to approve" text="Submitted timesheets appear here." icon="check" %}</div>{% endfor %}
+{% endblock %}

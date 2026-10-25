@@ -1,0 +1,42 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{% if is_new %}New contract{% else %}Edit {{ c }}{% endif %}{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title=is_new|yesno:"New contract,Edit contract draft" subtitle=c.client.display_name %}{% endblock %}
+{% block content %}
+<form method="post" novalidate data-dirty-check id="ct-form">{% csrf_token %}{% idem %}{{ form.row_version }}
+  {% if is_new %}<input type="hidden" name="src_client" value="{{ c.client_id }}">{% if c.quotation_id %}<input type="hidden" name="src_quotation" value="{{ c.quotation_id }}">{% endif %}{% endif %}
+  {% include "crm/components/form_errors.html" %}
+  {% if lines.non_form_errors %}<div class="alert alert-error mb-5" role="alert"><p class="text-sm">{{ lines.non_form_errors|join:" " }}</p></div>{% endif %}
+  {% if c.amendment_reason and c.version > 1 %}<div class="alert alert-info mb-5"><p class="text-sm">Version {{ c.version }}: {{ c.amendment_reason }}{% if c.effective_from %} — effective {{ c.effective_from|d }}{% endif %}. Earlier versions stay unchanged.</p></div>{% endif %}
+  <div class="card mb-6"><div class="card-header"><h2 class="card-title">Terms</h2></div>
+    <div class="card-body grid grid-cols-1 gap-5 md:grid-cols-3">{% field form.title wrapper_class="md:col-span-2" %}{% field form.owner %}{% field form.start_date %}{% field form.end_date %}{% field form.notice_days %}{% field form.invoice_policy %}{% field form.payment_terms_days %}{% field form.auto_renew %}{% field form.scope wrapper_class="md:col-span-3" %}{% field form.notes wrapper_class="md:col-span-3" %}</div></div>
+  <div class="card mb-6">
+    <div class="card-header"><h2 class="card-title">Lines</h2><button type="button" class="btn btn-secondary btn-sm" data-add-line>{% icon 'plus' 16 %} Add line</button></div>
+    {{ lines.management_form }}
+    <div class="table-wrap border-t border-gray-100 dark:border-gray-800"><table class="w-full min-w-[1100px] text-left">
+      <thead><tr class="text-theme-xs text-gray-500"><th class="px-2 py-2">Service / description</th><th class="px-2 py-2">Qty</th><th class="px-2 py-2">Price per period (ex. tax)</th><th class="px-2 py-2">Billing</th><th class="px-2 py-2">Start / end</th><th class="px-2 py-2">GST</th><th class="px-2 py-2">SAC</th><th></th></tr></thead>
+      <tbody id="line-rows" class="divide-y divide-gray-100 dark:divide-gray-800">{% for lf in lines %}{% include "crm/contracts/_line_row.html" %}{% endfor %}</tbody>
+    </table></div>
+    <template id="line-template">{% with lf=lines.empty_form %}{% include "crm/contracts/_line_row.html" %}{% endwith %}</template>
+    <p class="form-help px-5 pb-4">Recurring lines bill each period at this price. One-time and milestone lines bill once. The schedule is generated on activation.</p>
+  </div>
+  <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+    <a href="{% if c.pk %}{% url 'crm:contract_detail' c.pk %}{% else %}{% url 'crm:client_detail' c.client_id %}{% endif %}" class="btn btn-secondary">Cancel</a>
+    <button class="btn btn-primary" data-loading-text="Saving…">Save draft</button>
+  </div>
+</form>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function () {
+  var form = document.getElementById('ct-form'), body = document.getElementById('line-rows');
+  function wire(r) { var d = r.querySelector('[data-delete]'); if (d) d.addEventListener('change', function () { r.style.display = this.checked ? 'none' : ''; }); }
+  body.querySelectorAll('[data-line-row]').forEach(wire);
+  form.querySelector('[data-add-line]').addEventListener('click', function () {
+    var total = form.querySelector('[name="lines-TOTAL_FORMS"]'), idx = parseInt(total.value, 10);
+    var tmp = document.createElement('tbody'); tmp.innerHTML = document.getElementById('line-template').innerHTML.replace(/__prefix__/g, idx).trim();
+    var el = tmp.firstElementChild; body.appendChild(el); total.value = idx + 1; wire(el); form.dataset.dirty = '1';
+  });
+  if (!body.querySelector('[data-line-row]')) form.querySelector('[data-add-line]').click();
+})();
+</script>
+{% endblock %}

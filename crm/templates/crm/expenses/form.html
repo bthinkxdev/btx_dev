@@ -1,0 +1,31 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{% if is_new %}Add {{ e.get_kind_display|lower }}{% else %}Edit {{ e }}{% endif %}{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title=is_new|yesno:"Record expense,Edit expense" subtitle="Entered once. Split it across projects after saving." %}{% endblock %}
+{% block content %}
+<form method="post" enctype="multipart/form-data" novalidate data-dirty-check class="max-w-5xl" x-data="{ kind: '{{ form.kind.value|default:'expense'|escapejs }}' }">{% csrf_token %}{% idem %}{{ form.row_version }}
+  {% include "crm/components/form_errors.html" %}
+  {% if dups %}<div class="alert alert-warning mb-5" role="alert"><span class="text-warning-500">{% icon 'alert' 20 %}</span><div class="text-sm text-gray-700 dark:text-gray-300"><p class="font-semibold">Possible duplicate</p><ul class="mt-1 list-disc pl-5">{% for d in dups %}<li><a class="link" href="{% url 'crm:expense_detail' d.pk %}" target="_blank" rel="noopener">{{ d }}</a> · {{ d.bill_date|d }} · {{ d.total|inr }} · {{ d.get_status_display }}</li>{% endfor %}</ul><p class="mt-1">View the existing record, or say why this is not a duplicate below.</p></div></div>{% endif %}
+  <div class="card mb-6"><div class="card-header"><h2 class="card-title">What and who</h2></div>
+    <div class="card-body grid grid-cols-1 gap-5 md:grid-cols-3">
+      <div>{% field form.kind %}</div>
+      <div x-show="kind !== 'reimbursement'">{% field form.vendor %}<a class="link mt-1 inline-block text-theme-xs" href="{% url 'crm:vendor_create' %}?next={{ request.get_full_path|urlencode }}" target="_blank" rel="noopener">+ New vendor</a></div>
+      <div x-show="kind === 'reimbursement'" x-cloak>{% field form.employee %}</div>
+      {% field form.category %}{% field form.classification %}{% field form.project %}
+      {% field form.description wrapper_class="md:col-span-3" %}
+    </div></div>
+  <div class="card mb-6"><div class="card-header"><h2 class="card-title">Amounts</h2></div>
+    <div class="card-body grid grid-cols-1 gap-5 md:grid-cols-4">
+      {% field form.bill_number %}{% field form.bill_date %}{% field form.due_date %}{% field form.vendor_gstin %}
+      {% field form.amount_before_tax prefix_text="₹" %}{% field form.cgst prefix_text="₹" %}{% field form.sgst prefix_text="₹" %}{% field form.igst prefix_text="₹" %}
+      {% field form.itc_eligibility %}{% field form.tds_section %}{% field form.tds_amount prefix_text="₹" help="Leave empty to apply the category rule." %}
+    </div></div>
+  <div class="card mb-6"><div class="card-header"><h2 class="card-title">Proof</h2></div>
+    <div class="card-body grid grid-cols-1 gap-5 md:grid-cols-2">{% field form.proof help="" %}<p class="form-help md:col-span-2 -mt-3">Required to submit when the total is above {{ proof_above|inr }}.</p>
+      {% if dups or form.duplicate_override_reason.errors %}{% field form.duplicate_override_reason wrapper_class="md:col-span-2" %}{% endif %}</div></div>
+  <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+    <a href="{% if e.pk %}{% url 'crm:expense_detail' e.pk %}{% else %}{% url 'crm:expense_list' %}{% endif %}" class="btn btn-secondary">Cancel</a>
+    <button class="btn btn-secondary" data-loading-text="Saving…">Save draft</button>
+    <button name="submit" value="1" class="btn btn-primary" data-loading-text="Submitting…">Save and submit</button>
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,45 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{{ t.title }}{% endblock %}
+{% block banners %}{% if t.status == 'blocked' %}<div class="alert alert-warning mb-5"><p class="text-sm"><strong>Blocked:</strong> {{ t.blocked_reason }}</p></div>{% endif %}{% endblock %}
+{% block content %}
+<div class="card mb-6">
+  <div class="flex flex-col gap-4 p-5 sm:p-6 lg:flex-row lg:items-start lg:justify-between">
+    <div><h1 class="text-xl font-semibold text-gray-800 dark:text-white/90">{{ t.title }} {% badge t.status t.get_status_display %}</h1>
+      <p class="muted"><a class="link" href="{% url 'crm:project_detail' t.project_id %}">{{ t.project }}</a> · {{ t.get_priority_display }} priority · assignee {{ t.assignee|uname|default:"none" }}{% if t.reviewer %} · reviewer {{ t.reviewer|uname }}{% endif %}</p>
+      <p class="mt-1 text-sm">Due {{ t.due_date|d|default:"—" }}{% if t.is_overdue %} <span class="text-error-600">(overdue)</span>{% endif %} · estimate {{ t.estimate_hours|floatformat:"-1" }} h</p></div>
+    {% if can_edit %}<div class="flex flex-wrap gap-2">
+      {% for s in next %}{% if s == 'blocked' %}<button type="button" class="btn btn-secondary btn-sm" @click="$store.modal.show('block')">Mark blocked</button>
+      {% else %}<form method="post" action="{% url 'crm:task_status' t.pk %}">{% csrf_token %}<input type="hidden" name="to" value="{{ s }}"><button class="btn {% if s == 'done' or s == 'in_review' %}btn-primary{% else %}btn-secondary{% endif %} btn-sm">{% for k, l in statuses %}{% if k == s %}{{ l }}{% endif %}{% endfor %}</button></form>{% endif %}{% endfor %}
+      <button type="button" class="btn btn-secondary btn-sm" @click="$store.modal.show('edit')">{% icon 'edit' 16 %} Edit</button>
+    </div>{% endif %}
+  </div>
+</div>
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+  <div class="space-y-6 xl:col-span-2">
+    <div class="card"><div class="card-header"><h2 class="card-title">Description</h2></div><div class="card-body whitespace-pre-line text-sm text-gray-700 dark:text-gray-300">{{ t.description|default:"No description." }}</div></div>
+    <div class="card"><div class="card-header"><h2 class="card-title">Log time</h2><a class="link text-sm" href="{% url 'crm:timesheet' %}">Weekly timesheet</a></div>
+      <form method="post" action="{% url 'crm:timesheet' %}" class="card-body grid grid-cols-1 gap-3 sm:grid-cols-4 sm:items-end" novalidate>{% csrf_token %}{% idem %}<input type="hidden" name="action" value="log"><input type="hidden" name="next" value="{{ request.path }}">
+        <input type="hidden" name="time-project" value="{{ t.project_id }}"><input type="hidden" name="time-task" value="{{ t.pk }}">
+        {% field time_form.entry_date %}{% field time_form.hours %}{% field time_form.note %}<div class="flex items-center gap-3">{% field time_form.billable %}<button class="btn btn-primary btn-sm" data-loading-text="Saving…">Log</button></div></form>
+      <ul class="divide-y divide-gray-100 border-t border-gray-100 dark:divide-gray-800 dark:border-gray-800">{% for e in time %}<li class="flex justify-between px-5 py-3 text-sm"><span>{{ e.entry_date|d }} · {{ e.user|uname }}{% if e.note %} · {{ e.note }}{% endif %}</span><span>{{ e.hours|floatformat:"-2" }} h {% badge e.status e.get_status_display %}</span></li>{% empty %}<li class="muted px-5 py-4">No time logged.</li>{% endfor %}</ul></div>
+  </div>
+  <div class="space-y-6">
+    <div class="card"><div class="card-header"><h2 class="card-title">Dependencies</h2></div><div class="card-body space-y-2 text-sm">
+      <p class="dl-label">Waits for</p>{% for d in deps %}<p><a class="link" href="{% url 'crm:task_detail' d.pk %}">{{ d.title }}</a> {% badge d.status d.get_status_display %}</p>{% empty %}<p class="muted">Nothing.</p>{% endfor %}
+      <p class="dl-label pt-2">Blocks</p>{% for d in dependents %}<p><a class="link" href="{% url 'crm:task_detail' d.pk %}">{{ d.title }}</a></p>{% empty %}<p class="muted">Nothing.</p>{% endfor %}</div></div>
+    <div class="card"><div class="card-header"><h2 class="card-title">Blockers</h2></div><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for b in blockers %}<li class="px-5 py-3 text-sm">{{ b.get_kind_display }} · {{ b.description }} {% badge b.status b.get_status_display %}<span class="block text-theme-xs text-gray-500">owner {{ b.owner|uname }} · {{ b.created_at|ago }}{% if b.resolution %} · {{ b.resolution }}{% endif %}</span></li>{% empty %}<li class="muted px-5 py-4">None.</li>{% endfor %}</ul></div>
+    <div class="card"><div class="card-header"><h2 class="card-title">Activity</h2></div><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for a in activity %}<li class="px-5 py-3 text-sm">{{ a.action }} <span class="muted">· {{ a.actor_name }} · {{ a.created_at|dt }}</span>{% if a.reason %}<span class="block text-theme-xs text-gray-500">{{ a.reason }}</span>{% endif %}</li>{% empty %}<li class="muted px-5 py-4">No activity.</li>{% endfor %}</ul></div>
+  </div>
+</div>
+{% if can_edit %}
+{% include "crm/components/modal_start.html" with id="edit" title="Edit task" size="lg" %}
+  <form method="post" novalidate>{% csrf_token %}{% idem %}{{ form.row_version }}{% include "crm/components/modal_form.html" with form=form %}{% include "crm/components/modal_actions.html" with label="Save task" %}</form>
+{% include "crm/components/modal_end.html" %}
+{% include "crm/components/modal_start.html" with id="block" title="Mark blocked" subtitle="A blocker is raised for the owner. Open for more than 2 days escalates to the PM." %}
+  <form method="post" action="{% url 'crm:task_status' t.pk %}" novalidate>{% csrf_token %}<input type="hidden" name="to" value="blocked">
+    <div class="space-y-4"><div><label class="form-label" for="bk">Type</label><select id="bk" name="kind" class="form-select"><option value="dependency">Dependency</option><option value="client">Waiting on client</option><option value="technical">Technical</option><option value="access">Access / credentials</option><option value="other">Other</option></select></div>
+      <div><label class="form-label" for="br">What is blocking it <span class="text-error-500">*</span></label><textarea id="br" name="reason" rows="3" required minlength="5" class="form-textarea"></textarea></div></div>
+    {% include "crm/components/modal_actions.html" with label="Mark blocked" %}</form>
+{% include "crm/components/modal_end.html" %}
+{% endif %}
+{% endblock %}

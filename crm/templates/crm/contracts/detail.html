@@ -1,0 +1,80 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{{ c }}{% endblock %}
+{% block banners %}
+  {% if c.status == 'pending_approval' %}<div class="alert alert-info mb-5"><p class="text-sm">Waiting for manager approval to activate.{% if pending %} <a class="link" href="{% url 'crm:approval_detail' pending.pk %}">View request</a>{% endif %}</p></div>{% endif %}
+  {% if c.status == 'superseded' %}<div class="alert alert-info mb-5"><p class="text-sm">Superseded by a newer version. These terms applied until {{ c.amendment.effective_from|default:c.amendment.start_date|d }}.</p></div>{% endif %}
+  {% if c.status == 'suspended' %}<div class="alert alert-warning mb-5"><p class="text-sm">Suspended: {{ c.suspended_reason }}. Billing is paused.</p></div>{% endif %}
+  {% if c.status == 'terminated' %}<div class="alert alert-error mb-5"><p class="text-sm">Terminated from {{ c.terminated_on|d }}: {{ c.terminated_reason }}</p></div>{% endif %}
+  {% if c.renewal_due %}<div class="alert alert-warning mb-5"><p class="text-sm">Renewal due: ends in {{ c.days_to_end }} day{{ c.days_to_end|pluralize }} ({{ c.end_date|d }}).{% if c.auto_renew %} Auto-renew is on.{% endif %}</p></div>{% endif %}
+{% endblock %}
+{% block content %}
+<div class="card mb-6">
+  <div class="flex flex-col gap-4 p-5 sm:p-6 xl:flex-row xl:items-start xl:justify-between">
+    <div><h1 class="text-xl font-semibold text-gray-800 dark:text-white/90">{{ c }} {% badge c.status c.get_status_display %}</h1>
+      <p class="muted"><a class="link" href="{% url 'crm:client_detail' c.client_id %}">{{ c.client.display_name }}</a> · {{ c.title }}{% if c.quotation_id %} · <a class="link" href="{% url 'crm:quotation_detail' c.quotation_id %}">{{ c.quotation.display_number }}</a>{% endif %} · Owner {{ c.owner|uname }}</p></div>
+    <div class="grid grid-cols-3 gap-4">
+      <div><p class="dl-label">Term</p><p class="dl-value">{{ c.start_date|d }} – {{ c.end_date|d|default:"open" }}</p></div>
+      <div><p class="dl-label">Value per period</p><p class="dl-value">{{ c.value|inr }}</p></div>
+      <div><p class="dl-label">Invoicing</p><p class="dl-value">{{ c.get_invoice_policy_display }}</p></div>
+    </div>
+  </div>
+  {% if can_edit %}
+  <div class="flex flex-wrap gap-2 border-t border-gray-100 px-5 py-4 sm:px-6 dark:border-gray-800">
+    {% if c.status == 'draft' %}
+      <a href="{% url 'crm:contract_edit' c.pk %}" class="btn btn-secondary btn-sm">{% icon 'edit' 16 %} Edit</a>
+      {% if blockers %}<span class="btn btn-primary btn-sm opacity-50" title="{{ blockers|join:'; ' }}">Activate</span>{% else %}<form method="post" action="{% url 'crm:contract_action' c.pk 'activate' %}" data-confirm="{% if reasons %}Request approval to activate?{% else %}Activate this contract?{% endif %}" data-confirm-body="{% if reasons %}{{ reasons|join:'; ' }}.{% else %}The number is allocated and the billing schedule is generated.{% endif %}">{% csrf_token %}{% idem %}<button class="btn btn-primary btn-sm" data-loading-text="Activating…">{% if reasons %}Request approval{% else %}Activate{% endif %}</button></form>{% endif %}
+    {% elif c.status == 'pending_approval' and can_decide %}<a class="btn btn-primary btn-sm" href="{% url 'crm:approval_detail' pending.pk %}">Review and approve</a>
+    {% elif c.status == 'active' %}
+      <button type="button" class="btn btn-secondary btn-sm" @click="$store.modal.show('amend')">{% icon 'edit' 16 %} Amend</button>
+      {% if c.end_date %}<button type="button" class="btn btn-primary btn-sm" @click="$store.modal.show('renew')">{% icon 'refresh' 16 %} Renew</button>{% endif %}
+      <a href="{% url 'crm:project_create' %}?contract={{ c.pk }}" class="btn btn-secondary btn-sm">{% icon 'tasks' 16 %} Create project</a>
+      <form method="post" action="{% url 'crm:contract_action' c.pk 'suspend' %}" data-confirm="Suspend this contract?" data-confirm-body="Billing pauses until resumed." data-confirm-reason="required">{% csrf_token %}<button class="btn btn-secondary btn-sm">Suspend</button></form>
+      <form method="post" action="{% url 'crm:contract_action' c.pk 'complete' %}" data-confirm="Mark the contract completed?" data-confirm-body="Only when every billing row is invoiced.">{% csrf_token %}<button class="btn btn-secondary btn-sm">Complete</button></form>
+      {% if c.end_date %}<form method="post" action="{% url 'crm:contract_action' c.pk 'lost_renewal' %}" data-confirm="Client will not renew?" data-confirm-body="Auto-renew is switched off and the reason is recorded for renewal reports." data-confirm-reason="required">{% csrf_token %}<button class="btn btn-secondary btn-sm">Record non-renewal</button></form>{% endif %}
+      <button type="button" class="btn btn-danger-outline btn-sm" @click="$store.modal.show('terminate')">Terminate</button>
+    {% elif c.status == 'suspended' %}
+      <form method="post" action="{% url 'crm:contract_action' c.pk 'resume' %}">{% csrf_token %}<button class="btn btn-primary btn-sm">Resume</button></form>
+      <button type="button" class="btn btn-danger-outline btn-sm" @click="$store.modal.show('terminate')">Terminate</button>
+    {% elif c.status == 'expired' and c.end_date %}<button type="button" class="btn btn-primary btn-sm" @click="$store.modal.show('renew')">Renew</button>{% endif %}
+  </div>
+  {% endif %}
+  {% if blockers %}<div class="border-t border-gray-100 px-5 py-3 text-theme-sm text-warning-700 sm:px-6 dark:border-gray-800">Before activating: {{ blockers|join:"; " }}.</div>{% endif %}
+</div>
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+  <div class="space-y-6 xl:col-span-2">
+    <div class="card"><div class="card-header"><h2 class="card-title">Lines</h2></div>
+      <div class="table-wrap"><table class="data-table responsive-cards"><thead><tr><th class="th">Service</th><th class="th">Billing</th><th class="th">Period</th><th class="th text-right">Price</th><th class="th text-right">MRR</th><th class="th">GST</th></tr></thead>
+        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for ln in lines %}<tr><td class="td" data-label="Service">{{ ln.description }}{% if ln.is_paused %} <span class="badge badge-amber">paused</span>{% endif %}</td><td class="td" data-label="Billing">{{ ln.get_billing_model_display }}</td><td class="td" data-label="Period">{{ ln.start_date|d }} – {{ ln.end_date|d|default:"open" }}</td><td class="td text-right" data-label="Price">{{ ln.line_total|inr }}</td><td class="td text-right" data-label="MRR">{{ ln.monthly_value|inr }}</td><td class="td" data-label="GST">{{ ln.tax_rate|pct }}</td></tr>{% endfor %}</tbody></table></div></div>
+    <div class="card" x-data="{ edit: null }"><div class="card-header"><h2 class="card-title">Billing schedule</h2>{% if c.status == 'active' and can_edit %}<form method="post" action="{% url 'crm:contract_action' c.pk 'regenerate' %}">{% csrf_token %}<button class="btn btn-secondary btn-sm">Extend schedule</button></form>{% endif %}</div>
+      {% if rows %}<div class="table-wrap"><table class="data-table responsive-cards"><thead><tr><th class="th">Invoice date</th><th class="th">Period</th><th class="th">Line</th><th class="th text-right">Amount</th><th class="th">Status</th><th class="th"></th></tr></thead>
+        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for r in rows %}<tr><td class="td whitespace-nowrap" data-label="Date">{{ r.invoice_date|d }}</td><td class="td whitespace-nowrap" data-label="Period">{{ r.period_start|d }} – {{ r.period_end|d }}</td><td class="td" data-label="Line">{{ r.contract_line.description|truncatechars:40 }}</td><td class="td text-right" data-label="Amount">{{ r.amount|inr }}</td><td class="td" data-label="Status">{% badge r.status r.get_status_display %}{% if r.error %}<span class="block text-theme-xs text-error-600">{{ r.error|truncatechars:100 }}</span>{% endif %}{% if r.invoice %}<a class="block text-theme-xs link" href="{% url 'crm:invoice_detail' r.invoice.pk %}">{{ r.invoice.display_number }}</a>{% endif %}</td>
+          <td class="td text-right" data-label="">{% if can_edit and c.status == 'active' %}
+            {% if r.status == 'scheduled' %}{% if r.invoice_date > today %}<button type="button" class="btn btn-secondary btn-sm" @click="edit = edit === {{ r.pk }} ? null : {{ r.pk }}">Edit</button>{% endif %}
+              {% if can_invoice %}<form method="post" action="{% url 'crm:contract_action' c.pk 'row_invoice' %}" class="inline">{% csrf_token %}{% idem %}<input type="hidden" name="row" value="{{ r.pk }}"><button class="btn btn-secondary btn-sm" data-loading-text="Creating…">Invoice now</button></form>{% endif %}
+            {% elif r.status == 'failed' and can_invoice %}<form method="post" action="{% url 'crm:contract_action' c.pk 'row_retry' %}" class="inline">{% csrf_token %}{% idem %}<input type="hidden" name="row" value="{{ r.pk }}"><button class="btn btn-secondary btn-sm">Retry</button></form>{% endif %}{% endif %}</td></tr>
+          {% if r.status == 'scheduled' and r.invoice_date > today %}<tr x-show="edit === {{ r.pk }}" x-cloak><td colspan="6" class="bg-gray-50 px-5 py-3 dark:bg-white/3"><form method="post" action="{% url 'crm:contract_action' c.pk 'row_edit' %}" class="flex flex-wrap items-end gap-3">{% csrf_token %}{% idem %}<input type="hidden" name="row" value="{{ r.pk }}"><div><label class="form-label" for="rd-{{ r.pk }}">Invoice date</label><input id="rd-{{ r.pk }}" type="date" name="row-invoice_date" value="{{ r.invoice_date|date:'Y-m-d' }}" class="form-input h-10"></div><div><label class="form-label" for="ra-{{ r.pk }}">Amount</label><input id="ra-{{ r.pk }}" type="number" step="0.01" min="0.01" name="row-amount" value="{{ r.amount }}" class="form-input h-10"></div><button class="btn btn-primary btn-sm">Save</button></form></td></tr>{% endif %}
+        {% endfor %}</tbody></table></div>{% else %}<p class="muted p-6">Generated when the contract is activated.</p>{% endif %}</div>
+    {% if c.scope %}<div class="card"><div class="card-header"><h2 class="card-title">Scope</h2></div><div class="card-body whitespace-pre-line text-sm">{{ c.scope }}</div></div>{% endif %}
+  </div>
+  <div class="space-y-6">
+    <div class="card"><div class="card-header"><h2 class="card-title">Versions</h2></div><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for v in versions %}<li class="flex justify-between gap-2 px-5 py-3 text-sm"><a class="{% if v.pk == c.pk %}font-semibold{% else %}link{% endif %}" href="{% url 'crm:contract_detail' v.pk %}">v{{ v.version }}{% if v.effective_from %} · from {{ v.effective_from|d }}{% endif %}</a>{% badge v.status v.get_status_display %}{% if v.amendment_reason %}<span class="w-full text-theme-xs text-gray-500">{{ v.amendment_reason }}</span>{% endif %}</li>{% endfor %}</ul></div>
+    <div class="card"><div class="card-header"><h2 class="card-title">Details</h2></div><dl class="card-body space-y-2 text-sm">
+      <div class="flex justify-between"><dt class="text-gray-500">Auto-renew</dt><dd>{{ c.auto_renew|yesno:"Yes,No" }}</dd></div>
+      <div class="flex justify-between"><dt class="text-gray-500">Notice period</dt><dd>{{ c.notice_days }} days</dd></div>
+      <div class="flex justify-between"><dt class="text-gray-500">Payment terms</dt><dd>{{ c.payment_terms_days }} days</dd></div>
+      {% if c.activated_at %}<div class="flex justify-between"><dt class="text-gray-500">Activated</dt><dd>{{ c.activated_at|dt }}</dd></div>{% endif %}</dl></div>
+    <div class="card"><div class="card-header"><h2 class="card-title">Invoices</h2></div><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for i in invoices %}<li class="flex justify-between px-5 py-3 text-sm"><a class="link" href="{% url 'crm:invoice_detail' i.pk %}">{{ i.display_number }}</a><span>{{ i.grand_total|inr0 }} {% status_badge i %}</span></li>{% empty %}<li class="muted px-5 py-4">None yet.</li>{% endfor %}</ul></div>
+    <div class="card"><div class="card-header"><h2 class="card-title">Projects and tickets</h2></div><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for p in projects %}<li class="px-5 py-3 text-sm"><a class="link" href="{% url 'crm:project_detail' p.pk %}">{{ p }}</a> {% badge p.status p.get_status_display %}</li>{% endfor %}{% for t in tickets %}<li class="px-5 py-3 text-sm"><a class="link" href="{% url 'crm:ticket_detail' t.pk %}">{{ t }}</a> {% badge t.status t.get_status_display %}</li>{% endfor %}{% if not projects and not tickets %}<li class="muted px-5 py-4">None.</li>{% endif %}</ul></div>
+    <div class="card"><div class="card-header"><h2 class="card-title">Activity</h2></div><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for a in activity %}<li class="px-5 py-3 text-sm"><span class="font-medium">{{ a.action }}</span> <span class="muted">· {{ a.actor_name|default:a.actor_type }} · {{ a.created_at|dt }}</span>{% if a.reason %}<span class="block text-theme-xs text-gray-500">{{ a.reason }}</span>{% endif %}</li>{% empty %}<li class="muted px-5 py-4">No activity.</li>{% endfor %}</ul></div>
+  </div>
+</div>
+{% include "crm/components/modal_start.html" with id="amend" title="Amend contract" subtitle="Creates a new version effective from the date you choose. This version and its invoices stay unchanged." %}
+  <form method="post" action="{% url 'crm:contract_action' c.pk 'amend' %}" novalidate>{% csrf_token %}{% idem %}{% include "crm/components/modal_form.html" with form=forms.amend %}{% include "crm/components/modal_actions.html" with label="Create amendment" %}</form>
+{% include "crm/components/modal_end.html" %}
+{% include "crm/components/modal_start.html" with id="renew" title="Renew contract" subtitle="Starts a new term the day after the current end date, as a new active version." %}
+  <form method="post" action="{% url 'crm:contract_action' c.pk 'renew' %}" novalidate>{% csrf_token %}{% idem %}{% include "crm/components/modal_form.html" with form=forms.renew %}{% include "crm/components/modal_actions.html" with label="Confirm renewal" %}</form>
+{% include "crm/components/modal_end.html" %}
+{% include "crm/components/modal_start.html" with id="terminate" title="Terminate contract" subtitle="Billing rows after the effective date are skipped." %}
+  <form method="post" action="{% url 'crm:contract_action' c.pk 'terminate' %}" novalidate>{% csrf_token %}{% idem %}{% include "crm/components/modal_form.html" with form=forms.terminate %}{% include "crm/components/modal_actions.html" with label="Confirm termination" danger=True %}</form>
+{% include "crm/components/modal_end.html" %}
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Task board{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+  <div><h1 class="page-title">Task board</h1><p class="muted mt-1">Drag a card or use Move to. The same rules apply: blocked needs a reason, dependencies must finish first.</p></div>
+  <div class="inline-flex rounded-lg border border-gray-200 bg-white p-0.5 dark:border-gray-800 dark:bg-gray-900" role="group" aria-label="View"><a href="?view=table" class="rounded-md px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-800 dark:text-gray-400">Table</a><a href="?view=board" class="rounded-md bg-gray-100 px-3 py-2 text-sm font-medium text-gray-800 dark:bg-white/10 dark:text-white/90" aria-current="true">Board</a></div>
+</div>
+{% endblock %}
+{% block content %}
+<form method="get" class="card mb-4 flex flex-wrap items-center gap-3 p-4"><input type="hidden" name="view" value="board">
+  <label class="sr-only" for="tb-p">Project</label><select id="tb-p" name="project" class="form-select h-10 w-64" data-autosubmit><option value="">All projects</option>{% for pr in projects %}<option value="{{ pr.pk }}" {% if request.GET.project == pr.pk|stringformat:'s' %}selected{% endif %}>{{ pr }}</option>{% endfor %}</select>
+  <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" name="mine" value="1" class="form-checkbox-box" {% if request.GET.mine %}checked{% endif %} data-autosubmit> Only mine</label>
+  <noscript><button class="btn btn-secondary btn-sm">Apply</button></noscript>
+</form>
+<div class="custom-scrollbar -mx-4 overflow-x-auto px-4 pb-4 md:-mx-6 md:px-6" data-kanban>
+  <div class="flex min-w-max gap-4">
+  {% for col in columns %}
+    <section class="kanban-col flex w-72 shrink-0 flex-col rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/3" data-column="{{ col.status }}" aria-label="{{ col.label }}">
+      <header class="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-gray-800"><h2 class="text-sm font-semibold text-gray-800 dark:text-white/90">{{ col.label }}</h2><span class="badge badge-grey">{{ col.cards|length }}</span></header>
+      <div class="flex min-h-40 flex-1 flex-col gap-3 p-3" data-cards>
+      {% for t in col.cards %}
+        <article class="kanban-card rounded-xl border border-gray-200 bg-white p-3 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900" data-card data-id="{{ t.pk }}" data-move-url="{% url 'crm:task_status' t.pk %}" draggable="true">
+          <a href="{% url 'crm:task_detail' t.pk %}" class="text-sm font-medium text-gray-800 hover:text-brand-500 dark:text-white/90">{{ t.title }}</a>
+          <p class="text-theme-xs text-gray-500">{{ t.project.code }}{% if t.assignee %} · {{ t.assignee|uname }}{% endif %}</p>
+          <div class="mt-2 flex flex-wrap items-center gap-2 text-theme-xs text-gray-500">{% if t.due_date %}<span class="{% if t.is_overdue %}font-medium text-error-600{% endif %}">{% icon 'calendar' 12 %} {{ t.due_date|d }}</span>{% endif %}{% if t.estimate_hours %}<span>{{ t.estimate_hours|floatformat:"-1" }} h</span>{% endif %}{% if t.priority == 'urgent' or t.priority == 'high' %}{% badge 'hot' t.get_priority_display %}{% endif %}</div>
+          {% if t.blocked_reason %}<p class="mt-1 text-theme-xs text-warning-700">{{ t.blocked_reason|truncatechars:60 }}</p>{% endif %}
+          <div class="mt-3 flex justify-end"><div class="relative" x-data="{ o: false }" @click.outside="o = false">
+            <button type="button" class="btn btn-secondary btn-sm" @click="o = !o" aria-haspopup="true">Move to {% icon 'chevron_down' 14 %}</button>
+            <div x-show="o" x-cloak class="shadow-theme-lg absolute right-0 z-99 mt-1 w-44 rounded-xl border border-gray-200 bg-white p-1 dark:border-gray-800 dark:bg-gray-900" role="menu">
+              {% for s, label in statuses %}{% if s != t.status %}<button type="button" role="menuitem" class="menu-dropdown-item menu-dropdown-item-inactive w-full" @click="o = false; crmPost('{% url 'crm:task_status' t.pk %}', {to: '{{ s }}'}).then(function (r) { if (r.ok) { crmToast(r.message); setTimeout(function(){ location.reload(); }, 400); } else if (r.redirect) { location.href = r.redirect; } else { crmToast(r.error || 'That move is not allowed.', 'error'); } })">{{ label }}</button>{% endif %}{% endfor %}
+            </div></div></div>
+        </article>
+      {% empty %}<p class="py-6 text-center text-theme-xs text-gray-400">Nothing here</p>{% endfor %}
+      </div>
+    </section>
+  {% endfor %}
+  </div>
+</div>
+{% endblock %}

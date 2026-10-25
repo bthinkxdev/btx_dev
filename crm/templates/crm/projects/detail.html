@@ -1,0 +1,118 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{{ p }}{% endblock %}
+{% block banners %}
+  {% if p.is_at_risk %}<div class="alert alert-warning mb-5"><span class="text-warning-500">{% icon 'alert' 20 %}</span><p class="text-sm text-gray-700 dark:text-gray-300">At risk: {% if p.due_date < today %}past the due date{% else %}overdue tasks or budget above 90%{% endif %}.</p></div>{% endif %}
+  {% if p.status == 'on_hold' %}<div class="alert alert-info mb-5"><p class="text-sm">On hold: {{ p.hold_reason }}</p></div>{% endif %}
+  {% if pending %}<div class="alert alert-info mb-5"><p class="text-sm">Waiting for sign-off: <a class="link" href="{% url 'crm:approval_detail' pending.pk %}">{{ pending.title }}</a></p></div>{% endif %}
+{% endblock %}
+{% block content %}
+<div class="card mb-6">
+  <div class="flex flex-col gap-4 p-5 sm:p-6 xl:flex-row xl:items-start xl:justify-between">
+    <div><h1 class="text-xl font-semibold text-gray-800 dark:text-white/90">{{ p.code }} · {{ p.name }} {% badge p.status p.get_status_display %}</h1>
+      <p class="muted"><a class="link" href="{% url 'crm:client_detail' p.client_id %}">{{ p.client.display_name }}</a>{% if p.contract_id %} · <a class="link" href="{% url 'crm:contract_detail' p.contract_id %}">{{ p.contract }}</a>{% endif %} · PM {{ p.manager|uname }} · {{ p.start_date|d }} → {{ p.due_date|d }}</p></div>
+    <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div><p class="dl-label">Tasks done</p><p class="dl-value">{{ by_status.done|default:0 }} / {{ tasks|length }}</p></div>
+      <div><p class="dl-label">Hours</p><p class="dl-value">{{ hours|floatformat:"-1" }}{% if p.budget_hours %} / {{ p.budget_hours|floatformat:"-1" }}{% endif %}</p></div>
+      {% if show_cost %}<div><p class="dl-label">Cost</p><p class="dl-value">{{ cost.total|inr0 }}</p></div><div><p class="dl-label">Margin</p><p class="dl-value {% if margin < 0 %}text-error-600{% endif %}">{{ margin|inr0 }}</p></div>{% endif %}
+    </div>
+  </div>
+  <div class="flex flex-wrap gap-2 border-t border-gray-100 px-5 py-4 sm:px-6 dark:border-gray-800">
+    {% if can_task and p.status in 'planned,active,on_hold' %}<button type="button" class="btn btn-primary btn-sm" @click="$store.modal.show('task')">{% icon 'plus' 16 %} Add task</button>{% endif %}
+    {% if can_edit %}
+      <a href="{% url 'crm:project_edit' p.pk %}" class="btn btn-secondary btn-sm">{% icon 'edit' 16 %} Edit</a>
+      <button type="button" class="btn btn-secondary btn-sm" @click="$store.modal.show('milestone')">Add milestone</button>
+      <button type="button" class="btn btn-secondary btn-sm" @click="$store.modal.show('member')">Assign team</button>
+      <button type="button" class="btn btn-secondary btn-sm" @click="$store.modal.show('deadline')">Change deadline</button>
+      <button type="button" class="btn btn-secondary btn-sm" @click="$store.modal.show('cr')">Request scope change</button>
+      {% if p.status == 'planned' %}<form method="post" action="{% url 'crm:project_action' p.pk 'activate' %}">{% csrf_token %}<button class="btn btn-secondary btn-sm">Start project</button></form>{% endif %}
+      {% if p.status == 'active' %}<form method="post" action="{% url 'crm:project_action' p.pk 'hold' %}" data-confirm="Put the project on hold?" data-confirm-reason="required">{% csrf_token %}<button class="btn btn-secondary btn-sm">Put on hold</button></form>{% endif %}
+      {% if p.status == 'on_hold' %}<form method="post" action="{% url 'crm:project_action' p.pk 'activate' %}">{% csrf_token %}<button class="btn btn-secondary btn-sm">Resume</button></form>{% endif %}
+      {% if is_pm and p.status in 'active,on_hold' %}<button type="button" class="btn btn-secondary btn-sm" @click="$store.modal.show('close')">Close project</button>{% endif %}
+      {% if p.status in 'planned,active,on_hold' %}<form method="post" action="{% url 'crm:project_action' p.pk 'cancel' %}" data-confirm="Cancel this project?" data-confirm-reason="required" data-confirm-danger="1">{% csrf_token %}<button class="btn btn-danger-outline btn-sm">Cancel project</button></form>{% endif %}
+    {% endif %}
+    <a href="{% url 'crm:task_list' %}?view=board&project={{ p.pk }}" class="btn btn-secondary btn-sm">{% icon 'board' 16 %} Task board</a>
+  </div>
+  <nav class="flex gap-6 overflow-x-auto border-t border-gray-100 px-5 sm:px-6 dark:border-gray-800" aria-label="Project sections">
+    <a href="?tab=overview" class="tab {% if tab == 'overview' %}tab-active{% else %}tab-inactive{% endif %}">Overview</a>
+    <a href="?tab=tasks" class="tab {% if tab == 'tasks' %}tab-active{% else %}tab-inactive{% endif %}">Tasks <span class="badge badge-grey">{{ tasks|length }}</span></a>
+    <a href="?tab=milestones" class="tab {% if tab == 'milestones' %}tab-active{% else %}tab-inactive{% endif %}">Milestones</a>
+    <a href="?tab=team" class="tab {% if tab == 'team' %}tab-active{% else %}tab-inactive{% endif %}">Team</a>
+    <a href="?tab=time" class="tab {% if tab == 'time' %}tab-active{% else %}tab-inactive{% endif %}">Timesheets</a>
+    {% if show_cost %}<a href="?tab=costs" class="tab {% if tab == 'costs' %}tab-active{% else %}tab-inactive{% endif %}">Costs and billing</a>{% endif %}
+    <a href="?tab=changes" class="tab {% if tab == 'changes' %}tab-active{% else %}tab-inactive{% endif %}">Scope changes</a>
+    <a href="?tab=activity" class="tab {% if tab == 'activity' %}tab-active{% else %}tab-inactive{% endif %}">Activity</a>
+  </nav>
+</div>
+
+{% if tab == 'overview' %}
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+  <div class="space-y-6 xl:col-span-2">
+    <div class="card"><div class="card-header"><h2 class="card-title">Scope</h2></div><div class="card-body whitespace-pre-line text-sm text-gray-700 dark:text-gray-300">{{ p.scope|default:"No scope written yet." }}</div>
+      {% if p.acceptance_criteria %}<div class="border-t border-gray-100 p-5 text-sm dark:border-gray-800"><p class="dl-label">Acceptance criteria</p><p class="whitespace-pre-line">{{ p.acceptance_criteria }}</p></div>{% endif %}</div>
+    <div class="card"><div class="card-header"><h2 class="card-title">Open blockers</h2></div><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for b in blockers %}<li class="flex flex-wrap items-start justify-between gap-2 px-5 py-3 text-sm"><span><a class="link" href="{% url 'crm:task_detail' b.task_id %}">{{ b.task.title }}</a> · {{ b.get_kind_display }}<span class="block text-theme-xs text-gray-500">{{ b.description }} · owner {{ b.owner|uname }} · {{ b.created_at|ago }}</span></span>{% badge b.status b.get_status_display %}</li>{% empty %}<li class="muted px-5 py-4">None.</li>{% endfor %}</ul></div>
+  </div>
+  <div class="space-y-6">
+    <div class="card"><div class="card-header"><h2 class="card-title">Close checklist</h2></div><ul class="card-body space-y-2 text-sm">{% for i in checklist %}<li class="flex items-start gap-2">{% if i.ok %}<span class="text-success-600">{% icon 'check' 16 %}</span>{% else %}<span class="text-error-600">{% icon 'x' 16 %}</span>{% endif %}<span>{{ i.label }}{% if i.detail %} <span class="text-gray-500">({{ i.detail|truncatechars:80 }})</span>{% endif %}</span></li>{% endfor %}</ul></div>
+    <div class="card"><div class="card-header"><h2 class="card-title">Tickets</h2>{% can 'tickets' 'create' as ct %}{% if ct %}<a class="link text-sm" href="{% url 'crm:ticket_create' %}?client={{ p.client_id }}&project={{ p.pk }}">New</a>{% endif %}</div><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for t in tickets %}<li class="flex justify-between px-5 py-3 text-sm"><a class="link" href="{% url 'crm:ticket_detail' t.pk %}">{{ t.number }} {{ t.subject|truncatechars:30 }}</a>{% badge t.status t.get_status_display %}</li>{% empty %}<li class="muted px-5 py-4">None.</li>{% endfor %}</ul></div>
+  </div>
+</div>
+{% elif tab == 'tasks' %}
+<div class="card"><div class="table-wrap"><table class="data-table responsive-cards">
+  <thead><tr><th class="th">Task</th><th class="th">Assignee</th><th class="th">Milestone</th><th class="th">Due</th><th class="th">Estimate</th><th class="th">Status</th></tr></thead>
+  <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for t in tasks %}<tr><td class="td" data-label="Task"><a class="link" href="{% url 'crm:task_detail' t.pk %}">{{ t.title }}</a>{% if t.depends_on.all %}<span class="block text-theme-xs text-gray-500">after {{ t.depends_on.all|join:", " }}</span>{% endif %}</td><td class="td" data-label="Assignee">{{ t.assignee|uname|default:"—" }}</td><td class="td" data-label="Milestone">{{ t.milestone|default:"—" }}</td><td class="td whitespace-nowrap {% if t.is_overdue %}text-error-600{% endif %}" data-label="Due">{{ t.due_date|d|default:"—" }}</td><td class="td" data-label="Estimate">{{ t.estimate_hours|floatformat:"-1" }} h</td><td class="td" data-label="Status">{% badge t.status t.get_status_display %}{% if t.priority == 'urgent' or t.priority == 'high' %} {% badge 'hot' t.get_priority_display %}{% endif %}</td></tr>{% empty %}<tr><td class="td muted" colspan="6">No tasks yet.</td></tr>{% endfor %}</tbody></table></div></div>
+{% elif tab == 'milestones' %}
+<div class="card"><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for m in milestones %}<li class="px-5 py-4" x-data="{ acc: false }">
+  <div class="flex flex-wrap items-start justify-between gap-3"><div><p class="text-sm font-medium text-gray-800 dark:text-white/90">{{ m.name }} {% badge m.status m.get_status_display %}</p><p class="text-theme-sm text-gray-500">Due {{ m.due_date|d }}{% if m.amount %} · bills {{ m.amount|inr }}{% endif %}{% if m.accepted_at %} · accepted {{ m.accepted_at|d }} by {{ m.accepted_by|uname }}{% endif %}{% if m.invoice %} · <a class="link" href="{% url 'crm:invoice_detail' m.invoice.pk %}">{{ m.invoice.display_number }}</a>{% endif %}</p>{% if m.rejection_comment and m.status == 'rejected' %}<p class="text-theme-xs text-error-600">Sent back: {{ m.rejection_comment }}</p>{% endif %}{% if m.evidence %}<p class="text-theme-xs text-gray-500">Evidence: {{ m.evidence }}</p>{% endif %}</div>
+    <div class="flex flex-wrap gap-2">
+      {% if m.status in 'pending,in_progress,rejected' and can_edit %}<form method="post" action="{% url 'crm:project_action' p.pk 'ms_ready' %}">{% csrf_token %}<input type="hidden" name="milestone" value="{{ m.pk }}"><button class="btn btn-secondary btn-sm">Mark ready</button></form>{% endif %}
+      {% if m.status == 'ready_for_review' %}{% can 'projects' 'approve' as ca %}{% if ca %}<button type="button" class="btn btn-success btn-sm" @click="acc = !acc">Accept</button><form method="post" action="{% url 'crm:project_action' p.pk 'ms_reject' %}" data-confirm="Send the milestone back?" data-confirm-reason="required">{% csrf_token %}<input type="hidden" name="milestone" value="{{ m.pk }}"><button class="btn btn-danger-outline btn-sm">Reject</button></form>{% endif %}{% endif %}
+    </div></div>
+  {% if m.status == 'ready_for_review' %}<form method="post" action="{% url 'crm:project_action' p.pk 'ms_accept' %}" x-show="acc" x-cloak class="mt-3 grid grid-cols-1 gap-3 rounded-lg border border-gray-100 p-3 sm:grid-cols-2 dark:border-gray-800" novalidate>{% csrf_token %}{% idem %}<input type="hidden" name="milestone" value="{{ m.pk }}">{% field forms.accept.evidence %}{% field forms.accept.invoice_action %}<div class="sm:col-span-2"><button class="btn btn-primary btn-sm" data-loading-text="Accepting…">Confirm acceptance</button></div></form>{% endif %}
+</li>{% empty %}<li class="muted px-5 py-6">No milestones.</li>{% endfor %}</ul></div>
+{% elif tab == 'team' %}
+<div class="card"><div class="table-wrap"><table class="data-table responsive-cards"><thead><tr><th class="th">Member</th><th class="th">Role</th><th class="th">Allocation</th><th class="th">Across projects</th><th class="th">Dates</th>{% if show_cost %}<th class="th text-right">Cost / hour</th>{% endif %}<th class="th"></th></tr></thead>
+  <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for r in members %}<tr><td class="td" data-label="Member">{{ r.m.user|uname }}</td><td class="td" data-label="Role">{{ r.m.role }}</td><td class="td" data-label="Allocation">{{ r.m.allocation_percent }}%</td><td class="td {% if r.total > 100 %}text-error-600 font-medium{% endif %}" data-label="Total">{{ r.total }}%{% if r.total > 100 %} overloaded{% endif %}</td><td class="td" data-label="Dates">{{ r.m.start_date|d|default:"" }}{% if r.m.end_date %} – {{ r.m.end_date|d }}{% endif %}</td>{% if show_cost %}<td class="td text-right" data-label="Cost">{{ r.m.cost_rate|inr }}</td>{% endif %}
+    <td class="td text-right" data-label="">{% if can_edit and r.m.user_id != p.manager_id %}<form method="post" action="{% url 'crm:project_action' p.pk 'remove_member' %}" data-confirm="Remove {{ r.m.user|uname }} from the project?">{% csrf_token %}<input type="hidden" name="member" value="{{ r.m.pk }}"><button class="btn-link text-sm text-error-600">Remove</button></form>{% endif %}</td></tr>{% endfor %}</tbody></table></div></div>
+{% elif tab == 'time' %}
+<div class="card"><div class="card-header"><h2 class="card-title">Time logged · {{ hours|floatformat:"-1" }} h</h2><a href="{% url 'crm:timesheet' %}" class="link text-sm">My timesheet</a></div>
+  <div class="table-wrap"><table class="data-table responsive-cards"><thead><tr><th class="th">Date</th><th class="th">Person</th><th class="th">Task</th><th class="th text-right">Hours</th><th class="th">Billable</th><th class="th">Status</th></tr></thead>
+  <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for e in time %}<tr><td class="td" data-label="Date">{{ e.entry_date|d }}</td><td class="td" data-label="Person">{{ e.user|uname }}</td><td class="td" data-label="Task">{{ e.task|default:"—" }}{% if e.note %}<span class="block text-theme-xs text-gray-500">{{ e.note }}</span>{% endif %}</td><td class="td text-right" data-label="Hours">{{ e.hours|floatformat:"-2" }}</td><td class="td" data-label="Billable">{{ e.billable|yesno:"Yes,No" }}</td><td class="td" data-label="Status">{% badge e.status e.get_status_display %}</td></tr>{% empty %}<tr><td class="td muted" colspan="6">No time logged.</td></tr>{% endfor %}</tbody></table></div></div>
+{% elif tab == 'costs' and show_cost %}
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+  <div class="card"><div class="card-header"><h2 class="card-title">Budget against actual</h2></div><dl class="card-body space-y-2 text-sm">
+    <div class="flex justify-between"><dt class="text-gray-500">Budget</dt><dd>{{ p.budget_amount|inr }} · {{ p.budget_hours|floatformat:"-1" }} h</dd></div>
+    <div class="flex justify-between"><dt class="text-gray-500">Labour ({{ cost.hours|floatformat:"-1" }} h)</dt><dd>{{ cost.labour|inr }}</dd></div>
+    <div class="flex justify-between"><dt class="text-gray-500">Expenses</dt><dd>{{ cost.expenses|inr }}</dd></div>
+    <div class="flex justify-between border-t border-gray-100 pt-2 font-semibold dark:border-gray-800"><dt>Total cost</dt><dd>{{ cost.total|inr }}</dd></div>
+    <div class="flex justify-between"><dt class="text-gray-500">Revenue (invoiced, ex. tax)</dt><dd>{{ revenue|inr }}</dd></div>
+    <div class="flex justify-between font-semibold"><dt>Margin</dt><dd class="{% if margin < 0 %}text-error-600{% else %}text-success-600{% endif %}">{{ margin|inr }}</dd></div></dl></div>
+  <div class="card xl:col-span-2"><div class="card-header"><h2 class="card-title">Invoices</h2></div><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for i in invoices %}<li class="flex justify-between px-5 py-3 text-sm"><a class="link" href="{% url 'crm:invoice_detail' i.pk %}">{{ i.display_number }}</a><span>{{ i.taxable_total|inr }} {% status_badge i %}</span></li>{% empty %}<li class="muted px-5 py-4">No invoices linked to this project.</li>{% endfor %}</ul></div>
+</div>
+{% elif tab == 'changes' %}
+<div class="card"><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for cr in change_requests %}<li class="flex flex-wrap items-start justify-between gap-3 px-5 py-4 text-sm"><div><p class="font-medium text-gray-800 dark:text-white/90">{{ cr.title }} {% badge cr.status cr.get_status_display %}</p><p class="text-gray-600 dark:text-gray-400">{{ cr.description|truncatechars:200 }}</p><p class="text-theme-xs text-gray-500">{{ cr.effort_hours|floatformat:"-1" }} h · {{ cr.price|inr }} + {{ cr.tax_rate|pct }} GST{% if cr.client_evidence %} · {{ cr.client_evidence }}{% endif %}</p></div>
+  {% if cr.status == 'approved' %}{% can 'invoices' 'create' as ci %}{% if ci %}<form method="post" action="{% url 'crm:project_action' p.pk 'cr_bill' %}">{% csrf_token %}{% idem %}<input type="hidden" name="cr" value="{{ cr.pk }}"><button class="btn btn-primary btn-sm" data-loading-text="Creating…">Create invoice</button></form>{% endif %}{% elif cr.invoice %}<a class="link" href="{% url 'crm:invoice_detail' cr.invoice.pk %}">{{ cr.invoice.display_number }}</a>{% endif %}</li>{% empty %}<li class="muted px-5 py-6">No scope changes. Original contract value: {{ p.contract_value|inr }}.</li>{% endfor %}</ul></div>
+{% else %}
+<div class="card"><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for a in activity %}<li class="px-5 py-3 text-sm"><span class="font-medium">{{ a.action }}</span> <span class="muted">· {{ a.actor_name|default:a.actor_type }} · {{ a.created_at|dt }}</span>{% if a.reason %}<span class="block text-theme-xs text-gray-500">{{ a.reason }}</span>{% endif %}</li>{% empty %}<li class="muted px-5 py-4">No activity.</li>{% endfor %}</ul></div>
+{% endif %}
+
+{% include "crm/components/modal_start.html" with id="task" title="Add task" subtitle="The assignee must be a project member. Dependency loops are blocked." size="lg" %}
+  <form method="post" action="{% url 'crm:project_action' p.pk 'task' %}" novalidate>{% csrf_token %}{% idem %}{% include "crm/components/modal_form.html" with form=forms.task %}{% include "crm/components/modal_actions.html" with label="Add task" %}</form>
+{% include "crm/components/modal_end.html" %}
+{% include "crm/components/modal_start.html" with id="milestone" title="Add milestone" %}
+  <form method="post" action="{% url 'crm:project_action' p.pk 'milestone' %}" novalidate>{% csrf_token %}{% idem %}{% include "crm/components/modal_form.html" with form=forms.milestone %}{% include "crm/components/modal_actions.html" with label="Add milestone" %}</form>
+{% include "crm/components/modal_end.html" %}
+{% include "crm/components/modal_start.html" with id="member" title="Assign team member" subtitle="Total allocation across projects is shown after saving; above 100% is flagged." %}
+  <form method="post" action="{% url 'crm:project_action' p.pk 'member' %}" novalidate>{% csrf_token %}{% idem %}{% include "crm/components/modal_form.html" with form=forms.member %}{% include "crm/components/modal_actions.html" with label="Save member" %}</form>
+{% include "crm/components/modal_end.html" %}
+{% include "crm/components/modal_start.html" with id="deadline" title="Change deadline" subtitle="Moving past milestone dates flags the project at risk." %}
+  <form method="post" action="{% url 'crm:project_action' p.pk 'deadline' %}" novalidate>{% csrf_token %}{% idem %}{% include "crm/components/modal_form.html" with form=forms.deadline %}{% include "crm/components/modal_actions.html" with label="Change deadline" %}</form>
+{% include "crm/components/modal_end.html" %}
+{% include "crm/components/modal_start.html" with id="cr" title="Request scope change" subtitle="Approved changes are billed as new lines. The original price never changes." %}
+  <form method="post" action="{% url 'crm:project_action' p.pk 'cr' %}" novalidate>{% csrf_token %}{% idem %}{% include "crm/components/modal_form.html" with form=forms.cr %}{% include "crm/components/modal_actions.html" with label="Submit for approval" %}</form>
+{% include "crm/components/modal_end.html" %}
+{% include "crm/components/modal_start.html" with id="close" title="Close project" subtitle="Disabled until every checklist item is green. Finance signs off after you." %}
+  <ul class="mb-4 space-y-2 text-sm">{% for i in checklist %}<li class="flex items-start gap-2">{% if i.ok %}<span class="text-success-600">{% icon 'check' 16 %}</span>{% else %}<span class="text-error-600">{% icon 'x' 16 %}</span>{% endif %}{{ i.label }}</li>{% endfor %}</ul>
+  <form method="post" action="{% url 'crm:project_action' p.pk 'close' %}" novalidate>{% csrf_token %}{% idem %}<label class="form-label" for="lessons">Lessons learned</label><textarea id="lessons" name="reason" rows="3" class="form-textarea"></textarea>
+    <div class="mt-6 flex flex-col-reverse justify-end gap-3 sm:flex-row"><button type="button" class="btn btn-secondary" @click="$store.modal.close()">Cancel</button><button class="btn btn-primary" data-loading-text="Submitting…" {% if not close_ready %}disabled{% endif %}>Close project</button></div></form>
+{% include "crm/components/modal_end.html" %}
+{% endblock %}

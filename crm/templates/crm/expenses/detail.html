@@ -1,0 +1,63 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{{ e }}{% endblock %}
+{% block banners %}
+  {% if e.status == 'correction_requested' or e.status == 'rejected' %}<div class="alert alert-warning mb-5"><p class="text-sm">{{ e.get_status_display }}: {{ e.decision_comment }}</p></div>{% endif %}
+  {% if e.status == 'submitted' %}<div class="alert alert-info mb-5"><p class="text-sm">Waiting for approval{% if pending %} ({{ pending.get_required_level_display|default:pending.required_level }}){% endif %}.</p></div>{% endif %}
+  {% if dups and e.status in 'draft,correction_requested,submitted' %}<div class="alert alert-warning mb-5"><p class="text-sm">Possible duplicate of {% for d in dups %}<a class="link" href="{% url 'crm:expense_detail' d.pk %}">{{ d }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}.{% if e.duplicate_override_reason %} Marked not a duplicate: {{ e.duplicate_override_reason }}{% endif %}</p></div>{% endif %}
+{% endblock %}
+{% block content %}
+<div class="card mb-6">
+  <div class="flex flex-col gap-4 p-5 sm:p-6 xl:flex-row xl:items-start xl:justify-between">
+    <div><h1 class="text-xl font-semibold text-gray-800 dark:text-white/90">{{ e }} {% badge e.status e.get_status_display %}</h1>
+      <p class="muted">{{ e.get_kind_display }} · {{ e.category }} · {% if e.vendor %}<a class="link" href="{% url 'crm:vendor_detail' e.vendor_id %}">{{ e.vendor }}</a>{% else %}{{ e.employee|uname }}{% endif %}{% if e.project %} · <a class="link" href="{% url 'crm:project_detail' e.project_id %}">{{ e.project.code }}</a>{% endif %}</p>
+      <p class="mt-1 text-sm text-gray-700 dark:text-gray-300">{{ e.description }}</p></div>
+    <div class="grid grid-cols-3 gap-4"><div><p class="dl-label">Total</p><p class="dl-value text-lg">{{ e.total|inr }}</p></div><div><p class="dl-label">Payable</p><p class="dl-value text-lg">{{ e.payable_amount|inr }}</p></div><div><p class="dl-label">Paid</p><p class="dl-value text-lg">{{ e.paid_amount|inr }}</p></div></div>
+  </div>
+  <div class="flex flex-wrap gap-2 border-t border-gray-100 px-5 py-4 sm:px-6 dark:border-gray-800">
+    {% if e.status in 'draft,correction_requested,rejected' and can_edit %}
+      <a href="{% url 'crm:expense_edit' e.pk %}" class="btn btn-secondary btn-sm">{% icon 'edit' 16 %} Edit</a>
+      {% if blockers %}<span class="btn btn-primary btn-sm opacity-50" title="{{ blockers|join:'; ' }}" aria-disabled="true">Submit</span>{% else %}<form method="post" action="{% url 'crm:expense_action' e.pk 'submit' %}">{% csrf_token %}{% idem %}<button class="btn btn-primary btn-sm" data-loading-text="Submitting…">Submit for approval</button></form>{% endif %}
+    {% endif %}
+    {% if can_decide %}
+      <form method="post" action="{% url 'crm:expense_action' e.pk 'approve' %}" data-confirm="Approve {{ e.total|inr }}?" data-confirm-body="The payable is posted to the ledger.">{% csrf_token %}{% idem %}<button class="btn btn-success btn-sm">Approve</button></form>
+      <form method="post" action="{% url 'crm:expense_action' e.pk 'correction' %}" data-confirm="Request a correction?" data-confirm-reason="required">{% csrf_token %}<button class="btn btn-secondary btn-sm">Request correction</button></form>
+      <form method="post" action="{% url 'crm:expense_action' e.pk 'reject' %}" data-confirm="Reject this expense?" data-confirm-reason="required" data-confirm-danger="1">{% csrf_token %}<button class="btn btn-danger-outline btn-sm">Reject</button></form>
+    {% endif %}
+    {% if can_pay %}<button type="button" class="btn btn-primary btn-sm" @click="$store.modal.show('pay')">{% icon 'rupee' 16 %} Record payment</button>{% endif %}
+    {% if e.status in 'draft,correction_requested,approved,partially_paid,paid' %}<button type="button" class="btn btn-secondary btn-sm" @click="$store.modal.show('allocate')">{% icon 'swap' 16 %} Allocate</button>{% endif %}
+    {% if can_reverse %}<form method="post" action="{% url 'crm:expense_action' e.pk 'reverse' %}" data-confirm="Reverse this expense?" data-confirm-body="A reversing journal is posted." data-confirm-reason="required" data-confirm-danger="1">{% csrf_token %}<button class="btn btn-danger-outline btn-sm">Reverse</button></form>{% endif %}
+  </div>
+  {% if blockers %}<div class="border-t border-gray-100 px-5 py-3 text-theme-sm text-warning-700 sm:px-6 dark:border-gray-800">Before submitting: {{ blockers|join:"; " }}.</div>{% endif %}
+</div>
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+  <div class="space-y-6 xl:col-span-2">
+    <div class="card"><div class="card-header"><h2 class="card-title">Amounts</h2></div><dl class="card-body grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
+      <div><dt class="dl-label">Bill</dt><dd>{{ e.bill_number|default:"—" }} · {{ e.bill_date|d }}</dd></div><div><dt class="dl-label">Due</dt><dd>{{ e.due_date|d|default:"—" }}</dd></div>
+      <div><dt class="dl-label">Before tax</dt><dd>{{ e.amount_before_tax|inr }}</dd></div><div><dt class="dl-label">GST</dt><dd>{{ e.tax_total|inr }} {% if e.igst %}(IGST){% else %}(CGST+SGST){% endif %}</dd></div>
+      <div><dt class="dl-label">Input credit</dt><dd>{{ e.get_itc_eligibility_display }}</dd></div><div><dt class="dl-label">Vendor GSTIN</dt><dd>{{ e.vendor_gstin|default:"—" }}</dd></div>
+      <div><dt class="dl-label">TDS</dt><dd>{% if e.tds_amount %}{{ e.tds_amount|inr }} ({{ e.tds_section }}){% else %}—{% endif %}</dd></div><div><dt class="dl-label">Classification</dt><dd>{{ e.get_classification_display }}</dd></div></dl></div>
+    <div class="card"><div class="card-header"><h2 class="card-title">Allocation</h2></div><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for a in allocations %}<li class="flex justify-between px-5 py-3 text-sm"><span>{% if a.project %}{{ a.project.code }}{% elif a.client %}{{ a.client.display_name }}{% else %}{{ a.department }}{% endif %}</span><span>{{ a.percent|pct }} · {{ a.amount|inr }}</span></li>{% empty %}<li class="muted px-5 py-4">Not split. {% if e.project %}Charged to {{ e.project.code }}.{% endif %}</li>{% endfor %}</ul></div>
+    <div class="card"><div class="card-header"><h2 class="card-title">Payments</h2></div><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for p in payments %}<li class="flex justify-between px-5 py-3 text-sm"><span>{{ p.payment_date|d }} · {{ p.bank_account }} · {{ p.reference|default:p.method }}</span><span>{{ p.amount|inr }}</span></li>{% empty %}<li class="muted px-5 py-4">Not paid yet.</li>{% endfor %}</ul></div>
+  </div>
+  <div class="space-y-6">
+    {% include "crm/components/attachments.html" with obj=e attachments=proofs model_name="expense" can_upload=can_edit %}
+    {% if history %}<div class="card"><div class="card-header"><h2 class="card-title">Approvals</h2></div><ul class="card-body space-y-2">{% for h in history %}<li class="text-sm"><a class="link" href="{% url 'crm:approval_detail' h.pk %}">{{ h.requested_at|d }}</a> {% badge h.status h.get_status_display %}{% if h.comment %}<span class="block text-theme-xs text-gray-500">“{{ h.comment }}”</span>{% endif %}</li>{% endfor %}</ul></div>{% endif %}
+    <div class="card"><div class="card-header"><h2 class="card-title">Activity</h2></div><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for a in activity %}<li class="px-5 py-3 text-sm">{{ a.action }} <span class="muted">· {{ a.actor_name }} · {{ a.created_at|dt }}</span>{% if a.reason %}<span class="block text-theme-xs text-gray-500">{{ a.reason }}</span>{% endif %}</li>{% empty %}<li class="muted px-5 py-4">No activity.</li>{% endfor %}</ul></div>
+  </div>
+</div>
+{% if can_pay %}
+{% include "crm/components/modal_start.html" with id="pay" title="Record payment" subtitle="Posts the payable to the bank. TDS was already booked to TDS payable on approval." %}
+  <p class="mb-3 text-sm">Balance {{ e.balance|inr }}</p>
+  <form method="post" action="{% url 'crm:expense_action' e.pk 'pay' %}" novalidate>{% csrf_token %}{% idem %}{% include "crm/components/modal_form.html" with form=pay_form %}{% include "crm/components/modal_actions.html" with label="Record payment" loading="Recording…" %}</form>
+{% include "crm/components/modal_end.html" %}
+{% endif %}
+{% include "crm/components/modal_start.html" with id="allocate" title="Allocate expense" subtitle="Percentages must add up to 100. The expense total does not change." size="lg" %}
+  <form method="post" action="{% url 'crm:expense_action' e.pk 'allocate' %}" novalidate id="alloc-form">{% csrf_token %}{% idem %}{{ alloc.management_form }}
+    {% for err in alloc.non_form_errors %}<div class="alert alert-error mb-3"><p class="text-sm">{{ err }}</p></div>{% endfor %}
+    <div id="alloc-rows" class="space-y-3">{% for f in alloc %}<div class="grid grid-cols-1 gap-2 sm:grid-cols-4" data-row>{{ f.project }}{{ f.client }}{{ f.department }}{{ f.percent }}{% for er in f.non_field_errors %}<p class="form-error sm:col-span-4">{{ er }}</p>{% endfor %}</div>{% endfor %}</div>
+    <template id="alloc-tpl"><div class="grid grid-cols-1 gap-2 sm:grid-cols-4" data-row>{{ alloc.empty_form.project }}{{ alloc.empty_form.client }}{{ alloc.empty_form.department }}{{ alloc.empty_form.percent }}</div></template>
+    <button type="button" class="btn btn-secondary btn-sm mt-3" onclick="(function(){var t=document.querySelector('[name=alloc-TOTAL_FORMS]');var i=parseInt(t.value,10);var d=document.createElement('div');d.innerHTML=document.getElementById('alloc-tpl').innerHTML.replace(/__prefix__/g,i).trim();document.getElementById('alloc-rows').appendChild(d.firstElementChild);t.value=i+1;})()">{% icon 'plus' 16 %} Add row</button>
+    <p class="form-help mt-2">Each row: project, client or department, then the percent.</p>
+    {% include "crm/components/modal_actions.html" with label="Save allocation" %}</form>
+{% include "crm/components/modal_end.html" %}
+{% endblock %}

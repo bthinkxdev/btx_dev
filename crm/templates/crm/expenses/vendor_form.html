@@ -1,0 +1,11 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{% if v.pk %}Edit {{ v }}{% else %}Add vendor{% endif %}{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title=v.pk|yesno:"Edit vendor,Add vendor" %}{% endblock %}
+{% block content %}
+<form method="post" novalidate data-dirty-check class="card max-w-3xl">{% csrf_token %}{% idem %}{% if form.row_version %}{{ form.row_version }}{% endif %}
+  <div class="card-body space-y-5">{% include "crm/components/form_errors.html" %}
+    {% if dups %}<div class="alert alert-warning"><div class="text-sm"><p class="font-semibold">Similar vendors exist</p><ul class="list-disc pl-5">{% for d in dups %}<li><a class="link" href="{% url 'crm:vendor_detail' d.pk %}">{{ d.name }}</a> {{ d.gstin }}</li>{% endfor %}</ul><label class="mt-2 flex items-center gap-2"><input type="checkbox" name="confirm_new" value="1" class="form-checkbox-box"> Create anyway</label></div></div>{% endif %}
+    {% include "crm/components/modal_form.html" with form=form %}</div>
+  <div class="flex flex-col-reverse gap-3 border-t border-gray-100 p-5 sm:flex-row sm:justify-end dark:border-gray-800"><a href="{% if v.pk %}{% url 'crm:vendor_detail' v.pk %}{% else %}{% url 'crm:vendor_list' %}{% endif %}" class="btn btn-secondary">Cancel</a><button class="btn btn-primary" data-loading-text="Saving…">Save vendor</button></div>
+</form>
+{% endblock %}

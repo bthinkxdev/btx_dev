@@ -1,0 +1,23 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Tasks{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+  <div><h1 class="page-title">Tasks <span class="ml-1 text-base font-normal text-gray-500 dark:text-gray-400">({{ total }})</span></h1><p class="muted mt-1">Your assigned work and tasks on projects you manage.</p></div>
+  <div class="flex items-center gap-2">
+    <div class="inline-flex rounded-lg border border-gray-200 bg-white p-0.5 dark:border-gray-800 dark:bg-gray-900" role="group" aria-label="View"><a href="?view=table" class="rounded-md bg-gray-100 px-3 py-2 text-sm font-medium text-gray-800 dark:bg-white/10 dark:text-white/90" aria-current="true">Table</a><a href="?view=board" class="rounded-md px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-800 dark:text-gray-400">Board</a></div>
+    <a href="{% url 'crm:task_create' %}" class="btn btn-primary">{% icon 'plus' 18 %} Add task</a>
+  </div>
+</div>
+{% endblock %}
+{% block content %}
+<div class="card">
+  {% include "crm/components/list_toolbar.html" %}
+  {% if object_list %}
+  <div class="table-wrap"><table class="data-table responsive-cards">
+    <thead><tr><th class="th">Task</th><th class="th">Project</th><th class="th">Assignee</th><th class="th">{% sort_link 'priority' 'Priority' %}</th><th class="th">{% sort_link 'due' 'Due' %}</th><th class="th">Status</th></tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for t in object_list %}<tr class="hover:bg-gray-50 dark:hover:bg-white/3"><td class="td" data-label="Task"><a class="td-strong hover:text-brand-500" href="{% url 'crm:task_detail' t.pk %}">{{ t.title }}</a></td><td class="td" data-label="Project"><a class="link" href="{% url 'crm:project_detail' t.project_id %}">{{ t.project.code }}</a></td><td class="td" data-label="Assignee">{{ t.assignee|uname|default:"Unassigned" }}</td><td class="td" data-label="Priority">{{ t.get_priority_display }}</td><td class="td whitespace-nowrap {% if t.is_overdue %}font-medium text-error-600{% endif %}" data-label="Due">{{ t.due_date|d|default:"—" }}</td><td class="td" data-label="Status">{% badge t.status t.get_status_display %}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% include "crm/components/pagination.html" %}
+  {% else %}{% include "crm/components/empty_state.html" with filtered=any_filter title="No tasks" text="Tasks assigned to you appear here." icon="tasks" %}{% endif %}
+</div>
+{% endblock %}

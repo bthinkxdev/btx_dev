@@ -1,0 +1,18 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Support tickets{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-start justify-between gap-3">
+  <div><h1 class="page-title">Support tickets <span class="ml-1 text-base font-normal text-gray-500 dark:text-gray-400">({{ total }})</span></h1><p class="muted mt-1">SLA by priority: urgent 4 h, high 8 h, medium 24 h, low 72 h.</p></div>
+  {% if can_create %}<a href="{% url 'crm:ticket_create' %}" class="btn btn-primary">{% icon 'plus' 18 %} New ticket</a>{% endif %}
+</div>
+{% endblock %}
+{% block content %}
+<div class="card">
+  {% include "crm/components/list_toolbar.html" %}
+  {% if object_list %}
+  <div class="table-wrap"><table class="data-table responsive-cards"><thead><tr><th class="th">Ticket</th><th class="th">Client</th><th class="th">Priority</th><th class="th">Assignee</th><th class="th">SLA due</th><th class="th">Status</th></tr></thead>
+  <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for t in object_list %}<tr><td class="td" data-label="Ticket"><a class="td-strong hover:text-brand-500" href="{% url 'crm:ticket_detail' t.pk %}">{{ t.number }}</a><span class="block text-theme-xs">{{ t.subject|truncatechars:50 }}</span></td><td class="td" data-label="Client">{{ t.client.display_name }}{% if t.contract %}<span class="block text-theme-xs">AMC {{ t.contract.number }}</span>{% endif %}</td><td class="td" data-label="Priority">{{ t.get_priority_display }}</td><td class="td" data-label="Assignee">{{ t.assignee|uname|default:"—" }}</td><td class="td whitespace-nowrap {% if t.is_breached %}font-medium text-error-600{% endif %}" data-label="SLA">{{ t.sla_due_at|dt }}</td><td class="td" data-label="Status">{% badge t.status t.get_status_display %}{% if t.is_breached %} {% badge 'failed' 'Breached' %}{% endif %}</td></tr>{% endfor %}</tbody></table></div>
+  {% include "crm/components/pagination.html" %}
+  {% else %}{% include "crm/components/empty_state.html" with filtered=any_filter title="No tickets" icon="ticket" %}{% endif %}
+</div>
+{% endblock %}

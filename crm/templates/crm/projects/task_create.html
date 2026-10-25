@@ -1,0 +1,14 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Add task{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Add task" %}{% endblock %}
+{% block content %}
+<div class="card max-w-3xl">
+  <form method="get" class="card-body"><label class="form-label" for="tc-p">Project</label><select id="tc-p" name="project" class="form-select" data-autosubmit><option value="">Choose a project</option>{% for pr in projects %}<option value="{{ pr.pk }}" {% if p.pk == pr.pk %}selected{% endif %}>{{ pr }}</option>{% endfor %}</select><noscript><button class="btn btn-secondary btn-sm mt-2">Continue</button></noscript>
+    {% if not projects %}<p class="form-help mt-2">You are not a member of an open project.</p>{% endif %}</form>
+  {% if form %}
+  <form method="post" novalidate class="border-t border-gray-100 dark:border-gray-800">{% csrf_token %}{% idem %}<input type="hidden" name="project" value="{{ p.pk }}">
+    <div class="card-body">{% include "crm/components/modal_form.html" with form=form %}</div>
+    <div class="flex flex-col-reverse gap-3 border-t border-gray-100 p-5 sm:flex-row sm:justify-end dark:border-gray-800"><a class="btn btn-secondary" href="{% url 'crm:task_list' %}">Cancel</a><button class="btn btn-primary" data-loading-text="Saving…">Add task</button></div>
+  </form>{% endif %}
+</div>
+{% endblock %}

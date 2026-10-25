@@ -1,0 +1,9 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}New ticket{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="New support ticket" %}{% endblock %}
+{% block content %}
+<form method="post" novalidate data-dirty-check class="card max-w-3xl">{% csrf_token %}{% idem %}
+  <div class="card-body">{% include "crm/components/modal_form.html" with form=form %}</div>
+  <div class="flex flex-col-reverse gap-3 border-t border-gray-100 p-5 sm:flex-row sm:justify-end dark:border-gray-800"><a class="btn btn-secondary" href="{% url 'crm:ticket_list' %}">Cancel</a><button class="btn btn-primary" data-loading-text="Saving…">Create ticket</button></div>
+</form>
+{% endblock %}

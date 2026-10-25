@@ -7,6 +7,7 @@ from django.apps import AppConfig
 HANDLER_MODULES = [
     'crm.modules.leads.services', 'crm.modules.leads.views', 'crm.modules.quotations.services',
     'crm.modules.payments.services', 'crm.modules.billing.services', 'crm.modules.accounting.services',
+    'crm.modules.contracts.services', 'crm.modules.projects.services', 'crm.modules.expenses.services',
 ]
 
 

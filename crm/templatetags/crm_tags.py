@@ -171,6 +171,32 @@ def neg(value):
 
 
 @register.filter
+def mul(value, arg):
+    """Decimal-exact multiply (Django's add/widthratio are not money-safe)."""
+    try:
+        return Decimal(str(value)) * Decimal(str(arg))
+    except Exception:
+        return ''
+
+
+@register.filter
+def plus(value, arg):
+    """Decimal-exact addition; use instead of |add, which truncates decimals to integers."""
+    try:
+        return Decimal(str(value or 0)) + Decimal(str(arg or 0))
+    except Exception:
+        return ''
+
+
+@register.filter
+def minus(value, arg):
+    try:
+        return Decimal(str(value or 0)) - Decimal(str(arg or 0))
+    except Exception:
+        return ''
+
+
+@register.filter
 def absval(value):
     try:
         return abs(Decimal(str(value)))

@@ -1,0 +1,17 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Recurring expenses{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-start justify-between gap-3">
+  <div><h1 class="page-title">Recurring expenses</h1><p class="muted mt-1">Draft bills are created on schedule, once per period, for review and approval.</p></div>
+  <button type="button" class="btn btn-primary" @click="$store.modal.show('add')">{% icon 'plus' 18 %} Add schedule</button>
+</div>
+{% endblock %}
+{% block content %}
+<div class="card">{% if rows %}<div class="table-wrap"><table class="data-table responsive-cards"><thead><tr><th class="th">Name</th><th class="th">Vendor</th><th class="th">Category</th><th class="th text-right">Amount</th><th class="th">Frequency</th><th class="th">Next run</th><th class="th">Status</th><th class="th"></th></tr></thead>
+  <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for r in rows %}<tr><td class="td td-strong" data-label="Name">{{ r.name }}</td><td class="td" data-label="Vendor">{{ r.vendor|default:"—" }}</td><td class="td" data-label="Category">{{ r.category }}</td><td class="td text-right" data-label="Amount">{{ r.amount_before_tax|inr }} + {{ r.tax_rate|pct }}</td><td class="td" data-label="Frequency">{{ r.get_frequency_display }}</td><td class="td" data-label="Next">{{ r.next_run|d }}{% if r.end_date %}<span class="block text-theme-xs">ends {{ r.end_date|d }}</span>{% endif %}</td><td class="td" data-label="Status">{% badge r.status r.get_status_display %}</td>
+    <td class="td text-right" data-label=""><div class="flex justify-end gap-1">{% if r.status == 'active' %}<form method="post">{% csrf_token %}{% idem %}<input type="hidden" name="action" value="run"><input type="hidden" name="rec" value="{{ r.pk }}"><button class="btn btn-secondary btn-sm" data-loading-text="Running…">Run now</button></form><form method="post">{% csrf_token %}<input type="hidden" name="action" value="pause"><input type="hidden" name="rec" value="{{ r.pk }}"><button class="btn btn-secondary btn-sm">Pause</button></form>{% elif r.status == 'paused' %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="resume"><input type="hidden" name="rec" value="{{ r.pk }}"><button class="btn btn-secondary btn-sm">Resume</button></form>{% endif %}{% if r.status != 'ended' %}<form method="post" data-confirm="End this schedule?">{% csrf_token %}<input type="hidden" name="action" value="end"><input type="hidden" name="rec" value="{{ r.pk }}"><button class="btn btn-secondary btn-sm">End</button></form>{% endif %}</div></td></tr>{% endfor %}</tbody></table></div>
+  {% else %}{% include "crm/components/empty_state.html" with title="No recurring expenses" text="Rent, software subscriptions and retainers can bill themselves every period." icon="refresh" %}{% endif %}</div>
+{% include "crm/components/modal_start.html" with id="add" title="Add recurring expense" %}
+  <form method="post" novalidate>{% csrf_token %}{% idem %}<input type="hidden" name="action" value="add">{% include "crm/components/modal_form.html" with form=form %}{% include "crm/components/modal_actions.html" with label="Add schedule" %}</form>
+{% include "crm/components/modal_end.html" %}
+{% endblock %}

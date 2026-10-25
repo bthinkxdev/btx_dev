@@ -1,0 +1,27 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Timesheet{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+  <div><h1 class="page-title">My timesheet</h1><p class="muted mt-1">Week of {{ ws|d }} · {{ week_total|floatformat:"-2" }} h {% if locked %}<span class="badge badge-blue">submitted</span>{% endif %}</p></div>
+  <div class="flex items-center gap-2"><a class="btn btn-secondary btn-sm" href="?week={{ prev|date:'Y-m-d' }}" aria-label="Previous week">{% icon 'chevron_left' 16 %}</a><a class="btn btn-secondary btn-sm" href="?">This week</a><a class="btn btn-secondary btn-sm" href="?week={{ next|date:'Y-m-d' }}" aria-label="Next week">{% icon 'chevron_right' 16 %}</a></div>
+</div>
+{% endblock %}
+{% block content %}
+<div class="card mb-6"><div class="table-wrap"><table class="data-table">
+  <thead><tr><th class="th">Project / task</th>{% for d in days %}<th class="th text-right {% if d == today %}text-brand-500{% endif %}">{{ d|date:"D" }}<span class="block font-normal">{{ d|date:"d M" }}</span></th>{% endfor %}<th class="th text-right">Total</th></tr></thead>
+  <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for r in rows %}<tr><td class="td"><span class="font-medium text-gray-800 dark:text-white/90">{{ r.project.code }}</span> {{ r.task|default:"" }}</td>{% for h in r.hours %}<td class="td text-right">{% if h %}{{ h|floatformat:"-2" }}{% endif %}</td>{% endfor %}<td class="td text-right font-medium">{{ r.total|floatformat:"-2" }}</td></tr>{% empty %}<tr><td class="td muted" colspan="9">No time this week.</td></tr>{% endfor %}</tbody>
+  <tfoot><tr class="border-t border-gray-200 font-semibold dark:border-gray-700"><td class="td">Day total</td>{% for t in totals %}<td class="td text-right {% if t > 10 %}text-warning-700{% endif %}">{{ t|floatformat:"-2" }}</td>{% endfor %}<td class="td text-right">{{ week_total|floatformat:"-2" }}</td></tr></tfoot>
+</table></div>
+  {% if has_draft and not locked %}<div class="flex justify-end border-t border-gray-100 p-4 dark:border-gray-800"><form method="post" data-confirm="Submit this week?" data-confirm-body="It is locked until your manager approves it or sends it back.">{% csrf_token %}{% idem %}<input type="hidden" name="action" value="submit"><button class="btn btn-primary" data-loading-text="Submitting…">Submit week</button></form></div>{% endif %}
+</div>
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+  <div class="card">{% if not locked %}<div class="card-header"><h2 class="card-title">Log time</h2></div>
+    <form method="post" class="card-body space-y-4" novalidate>{% csrf_token %}{% idem %}<input type="hidden" name="action" value="log">
+      {% field form.project %}{% field form.task %}{% field form.entry_date %}{% field form.hours help="At most 24 hours per day across all entries." %}{% field form.billable %}{% field form.note %}
+      <button class="btn btn-primary w-full" data-loading-text="Saving…">Log time</button></form>
+    {% else %}<div class="card-body text-sm text-gray-600 dark:text-gray-400">This week is submitted. Ask your manager to send it back to change it.</div>{% endif %}</div>
+  <div class="card xl:col-span-2"><div class="card-header"><h2 class="card-title">Entries</h2></div>
+    <ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for e in entries %}<li class="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm"><span>{{ e.entry_date|date:"D d M" }} · <strong>{{ e.project.code }}</strong> {{ e.task|default:"" }}{% if e.note %}<span class="block text-theme-xs text-gray-500">{{ e.note }}</span>{% endif %}{% if e.reject_comment %}<span class="block text-theme-xs text-error-600">Sent back: {{ e.reject_comment }}</span>{% endif %}</span>
+      <span class="flex items-center gap-2">{{ e.hours|floatformat:"-2" }} h {% if not e.billable %}<span class="badge badge-grey">non-billable</span>{% endif %}{% badge e.status e.get_status_display %}{% if e.status == 'draft' %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="delete"><input type="hidden" name="entry" value="{{ e.pk }}"><button class="btn-icon-sm" aria-label="Delete entry">{% icon 'trash' 14 %}</button></form>{% endif %}</span></li>{% empty %}<li class="muted px-5 py-4">Nothing logged.</li>{% endfor %}</ul></div>
+</div>
+{% endblock %}

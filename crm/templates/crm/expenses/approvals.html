@@ -1,0 +1,7 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Expense approvals{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Expense approvals" subtitle="Submitted expenses waiting for you. You never see your own claims here." count=total %}{% endblock %}
+{% block content %}
+<div class="card">{% include "crm/components/list_toolbar.html" %}
+  {% if object_list %}{% include "crm/expenses/_table.html" %}{% include "crm/components/pagination.html" %}{% else %}{% include "crm/components/empty_state.html" with filtered=any_filter title="Nothing to approve" icon="check" %}{% endif %}</div>
+{% endblock %}

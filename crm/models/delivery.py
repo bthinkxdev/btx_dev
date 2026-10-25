@@ -169,6 +169,10 @@ class Project(TimeStamped, Versioned):
         return self.tasks.filter(status__in=['todo', 'in_progress', 'blocked'], due_date__lt=today()).exists()
 
     @property
+    def next_milestone(self):
+        return next((m for m in self.milestones.all() if m.status != 'accepted'), None)
+
+    @property
     def hours_logged(self):
         from django.db.models import Sum
         return self.time_entries.exclude(status='rejected').aggregate(s=Sum('hours'))['s'] or Decimal('0')

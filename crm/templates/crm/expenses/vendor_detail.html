@@ -1,0 +1,21 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{{ v.name }}{% endblock %}
+{% block banners %}{% if v.status != 'active' %}<div class="alert {% if v.status == 'blocked' %}alert-error{% else %}alert-warning{% endif %} mb-5"><p class="text-sm">{{ v.get_status_display }}: {{ v.status_reason }}</p></div>{% endif %}{% endblock %}
+{% block content %}
+<div class="card mb-6"><div class="flex flex-col gap-4 p-5 sm:p-6 lg:flex-row lg:items-start lg:justify-between">
+  <div><h1 class="text-xl font-semibold text-gray-800 dark:text-white/90">{{ v.name }} {% badge v.status v.get_status_display %}</h1><p class="muted">{% if show_tax %}PAN {{ v.pan|default:"—" }} · GSTIN {{ v.gstin|default:"—" }}{% else %}PAN {{ v.pan|masked }}{% endif %} · {{ v.state|state_name }}{% if v.tds_section %} · TDS {{ v.tds_section }} {{ v.tds_rate|pct }}{% endif %}</p>
+    <p class="text-sm text-gray-600 dark:text-gray-400">{{ v.email }} {{ v.phone|phone }}</p></div>
+  <div class="grid grid-cols-2 gap-4"><div><p class="dl-label">Outstanding</p><p class="dl-value text-lg">{{ outstanding|inr }}</p></div><div><p class="dl-label">TDS this FY</p><p class="dl-value text-lg">{{ tds_ytd|inr }}</p></div></div></div>
+  {% if can_edit %}<div class="flex flex-wrap gap-2 border-t border-gray-100 px-5 py-4 sm:px-6 dark:border-gray-800">
+    <a href="{% url 'crm:vendor_edit' v.pk %}" class="btn btn-secondary btn-sm">{% icon 'edit' 16 %} Edit</a>
+    <a href="{% url 'crm:expense_create' %}?kind=vendor_bill" class="btn btn-secondary btn-sm">Add bill</a>
+    {% if v.status != 'active' %}<form method="post">{% csrf_token %}<input type="hidden" name="status" value="active"><button class="btn btn-secondary btn-sm">Set active</button></form>{% endif %}
+    {% if v.status != 'on_hold' %}<form method="post" data-confirm="Put the vendor on hold?" data-confirm-reason="required">{% csrf_token %}<input type="hidden" name="status" value="on_hold"><button class="btn btn-secondary btn-sm">Hold</button></form>{% endif %}
+    {% if v.status != 'blocked' %}<form method="post" data-confirm="Block this vendor?" data-confirm-body="No bills or payments can be recorded until unblocked." data-confirm-reason="required" data-confirm-danger="1">{% csrf_token %}<input type="hidden" name="status" value="blocked"><button class="btn btn-danger-outline btn-sm">Block</button></form>{% endif %}
+  </div>{% endif %}
+</div>
+{% if show_bank and v.bank_account_number %}<div class="card mb-6"><div class="card-body text-sm">Bank: {{ v.bank_name }} · {{ v.bank_account_number }} · {{ v.bank_ifsc }}</div></div>{% endif %}
+<div class="card"><div class="card-header"><h2 class="card-title">Bills</h2></div>
+  <div class="table-wrap"><table class="data-table responsive-cards"><thead><tr><th class="th">Expense</th><th class="th">Date</th><th class="th">Bill</th><th class="th text-right">Total</th><th class="th text-right">TDS</th><th class="th text-right">Balance</th><th class="th">Status</th></tr></thead>
+  <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for e in bills %}<tr><td class="td" data-label="Expense"><a class="link" href="{% url 'crm:expense_detail' e.pk %}">{{ e }}</a></td><td class="td" data-label="Date">{{ e.bill_date|d }}</td><td class="td" data-label="Bill">{{ e.bill_number }}</td><td class="td text-right" data-label="Total">{{ e.total|inr }}</td><td class="td text-right" data-label="TDS">{{ e.tds_amount|inr }}</td><td class="td text-right" data-label="Balance">{{ e.balance|inr }}</td><td class="td" data-label="Status">{% badge e.status e.get_status_display %}</td></tr>{% empty %}<tr><td class="td muted" colspan="7">No bills.</td></tr>{% endfor %}</tbody></table></div></div>
+{% endblock %}

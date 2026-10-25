@@ -1,0 +1,18 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{{ t.number }}{% endblock %}
+{% block banners %}{% if t.is_breached %}<div class="alert alert-error mb-5"><p class="text-sm">SLA breached: was due {{ t.sla_due_at|dt }}.</p></div>{% endif %}{% endblock %}
+{% block content %}
+<div class="card mb-6"><div class="flex flex-col gap-4 p-5 sm:p-6 lg:flex-row lg:items-start lg:justify-between">
+  <div><h1 class="text-xl font-semibold text-gray-800 dark:text-white/90">{{ t.number }} · {{ t.subject }} {% badge t.status t.get_status_display %}</h1>
+    <p class="muted"><a class="link" href="{% url 'crm:client_detail' t.client_id %}">{{ t.client.display_name }}</a>{% if t.project %} · <a class="link" href="{% url 'crm:project_detail' t.project_id %}">{{ t.project.code }}</a>{% endif %}{% if t.contract %} · covered by <a class="link" href="{% url 'crm:contract_detail' t.contract_id %}">{{ t.contract }}</a>{% endif %} · {{ t.get_priority_display }} · SLA {{ t.sla_due_at|dt }}</p></div>
+  {% if can_edit %}<div class="flex flex-wrap gap-2">{% for s in next %}<form method="post" {% if s == 'resolved' %}data-confirm="Resolve the ticket?" data-confirm-reason="required" data-confirm-reason-min="5"{% endif %}>{% csrf_token %}<input type="hidden" name="to" value="{{ s }}"><button class="btn {% if s == 'resolved' %}btn-primary{% else %}btn-secondary{% endif %} btn-sm">{{ statuses|get_item:s }}</button></form>{% endfor %}</div>{% endif %}
+</div></div>
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+  <div class="card xl:col-span-2"><div class="card-header"><h2 class="card-title">Description</h2></div><div class="card-body whitespace-pre-line text-sm">{{ t.description|default:"—" }}</div></div>
+  <div class="space-y-6">
+    <div class="card"><div class="card-header"><h2 class="card-title">Assignee</h2></div><div class="card-body text-sm"><p>{{ t.assignee|uname|default:"Unassigned" }}</p>
+      {% if can_assign %}<form method="post" class="mt-3 flex gap-2">{% csrf_token %}<input type="hidden" name="action" value="assign"><select name="assignee" class="form-select h-10" aria-label="Assign to">{% for u in users %}<option value="{{ u.pk }}" {% if u.pk == t.assignee_id %}selected{% endif %}>{{ u|uname }}</option>{% endfor %}</select><button class="btn btn-secondary btn-sm">Assign</button></form>{% endif %}</div></div>
+    <div class="card"><div class="card-header"><h2 class="card-title">Activity</h2></div><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for a in activity %}<li class="px-5 py-3 text-sm">{{ a.action }} <span class="muted">· {{ a.actor_name }} · {{ a.created_at|dt }}</span>{% if a.reason %}<span class="block text-theme-xs text-gray-500">{{ a.reason }}</span>{% endif %}</li>{% empty %}<li class="muted px-5 py-4">No activity.</li>{% endfor %}</ul></div>
+  </div>
+</div>
+{% endblock %}

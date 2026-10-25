@@ -1,0 +1,26 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Projects{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-start justify-between gap-3">
+  <div><h1 class="page-title">Project portfolio <span class="ml-1 text-base font-normal text-gray-500 dark:text-gray-400">({{ total }})</span></h1><p class="muted mt-1">Health is computed: past due, overdue tasks or budget burn above 90% shows At risk.</p></div>
+  {% if can_create %}<a href="{% url 'crm:project_create' %}" class="btn btn-primary">{% icon 'plus' 18 %} New project</a>{% endif %}
+</div>
+{% endblock %}
+{% block content %}
+<div class="card">
+  {% include "crm/components/list_toolbar.html" %}
+  {% if object_list %}
+  <div class="table-wrap"><table class="data-table responsive-cards">
+    <thead><tr><th class="th">Project</th><th class="th">Client</th><th class="th">PM</th><th class="th">Status</th><th class="th">Budget used</th><th class="th">{% sort_link 'due' 'Due' %}</th><th class="th">Next milestone</th></tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for p in object_list %}<tr class="hover:bg-gray-50 dark:hover:bg-white/3">
+      <td class="td" data-label="Project"><a class="td-strong hover:text-brand-500" href="{% url 'crm:project_detail' p.pk %}">{{ p.code }}</a><span class="block text-theme-xs">{{ p.name|truncatechars:50 }}</span></td>
+      <td class="td" data-label="Client">{{ p.client.display_name }}</td><td class="td" data-label="PM">{{ p.manager|uname }}</td>
+      <td class="td" data-label="Status">{% badge p.status p.get_status_display %}{% if p.is_at_risk %} {% badge 'at_risk' 'At risk' %}{% endif %}</td>
+      <td class="td" data-label="Budget">{% if p.budget_hours %}{% with h=p.hours_logged %}<div class="flex items-center gap-2"><div class="h-1.5 w-20 rounded-full bg-gray-100 dark:bg-gray-800"><div class="h-1.5 rounded-full {% if h > p.budget_hours %}bg-error-500{% else %}bg-brand-500{% endif %}" style="width:{% widthratio h p.budget_hours 100 %}%;max-width:100%"></div></div><span class="text-theme-xs">{{ h|floatformat:"-1" }}/{{ p.budget_hours|floatformat:"-1" }} h</span></div>{% endwith %}{% else %}—{% endif %}</td>
+      <td class="td whitespace-nowrap {% if p.due_date < today and p.status in 'planned,active' %}text-error-600{% endif %}" data-label="Due">{{ p.due_date|d }}</td>
+      <td class="td" data-label="Next milestone">{% with m=p.next_milestone %}{% if m %}{{ m.name }} · {{ m.due_date|d }}{% else %}—{% endif %}{% endwith %}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% include "crm/components/pagination.html" %}
+  {% else %}{% include "crm/components/empty_state.html" with filtered=any_filter title="No projects yet" text="Create a project from an accepted quotation, an active contract or a client." icon="tasks" %}{% endif %}
+</div>
+{% endblock %}

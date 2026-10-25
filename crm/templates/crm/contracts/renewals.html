@@ -1,0 +1,19 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Renewals{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Renewals and recurring revenue" subtitle="Contracts ending in the next 12 months with value at risk." %}{% endblock %}
+{% block content %}
+<div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4 xl:grid-cols-7">
+  <div class="card p-4"><p class="dl-label">MRR</p><p class="mt-1 text-lg font-semibold">{{ mrr|inr0 }}</p></div>
+  <div class="card p-4"><p class="dl-label">ARR</p><p class="mt-1 text-lg font-semibold">{{ moves.arr|inr0 }}</p></div>
+  <div class="card p-4"><p class="dl-label">New this month</p><p class="mt-1 text-lg font-semibold text-success-600">{{ moves.new|inr0 }}</p></div>
+  <div class="card p-4"><p class="dl-label">Expansion</p><p class="mt-1 text-lg font-semibold text-success-600">{{ moves.expansion|inr0 }}</p></div>
+  <div class="card p-4"><p class="dl-label">Contraction</p><p class="mt-1 text-lg font-semibold text-warning-700">{{ moves.contraction|inr0 }}</p></div>
+  <div class="card p-4"><p class="dl-label">Churn</p><p class="mt-1 text-lg font-semibold text-error-600">{{ moves.churn|inr0 }}</p></div>
+  <div class="card p-4"><p class="dl-label">Renewal rate (12 mo)</p><p class="mt-1 text-lg font-semibold">{% if rate is not None %}{{ rate }}%{% else %}—{% endif %}</p></div>
+</div>
+{% if overdue %}<div class="alert alert-error mb-6"><p class="text-sm">{{ overdue|length }} active contract(s) are past their end date. The nightly job expires or auto-renews them.</p></div>{% endif %}
+{% for m in cal %}
+<div class="card mb-4"><div class="card-header"><h2 class="card-title">{{ m.month|date:"F Y" }}</h2><p class="text-sm">Value {{ m.value|inr0 }} · MRR at risk {{ m.mrr|inr0 }}</p></div>
+  <ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for c in m.contracts %}<li class="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm"><span><a class="link" href="{% url 'crm:contract_detail' c.pk %}">{{ c }}</a> · {{ c.client.display_name }} · ends {{ c.end_date|d }}{% if c.auto_renew %} <span class="badge badge-green">auto-renew</span>{% endif %}</span><span>{{ c.value|inr0 }} · {{ c.owner|uname }}</span></li>{% endfor %}</ul></div>
+{% empty %}<div class="card">{% include "crm/components/empty_state.html" with title="No renewals in the next 12 months" icon="calendar" %}</div>{% endfor %}
+{% endblock %}

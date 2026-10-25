@@ -1,0 +1,17 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{% if is_new %}New project{% else %}Edit {{ p }}{% endif %}{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title=is_new|yesno:"New project,Edit project" %}{% endblock %}
+{% block content %}
+<form method="post" novalidate data-dirty-check class="card max-w-4xl">{% csrf_token %}{% idem %}{% if form.row_version %}{{ form.row_version }}{% endif %}
+  {% if contract %}<input type="hidden" name="src_contract" value="{{ contract.pk }}">{% endif %}{% if quotation %}<input type="hidden" name="src_quotation" value="{{ quotation.pk }}">{% endif %}
+  <div class="card-body space-y-5">
+    {% include "crm/components/form_errors.html" %}
+    {% if contract %}<p class="text-sm text-gray-700 dark:text-gray-300">From contract <a class="link" href="{% url 'crm:contract_detail' contract.pk %}">{{ contract }}</a> (value {{ contract.value|inr }}).</p>{% endif %}
+    {% if quotation %}<p class="text-sm text-gray-700 dark:text-gray-300">From quotation <a class="link" href="{% url 'crm:quotation_detail' quotation.pk %}">{{ quotation.display_number }}</a>; its milestones are copied.</p>{% endif %}
+    <div class="grid grid-cols-1 gap-5 md:grid-cols-2">{% field form.name %}{% field form.client %}{% field form.service help="Its task template creates the first tasks." %}{% field form.manager %}{% field form.start_date %}{% field form.due_date %}{% field form.budget_hours %}{% field form.budget_amount prefix_text="₹" %}{% field form.scope wrapper_class="md:col-span-2" %}{% field form.acceptance_criteria wrapper_class="md:col-span-2" %}</div>
+    {% if is_new %}<label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" name="use_template" value="1" checked class="form-checkbox-box"> Create tasks from the service template</label>
+    {% if contract %}<div><label class="form-label" for="bnote">Budget note (only if above the contract value)</label><input id="bnote" name="budget_note" maxlength="200" class="form-input"></div>{% endif %}{% endif %}
+  </div>
+  <div class="flex flex-col-reverse gap-3 border-t border-gray-100 p-5 sm:flex-row sm:justify-end dark:border-gray-800"><a href="{% if p %}{% url 'crm:project_detail' p.pk %}{% else %}{% url 'crm:project_list' %}{% endif %}" class="btn btn-secondary">Cancel</a><button class="btn btn-primary" data-loading-text="Saving…">{% if is_new %}Create project{% else %}Save{% endif %}</button></div>
+</form>
+{% endblock %}

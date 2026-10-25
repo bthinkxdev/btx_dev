@@ -1,0 +1,15 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Vendors{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-start justify-between gap-3">
+  <div><h1 class="page-title">Vendors <span class="ml-1 text-base font-normal text-gray-500 dark:text-gray-400">({{ total }})</span></h1><p class="muted mt-1">Blocked vendors cannot receive bills or payments.</p></div>
+  {% if can_create %}<a href="{% url 'crm:vendor_create' %}" class="btn btn-primary">{% icon 'plus' 18 %} Add vendor</a>{% endif %}
+</div>
+{% endblock %}
+{% block content %}
+<div class="card">{% include "crm/components/list_toolbar.html" %}
+  {% if rows %}<div class="table-wrap"><table class="data-table responsive-cards"><thead><tr><th class="th">Vendor</th><th class="th">GSTIN</th><th class="th">TDS</th><th class="th text-right">Outstanding</th><th class="th text-right">TDS this FY</th><th class="th">Status</th></tr></thead>
+  <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for r in rows %}<tr><td class="td" data-label="Vendor"><a class="td-strong hover:text-brand-500" href="{% url 'crm:vendor_detail' r.v.pk %}">{{ r.v.name }}</a><span class="block text-theme-xs">{{ r.v.state|state_name }}</span></td><td class="td font-mono text-theme-xs" data-label="GSTIN">{% if show_tax %}{{ r.v.gstin|default:"—" }}{% else %}{{ r.v.gstin|masked }}{% endif %}</td><td class="td" data-label="TDS">{{ r.v.tds_section|default:"—" }}{% if r.v.tds_rate %} · {{ r.v.tds_rate|pct }}{% endif %}</td><td class="td text-right" data-label="Outstanding">{{ r.outstanding|inr }}</td><td class="td text-right" data-label="TDS FY">{{ r.tds|inr }}</td><td class="td" data-label="Status">{% badge r.v.status r.v.get_status_display %}</td></tr>{% endfor %}</tbody></table></div>
+  {% include "crm/components/pagination.html" %}
+  {% else %}{% include "crm/components/empty_state.html" with filtered=any_filter title="No vendors yet" icon="store" %}{% endif %}</div>
+{% endblock %}

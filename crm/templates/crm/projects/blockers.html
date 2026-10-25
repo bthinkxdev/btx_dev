@@ -1,0 +1,10 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Blockers and overdue{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Blockers and overdue work" %}{% endblock %}
+{% block content %}
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+  <div class="card"><div class="card-header"><h2 class="card-title">Open blockers ({{ blockers|length }})</h2></div><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for b in blockers %}<li class="px-5 py-4 text-sm" x-data="{ r: false }"><div class="flex flex-wrap items-start justify-between gap-2"><span><a class="link" href="{% url 'crm:task_detail' b.task_id %}">{{ b.task.title }}</a> · {{ b.task.project.code }}<span class="block text-theme-xs text-gray-500">{{ b.get_kind_display }}: {{ b.description }} · owner {{ b.owner|uname }} · open {{ b.created_at|ago }}</span></span>{% badge b.status b.get_status_display %}</div>
+    <form method="post" action="{% url 'crm:blocker_resolve' b.pk %}" class="mt-2 flex gap-2" novalidate>{% csrf_token %}<input name="reason" required minlength="5" maxlength="300" class="form-input h-9 text-sm" placeholder="How was it resolved?" aria-label="Resolution"><button class="btn btn-secondary btn-sm">Resolve</button></form></li>{% empty %}<li class="muted px-5 py-4">No open blockers.</li>{% endfor %}</ul></div>
+  <div class="card"><div class="card-header"><h2 class="card-title">Overdue tasks ({{ overdue|length }})</h2></div><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for t in overdue %}<li class="flex justify-between gap-2 px-5 py-3 text-sm"><span><a class="link" href="{% url 'crm:task_detail' t.pk %}">{{ t.title }}</a><span class="block text-theme-xs text-gray-500">{{ t.project.code }} · {{ t.assignee|uname|default:"unassigned" }}</span></span><span class="text-error-600">{{ t.due_date|d }}</span></li>{% empty %}<li class="muted px-5 py-4">Nothing overdue.</li>{% endfor %}</ul></div>
+</div>
+{% endblock %}

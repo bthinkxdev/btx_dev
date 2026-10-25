@@ -1,0 +1,12 @@
+{% load crm_tags %}
+<tr class="align-top" data-line-row {% if lf.DELETE.value %}style="display:none"{% endif %}>
+  <td class="px-2 py-3 min-w-56">{% for h in lf.hidden_fields %}{{ h }}{% endfor %}{{ lf.service }}<input name="{{ lf.description.html_name }}" value="{{ lf.description.value|default_if_none:'' }}" maxlength="300" class="form-input mt-2 h-10" placeholder="Description" aria-label="Description">
+    {% for e in lf.non_field_errors %}<p class="form-error">{{ e }}</p>{% endfor %}{% for f in lf %}{% for e in f.errors %}<p class="form-error">{{ f.label }}: {{ e }}</p>{% endfor %}{% endfor %}</td>
+  <td class="px-2 py-3 w-20">{{ lf.quantity }}</td>
+  <td class="px-2 py-3 w-32">{{ lf.unit_price }}</td>
+  <td class="px-2 py-3 w-36">{{ lf.billing_model }}</td>
+  <td class="px-2 py-3 w-40">{{ lf.start_date }}<div class="mt-2">{{ lf.end_date }}</div></td>
+  <td class="px-2 py-3 w-36">{{ lf.taxability }}<div class="mt-2">{{ lf.tax_rate }}</div></td>
+  <td class="px-2 py-3 w-24">{{ lf.sac_code }}<label class="mt-2 flex items-center gap-1 text-theme-xs">{{ lf.is_paused }} Paused</label></td>
+  <td class="px-2 py-3"><label class="btn-icon-sm cursor-pointer" title="Remove line"><input type="checkbox" name="{{ lf.DELETE.html_name }}" class="sr-only" data-delete {% if lf.DELETE.value %}checked{% endif %}>{% icon 'trash' 16 %}<span class="sr-only">Remove</span></label></td>
+</tr>
