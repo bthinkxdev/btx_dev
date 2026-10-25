@@ -107,6 +107,7 @@ NAV = [
             ('Payroll runs', 'crm:payroll_list', 'payroll', 'view'),
             ('Salary structures', 'crm:salary_structures', 'payroll', 'edit'),
             ('Commissions', 'crm:commission_list', 'commissions', 'view'),
+            ('My payslips', 'crm:my_payslips', '', ''),
         ]),
     ]),
     ('INSIGHTS', [

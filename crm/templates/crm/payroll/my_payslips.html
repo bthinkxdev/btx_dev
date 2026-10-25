@@ -1,0 +1,7 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}My payslips{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="My payslips" subtitle="Released after salary is paid." %}{% endblock %}
+{% block content %}
+<div class="card">{% if slips %}<ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for p in slips %}<li class="flex items-center justify-between gap-2 px-5 py-4 text-sm"><span class="font-medium text-gray-800 dark:text-white/90">{{ p.run.period|date:"F Y" }}</span><span>{{ p.net|inr }} <a class="btn btn-secondary btn-sm ml-3" href="{% url 'crm:payslip_pdf' p.pk %}">{% icon 'download' 14 %} Download</a></span></li>{% endfor %}</ul>
+  {% else %}{% include "crm/components/empty_state.html" with title="No payslips yet" text="Payslips appear here once payroll is paid and released." icon="payroll" %}{% endif %}</div>
+{% endblock %}

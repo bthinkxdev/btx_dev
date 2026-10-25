@@ -1,0 +1,10 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{% if e.pk %}Edit {{ e.name }}{% else %}Add employee{% endif %}{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title=e.pk|yesno:"Edit employee,Add employee" subtitle="Code and work email must be unique. Roles are assigned separately and never above your own access." %}{% endblock %}
+{% block content %}
+<form method="post" novalidate data-dirty-check class="card max-w-4xl">{% csrf_token %}{% idem %}{% if form.row_version %}{{ form.row_version }}{% endif %}
+  <div class="card-body space-y-5">{% include "crm/components/modal_form.html" with form=form %}
+    {% if login %}<div class="rounded-xl border border-gray-100 p-4 dark:border-gray-800"><p class="mb-3 text-sm font-medium text-gray-800 dark:text-white/90">Login</p><div class="grid grid-cols-1 gap-4 sm:grid-cols-2">{% field login.create_login %}{% field login.role %}</div><p class="form-help mt-2">The employee sets a password with “Forgot password” or from an admin reset. 2FA can be enforced per role.</p></div>{% endif %}</div>
+  <div class="flex flex-col-reverse gap-3 border-t border-gray-100 p-5 sm:flex-row sm:justify-end dark:border-gray-800"><a href="{% if e.pk %}{% url 'crm:employee_detail' e.pk %}{% else %}{% url 'crm:employee_list' %}{% endif %}" class="btn btn-secondary">Cancel</a><button class="btn btn-primary" data-loading-text="Saving…">Save employee</button></div>
+</form>
+{% endblock %}

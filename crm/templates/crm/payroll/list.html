@@ -1,0 +1,17 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Payroll{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-start justify-between gap-3">
+  <div><h1 class="page-title">Payroll runs</h1><p class="muted mt-1">Draft → review → Owner approval locks the run. Corrections after lock go into the next run.</p></div>
+  <div class="flex gap-2"><button type="button" class="btn btn-secondary" @click="$store.modal.show('adj')">Add adjustment</button>
+  {% if can_create %}<form method="post" class="flex items-end gap-2">{% csrf_token %}{% idem %}<label class="sr-only" for="pp">Month</label><input id="pp" type="month" name="period" value="{{ default_period|date:'Y-m' }}" class="form-input h-11 w-40" required><button class="btn btn-primary" data-loading-text="Creating…">Create payroll run</button></form>{% endif %}</div>
+</div>
+{% endblock %}
+{% block content %}
+<div class="card">{% if runs %}<div class="table-wrap"><table class="data-table responsive-cards"><thead><tr><th class="th">Month</th><th class="th text-right">Gross</th><th class="th text-right">Deductions</th><th class="th text-right">Employer</th><th class="th text-right">Net</th><th class="th">Status</th><th class="th">Prepared / approved</th></tr></thead>
+  <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for r in runs %}<tr><td class="td" data-label="Month"><a class="td-strong hover:text-brand-500" href="{% url 'crm:payroll_detail' r.pk %}">{{ r.period|date:"F Y" }}</a></td><td class="td text-right" data-label="Gross">{{ r.gross_total|inr }}</td><td class="td text-right" data-label="Deductions">{{ r.deduction_total|inr }}</td><td class="td text-right" data-label="Employer">{{ r.employer_total|inr }}</td><td class="td text-right font-medium" data-label="Net">{{ r.net_total|inr }}</td><td class="td" data-label="Status">{% badge r.status r.get_status_display %}</td><td class="td text-theme-xs" data-label="By">{{ r.prepared_by|uname }}{% if r.approved_by %} / {{ r.approved_by|uname }}{% endif %}</td></tr>{% endfor %}</tbody></table></div>
+  {% else %}{% include "crm/components/empty_state.html" with title="No payroll runs yet" text="Add salary structures, then create the month's run." icon="payroll" %}{% endif %}</div>
+{% include "crm/components/modal_start.html" with id="adj" title="Add payroll adjustment" subtitle="Arrears, recoveries or corrections. Picked up by the next run, never by editing a locked run." %}
+  <form method="post" action="{% url 'crm:payroll_adjustment' %}" novalidate>{% csrf_token %}{% idem %}{% include "crm/components/modal_form.html" with form=adj_form %}{% include "crm/components/modal_actions.html" with label="Add adjustment" %}</form>
+{% include "crm/components/modal_end.html" %}
+{% endblock %}

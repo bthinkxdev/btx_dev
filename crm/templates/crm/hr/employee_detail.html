@@ -1,0 +1,65 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{{ e.name }}{% endblock %}
+{% block banners %}{% if e.status == 'on_notice' %}<div class="alert alert-warning mb-5"><p class="text-sm">On notice until {{ e.last_working_day|d }} ({{ e.exit_reason }}). On that day open work is reassigned and the login is disabled.{% if preview %} Open now: {{ preview.leads }} leads, {{ preview.tasks }} tasks, {{ preview.tickets }} tickets, {{ preview.followups }} follow-ups.{% endif %}</p></div>{% endif %}{% endblock %}
+{% block content %}
+<div class="card mb-6">
+  <div class="flex flex-col gap-4 p-5 sm:p-6 lg:flex-row lg:items-start lg:justify-between">
+    <div><h1 class="text-xl font-semibold text-gray-800 dark:text-white/90">{{ e.name }} {% badge e.status e.get_status_display %}</h1>
+      <p class="muted">{{ e.code }} · {{ e.designation }}{% if e.department %} · {{ e.department }}{% endif %}{% if e.manager %} · reports to <a class="link" href="{% url 'crm:employee_detail' e.manager_id %}">{{ e.manager.name }}</a>{% endif %}</p>
+      <p class="text-sm">{{ e.work_email }} · {{ e.phone|phone }} · joined {{ e.joining_date|d }}{% if e.user %} · login {{ e.user.username }}{% if not e.user.is_active %} (disabled){% endif %}{% endif %}</p></div>
+    {% if can_edit %}<div class="flex flex-wrap gap-2">
+      <a href="{% url 'crm:employee_edit' e.pk %}" class="btn btn-secondary btn-sm">{% icon 'edit' 16 %} Edit</a>
+      <button type="button" class="btn btn-secondary btn-sm" @click="$store.modal.show('transfer')">Transfer / change manager</button>
+      {% if e.status == 'onboarding' %}<form method="post" action="{% url 'crm:employee_action' e.pk 'activate' %}">{% csrf_token %}<button class="btn btn-secondary btn-sm">Mark active</button></form>{% endif %}
+      {% if e.status in 'onboarding,active,on_leave' %}<button type="button" class="btn btn-danger-outline btn-sm" @click="$store.modal.show('offboard')">Initiate offboarding</button>{% endif %}
+      {% if e.status == 'on_notice' %}<form method="post" action="{% url 'crm:employee_action' e.pk 'exit_now' %}" data-confirm="Complete the exit now?" data-confirm-body="Open leads, tasks and tickets are reassigned, the login is disabled and every session ends." data-confirm-danger="1">{% csrf_token %}<button class="btn btn-danger btn-sm">Complete exit now</button></form>{% endif %}
+    </div>{% endif %}
+  </div>
+  <nav class="flex gap-6 overflow-x-auto border-t border-gray-100 px-5 sm:px-6 dark:border-gray-800" aria-label="Employee sections">
+    <a href="?tab=overview" class="tab {% if tab == 'overview' %}tab-active{% else %}tab-inactive{% endif %}">Overview</a>
+    <a href="?tab=attendance" class="tab {% if tab == 'attendance' %}tab-active{% else %}tab-inactive{% endif %}">Attendance</a>
+    <a href="?tab=leave" class="tab {% if tab == 'leave' %}tab-active{% else %}tab-inactive{% endif %}">Leave</a>
+    <a href="?tab=documents" class="tab {% if tab == 'documents' %}tab-active{% else %}tab-inactive{% endif %}">Documents</a>
+    {% if show_salary %}<a href="?tab=payroll" class="tab {% if tab == 'payroll' %}tab-active{% else %}tab-inactive{% endif %}">Payroll</a>{% endif %}
+    {% if hr %}<a href="?tab=activity" class="tab {% if tab == 'activity' %}tab-active{% else %}tab-inactive{% endif %}">Activity</a>{% endif %}
+  </nav>
+</div>
+{% if tab == 'overview' %}
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+  <div class="card xl:col-span-2"><div class="card-header"><h2 class="card-title">Job and personal</h2>{% if show_tax or show_bank %}<button type="button" class="btn btn-secondary btn-sm" @click="$store.modal.show('reveal')">{% icon 'eye' 16 %} Reveal sensitive</button>{% endif %}</div>
+    <dl class="card-body grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
+      <div><dt class="dl-label">Employment</dt><dd>{{ e.get_employment_type_display }} · {{ e.location|default:"—" }}</dd></div>
+      <div><dt class="dl-label">Shift</dt><dd>{{ e.shift|default:"—" }}</dd></div>
+      <div><dt class="dl-label">PAN / UAN</dt><dd class="font-mono">{% if show_tax and 'tax_ids' in revealed %}{{ e.pan|default:"—" }} / {{ e.uan|default:"—" }}{% else %}{{ e.pan|masked }} / {{ e.uan|masked }}{% endif %}</dd></div>
+      <div><dt class="dl-label">Bank</dt><dd class="font-mono">{% if show_bank and 'bank_details' in revealed %}{{ e.bank_account_number|default:"—" }} · {{ e.bank_ifsc }}{% else %}{{ e.bank_account_number|masked }}{% endif %}</dd></div>
+      {% if show_salary and 'salary' in revealed or is_self %}<div><dt class="dl-label">Date of birth</dt><dd>{{ e.date_of_birth|d|default:"—" }}</dd></div><div><dt class="dl-label">Emergency contact</dt><dd>{{ e.emergency_contact|default:"—" }}</dd></div><div class="sm:col-span-2"><dt class="dl-label">Address</dt><dd class="whitespace-pre-line">{{ e.address|default:"—" }}</dd></div>{% endif %}
+    </dl></div>
+  <div class="card"><div class="card-header"><h2 class="card-title">Checklists</h2></div><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for i in checklist %}<li class="flex items-center justify-between gap-2 px-5 py-3 text-sm"><span>{% if i.done_at %}<span class="text-success-600">{% icon 'check' 14 %}</span>{% endif %} {{ i.title }}<span class="block text-theme-xs text-gray-500">{{ i.get_kind_display }}{% if i.due_date %} · due {{ i.due_date|d }}{% endif %}{% if i.done_at %} · done {{ i.done_at|d }} by {{ i.done_by|uname }}{% endif %}</span></span>{% if not i.done_at and can_edit %}<form method="post" action="{% url 'crm:employee_action' e.pk 'check' %}">{% csrf_token %}<input type="hidden" name="item" value="{{ i.pk }}"><button class="btn btn-secondary btn-sm">Done</button></form>{% endif %}</li>{% empty %}<li class="muted px-5 py-4">No checklist items.</li>{% endfor %}</ul></div>
+</div>
+{% elif tab == 'attendance' %}
+<div class="card"><table class="data-table"><thead><tr><th class="th">Date</th><th class="th">Status</th><th class="th">In</th><th class="th">Out</th><th class="th">Flags</th></tr></thead><tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for a in attendance %}<tr><td class="td">{{ a.att_date|date:"D d M Y" }}</td><td class="td">{% badge a.status a.get_status_display %}</td><td class="td">{{ a.check_in|time:"H:i"|default:"—" }}</td><td class="td">{{ a.check_out|time:"H:i"|default:"—" }}</td><td class="td">{% if a.is_late %}<span class="badge badge-amber">late</span>{% endif %}{% if a.overtime_minutes %} <span class="badge badge-blue">+{{ a.overtime_minutes }} min</span>{% endif %}</td></tr>{% empty %}<tr><td class="td muted" colspan="5">No attendance records.</td></tr>{% endfor %}</tbody></table></div>
+{% elif tab == 'leave' %}
+<div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">{% for b in balances %}<div class="card p-4"><p class="dl-label">{{ b.leave_type.name }}</p><p class="mt-1 text-xl font-semibold">{{ b.available|floatformat:"-1" }}</p><p class="text-theme-xs text-gray-500">of {{ b.allocated|plus:b.adjusted|floatformat:"-1" }} · used {{ b.used|floatformat:"-1" }}</p></div>{% endfor %}</div>
+<div class="card"><table class="data-table"><thead><tr><th class="th">Dates</th><th class="th">Type</th><th class="th">Days</th><th class="th">Reason</th><th class="th">Status</th></tr></thead><tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for r in requests %}<tr><td class="td">{{ r.start_date|d }} – {{ r.end_date|d }}</td><td class="td">{{ r.leave_type }}</td><td class="td">{{ r.days|floatformat:"-1" }}</td><td class="td">{{ r.reason|truncatechars:60 }}</td><td class="td">{% badge r.status r.get_status_display %}</td></tr>{% empty %}<tr><td class="td muted" colspan="5">No leave.</td></tr>{% endfor %}</tbody></table></div>
+{% elif tab == 'documents' %}
+{% include "crm/components/attachments.html" with obj=e attachments=attachments model_name="employee" can_upload=can_edit %}
+{% elif tab == 'payroll' and show_salary %}
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+  <div class="card"><div class="card-header"><h2 class="card-title">Salary structures</h2>{% can 'payroll' 'edit' as pe %}{% if pe %}<a class="link text-sm" href="{% url 'crm:salary_structures' %}?employee={{ e.pk }}">Add</a>{% endif %}</div><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for s in structures %}<li class="px-5 py-3 text-sm"><p class="font-medium">From {{ s.effective_from|d }}</p><p class="text-theme-xs text-gray-500">{% for ln in s.lines.all %}{{ ln.component.name }} {% if ln.component.calculation == 'fixed' %}{{ ln.value|inr0 }}{% else %}{{ ln.value|pct }}{% endif %}{% if not forloop.last %} · {% endif %}{% endfor %}</p></li>{% empty %}<li class="muted px-5 py-4">No salary structure.</li>{% endfor %}</ul></div>
+  <div class="card"><div class="card-header"><h2 class="card-title">Payslips</h2></div><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for p in payslips %}<li class="flex justify-between px-5 py-3 text-sm"><span>{{ p.run.period|date:"F Y" }} · {% badge p.status p.get_status_display %}</span><span>{{ p.net|inr }} <a class="link ml-2" href="{% url 'crm:payslip_pdf' p.pk %}">PDF</a></span></li>{% empty %}<li class="muted px-5 py-4">No payslips.</li>{% endfor %}</ul></div>
+</div>
+{% elif tab == 'activity' %}
+<div class="card"><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for a in activity %}<li class="px-5 py-3 text-sm">{{ a.action }} <span class="muted">· {{ a.actor_name }} · {{ a.created_at|dt }}</span>{% if a.reason %}<span class="block text-theme-xs text-gray-500">{{ a.reason }}</span>{% endif %}</li>{% empty %}<li class="muted px-5 py-4">No activity.</li>{% endfor %}</ul></div>
+{% endif %}
+{% if can_edit %}
+{% include "crm/components/modal_start.html" with id="transfer" title="Transfer or change manager" subtitle="Approval routing follows the new manager from now." %}
+  <form method="post" action="{% url 'crm:employee_action' e.pk 'transfer' %}" novalidate>{% csrf_token %}{% idem %}{% include "crm/components/modal_form.html" with form=transfer %}{% include "crm/components/modal_actions.html" with label="Save transfer" %}</form>
+{% include "crm/components/modal_end.html" %}
+{% include "crm/components/modal_start.html" with id="offboard" title="Initiate offboarding" subtitle="Creates the offboarding checklist. On the last working day open work is reassigned and the login disabled." %}
+  <form method="post" action="{% url 'crm:employee_action' e.pk 'offboard' %}" novalidate>{% csrf_token %}{% idem %}{% include "crm/components/modal_form.html" with form=offboard %}{% include "crm/components/modal_actions.html" with label="Start offboarding" danger=True %}</form>
+{% include "crm/components/modal_end.html" %}
+{% endif %}
+{% include "crm/components/modal_start.html" with id="reveal" title="Reveal sensitive information" subtitle="Shown for this session only. The reason is recorded in the audit log." %}
+  <form method="post" action="{% url 'crm:employee_action' e.pk 'reveal' %}" novalidate>{% csrf_token %}{% include "crm/components/modal_form.html" with form=reveal %}{% include "crm/components/modal_actions.html" with label="Reveal" %}</form>
+{% include "crm/components/modal_end.html" %}
+{% endblock %}

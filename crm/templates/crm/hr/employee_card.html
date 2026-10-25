@@ -1,0 +1,6 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{{ e.name }}{% endblock %}
+{% block content %}
+<div class="card max-w-xl"><div class="card-body flex items-center gap-4"><span class="bg-brand-50 text-brand-500 dark:bg-brand-500/15 flex h-14 w-14 items-center justify-center rounded-full text-lg font-semibold">{{ e.name|slice:":1" }}</span>
+  <div><h1 class="text-lg font-semibold text-gray-800 dark:text-white/90">{{ e.name }}</h1><p class="muted">{{ e.designation }}{% if e.department %} · {{ e.department }}{% endif %}</p><p class="text-sm">{{ e.work_email }} · {{ e.phone|phone }}</p>{% if e.manager %}<p class="text-theme-sm text-gray-500">Reports to {{ e.manager.name }}</p>{% endif %}</div></div></div>
+{% endblock %}

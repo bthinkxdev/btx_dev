@@ -1,0 +1,15 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Salary structures{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Salary structures" subtitle="Effective-dated. A new structure applies from its date; earlier payslips keep their own figures." %}{% endblock %}
+{% block content %}
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+  <div class="card xl:col-span-2"><div class="table-wrap"><table class="data-table responsive-cards"><thead><tr><th class="th">Employee</th><th class="th">Effective from</th><th class="th">Components</th><th class="th text-right">Loaded cost / hour</th><th class="th"></th></tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for r in rows %}<tr class="{% if emp.pk == r.e.pk %}bg-brand-25 dark:bg-white/5{% endif %}"><td class="td" data-label="Employee">{{ r.e.name }}<span class="block text-theme-xs">{{ r.e.code }}</span></td><td class="td" data-label="From">{{ r.s.effective_from|d|default:"—" }}</td><td class="td text-theme-xs" data-label="Components">{% for ln in r.s.lines.all %}{{ ln.component.name }} {% if ln.component.calculation == 'fixed' %}{{ ln.value|inr0 }}{% else %}{{ ln.value|pct }}{% endif %}{% if not forloop.last %} · {% endif %}{% empty %}<span class="text-error-600">No structure</span>{% endfor %}</td><td class="td text-right" data-label="Cost">{% if r.cost %}{{ r.cost|inr }}{% else %}—{% endif %}</td><td class="td text-right" data-label=""><a class="btn btn-secondary btn-sm" href="?employee={{ r.e.pk }}">{% if r.s %}Revise{% else %}Add{% endif %}</a></td></tr>{% endfor %}</tbody></table></div></div>
+  <div class="space-y-6">{% if emp %}
+    <form method="post" class="card" novalidate>{% csrf_token %}{% idem %}<input type="hidden" name="employee" value="{{ emp.pk }}">
+      <div class="card-header"><h2 class="card-title">New structure for {{ emp.name }}</h2></div><div class="card-body space-y-4">{% include "crm/components/form_errors.html" %}{% for f in form %}{% field f %}{% endfor %}</div>
+      <div class="flex justify-end gap-2 border-t border-gray-100 p-4 dark:border-gray-800"><a class="btn btn-secondary btn-sm" href="{% url 'crm:salary_structures' %}">Cancel</a><button class="btn btn-primary btn-sm" data-loading-text="Saving…">Save structure</button></div></form>
+    <div class="card"><div class="card-header"><h2 class="card-title">History</h2></div><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for s in history %}<li class="px-5 py-3 text-sm"><p class="font-medium">From {{ s.effective_from|d }}</p><p class="text-theme-xs text-gray-500">{% for ln in s.lines.all %}{{ ln.component.name }} {% if ln.component.calculation == 'fixed' %}{{ ln.value|inr0 }}{% else %}{{ ln.value|pct }}{% endif %}{% if not forloop.last %} · {% endif %}{% endfor %}{% if s.note %} · {{ s.note }}{% endif %}</p></li>{% empty %}<li class="muted px-5 py-4">None.</li>{% endfor %}</ul></div>
+  {% else %}<div class="card"><div class="card-body text-sm text-gray-600 dark:text-gray-400">Choose an employee to add or revise their salary structure.</div></div>{% endif %}</div>
+</div>
+{% endblock %}

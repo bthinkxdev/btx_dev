@@ -1,0 +1,36 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Attendance{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+  <div><h1 class="page-title">Attendance</h1><p class="muted mt-1">{{ day|date:"l, d F Y" }}{% if holiday %} · {{ holiday.name }} (holiday){% endif %}</p></div>
+  <div class="flex flex-wrap items-center gap-2"><a class="btn btn-secondary btn-sm" href="?date={{ prev|date:'Y-m-d' }}" aria-label="Previous day">{% icon 'chevron_left' 16 %}</a><a class="btn btn-secondary btn-sm" href="?">Today</a><a class="btn btn-secondary btn-sm" href="?date={{ next|date:'Y-m-d' }}" aria-label="Next day">{% icon 'chevron_right' 16 %}</a>
+    {% if is_hr %}<button type="button" class="btn btn-secondary btn-sm" @click="$store.modal.show('import')">{% icon 'upload' 16 %} Import CSV</button><button type="button" class="btn btn-primary btn-sm" @click="$store.modal.show('mark')">Mark attendance</button>{% endif %}</div>
+</div>
+{% endblock %}
+{% block content %}
+{% if me %}
+<div class="card mb-6"><div class="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+  <div><p class="text-sm font-medium text-gray-800 dark:text-white/90">My day</p><p class="muted">{% if today_rec %}{{ today_rec.get_status_display }}{% if today_rec.check_in %} · in {{ today_rec.check_in|time:"H:i" }}{% endif %}{% if today_rec.check_out %} · out {{ today_rec.check_out|time:"H:i" }}{% endif %}{% if today_rec.is_late %} · late{% endif %}{% else %}Not checked in yet{% endif %}</p></div>
+  <div class="flex gap-2">
+    {% if not today_rec.check_in %}<form method="post">{% csrf_token %}{% idem %}<input type="hidden" name="action" value="in"><button class="btn btn-primary" data-loading-text="Saving…">Check in</button></form>{% elif not today_rec.check_out %}<form method="post">{% csrf_token %}{% idem %}<input type="hidden" name="action" value="out"><button class="btn btn-primary" data-loading-text="Saving…">Check out</button></form>{% endif %}
+    <button type="button" class="btn btn-secondary" @click="$store.modal.show('correction')">Request correction</button>
+  </div></div></div>
+{% endif %}
+<div class="card"><div class="table-wrap"><table class="data-table responsive-cards"><thead><tr><th class="th">Employee</th><th class="th">Status</th><th class="th">In</th><th class="th">Out</th><th class="th">Flags</th><th class="th">Note</th></tr></thead>
+  <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for r in rows %}<tr><td class="td" data-label="Employee"><a class="link" href="{% url 'crm:employee_detail' r.e.pk %}?tab=attendance">{{ r.e.name }}</a><span class="block text-theme-xs">{{ r.e.shift|default:"" }}</span></td>
+    <td class="td" data-label="Status">{% if r.a %}{% badge r.a.status r.a.get_status_display %}{% else %}<span class="muted">Not marked</span>{% endif %}</td><td class="td" data-label="In">{{ r.a.check_in|time:"H:i"|default:"—" }}</td><td class="td" data-label="Out">{{ r.a.check_out|time:"H:i"|default:"—" }}</td>
+    <td class="td" data-label="Flags">{% if r.a.is_late %}<span class="badge badge-amber">late</span>{% endif %}{% if r.a.overtime_minutes %} <span class="badge badge-blue">+{{ r.a.overtime_minutes }} min</span>{% endif %}</td><td class="td text-theme-xs" data-label="Note">{{ r.a.note }}</td></tr>{% empty %}<tr><td class="td muted" colspan="6">No employees in your view.</td></tr>{% endfor %}</tbody></table></div></div>
+{% if is_hr %}
+{% include "crm/components/modal_start.html" with id="mark" title="Mark attendance" subtitle="Locked months (approved payroll) cannot change; use a payroll adjustment instead." %}
+  <form method="post" novalidate>{% csrf_token %}{% idem %}<input type="hidden" name="action" value="mark">{% include "crm/components/modal_form.html" with form=form %}{% include "crm/components/modal_actions.html" with label="Save" %}</form>
+{% include "crm/components/modal_end.html" %}
+{% include "crm/components/modal_start.html" with id="import" title="Import attendance" subtitle="CSV from the device with columns: code, date, status, in, out (HH:MM)." %}
+  <form method="post" enctype="multipart/form-data" novalidate>{% csrf_token %}{% idem %}<input type="hidden" name="action" value="import">{% include "crm/components/modal_form.html" with form=imp %}{% include "crm/components/modal_actions.html" with label="Import" loading="Importing…" %}</form>
+{% include "crm/components/modal_end.html" %}
+{% endif %}
+{% if me %}
+{% include "crm/components/modal_start.html" with id="correction" title="Request attendance correction" subtitle="Allowed within 7 days. Your manager approves it." %}
+  <form method="post" novalidate>{% csrf_token %}{% idem %}<input type="hidden" name="action" value="correction">{% include "crm/components/modal_form.html" with form=corr %}{% include "crm/components/modal_actions.html" with label="Request correction" %}</form>
+{% include "crm/components/modal_end.html" %}
+{% endif %}
+{% endblock %}

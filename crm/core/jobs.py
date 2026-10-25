@@ -41,6 +41,7 @@ JOBS = {
     'expenses.recurring': ('crm.modules.expenses.jobs.generate_recurring', 'daily', 1440),
     'accounting.deferred_release': ('crm.modules.accounting.services.release_deferred', 'daily', 1440),
     'accounting.posting_queue': ('crm.modules.accounting.services.posting_queue_alert', 'frequent', 15),
+    'hr.exits': ('crm.modules.hr.jobs.exits_due', 'daily', 1440),
     'audit.checkpoint': ('crm.core.audit.write_checkpoint', 'daily', 1440),
     'integrity.nightly': ('crm.core.integrity.run_checks', 'daily', 1440),
     'housekeeping.idempotency': ('crm.core.jobs.purge_idempotency_keys', 'daily', 1440),

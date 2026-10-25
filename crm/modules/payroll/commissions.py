@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 from decimal import Decimal
 
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import Q
 
@@ -131,3 +132,19 @@ def clawback_refund(refund) -> list:
         except IntegrityError:
             continue
     return made
+
+
+def approve_entries(entries, approver) -> int:
+    """Accrued -> Approved; never your own. Approved amounts flow into the next payroll run."""
+    from crm.core import audit
+    from crm.models import CommissionEntry
+    n = 0
+    for e in entries:
+        if e.user_id == approver.pk:
+            raise ValidationError('You cannot approve your own commission.')
+        if e.status != 'accrued':
+            continue
+        CommissionEntry.objects.filter(pk=e.pk, status='accrued').update(status='approved', approved_by=approver)
+        n += 1
+    audit.log('commission.approved', actor=approver, object_type='commissionentry', object_id='', changes={'entries': n})
+    return n

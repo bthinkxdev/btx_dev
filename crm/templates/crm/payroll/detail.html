@@ -1,0 +1,40 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{{ run }}{% endblock %}
+{% block banners %}
+  {% if run.is_locked %}<div class="alert alert-info mb-5"><span class="text-blue-light-500">{% icon 'lock' 18 %}</span><p class="text-sm">Locked{% if run.approved_at %} on {{ run.approved_at|dt }} by {{ run.approved_by|uname }}{% endif %}. Changes go into the next run as adjustments.</p></div>{% endif %}
+  {% if blocking %}<div class="alert alert-error mb-5" role="alert"><div class="text-sm"><p class="font-semibold">Blocking exceptions</p><ul class="list-disc pl-5">{% for x in blocking %}<li>{{ x.employee }} ({{ x.code }}): {{ x.issue }}</li>{% endfor %}</ul></div></div>{% endif %}
+  {% if slip_total != run.net_total %}<div class="alert alert-error mb-5"><p class="text-sm">Payslips ({{ slip_total|inr }}) do not equal the run total ({{ run.net_total|inr }}). Recalculate.</p></div>{% endif %}
+{% endblock %}
+{% block content %}
+<div class="card mb-6">
+  <div class="flex flex-col gap-4 p-5 sm:p-6 xl:flex-row xl:items-start xl:justify-between">
+    <div><h1 class="text-xl font-semibold text-gray-800 dark:text-white/90">{{ run.period|date:"F Y" }} {% badge run.status run.get_status_display %}</h1><p class="muted">{{ run.working_days }} working days · calculated {{ run.last_calculated_at|dt }}</p></div>
+    <div class="grid grid-cols-2 gap-4 sm:grid-cols-4"><div><p class="dl-label">Gross</p><p class="dl-value">{{ run.gross_total|inr0 }}</p></div><div><p class="dl-label">Deductions</p><p class="dl-value">{{ run.deduction_total|inr0 }}</p></div><div><p class="dl-label">Employer cost</p><p class="dl-value">{{ run.employer_total|inr0 }}</p></div><div><p class="dl-label">Net pay</p><p class="dl-value text-lg">{{ run.net_total|inr }}</p></div></div>
+  </div>
+  <div class="flex flex-wrap gap-2 border-t border-gray-100 px-5 py-4 sm:px-6 dark:border-gray-800">
+    {% if can_edit and run.status in 'draft,in_review' %}
+      <form method="post" action="{% url 'crm:payroll_action' run.pk 'recalculate' %}">{% csrf_token %}<button class="btn btn-secondary btn-sm" data-loading-text="Recalculating…">{% icon 'refresh' 16 %} Recalculate</button></form>
+      {% if run.status == 'draft' %}<form method="post" action="{% url 'crm:payroll_action' run.pk 'review' %}">{% csrf_token %}<button class="btn btn-secondary btn-sm">Move to review</button></form>{% endif %}
+      {% if not blocking %}<form method="post" action="{% url 'crm:payroll_action' run.pk 'submit' %}" data-confirm="Submit {{ run }} for approval?" data-confirm-body="Net pay {{ run.net_total|inr }} for {{ slips|length }} employees.">{% csrf_token %}{% idem %}<button class="btn btn-primary btn-sm">Submit for approval</button></form>{% else %}<span class="btn btn-primary btn-sm opacity-50" title="Fix blocking exceptions">Submit for approval</span>{% endif %}
+    {% endif %}
+    {% if run.status == 'pending_approval' %}{% if can_decide %}<a href="{% url 'crm:approval_detail' pending.pk %}" class="btn btn-primary btn-sm">Review and approve</a>{% else %}<span class="btn btn-secondary btn-sm opacity-60">Waiting for Owner approval</span>{% endif %}{% endif %}
+    {% if run.status in 'approved,partially_paid' %}
+      <form method="post" action="{% url 'crm:payroll_action' run.pk 'payment_file' %}" data-no-loading>{% csrf_token %}<button class="btn btn-secondary btn-sm">{% icon 'download' 16 %} Bank payment file</button></form>
+      {% if can_edit %}<button type="button" class="btn btn-primary btn-sm" @click="$store.modal.show('pay')">Mark paid</button>{% endif %}
+    {% endif %}
+    {% if run.status == 'paid' and not run.payslips_released_at %}<form method="post" action="{% url 'crm:payroll_action' run.pk 'release' %}" data-confirm="Release payslips to employees?">{% csrf_token %}{% idem %}<button class="btn btn-primary btn-sm">Release payslips</button></form>{% endif %}
+    {% if run.status == 'approved' and is_owner %}<form method="post" action="{% url 'crm:payroll_action' run.pk 'reverse' %}" data-confirm="Reverse {{ run }}?" data-confirm-body="Posts a reversing journal and frees the month for a new run." data-confirm-reason="required" data-confirm-danger="1">{% csrf_token %}<button class="btn btn-danger-outline btn-sm">Reverse run</button></form>{% endif %}
+  </div>
+</div>
+{% if run.exceptions %}<div class="card mb-6"><div class="card-header"><h2 class="card-title">Exceptions to review</h2></div><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for x in run.exceptions %}<li class="flex justify-between px-5 py-3 text-sm"><span>{{ x.employee }} ({{ x.code }})</span><span class="{% if x.blocking %}text-error-600 font-medium{% else %}text-warning-700{% endif %}">{{ x.issue }}</span></li>{% endfor %}</ul></div>{% endif %}
+<form method="post" action="{% url 'crm:payroll_action' run.pk 'mark_paid' %}" id="payform" novalidate>{% csrf_token %}{% idem %}
+<div class="card" data-bulk-scope><div class="table-wrap"><table class="data-table responsive-cards"><thead><tr>{% if run.status in 'approved,partially_paid' %}<th class="th w-10"><input type="checkbox" class="form-checkbox-box" data-bulk-all aria-label="Select all"></th>{% endif %}<th class="th">Employee</th><th class="th text-right">Paid days</th><th class="th text-right">Gross</th><th class="th text-right">Deductions</th><th class="th text-right">Net</th><th class="th">Status</th><th class="th"></th></tr></thead>
+  <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for p in slips %}<tr>{% if run.status in 'approved,partially_paid' %}<td class="td">{% if p.status == 'pending' %}<input type="checkbox" name="slips" value="{{ p.pk }}" class="form-checkbox-box" data-bulk-item aria-label="Select {{ p.employee.name }}">{% endif %}</td>{% endif %}
+    <td class="td" data-label="Employee">{{ p.employee.name }}<span class="block text-theme-xs">{{ p.employee.code }}{% if p.lop_days %} · LOP {{ p.lop_days|floatformat:"-1" }} d{% endif %}</span></td><td class="td text-right" data-label="Paid days">{{ p.paid_days|floatformat:"-1" }} / {{ p.working_days|floatformat:"-1" }}</td><td class="td text-right" data-label="Gross">{{ p.gross|inr }}{% if p.commissions or p.reimbursements or p.adjustments %}<span class="block text-theme-xs">incl. {% if p.commissions %}comm {{ p.commissions|inr0 }} {% endif %}{% if p.reimbursements %}reimb {{ p.reimbursements|inr0 }} {% endif %}{% if p.adjustments %}adj {{ p.adjustments|inr0 }}{% endif %}</span>{% endif %}</td><td class="td text-right" data-label="Deductions">{{ p.deductions|inr }}</td><td class="td text-right font-medium" data-label="Net">{{ p.net|inr }}</td><td class="td" data-label="Status">{% badge p.status p.get_status_display %}{% if p.payment_reference %}<span class="block text-theme-xs">{{ p.payment_reference }}</span>{% endif %}</td>
+    <td class="td text-right" data-label=""><a class="btn btn-secondary btn-sm" href="{% url 'crm:payslip_pdf' p.pk %}" aria-label="Payslip PDF">{% icon 'download' 14 %}</a></td></tr>{% empty %}<tr><td class="td muted" colspan="8">No payslips. Add salary structures and recalculate.</td></tr>{% endfor %}</tbody>
+  <tfoot><tr class="border-t-2 border-gray-300 font-semibold dark:border-gray-600"><td class="td" colspan="{% if run.status in 'approved,partially_paid' %}5{% else %}4{% endif %}">Total of payslips</td><td class="td text-right">{{ slip_total|inr }}</td><td class="td" colspan="2"></td></tr></tfoot></table></div></div>
+{% include "crm/components/modal_start.html" with id="pay" title="Mark selected payslips paid" subtitle="Posts salaries payable to the bank for the selected employees." %}
+  {% include "crm/components/modal_form.html" with form=pay_form %}{% include "crm/components/modal_actions.html" with label="Mark paid" loading="Recording…" %}
+{% include "crm/components/modal_end.html" %}
+</form>
+{% endblock %}

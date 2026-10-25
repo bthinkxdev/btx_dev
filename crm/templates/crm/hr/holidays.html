@@ -1,0 +1,16 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Holidays and shifts{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-start justify-between gap-3">
+  <div><h1 class="page-title">Holidays and shifts</h1><p class="muted mt-1">Holidays and Sundays are excluded from leave and payroll working days.</p></div>
+  <div class="flex gap-2"><button type="button" class="btn btn-secondary" @click="$store.modal.show('shift')">Add shift</button><button type="button" class="btn btn-primary" @click="$store.modal.show('holiday')">{% icon 'plus' 18 %} Add holiday</button></div>
+</div>
+{% endblock %}
+{% block content %}
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+  <div class="card"><div class="card-header"><h2 class="card-title">Holidays</h2></div><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for h in holidays %}<li class="flex items-center justify-between px-5 py-3 text-sm"><span>{{ h.holiday_date|date:"D d M Y" }} · {{ h.name }}</span>{% if h.holiday_date >= today %}<form method="post" data-confirm="Remove {{ h.name }}?">{% csrf_token %}<input type="hidden" name="form" value="delete_holiday"><input type="hidden" name="id" value="{{ h.pk }}"><button class="btn-icon-sm" aria-label="Remove">{% icon 'trash' 14 %}</button></form>{% endif %}</li>{% empty %}<li class="muted px-5 py-4">No holidays configured.</li>{% endfor %}</ul></div>
+  <div class="card"><div class="card-header"><h2 class="card-title">Shifts</h2></div><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for s in shifts %}<li class="flex justify-between px-5 py-3 text-sm"><span>{{ s.name }}</span><span>{{ s.start_time|time:"H:i" }} – {{ s.end_time|time:"H:i" }} · grace {{ s.grace_minutes }} min</span></li>{% empty %}<li class="muted px-5 py-4">No shifts.</li>{% endfor %}</ul></div>
+</div>
+{% include "crm/components/modal_start.html" with id="holiday" title="Add holiday" %}<form method="post" novalidate>{% csrf_token %}{% idem %}<input type="hidden" name="form" value="holiday">{% include "crm/components/modal_form.html" with form=hform %}{% include "crm/components/modal_actions.html" with label="Add holiday" %}</form>{% include "crm/components/modal_end.html" %}
+{% include "crm/components/modal_start.html" with id="shift" title="Add shift" %}<form method="post" novalidate>{% csrf_token %}{% idem %}<input type="hidden" name="form" value="shift">{% include "crm/components/modal_form.html" with form=sform %}{% include "crm/components/modal_actions.html" with label="Add shift" %}</form>{% include "crm/components/modal_end.html" %}
+{% endblock %}

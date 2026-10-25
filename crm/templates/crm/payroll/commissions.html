@@ -1,0 +1,26 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Commissions{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-start justify-between gap-3">
+  <div><h1 class="page-title">Commissions</h1><p class="muted mt-1">Accrued when the basis event happens; approved amounts flow into the next payroll. Clawbacks follow credit notes and refunds.</p></div>
+  {% if rule_form %}<button type="button" class="btn btn-secondary" @click="$store.modal.show('rule')">{% icon 'plus' 18 %} Add rule</button>{% endif %}
+</div>
+{% endblock %}
+{% block content %}
+<div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">{% for s, label in statuses %}<a href="?status={{ s }}" class="card p-4 {% if status == s %}border-brand-300{% endif %}"><p class="dl-label">{{ label }}</p><p class="mt-1 text-lg font-semibold">{{ totals|get_item:s|inr }}</p></a>{% endfor %}</div>
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+  <form method="post" class="card xl:col-span-2" data-bulk-scope>{% csrf_token %}{% idem %}<input type="hidden" name="action" value="approve">
+    <div class="card-header"><h2 class="card-title">Statement</h2>{% if can_approve %}<button class="btn btn-primary btn-sm" data-bulk-requires data-loading-text="Approving…">Approve selected</button>{% endif %}</div>
+    <div class="table-wrap"><table class="data-table responsive-cards"><thead><tr>{% if can_approve %}<th class="th w-10"><input type="checkbox" class="form-checkbox-box" data-bulk-all aria-label="Select all"></th>{% endif %}<th class="th">Person</th><th class="th">Source</th><th class="th">Rule</th><th class="th text-right">Basis</th><th class="th text-right">Amount</th><th class="th">Status</th></tr></thead>
+      <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for c in entries %}<tr>{% if can_approve %}<td class="td">{% if c.status == 'accrued' and c.user_id != request.user.pk %}<input type="checkbox" name="ids" value="{{ c.pk }}" class="form-checkbox-box" data-bulk-item aria-label="Select">{% endif %}</td>{% endif %}
+        <td class="td" data-label="Person">{{ c.user|uname }}</td><td class="td" data-label="Source">{% if c.invoice %}<a class="link" href="{% url 'crm:invoice_detail' c.invoice_id %}">{{ c.invoice.display_number }}</a>{% elif c.payment %}<a class="link" href="{% url 'crm:payment_detail' c.payment_id %}">{{ c.payment }}</a>{% elif c.lead %}<a class="link" href="{% url 'crm:lead_detail' c.lead_id %}">{{ c.lead }}</a>{% endif %}<span class="block text-theme-xs">{{ c.created_at|d }}</span></td>
+        <td class="td" data-label="Rule">{{ c.rule.name }} · {{ c.rate|pct }}</td><td class="td text-right" data-label="Basis">{{ c.basis_amount|inr }}</td><td class="td text-right font-medium {% if c.amount < 0 %}text-error-600{% endif %}" data-label="Amount">{{ c.amount|inr }}</td><td class="td" data-label="Status">{% badge c.status c.get_status_display %}{% if c.payroll_run %}<span class="block text-theme-xs">{{ c.payroll_run }}</span>{% endif %}</td></tr>{% empty %}<tr><td class="td muted" colspan="7">No commission entries.</td></tr>{% endfor %}</tbody></table></div></form>
+  <div class="space-y-6">
+    <div class="card"><div class="card-header"><h2 class="card-title">By person</h2></div><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for p in people %}<li class="flex justify-between px-5 py-3 text-sm"><a class="link" href="?person={{ p.user_id }}">{% if p.user__first_name %}{{ p.user__first_name }} {{ p.user__last_name }}{% else %}{{ p.user__username }}{% endif %}</a><span>{{ p.t|inr }}</span></li>{% empty %}<li class="muted px-5 py-4">None.</li>{% endfor %}</ul></div>
+    <div class="card"><div class="card-header"><h2 class="card-title">Rules</h2></div><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for r in rules %}<li class="px-5 py-3 text-sm"><p class="font-medium">{{ r.name }} {% if not r.is_active %}<span class="badge badge-grey">inactive</span>{% endif %}</p><p class="text-theme-xs text-gray-500">{{ r.get_basis_display }} · {{ r.rate_percent|pct }}{% if r.service %} · {{ r.service.name }}{% endif %} · from {{ r.effective_from|d }}{% if r.effective_to %} to {{ r.effective_to|d }}{% endif %}{% if r.roles.all %} · {{ r.roles.all|join:", " }}{% endif %}</p></li>{% empty %}<li class="muted px-5 py-4">No rules. Nothing accrues until a rule exists.</li>{% endfor %}</ul></div>
+  </div>
+</div>
+{% if rule_form %}
+{% include "crm/components/modal_start.html" with id="rule" title="Add commission rule" size="lg" %}<form method="post" novalidate>{% csrf_token %}{% idem %}<input type="hidden" name="action" value="rule">{% include "crm/components/modal_form.html" with form=rule_form %}{% include "crm/components/modal_actions.html" with label="Save rule" %}</form>{% include "crm/components/modal_end.html" %}
+{% endif %}
+{% endblock %}
