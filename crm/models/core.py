@@ -12,24 +12,23 @@ from django.core.exceptions import ValidationError
 from django.core.files.storage import FileSystemStorage
 from django.db import models
 from django.utils import timezone
-from django.utils.functional import LazyObject
 
 from crm.core.india import STATE_CHOICES
 
 from .base import USER, MoneyField, RateField, TimeStamped, Versioned
 
 
-class PrivateStorage(LazyObject):
-    """Uploads live outside MEDIA_ROOT and are only served through signed, permission-checked URLs."""
-
-    def _setup(self):
-        self._wrapped = FileSystemStorage(location=str(settings.CRM_PRIVATE_MEDIA_ROOT), base_url=None)
-
-    def deconstruct(self):
-        return ('crm.models.core.PrivateStorage', [], {})
+_PRIVATE_STORAGE = None
 
 
-private_storage = PrivateStorage()
+def private_storage():
+    """Uploads live outside MEDIA_ROOT and are only served through signed, permission-checked URLs.
+
+    A callable, so migrations store a reference instead of a machine-specific path."""
+    global _PRIVATE_STORAGE
+    if _PRIVATE_STORAGE is None:
+        _PRIVATE_STORAGE = FileSystemStorage(location=str(settings.CRM_PRIVATE_MEDIA_ROOT), base_url=None)
+    return _PRIVATE_STORAGE
 
 
 # ---------------------------------------------------------------- Organisation

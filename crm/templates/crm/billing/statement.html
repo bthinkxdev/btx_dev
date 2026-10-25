@@ -1,0 +1,26 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Statement · {{ client.display_name }}{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Statement of account" subtitle=client.display_name %}{% endblock %}
+{% block content %}
+<div class="card mb-6">
+  <form method="get" class="flex flex-col gap-3 p-5 sm:flex-row sm:items-end">
+    {% field form.start %}{% field form.end %}
+    <button class="btn btn-secondary">Show</button>
+    <a class="btn btn-secondary" href="?start={{ start|date:'Y-m-d' }}&end={{ end|date:'Y-m-d' }}&format=pdf">{% icon 'download' 18 %} Download PDF</a>
+  </form>
+  <form method="post" class="flex flex-col gap-3 border-t border-gray-100 p-5 sm:flex-row sm:items-end dark:border-gray-800" novalidate>{% csrf_token %}{% idem %}
+    <input type="hidden" name="start" value="{{ start|date:'Y-m-d' }}"><input type="hidden" name="end" value="{{ end|date:'Y-m-d' }}">
+    <div class="w-full sm:max-w-sm"><label class="form-label" for="st-to">Email the PDF to</label><input id="st-to" type="email" name="to" value="{{ to }}" class="form-input" required></div>
+    <button class="btn btn-primary" data-loading-text="Sending…">{% icon 'mail' 18 %} Send statement</button>
+  </form>
+</div>
+<div class="card">
+  <div class="card-header"><h2 class="card-title">{{ start|d }} to {{ end|d }}</h2><p class="text-sm font-semibold text-gray-800 dark:text-white/90">Closing balance {{ closing|inr }}</p></div>
+  {% if rows %}
+  <div class="table-wrap"><table class="data-table responsive-cards">
+    <thead><tr><th class="th">Date</th><th class="th">Document</th><th class="th text-right">Debit</th><th class="th text-right">Credit</th><th class="th text-right">Balance</th></tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for r in rows %}<tr><td class="td" data-label="Date">{{ r.date|d }}</td><td class="td" data-label="Document">{{ r.label }}</td><td class="td text-right" data-label="Debit">{% if r.debit %}{{ r.debit|inr }}{% endif %}</td><td class="td text-right" data-label="Credit">{% if r.credit %}{{ r.credit|inr }}{% endif %}</td><td class="td text-right font-medium" data-label="Balance">{{ r.balance|inr }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}<p class="muted p-6">No transactions in this period. Opening and closing balance {{ closing|inr }}.</p>{% endif %}
+</div>
+{% endblock %}

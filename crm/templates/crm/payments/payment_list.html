@@ -1,0 +1,18 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Payments{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-start justify-between gap-3">
+  <div>
+    <h1 class="page-title">Payments <span class="ml-1 text-base font-normal text-gray-500 dark:text-gray-400">({{ total }})</span></h1>
+    <p class="muted mt-1">Verified money received: {{ sum_amount|inr }} in this view.</p>
+  </div>
+  {% if can_record %}<a href="{% url 'crm:payment_record' %}" class="btn btn-primary">{% icon 'plus' 18 %} Record manual payment</a>{% endif %}
+</div>
+{% endblock %}
+{% block content %}
+<div class="card">
+  {% include "crm/components/list_toolbar.html" %}
+  {% if object_list %}{% include "crm/payments/_payment_table.html" %}{% include "crm/components/pagination.html" %}
+  {% else %}{% include "crm/components/empty_state.html" with filtered=any_filter title="No payments yet" text="Gateway payments appear here automatically. Record bank transfers, UPI, cheques and cash manually." icon="rupee" %}{% endif %}
+</div>
+{% endblock %}

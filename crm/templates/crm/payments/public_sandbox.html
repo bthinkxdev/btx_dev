@@ -1,0 +1,17 @@
+{% load static crm_tags %}<!doctype html>
+<html lang="en"><head>{% include "crm/payments/_public_base_head.html" %}<title>Sandbox checkout</title></head>
+<body class="bg-gray-50">
+<main class="mx-auto max-w-md px-4 py-10">
+  <div class="mb-4 rounded-lg bg-blue-light-50 px-4 py-2 text-center text-sm font-medium text-blue-light-700">Built-in sandbox gateway — testing only</div>
+  <div class="card p-6">
+    <p class="text-theme-sm text-gray-500">{{ company.legal_name }} · order {{ attempt.gateway_order_id }}</p>
+    <p class="mt-2 text-2xl font-semibold text-gray-900">{{ attempt.amount|inr }}</p>
+    <p class="mt-1 text-sm text-gray-600">Choose what the simulated bank does. A signed webhook goes through the real processing pipeline.</p>
+    <form method="post" class="mt-6 grid gap-3">{% csrf_token %}
+      <button name="outcome" value="success" class="btn btn-success">Pay successfully</button>
+      <button name="outcome" value="failure" class="btn btn-danger-outline">Bank declines</button>
+      <button name="outcome" value="dropped" class="btn btn-secondary">Close without paying</button>
+    </form>
+  </div>
+</main>
+</body></html>

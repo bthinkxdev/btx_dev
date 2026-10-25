@@ -1,0 +1,16 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Credit notes{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Credit notes" subtitle="Reduce issued invoices. Tax is reversed in proportion; the ledger reversal is posted on issue." count=total %}{% endblock %}
+{% block content %}
+<div class="card">
+  {% include "crm/components/list_toolbar.html" %}
+  {% if object_list %}
+  <div class="table-wrap"><table class="data-table responsive-cards">
+    <thead><tr><th class="th">Number</th><th class="th">Date</th><th class="th">Invoice</th><th class="th">Client</th><th class="th">Reason</th><th class="th text-right">Taxable</th><th class="th text-right">Tax</th><th class="th text-right">Total</th><th class="th">Status</th><th class="th"></th></tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+    {% for c in object_list %}<tr><td class="td td-strong" data-label="Number">{{ c }}</td><td class="td" data-label="Date">{{ c.note_date|d }}</td><td class="td" data-label="Invoice"><a class="link" href="{% url 'crm:invoice_detail' c.invoice_id %}">{{ c.invoice.display_number }}</a></td><td class="td" data-label="Client">{{ c.invoice.client.display_name }}</td><td class="td" data-label="Reason">{{ c.get_reason_display }}{% if c.treatment == 'refund' %} <span class="badge badge-purple">refund</span>{% endif %}</td><td class="td text-right" data-label="Taxable">{{ c.taxable_value|inr }}</td><td class="td text-right" data-label="Tax">{{ c.cgst|inr0 }}{% if c.igst %} / IGST {{ c.igst|inr0 }}{% endif %}</td><td class="td text-right font-medium" data-label="Total">{{ c.total|inr }}</td><td class="td" data-label="Status">{% badge c.status c.get_status_display %}</td><td class="td text-right" data-label=""><a class="btn btn-secondary btn-sm" href="{% url 'crm:credit_note_pdf' c.pk %}" target="_blank" rel="noopener" aria-label="PDF">{% icon 'download' 14 %}</a></td></tr>{% endfor %}
+    </tbody></table></div>
+  {% include "crm/components/pagination.html" %}
+  {% else %}{% include "crm/components/empty_state.html" with filtered=any_filter title="No credit notes" text="Create a credit note from an issued invoice." icon="undo" %}{% endif %}
+</div>
+{% endblock %}

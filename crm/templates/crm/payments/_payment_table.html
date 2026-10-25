@@ -1,0 +1,18 @@
+{% load crm_tags %}
+<div class="table-wrap"><table class="data-table responsive-cards">
+  <thead class="border-b border-gray-100 dark:border-gray-800"><tr><th class="th">Receipt</th><th class="th">{% sort_link 'date' 'Date' %}</th><th class="th">Client</th><th class="th">Method</th><th class="th text-right">{% sort_link 'amount' 'Amount' %}</th><th class="th text-right">TDS</th><th class="th text-right">Unallocated</th><th class="th">Status</th><th class="th">Reference</th></tr></thead>
+  <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+  {% for p in object_list %}
+    <tr class="hover:bg-gray-50 dark:hover:bg-white/3">
+      <td class="td" data-label="Receipt"><a class="td-strong hover:text-brand-500" href="{% url 'crm:payment_detail' p.pk %}">{{ p.receipt_number|default:"Unverified" }}</a><span class="block text-theme-xs">{{ p.get_kind_display }}{% if p.submitted_by %} · {{ p.submitted_by|uname }}{% endif %}</span></td>
+      <td class="td whitespace-nowrap" data-label="Date">{{ p.payment_date|d }}</td>
+      <td class="td" data-label="Client">{{ p.client.display_name }}</td>
+      <td class="td" data-label="Method">{{ p.get_method_display }}</td>
+      <td class="td text-right whitespace-nowrap" data-label="Amount">{{ p.amount|inr }}</td>
+      <td class="td text-right whitespace-nowrap" data-label="TDS">{% if p.tds_amount %}{{ p.tds_amount|inr }}{% else %}—{% endif %}</td>
+      <td class="td text-right whitespace-nowrap" data-label="Unallocated">{% if p.status == 'verified' or p.status == 'partially_refunded' %}{% with u=p.unallocated %}{% if u > 0 %}<span class="text-warning-700">{{ u|inr }}</span>{% else %}—{% endif %}{% endwith %}{% else %}—{% endif %}</td>
+      <td class="td" data-label="Status">{% badge p.status p.get_status_display %}</td>
+      <td class="td font-mono text-theme-xs" data-label="Reference">{{ p.reference_number|default:p.provider_payment_id|default:"—" }}</td>
+    </tr>
+  {% endfor %}
+  </tbody></table></div>

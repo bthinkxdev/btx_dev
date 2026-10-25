@@ -1,0 +1,10 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Verify payments{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Verify payments" subtitle="Manual payments wait here until a different Finance user checks the bank. Gateway payments needing review (mismatch or late) are here too." count=total %}{% endblock %}
+{% block content %}
+<div class="card">
+  {% include "crm/components/list_toolbar.html" %}
+  {% if object_list %}{% include "crm/payments/_payment_table.html" %}{% include "crm/components/pagination.html" %}
+  {% else %}{% include "crm/components/empty_state.html" with filtered=any_filter title="Nothing to verify" text="All recorded payments are verified." icon="check" %}{% endif %}
+</div>
+{% endblock %}

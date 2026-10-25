@@ -1,0 +1,107 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{{ link.code }}{% endblock %}
+{% block banners %}
+  {% if link.status == 'pending_approval' %}<div class="alert alert-info mb-5"><span class="text-blue-light-500">{% icon 'clock' 20 %}</span><p class="text-sm text-gray-700 dark:text-gray-300">Waiting for approval. The customer cannot pay until it is approved.{% if pending %} <a class="link" href="{% url 'crm:approval_detail' pending.pk %}">View request</a>{% endif %}</p></div>{% endif %}
+  {% if link.status == 'expired' %}<div class="alert alert-warning mb-5"><p class="text-sm">Expired {{ link.expired_at|dt }}. The customer sees a message to contact you. Request an extension or create a new link.</p></div>{% endif %}
+  {% if link.status == 'cancelled' %}<div class="alert alert-error mb-5"><p class="text-sm">Cancelled {{ link.cancelled_at|dt }}: {{ link.cancel_reason }}</p></div>{% endif %}
+  {% if link.gst_overridden %}<div class="alert alert-warning mb-5"><p class="text-sm">The source document has an approved GST override.</p></div>{% endif %}
+{% endblock %}
+{% block content %}
+<div class="card mb-6">
+  <div class="flex flex-col gap-4 p-5 sm:p-6 xl:flex-row xl:items-start xl:justify-between">
+    <div>
+      <h1 class="text-xl font-semibold text-gray-800 dark:text-white/90">{{ link.code }} {% badge link.status link.get_status_display %}{% if link.expires_soon %} {% badge 'expiring' 'Expiring' %}{% endif %}</h1>
+      <p class="muted"><a class="link" href="{% url 'crm:client_detail' link.client_id %}">{{ link.client.display_name }}</a> · {% if link.invoice_id %}<a class="link" href="{% url 'crm:invoice_detail' link.invoice_id %}">{{ link.invoice.display_number }}</a>{% else %}<a class="link" href="{% url 'crm:quotation_detail' link.quotation_id %}">{{ link.quotation.display_number }}</a>{% endif %} · {{ link.get_purpose_display }}{% if link.milestone_name %} ({{ link.milestone_name }}){% endif %} · by {{ link.owner|uname }}</p>
+      <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">“{{ link.description }}”</p>
+    </div>
+    <div class="grid grid-cols-3 gap-4">
+      <div><p class="dl-label">Amount</p><p class="dl-value text-lg">{{ link.amount|inr }}</p></div>
+      <div><p class="dl-label">Collected</p><p class="dl-value text-lg text-success-600">{{ link.amount_paid|inr }}</p></div>
+      <div><p class="dl-label">Balance</p><p class="dl-value text-lg">{{ link.balance|inr }}</p></div>
+    </div>
+  </div>
+  {% if url %}
+  <div class="flex flex-col gap-3 border-t border-gray-100 px-5 py-4 sm:flex-row sm:items-center sm:px-6 dark:border-gray-800 {% if created %}bg-success-50 dark:bg-success-500/10{% endif %}">
+    <p class="flex-1 font-mono text-theme-xs break-all text-gray-600 dark:text-gray-400">{{ url }}</p>
+    <div class="flex flex-wrap gap-2">
+      <button type="button" class="btn btn-secondary btn-sm" data-copy="{{ url }}" data-copy-message="Payment link copied">{% icon 'copy' 16 %} Copy link</button>
+      <a class="btn btn-secondary btn-sm" href="{{ url }}" target="_blank" rel="noopener">{% icon 'eye' 16 %} Preview page</a>
+      {% if link.contact_phone %}<a class="btn btn-secondary btn-sm" href="https://wa.me/{{ link.contact_phone|wa }}?text={{ link.description|urlencode }}%20{{ url|urlencode }}" target="_blank" rel="noopener">{% icon 'whatsapp' 16 %} WhatsApp</a>{% endif %}
+    </div>
+  </div>
+  {% endif %}
+  <div class="flex flex-wrap gap-2 border-t border-gray-100 px-5 py-4 sm:px-6 dark:border-gray-800">
+    {% if can_edit %}
+      {% if link.status == 'active' or link.status == 'partially_paid' %}<button type="button" class="btn btn-primary btn-sm" @click="$store.modal.show('send')">{% icon 'mail' 16 %} Resend</button>{% endif %}
+      {% if link.status in 'active,partially_paid,expired' %}<button type="button" class="btn btn-secondary btn-sm" @click="$store.modal.show('extend')">{% icon 'calendar' 16 %} Request extension</button>{% endif %}
+    {% endif %}
+    {% if can_record and link.status in 'active,partially_paid' %}<a class="btn btn-secondary btn-sm" href="{% url 'crm:payment_record' %}?link={{ link.pk }}">{% icon 'rupee' 16 %} Record manual payment</a>{% endif %}
+    {% if is_finance and link.attempts.exists %}<form method="post" action="{% url 'crm:link_action' link.pk 'sync' %}">{% csrf_token %}<button class="btn btn-secondary btn-sm" data-loading-text="Checking…">{% icon 'refresh' 16 %} Check with gateway</button></form>{% endif %}
+    {% if can_cancel and link.status in 'active,partially_paid,draft,pending_approval' %}<form method="post" action="{% url 'crm:link_action' link.pk 'cancel' %}" data-confirm="Cancel link {{ link.code }}?" data-confirm-body="Open attempts are checked with the gateway first. The customer will see that the request is no longer active." data-confirm-reason="required" data-confirm-danger="1" data-confirm-ok="Yes, cancel link">{% csrf_token %}<button class="btn btn-danger-outline btn-sm">{% icon 'x' 16 %} Cancel link</button></form>{% endif %}
+  </div>
+</div>
+
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3" x-data="{ tab: 'attempts' }">
+  <div class="card xl:col-span-2">
+    <nav class="flex gap-6 overflow-x-auto border-b border-gray-100 px-5 sm:px-6 dark:border-gray-800" aria-label="Link sections">
+      <button type="button" class="tab" :class="tab==='attempts' ? 'tab-active' : 'tab-inactive'" @click="tab='attempts'">Attempts ({{ attempts|length }})</button>
+      <button type="button" class="tab" :class="tab==='payments' ? 'tab-active' : 'tab-inactive'" @click="tab='payments'">Payments ({{ payments|length }})</button>
+      {% if is_finance %}<button type="button" class="tab" :class="tab==='events' ? 'tab-active' : 'tab-inactive'" @click="tab='events'">Gateway events</button>{% endif %}
+      <button type="button" class="tab" :class="tab==='comms' ? 'tab-active' : 'tab-inactive'" @click="tab='comms'">Communication</button>
+      <button type="button" class="tab" :class="tab==='refunds' ? 'tab-active' : 'tab-inactive'" @click="tab='refunds'">Refunds</button>
+      <button type="button" class="tab" :class="tab==='activity' ? 'tab-active' : 'tab-inactive'" @click="tab='activity'">Activity</button>
+    </nav>
+    <div x-show="tab==='attempts'">
+      {% if attempts %}<div class="table-wrap"><table class="data-table responsive-cards"><thead><tr><th class="th">Started</th><th class="th">Order</th><th class="th text-right">Amount</th><th class="th">Method</th><th class="th">Result</th></tr></thead><tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+        {% for a in attempts %}<tr><td class="td" data-label="Started">{{ a.created_at|dt }}</td><td class="td font-mono text-theme-xs" data-label="Order">{{ a.gateway_order_id }}{% if a.gateway_payment_id %}<span class="block">{{ a.gateway_payment_id }}</span>{% endif %}</td><td class="td text-right" data-label="Amount">{{ a.amount|inr }}</td><td class="td" data-label="Method">{{ a.method|default:"—"|upper }}</td><td class="td" data-label="Result">{% badge a.status a.get_status_display %}{% if a.failure_reason %}<span class="block text-theme-xs text-gray-500">{{ a.failure_reason }}</span>{% endif %}</td></tr>{% endfor %}
+      </tbody></table></div>{% else %}<p class="muted p-6">The customer has not started a payment yet.{% if link.open_count %} They opened the page {{ link.open_count }}×.{% endif %}</p>{% endif %}
+    </div>
+    <div x-show="tab==='payments'" x-cloak>
+      {% if payments %}<div class="table-wrap"><table class="data-table responsive-cards"><thead><tr><th class="th">Receipt</th><th class="th">Date</th><th class="th text-right">Amount</th><th class="th">Allocated to</th><th class="th">Status</th></tr></thead><tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+        {% for p in payments %}<tr><td class="td" data-label="Receipt"><a class="link" href="{% url 'crm:payment_detail' p.pk %}">{{ p.receipt_number|default:"Unverified" }}</a></td><td class="td" data-label="Date">{{ p.payment_date|d }}</td><td class="td text-right" data-label="Amount">{{ p.amount|inr }}{% if p.fee %}<span class="block text-theme-xs">fee {{ p.fee|inr }}</span>{% endif %}</td><td class="td" data-label="Allocated">{% for a in p.allocations.all %}{% if not a.reversed_at %}{{ a.invoice.display_number }} {{ a.total|inr }}<br>{% endif %}{% empty %}Held as advance{% endfor %}</td><td class="td" data-label="Status">{% badge p.status p.get_status_display %}</td></tr>{% endfor %}
+      </tbody></table></div>{% else %}<p class="muted p-6">No money received on this link yet.</p>{% endif %}
+    </div>
+    {% if is_finance %}<div x-show="tab==='events'" x-cloak>
+      {% if events %}<ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for e in events %}<li class="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm"><a class="link font-mono text-theme-xs" href="{% url 'crm:event_detail' e.pk %}">{{ e.event_id|truncatechars:50 }}</a><span>{{ e.received_at|dt }} · {{ e.get_source_display }} {% badge e.status e.get_status_display %}</span>{% if e.note %}<span class="w-full text-theme-xs text-gray-500">{{ e.note }}</span>{% endif %}</li>{% endfor %}</ul>{% else %}<p class="muted p-6">No gateway events.</p>{% endif %}
+    </div>{% endif %}
+    <div x-show="tab==='comms'" x-cloak>
+      {% if deliveries %}<ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for d in deliveries %}<li class="flex flex-wrap justify-between gap-2 px-5 py-3 text-sm"><span>{{ d.get_status_display }} · {{ d.recipient }}</span><span class="muted">{{ d.created_at|dt }} by {{ d.sent_by|uname }}</span>{% if d.error %}<span class="w-full text-theme-xs text-error-600">{{ d.error }}</span>{% endif %}</li>{% endfor %}</ul>{% else %}<p class="muted p-6">The link has not been sent from the system. Opened {{ link.open_count }}×.</p>{% endif %}
+    </div>
+    <div x-show="tab==='refunds'" x-cloak>
+      {% if refunds %}<ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for r in refunds %}<li class="flex flex-wrap justify-between gap-2 px-5 py-3 text-sm"><span>{{ r.amount|inr }} · {{ r.get_reason_display }}</span>{% badge r.status r.get_status_display %}</li>{% endfor %}</ul>{% else %}<p class="muted p-6">No refunds.</p>{% endif %}
+    </div>
+    <div x-show="tab==='activity'" x-cloak>
+      <ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for a in activity %}<li class="px-5 py-3 text-sm"><span class="font-medium text-gray-800 dark:text-white/90">{{ a.action }}</span> <span class="muted">· {{ a.actor_name|default:a.actor_type }} · {{ a.created_at|dt }}</span>{% if a.reason %}<span class="block text-theme-xs text-gray-500">{{ a.reason }}</span>{% endif %}</li>{% empty %}<li class="muted p-6">No activity.</li>{% endfor %}</ul>
+    </div>
+  </div>
+  <div class="space-y-6">
+    <div class="card"><div class="card-header"><h2 class="card-title">Tax breakup (frozen)</h2></div>
+      <dl class="card-body space-y-2 text-sm">
+        <div class="flex justify-between"><dt class="text-gray-500">Taxable value</dt><dd>{{ tax.taxable|inr }}</dd></div>
+        {% if tax.supply_type == 'intra' %}<div class="flex justify-between"><dt class="text-gray-500">CGST</dt><dd>{{ tax.cgst|inr }}</dd></div><div class="flex justify-between"><dt class="text-gray-500">SGST</dt><dd>{{ tax.sgst|inr }}</dd></div>
+        {% else %}<div class="flex justify-between"><dt class="text-gray-500">IGST</dt><dd>{{ tax.igst|inr }}</dd></div>{% endif %}
+        <div class="flex justify-between border-t border-gray-100 pt-2 font-semibold dark:border-gray-800"><dt>Total</dt><dd>{{ tax.total|inr }}</dd></div>
+        {% if tax.rates %}<p class="text-theme-xs text-gray-500">Rates: {{ tax.rates|join:"%, " }}%</p>{% endif %}
+      </dl></div>
+    <div class="card"><div class="card-header"><h2 class="card-title">Details</h2></div>
+      <dl class="card-body space-y-2 text-sm">
+        <div class="flex justify-between gap-3"><dt class="text-gray-500">Expires</dt><dd>{{ link.expires_at|dt }}</dd></div>
+        <div class="flex justify-between gap-3"><dt class="text-gray-500">Contact</dt><dd class="text-right">{{ link.contact_name }}<br>{{ link.contact_email }}<br>{{ link.contact_phone|phone }}</dd></div>
+        <div class="flex justify-between gap-3"><dt class="text-gray-500">Partial payments</dt><dd>{% if link.allow_partial %}Allowed, min {{ link.min_partial_amount|inr }}{% else %}No{% endif %}</dd></div>
+        <div class="flex justify-between gap-3"><dt class="text-gray-500">Methods</dt><dd>{{ link.methods|join:", "|upper }}</dd></div>
+        <div class="flex justify-between gap-3"><dt class="text-gray-500">Opened</dt><dd>{{ link.open_count }}×{% if link.last_opened_at %} · {{ link.last_opened_at|ago }}{% endif %}</dd></div>
+        {% if link.internal_note %}<div><dt class="text-gray-500">Internal note</dt><dd class="whitespace-pre-line">{{ link.internal_note }}</dd></div>{% endif %}
+      </dl></div>
+    {% if history %}<div class="card"><div class="card-header"><h2 class="card-title">Approvals</h2></div><ul class="card-body space-y-2">{% for h in history %}<li class="text-sm"><a class="link" href="{% url 'crm:approval_detail' h.pk %}">{{ h.title }}</a> {% badge h.status h.get_status_display %}</li>{% endfor %}</ul></div>{% endif %}
+  </div>
+</div>
+
+{% include "crm/components/modal_start.html" with id="send" title="Resend payment link" subtitle="The customer gets the secure link with the remaining amount." %}
+  <form method="post" action="{% url 'crm:link_action' link.pk 'send' %}" novalidate>{% csrf_token %}{% idem %}
+    {% include "crm/components/modal_form.html" with form=forms.send %}{% include "crm/components/modal_actions.html" with label="Send link" loading="Sending…" %}</form>
+{% include "crm/components/modal_end.html" %}
+{% include "crm/components/modal_start.html" with id="extend" title="Request extension" subtitle="Within the policy limit you can extend directly if you hold approval permission; otherwise a manager approves." %}
+  <form method="post" action="{% url 'crm:link_action' link.pk 'extend' %}" novalidate>{% csrf_token %}{% idem %}
+    {% include "crm/components/modal_form.html" with form=forms.extend %}{% include "crm/components/modal_actions.html" with label="Request extension" loading="Submitting…" %}</form>
+{% include "crm/components/modal_end.html" %}
+{% endblock %}

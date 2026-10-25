@@ -1,0 +1,30 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Settlements{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-start justify-between gap-3">
+  <div><h1 class="page-title">Gateway settlements</h1><p class="muted mt-1">Gateway payouts to the bank, net of fees, GST on fees and TDS. Unsettled gateway money: {{ unsettled_total|inr }}.</p></div>
+  {% if can_add %}<button type="button" class="btn btn-primary" @click="$store.modal.show('settlement')">{% icon 'plus' 18 %} Record settlement</button>{% endif %}
+</div>
+{% endblock %}
+{% block content %}
+<div class="card">
+  {% if settlements %}
+  <div class="table-wrap"><table class="data-table responsive-cards">
+    <thead><tr><th class="th">Date</th><th class="th">Settlement ID</th><th class="th text-right">Gross</th><th class="th text-right">Fees</th><th class="th text-right">GST on fees</th><th class="th text-right">TDS</th><th class="th text-right">Net</th><th class="th">Bank</th><th class="th">Status</th></tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+    {% for s in settlements %}<tr><td class="td" data-label="Date">{{ s.settled_on|d }}</td><td class="td font-mono text-theme-xs" data-label="ID">{{ s.settlement_id }}</td><td class="td text-right" data-label="Gross">{{ s.gross|inr }}</td><td class="td text-right" data-label="Fees">{{ s.fees|inr }}</td><td class="td text-right" data-label="GST">{{ s.tax_on_fees|inr }}</td><td class="td text-right" data-label="TDS">{{ s.tds|inr }}</td><td class="td text-right font-medium" data-label="Net">{{ s.net|inr }}</td><td class="td" data-label="Bank">{{ s.bank_account }}</td><td class="td" data-label="Status">{% badge s.status s.get_status_display %}</td></tr>{% endfor %}
+    </tbody></table></div>
+  {% else %}{% include "crm/components/empty_state.html" with title="No settlements recorded" text="Record each payout from the gateway's settlement report. The ledger moves the money from Gateway clearing to the bank and books fees." icon="bank" %}{% endif %}
+</div>
+{% if can_add %}
+{% include "crm/components/modal_start.html" with id="settlement" title="Record settlement" subtitle="Tick the gateway payments in this payout; their total must equal the gross." size="lg" %}
+  <form method="post" novalidate>{% csrf_token %}{% idem %}
+    {% include "crm/components/modal_form.html" with form=form %}
+    {% if unsettled %}<div class="mt-4 max-h-60 overflow-y-auto rounded-lg border border-gray-100 dark:border-gray-800"><table class="data-table"><tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+      {% for p in unsettled %}<tr><td class="td w-8"><input type="checkbox" name="payments" value="{{ p.pk }}" class="form-checkbox-box" aria-label="Include {{ p.receipt_number }}"></td><td class="td">{{ p.receipt_number }}</td><td class="td">{{ p.payment_date|d }}</td><td class="td">{{ p.client.display_name }}</td><td class="td text-right">{{ p.amount|inr }}</td></tr>{% endfor %}
+    </tbody></table></div>{% endif %}
+    {% include "crm/components/modal_actions.html" with label="Record settlement" %}
+  </form>
+{% include "crm/components/modal_end.html" %}
+{% endif %}
+{% endblock %}

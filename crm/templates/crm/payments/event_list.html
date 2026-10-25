@@ -1,0 +1,20 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Gateway events{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Gateway events" subtitle="Every webhook and backstop poll, stored before processing. Duplicates are recorded and do nothing." count=total %}{% endblock %}
+{% block content %}
+<div class="card">
+  {% include "crm/components/list_toolbar.html" %}
+  {% if object_list %}
+  <div class="table-wrap"><table class="data-table responsive-cards">
+    <thead><tr><th class="th">Received</th><th class="th">Event</th><th class="th">Source</th><th class="th">Link / payment</th><th class="th">Status</th><th class="th">Note</th></tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+    {% for e in object_list %}
+      <tr><td class="td whitespace-nowrap" data-label="Received">{{ e.received_at|dt }}</td><td class="td" data-label="Event"><a class="link font-mono text-theme-xs" href="{% url 'crm:event_detail' e.pk %}">{{ e.event_id|truncatechars:44 }}</a><span class="block text-theme-xs">{{ e.provider }} · {{ e.event_type }}</span></td><td class="td" data-label="Source">{{ e.get_source_display }}</td>
+        <td class="td" data-label="Link">{% if e.link_id %}<a class="link" href="{% url 'crm:link_detail' e.link_id %}">{{ e.link.code }}</a>{% endif %}{% if e.payment_id %} · <a class="link" href="{% url 'crm:payment_detail' e.payment_id %}">{{ e.payment }}</a>{% endif %}</td>
+        <td class="td" data-label="Status">{% badge e.status e.get_status_display %}{% if not e.signature_valid %} {% badge 'failed' 'Bad signature' %}{% endif %}</td><td class="td text-theme-xs" data-label="Note">{{ e.note|default:e.error|truncatechars:80 }}</td></tr>
+    {% endfor %}
+    </tbody></table></div>
+  {% include "crm/components/pagination.html" %}
+  {% else %}{% include "crm/components/empty_state.html" with filtered=any_filter title="No gateway events yet" text="Events appear when customers pay through payment links." icon="inbox" %}{% endif %}
+</div>
+{% endblock %}

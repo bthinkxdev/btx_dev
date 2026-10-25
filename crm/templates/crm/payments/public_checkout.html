@@ -1,0 +1,22 @@
+{% load static crm_tags %}<!doctype html>
+<html lang="en"><head>{% include "crm/payments/_public_base_head.html" %}
+<title>Secure payment | {{ company.legal_name }}</title>
+<script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script></head>
+<body class="bg-gray-50">
+<main class="mx-auto max-w-xl px-4 py-10 text-center">
+  <div class="card p-6">
+    <p class="text-lg font-semibold text-gray-900">Opening secure payment for {{ amount|inr }}…</p>
+    <p class="mt-2 text-sm text-gray-600">You will be returned here after paying. Do not close this window.</p>
+    <noscript><p class="mt-4 text-sm text-error-600">Please enable JavaScript to pay online, or contact {{ company.phone|phone }}.</p></noscript>
+    <p id="err" class="mt-4 hidden text-sm text-error-600">The payment window could not open. <a class="link" href="{% url 'crm:pay_page' token %}">Go back</a> and try again.</p>
+  </div>
+</main>
+<script>
+(function () {
+  try {
+    var cf = Cashfree({ mode: '{{ mode|escapejs }}' });
+    cf.checkout({ paymentSessionId: '{{ session_id|escapejs }}', redirectTarget: '_self' });
+  } catch (e) { document.getElementById('err').classList.remove('hidden'); }
+})();
+</script>
+</body></html>

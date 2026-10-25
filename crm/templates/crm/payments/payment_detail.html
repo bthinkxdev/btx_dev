@@ -1,0 +1,89 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{{ p }}{% endblock %}
+{% block banners %}
+  {% if p.status == 'pending_verification' %}<div class="alert alert-info mb-5"><span class="text-blue-light-500">{% icon 'clock' 20 %}</span><p class="text-sm text-gray-700 dark:text-gray-300">Pending verification. It does not reduce any balance until a different Finance user verifies it against the bank.{% if self_submitted %} You recorded it, so someone else must verify.{% endif %}</p></div>{% endif %}
+  {% if p.status == 'review' %}<div class="alert alert-warning mb-5"><span class="text-warning-500">{% icon 'alert' 20 %}</span><p class="text-sm text-gray-700 dark:text-gray-300"><strong>Needs review:</strong> {{ p.review_reason }}. The money is real. Accept it (held as an advance or allocated) or refund it.</p></div>{% endif %}
+  {% if p.status == 'rejected' %}<div class="alert alert-error mb-5"><p class="text-sm">Rejected: {{ p.rejected_reason }}</p></div>{% endif %}
+  {% for d in disputes %}{% if d.status == 'open' or d.status == 'evidence_submitted' %}<div class="alert alert-error mb-5"><p class="text-sm">Chargeback {{ d.amount|inr }} — {{ d.reason }} (respond by {{ d.due_by|d }})</p></div>{% endif %}{% endfor %}
+{% endblock %}
+{% block content %}
+<div class="card mb-6">
+  <div class="flex flex-col gap-4 p-5 sm:p-6 xl:flex-row xl:items-start xl:justify-between">
+    <div>
+      <h1 class="text-xl font-semibold text-gray-800 dark:text-white/90">{{ p.receipt_number|default:"Unverified payment" }} {% badge p.status p.get_status_display %}</h1>
+      <p class="muted"><a class="link" href="{% url 'crm:client_detail' p.client_id %}">{{ p.client.display_name }}</a> · {{ p.get_kind_display }} · {{ p.get_method_display }} · {{ p.payment_date|d }}{% if p.link_id %} · link <a class="link" href="{% url 'crm:link_detail' p.link_id %}">{{ p.link.code }}</a>{% endif %}</p>
+    </div>
+    <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div><p class="dl-label">Received</p><p class="dl-value text-lg">{{ p.amount|inr }}</p></div>
+      <div><p class="dl-label">TDS</p><p class="dl-value text-lg">{{ p.tds_amount|inr }}</p></div>
+      <div><p class="dl-label">Allocated</p><p class="dl-value text-lg">{{ p.allocated_amount|inr }}</p></div>
+      <div><p class="dl-label">Held as advance</p><p class="dl-value text-lg {% if held %}text-warning-700{% endif %}">{{ held|inr }}</p></div>
+    </div>
+  </div>
+  <div class="flex flex-wrap gap-2 border-t border-gray-100 px-5 py-4 sm:px-6 dark:border-gray-800">
+    {% if can_verify %}
+      <form method="post" action="{% url 'crm:payment_action' p.pk 'verify' %}" data-confirm="Verify {{ p.amount|inr }} from {{ p.client.display_name }}?" data-confirm-body="Confirm you have seen this money in {{ p.deposit_account|default:'the bank' }} (ref {{ p.reference_number|default:'—' }}). A receipt is issued and the ledger is posted." data-confirm-ok="Yes, verify">{% csrf_token %}{% idem %}<button class="btn btn-success btn-sm">{% icon 'check' 16 %} Verify</button></form>
+      <form method="post" action="{% url 'crm:payment_action' p.pk 'reject' %}" data-confirm="Reject this payment?" data-confirm-body="The submitter is told why." data-confirm-reason="required" data-confirm-danger="1">{% csrf_token %}<button class="btn btn-danger-outline btn-sm">{% icon 'x' 16 %} Reject</button></form>
+    {% endif %}
+    {% if is_finance and p.status == 'review' %}
+      <form method="post" action="{% url 'crm:payment_action' p.pk 'accept_review' %}" data-confirm="Accept this payment?" data-confirm-body="It is counted, a receipt is issued, and any amount above the invoice or link is held as a customer advance." data-confirm-reason="required">{% csrf_token %}{% idem %}<button class="btn btn-success btn-sm">Accept payment</button></form>
+    {% endif %}
+    {% if can_allocate %}<a href="{% url 'crm:allocate_payment' p.pk %}" class="btn btn-primary btn-sm">{% icon 'swap' 16 %} Allocate to invoices</a>{% endif %}
+    {% if can_refund %}<button type="button" class="btn btn-secondary btn-sm" @click="$store.modal.show('refund')">{% icon 'undo' 16 %} Request refund</button>{% endif %}
+    {% if p.receipt_number and p.status != 'review' %}<a href="{% url 'crm:receipt_pdf' p.pk %}?download=1" class="btn btn-secondary btn-sm">{% icon 'download' 16 %} Receipt PDF</a>{% endif %}
+  </div>
+</div>
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+  <div class="space-y-6 xl:col-span-2">
+    <div class="card"><div class="card-header"><h2 class="card-title">Allocations</h2></div>
+      {% if allocations %}<div class="table-wrap"><table class="data-table responsive-cards"><thead><tr><th class="th">Invoice</th><th class="th text-right">Cash</th><th class="th text-right">TDS</th><th class="th">When</th><th class="th"></th></tr></thead><tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+        {% for a in allocations %}<tr class="{% if a.reversed_at %}opacity-60{% endif %}"><td class="td" data-label="Invoice"><a class="link" href="{% url 'crm:invoice_detail' a.invoice_id %}">{{ a.invoice.display_number }}</a>{% if a.is_advance_adjustment %} <span class="badge badge-grey">from advance</span>{% endif %}</td><td class="td text-right" data-label="Cash">{{ a.amount|inr }}</td><td class="td text-right" data-label="TDS">{{ a.tds_amount|inr }}</td><td class="td" data-label="When">{{ a.created_at|dt }}{% if a.reversed_at %}<span class="block text-theme-xs text-error-600">Reversed {{ a.reversed_at|d }}: {{ a.reversal_reason }}</span>{% endif %}</td>
+          <td class="td text-right" data-label="">{% if can_reverse and not a.reversed_at %}<form method="post" action="{% url 'crm:payment_action' p.pk 'reverse_allocation' %}" data-confirm="Reverse this allocation?" data-confirm-body="The invoice balance goes back up and the amount is held as an advance. A reversing journal is posted." data-confirm-reason="required" data-confirm-danger="1">{% csrf_token %}<input type="hidden" name="allocation" value="{{ a.pk }}"><button class="btn btn-secondary btn-sm">Reverse</button></form>{% endif %}</td></tr>{% endfor %}
+      </tbody></table></div>{% else %}<p class="muted p-6">{% if p.status == 'verified' %}Held as an advance. Allocate it when the invoice is issued.{% else %}Allocated when verified.{% endif %}</p>{% endif %}
+    </div>
+    {% if refunds %}<div class="card"><div class="card-header"><h2 class="card-title">Refunds</h2></div><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for r in refunds %}<li class="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm"><span>{{ r.amount|inr }} · {{ r.get_reason_display }} · {{ r.get_method_display }}{% if r.tax_portion %} · tax {{ r.tax_portion|inr }}{% endif %}</span><span>{% badge r.status r.get_status_display %}{% if r.error %} <span class="text-theme-xs text-error-600">{{ r.error }}</span>{% endif %}</span></li>{% endfor %}</ul></div>{% endif %}
+    {% if disputes %}<div class="card"><div class="card-header"><h2 class="card-title">Disputes</h2></div><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for d in disputes %}<li class="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm"><span>{{ d.amount|inr }} · {{ d.reason }}</span><span>{% badge d.status d.get_status_display %}{% if is_finance %} <button type="button" class="btn btn-secondary btn-sm" @click="$store.modal.show('dispute')">Update</button>{% endif %}</span></li>{% endfor %}</ul></div>{% endif %}
+    {% if events %}<div class="card"><div class="card-header"><h2 class="card-title">Gateway events</h2></div><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for e in events %}<li class="flex justify-between gap-2 px-5 py-3 text-sm"><a class="link font-mono text-theme-xs" href="{% url 'crm:event_detail' e.pk %}">{{ e.event_id|truncatechars:48 }}</a>{% badge e.status e.get_status_display %}</li>{% endfor %}</ul></div>{% endif %}
+    <div class="card"><div class="card-header"><h2 class="card-title">Activity</h2></div><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for a in activity %}<li class="px-5 py-3 text-sm"><span class="font-medium text-gray-800 dark:text-white/90">{{ a.action }}</span> <span class="muted">· {{ a.actor_name|default:a.actor_type }} · {{ a.created_at|dt }}</span>{% if a.reason %}<span class="block text-theme-xs text-gray-500">{{ a.reason }}</span>{% endif %}</li>{% empty %}<li class="muted p-6">No activity.</li>{% endfor %}</ul></div>
+  </div>
+  <div class="space-y-6">
+    <div class="card"><div class="card-header"><h2 class="card-title">Details</h2></div>
+      <dl class="card-body space-y-2 text-sm">
+        <div class="flex justify-between gap-3"><dt class="text-gray-500">Reference</dt><dd class="font-mono text-theme-xs">{{ p.reference_number|default:p.provider_payment_id|default:"—" }}</dd></div>
+        <div class="flex justify-between gap-3"><dt class="text-gray-500">Deposited to</dt><dd>{{ p.deposit_account|default:"Gateway clearing" }}</dd></div>
+        {% if p.tds_amount %}<div class="flex justify-between gap-3"><dt class="text-gray-500">TDS section</dt><dd>{{ p.tds_section }}{% if p.deductor_tan %} · TAN {{ p.deductor_tan }}{% endif %}</dd></div>{% endif %}
+        {% if p.fee %}<div class="flex justify-between gap-3"><dt class="text-gray-500">Gateway fee</dt><dd>{{ p.fee|inr }} + GST {{ p.fee_tax|inr }}</dd></div>{% endif %}
+        <div class="flex justify-between gap-3"><dt class="text-gray-500">Recorded by</dt><dd>{{ p.submitted_by|uname|default:"Gateway" }}</dd></div>
+        <div class="flex justify-between gap-3"><dt class="text-gray-500">Verified by</dt><dd>{% if p.verified_at %}{{ p.verified_by|uname|default:"Gateway (automatic)" }} · {{ p.verified_at|dt }}{% else %}—{% endif %}</dd></div>
+        {% if p.invoice_id %}<div class="flex justify-between gap-3"><dt class="text-gray-500">Recorded against</dt><dd><a class="link" href="{% url 'crm:invoice_detail' p.invoice_id %}">{{ p.invoice.display_number }}</a></dd></div>{% endif %}
+        {% if p.settlement_id %}<div class="flex justify-between gap-3"><dt class="text-gray-500">Settlement</dt><dd>{{ p.settlement.settlement_id }}</dd></div>{% endif %}
+        {% if p.internal_note %}<div><dt class="text-gray-500">Internal note</dt><dd class="whitespace-pre-line">{{ p.internal_note }}</dd></div>{% endif %}
+      </dl></div>
+    {% if voucher %}<div class="card"><div class="card-header"><h2 class="card-title">Advance receipt voucher</h2></div><dl class="card-body space-y-2 text-sm">
+      <div class="flex justify-between"><dt class="text-gray-500">Number</dt><dd>{{ voucher.number }}</dd></div>
+      <div class="flex justify-between"><dt class="text-gray-500">Advance</dt><dd>{{ voucher.amount|inr }}</dd></div>
+      {% if voucher.cgst or voucher.sgst or voucher.igst %}<div class="flex justify-between"><dt class="text-gray-500">of which GST</dt><dd>{{ voucher.tax_total|inr }}</dd></div>{% endif %}
+    </dl></div>{% endif %}
+    {% if tds %}<div class="card"><div class="card-header"><h2 class="card-title">TDS receivable</h2></div><dl class="card-body space-y-2 text-sm">
+      <div class="flex justify-between"><dt class="text-gray-500">Amount</dt><dd>{{ tds.amount|inr }}</dd></div>
+      <div class="flex justify-between"><dt class="text-gray-500">Quarter</dt><dd>{{ tds.fiscal_year }} {{ tds.quarter }}</dd></div>
+      <div class="flex justify-between"><dt class="text-gray-500">Certificate</dt><dd>{% badge tds.status tds.get_status_display %}</dd></div>
+      <a class="link text-theme-sm" href="{% url 'crm:tds_receivable' %}">Manage certificates</a>
+    </dl></div>{% endif %}
+    {% include "crm/components/attachments.html" with obj=p attachments=proofs model_name="payment" can_upload=is_finance %}
+  </div>
+</div>
+{% if can_refund %}
+{% include "crm/components/modal_start.html" with id="refund" title="Request refund" subtitle="Up to the amount not allocated to invoices. Money on an invoice is refunded through a credit note." %}
+  <p class="mb-4 text-sm text-gray-700 dark:text-gray-300">Refundable now: <strong>{{ refundable|inr }}</strong></p>
+  <form method="post" action="{% url 'crm:payment_action' p.pk 'refund' %}" novalidate>{% csrf_token %}{% idem %}
+    {% include "crm/components/modal_form.html" with form=forms.refund %}{% include "crm/components/modal_actions.html" with label="Request refund" loading="Initiating…" danger=True %}</form>
+{% include "crm/components/modal_end.html" %}
+{% endif %}
+{% if disputes and is_finance %}
+{% include "crm/components/modal_start.html" with id="dispute" title="Update dispute" %}
+  <form method="post" action="{% url 'crm:payment_action' p.pk 'dispute' %}" novalidate>{% csrf_token %}<input type="hidden" name="dispute" value="{{ disputes.0.pk }}">
+    {% include "crm/components/modal_form.html" with form=forms.dispute %}{% include "crm/components/modal_actions.html" with label="Save" %}</form>
+{% include "crm/components/modal_end.html" %}
+{% endif %}
+{% endblock %}

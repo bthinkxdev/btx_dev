@@ -1,0 +1,16 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Customer advances{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Customer advances" subtitle="Money received before an invoice. It is a liability until adjusted to an invoice or refunded." %}{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header"><h2 class="card-title">Held · {{ total|inr }}</h2></div>
+  {% if rows %}
+  <div class="table-wrap"><table class="data-table responsive-cards">
+    <thead><tr><th class="th">Receipt</th><th class="th">Date</th><th class="th">Age</th><th class="th">Client</th><th class="th">Quotation</th><th class="th text-right">Received</th><th class="th text-right">Held</th><th class="th"></th></tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+    {% for r in rows %}<tr><td class="td" data-label="Receipt"><a class="link" href="{% url 'crm:payment_detail' r.payment.pk %}">{{ r.payment.receipt_number }}</a>{% if r.payment.receipt_voucher %}<span class="block text-theme-xs">{{ r.payment.receipt_voucher.number }}</span>{% endif %}</td><td class="td" data-label="Date">{{ r.payment.payment_date|d }}</td><td class="td {% if r.age > 90 %}text-warning-700{% endif %}" data-label="Age">{{ r.age }} days</td><td class="td" data-label="Client">{{ r.payment.client.display_name }}</td><td class="td" data-label="Quotation">{% if r.payment.quotation_id %}<a class="link" href="{% url 'crm:quotation_detail' r.payment.quotation_id %}">{{ r.payment.quotation.display_number }}</a>{% else %}—{% endif %}</td><td class="td text-right" data-label="Received">{{ r.payment.gross_settled|inr }}</td><td class="td text-right font-medium" data-label="Held">{{ r.held|inr }}</td>
+      <td class="td text-right" data-label=""><a class="btn btn-secondary btn-sm" href="{% url 'crm:allocate_payment' r.payment.pk %}?auto=1">Allocate</a></td></tr>{% endfor %}
+    </tbody></table></div>
+  {% else %}{% include "crm/components/empty_state.html" with title="No advances held" text="Advances appear when a customer pays before an invoice is issued." icon="rupee" %}{% endif %}
+</div>
+{% endblock %}

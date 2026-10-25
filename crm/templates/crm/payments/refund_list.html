@@ -1,0 +1,23 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Refunds{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Refunds" subtitle="Requested refunds need Finance approval. Approved gateway refunds run automatically; manual ones need the bank reference." count=total %}{% endblock %}
+{% block content %}
+<div class="card">
+  {% include "crm/components/list_toolbar.html" %}
+  {% if object_list %}
+  <div class="table-wrap"><table class="data-table responsive-cards">
+    <thead><tr><th class="th">Requested</th><th class="th">Payment</th><th class="th">Client</th><th class="th text-right">Amount</th><th class="th">Reason</th><th class="th">Method</th><th class="th">Status</th><th class="th"></th></tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+    {% for r in object_list %}
+      <tr><td class="td" data-label="Requested">{{ r.created_at|dt }}</td><td class="td" data-label="Payment"><a class="link" href="{% url 'crm:payment_detail' r.payment_id %}">{{ r.payment }}</a></td><td class="td" data-label="Client">{{ r.payment.client.display_name }}</td><td class="td text-right" data-label="Amount">{{ r.amount|inr }}</td><td class="td" data-label="Reason">{{ r.get_reason_display }}</td><td class="td" data-label="Method">{{ r.get_method_display }}</td>
+        <td class="td" data-label="Status">{% badge r.status r.get_status_display %}{% if r.error %}<span class="block text-theme-xs text-error-600">{{ r.error }}</span>{% endif %}{% if r.manual_reference %}<span class="block text-theme-xs">Ref {{ r.manual_reference }}</span>{% endif %}</td>
+        <td class="td text-right" data-label="">{% if is_finance %}
+          {% if r.method == 'gateway' and r.status == 'failed' or r.method == 'gateway' and r.status == 'approved' %}<form method="post" action="{% url 'crm:refund_action' r.pk 'execute' %}" class="inline">{% csrf_token %}{% idem %}<button class="btn btn-secondary btn-sm" data-loading-text="Initiating…">{% if r.status == 'failed' %}Retry refund{% else %}Run refund{% endif %}</button></form>{% endif %}
+          {% if r.status == 'approved' or r.status == 'failed' or r.status == 'initiated' %}{% if r.method == 'manual' or r.status == 'failed' %}<form method="post" action="{% url 'crm:refund_action' r.pk 'manual' %}" class="mt-1 flex justify-end gap-1">{% csrf_token %}{% idem %}<input name="manual-reference" required maxlength="80" placeholder="Bank ref" class="form-input h-9 w-28 py-1 text-sm" aria-label="Refund reference"><button class="btn btn-secondary btn-sm" data-loading-text="Saving…">Mark refunded</button></form>{% endif %}{% endif %}
+        {% endif %}</td></tr>
+    {% endfor %}
+    </tbody></table></div>
+  {% include "crm/components/pagination.html" %}
+  {% else %}{% include "crm/components/empty_state.html" with filtered=any_filter title="No refunds" text="Request a refund from a payment's page." icon="undo" %}{% endif %}
+</div>
+{% endblock %}

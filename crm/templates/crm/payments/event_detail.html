@@ -1,0 +1,30 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Gateway event{% endblock %}
+{% block page_header %}{% url 'crm:gateway_events' as back %}{% include "crm/components/page_header.html" with title="Gateway event" subtitle=ev.event_id %}{% endblock %}
+{% block content %}
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+  <div class="card xl:col-span-2"><div class="card-header"><h2 class="card-title">Payload</h2></div><pre class="custom-scrollbar max-h-[70vh] overflow-auto p-5 text-theme-xs text-gray-700 dark:text-gray-300">{{ pretty }}</pre></div>
+  <div class="space-y-6">
+    <div class="card"><dl class="card-body space-y-2 text-sm">
+      <div class="flex justify-between"><dt class="text-gray-500">Status</dt><dd>{% badge ev.status ev.get_status_display %}</dd></div>
+      <div class="flex justify-between"><dt class="text-gray-500">Provider</dt><dd>{{ ev.provider }}</dd></div>
+      <div class="flex justify-between"><dt class="text-gray-500">Source</dt><dd>{{ ev.get_source_display }}</dd></div>
+      <div class="flex justify-between"><dt class="text-gray-500">Signature</dt><dd>{% if ev.signature_valid %}Valid{% else %}Invalid{% endif %}</dd></div>
+      <div class="flex justify-between"><dt class="text-gray-500">Received</dt><dd>{{ ev.received_at|dt }}</dd></div>
+      <div class="flex justify-between"><dt class="text-gray-500">Processed</dt><dd>{{ ev.processed_at|dt|default:"—" }}</dd></div>
+      <div class="flex justify-between"><dt class="text-gray-500">Attempts</dt><dd>{{ ev.attempts }}</dd></div>
+      {% if ev.link_id %}<div class="flex justify-between"><dt class="text-gray-500">Link</dt><dd><a class="link" href="{% url 'crm:link_detail' ev.link_id %}">{{ ev.link.code }}</a></dd></div>{% endif %}
+      {% if ev.payment_id %}<div class="flex justify-between"><dt class="text-gray-500">Payment</dt><dd><a class="link" href="{% url 'crm:payment_detail' ev.payment_id %}">{{ ev.payment }}</a></dd></div>{% endif %}
+      {% if ev.note %}<p class="text-theme-sm">{{ ev.note }}</p>{% endif %}
+      {% if ev.error %}<p class="text-theme-sm text-error-600 break-all">{{ ev.error|truncatechars:400 }}</p>{% endif %}
+    </dl>
+    {% if ev.status == 'failed' or ev.status == 'received' %}
+    <div class="flex flex-wrap gap-2 border-t border-gray-100 p-5 dark:border-gray-800">
+      <form method="post" action="{% url 'crm:event_action' ev.pk 'reprocess' %}">{% csrf_token %}{% idem %}<button class="btn btn-primary btn-sm" data-loading-text="Reprocessing…">Reprocess</button></form>
+      <form method="post" action="{% url 'crm:event_action' ev.pk 'ignore' %}" data-confirm="Mark this event ignored?" data-confirm-reason="required">{% csrf_token %}<button class="btn btn-secondary btn-sm">Mark ignored</button></form>
+    </div>{% endif %}
+    </div>
+    <a href="{% url 'crm:gateway_events' %}" class="link text-sm">Back to gateway events</a>
+  </div>
+</div>
+{% endblock %}

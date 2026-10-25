@@ -1,0 +1,19 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Payment allocation{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Payment allocation" subtitle="Verified money not yet assigned to invoices. It sits in Customer advances until allocated or refunded." %}{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header"><h2 class="card-title">Unallocated payments · {{ total_held|inr }}</h2></div>
+  {% if rows %}
+  <div class="table-wrap"><table class="data-table responsive-cards">
+    <thead><tr><th class="th">Receipt</th><th class="th">Date</th><th class="th">Client</th><th class="th text-right">Held</th><th class="th">Open invoices</th><th class="th"></th></tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+    {% for r in rows %}
+      <tr><td class="td" data-label="Receipt"><a class="link" href="{% url 'crm:payment_detail' r.p.pk %}">{{ r.p.receipt_number }}</a></td><td class="td" data-label="Date">{{ r.p.payment_date|d }}</td><td class="td" data-label="Client">{{ r.p.client.display_name }}</td><td class="td text-right" data-label="Held">{{ r.held|inr }}</td>
+        <td class="td" data-label="Open invoices">{% for i in r.open %}<a class="link" href="{% url 'crm:invoice_detail' i.pk %}">{{ i.number }}</a> {{ i.balance|inr0 }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="muted">None — held as advance</span>{% endfor %}</td>
+        <td class="td text-right" data-label="">{% if r.open %}<a class="btn btn-primary btn-sm" href="{% url 'crm:allocate_payment' r.p.pk %}?auto=1">Allocate</a>{% endif %}</td></tr>
+    {% endfor %}
+    </tbody></table></div>
+  {% else %}{% include "crm/components/empty_state.html" with title="Everything is allocated" text="Every verified payment is assigned to invoices." icon="check" %}{% endif %}
+</div>
+{% endblock %}

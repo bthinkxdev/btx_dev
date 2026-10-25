@@ -1,0 +1,85 @@
+{% load static crm_tags %}<!doctype html>
+<html lang="en"><head>{% include "crm/payments/_public_base_head.html" %}
+<title>Secure payment | {{ company.legal_name }}</title></head>
+<body class="bg-gray-50">
+<main class="mx-auto max-w-xl px-4 py-6 sm:py-10">
+  {% if test_mode %}<div class="mb-4 rounded-lg bg-blue-light-50 px-4 py-2 text-center text-sm font-medium text-blue-light-700">Test mode — no real money moves.</div>{% endif %}
+  <header class="mb-5 flex items-center gap-3">
+    <img src="{% static 'crm/images/logo.jpg' %}" alt="" class="h-12 w-10 rounded-lg object-cover object-top">
+    <div><p class="text-lg font-semibold text-gray-900">{{ company.legal_name }}</p><p class="flex items-center gap-1 text-theme-sm text-success-600">{% icon 'lock' 14 %} Secure payment</p></div>
+  </header>
+
+  <div class="card p-5 sm:p-6">
+    <p class="text-theme-sm text-gray-500">{{ source_ref }}{% if due %} · due {{ due|d }}{% endif %}</p>
+    <h1 class="mt-1 text-lg font-semibold text-gray-900">{{ link.description }}</h1>
+    <p class="text-theme-sm text-gray-500">For {{ link.client.legal_name }}{% if link.client.gstin %} · GSTIN {{ link.client.gstin }}{% endif %}</p>
+
+    {% if state == 'success' %}
+      <div class="mt-6 text-center" role="status">
+        <div class="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-success-50 text-success-600">{% icon 'check' 30 %}</div>
+        <p class="text-xl font-semibold text-gray-900">Payment received</p>
+        <p class="mt-1 text-sm text-gray-600">Thank you. {{ link.amount_paid|inr }} has been received.</p>
+        {% for p in payments %}<a href="{% url 'crm:pay_receipt' token p.pk %}" class="btn btn-secondary mt-4">{% icon 'download' 18 %} Download receipt {{ p.receipt_number }}</a>{% endfor %}
+        {% if link.amount_refunded %}<p class="mt-3 text-sm text-gray-600">Refunded: {{ link.amount_refunded|inr }}</p>{% endif %}
+      </div>
+    {% elif state == 'expired' %}
+      <div class="alert alert-warning mt-6"><p class="text-sm">This link has expired. Contact {{ company.display_name }} at {{ company.phone|phone }} to get a new link.</p></div>
+    {% elif state == 'cancelled' %}
+      <div class="alert alert-info mt-6"><p class="text-sm">This payment request is no longer active.</p></div>
+    {% elif state == 'processing' %}
+      <div class="alert alert-info mt-6" role="status" id="processing"><p class="text-sm"><strong>We are confirming your payment. Do not pay again.</strong> This page updates on its own.</p></div>
+      <button class="btn btn-primary mt-5 w-full" disabled><span class="btn-spinner"></span> Checking…</button>
+    {% elif state == 'unavailable' %}
+      <div class="alert alert-warning mt-6"><p class="text-sm">Online payment is not available right now. Please try again shortly or call {{ company.phone|phone }}.</p></div>
+    {% else %}
+      {% if state == 'failed' %}<div class="alert alert-error mt-5" role="alert"><p class="text-sm"><strong>Payment did not go through.</strong> No money was taken, or it will be returned. {{ attempt.failure_reason }}</p></div>{% endif %}
+      {% if error %}<div class="alert alert-error mt-5" role="alert"><p class="text-sm">{{ error }}</p></div>{% endif %}
+      <dl class="mt-5 space-y-2 border-t border-gray-100 pt-4 text-sm">
+        <div class="flex justify-between"><dt class="text-gray-500">Taxable value</dt><dd>{{ tax.taxable|inr }}</dd></div>
+        {% if tax.supply_type == 'intra' %}
+          <div class="flex justify-between"><dt class="text-gray-500">CGST</dt><dd>{{ tax.cgst|inr }}</dd></div>
+          <div class="flex justify-between"><dt class="text-gray-500">SGST</dt><dd>{{ tax.sgst|inr }}</dd></div>
+        {% elif tax.igst and tax.igst != '0.00' %}<div class="flex justify-between"><dt class="text-gray-500">IGST</dt><dd>{{ tax.igst|inr }}</dd></div>{% endif %}
+        <div class="flex justify-between border-t border-gray-100 pt-2 text-base font-semibold text-gray-900"><dt>Total</dt><dd>{{ link.amount|inr }}</dd></div>
+        {% if link.amount_paid %}<div class="flex justify-between text-success-700"><dt>Already paid</dt><dd>{{ link.amount_paid|inr }}</dd></div>
+        <div class="flex justify-between font-semibold text-gray-900"><dt>Balance to pay</dt><dd>{{ balance|inr }}</dd></div>{% endif %}
+      </dl>
+      <form method="post" class="mt-5 space-y-3">{% csrf_token %}
+        {% if link.allow_partial %}
+          <div><label for="pay-amount" class="form-label">Amount to pay (₹)</label>
+            <input id="pay-amount" type="number" name="amount" step="0.01" min="{{ link.min_partial_amount|default:'1' }}" max="{{ balance }}" value="{{ balance }}" class="form-input" inputmode="decimal">
+            <p class="form-help">Minimum {{ link.min_partial_amount|inr }}. You can pay the rest later with this link.</p></div>
+        {% endif %}
+        <button class="btn btn-primary w-full py-3.5 text-base" data-loading-text="Opening secure payment…">{% if state == 'failed' %}Try again{% else %}Pay {{ balance|inr }}{% endif %}</button>
+        <p class="text-center text-theme-xs text-gray-500">{% for m in link.methods %}{{ m|upper }}{% if not forloop.last %} · {% endif %}{% endfor %}</p>
+      </form>
+      <p class="mt-2 text-center text-theme-xs text-gray-500">Link valid until {{ link.expires_at|dt }}.</p>
+    {% endif %}
+  </div>
+  <footer class="mt-6 space-y-2 text-center text-theme-sm text-gray-500">
+    <p>Questions? Call {{ company.phone|phone }} or email {{ company.email }}.</p>
+    {% if company.refund_policy %}<details class="mx-auto max-w-md text-left"><summary class="cursor-pointer text-center">Refund policy</summary><p class="mt-2 whitespace-pre-line text-theme-xs">{{ company.refund_policy }}</p></details>{% endif %}
+  </footer>
+</main>
+{% if state == 'processing' %}
+<script>
+(function () {
+  var tries = 0;
+  function poll() {
+    tries++;
+    fetch('{% url "crm:pay_status" token %}{% if attempt %}?order={{ attempt.gateway_order_id|urlencode }}{% endif %}', { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { if (d.state !== 'processing') { window.location.reload(); } else if (tries < 40) { setTimeout(poll, 4000); } })
+      .catch(function () { if (tries < 40) setTimeout(poll, 6000); });
+  }
+  setTimeout(poll, 3000);
+})();
+</script>
+{% endif %}
+<script>
+document.addEventListener('submit', function (e) {
+  var b = e.target.querySelector('[data-loading-text]');
+  if (b) { if (b.disabled) { e.preventDefault(); return; } b.disabled = true; b.textContent = b.dataset.loadingText; }
+});
+</script>
+</body></html>

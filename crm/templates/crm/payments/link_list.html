@@ -1,0 +1,37 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Payment links{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-start justify-between gap-3">
+  <div>
+    <h1 class="page-title">Payment links <span class="ml-1 text-base font-normal text-gray-500 dark:text-gray-400">({{ total }})</span></h1>
+    <p class="muted mt-1">A link is a request, not money. Money counts only when the gateway confirms it.</p>
+  </div>
+  <p class="muted max-w-sm text-theme-sm">Create a link from a quotation or an issued invoice.</p>
+</div>
+{% endblock %}
+{% block content %}
+<div class="card">
+  {% include "crm/components/list_toolbar.html" %}
+  {% if object_list %}
+  <div class="table-wrap"><table class="data-table responsive-cards">
+    <thead class="border-b border-gray-100 dark:border-gray-800"><tr><th class="th">Link ID</th><th class="th">Client</th><th class="th">Source</th><th class="th">Purpose</th><th class="th text-right">{% sort_link 'amount' 'Amount' %}</th><th class="th text-right">Collected</th><th class="th">Status</th><th class="th">{% sort_link 'expires' 'Expiry' %}</th><th class="th">Last event</th><th class="th"></th></tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+    {% for l in object_list %}
+      <tr class="hover:bg-gray-50 dark:hover:bg-white/3">
+        <td class="td" data-label="Link ID"><a class="td-strong hover:text-brand-500" href="{% url 'crm:link_detail' l.pk %}">{{ l.code }}</a><span class="block text-theme-xs">{{ l.owner|uname }}</span></td>
+        <td class="td" data-label="Client">{{ l.client.display_name }}</td>
+        <td class="td" data-label="Source">{% if l.invoice_id %}<a class="link" href="{% url 'crm:invoice_detail' l.invoice_id %}">{{ l.invoice.display_number }}</a>{% else %}<a class="link" href="{% url 'crm:quotation_detail' l.quotation_id %}">{{ l.quotation.display_number }}</a>{% endif %}</td>
+        <td class="td" data-label="Purpose">{{ l.get_purpose_display }}</td>
+        <td class="td text-right whitespace-nowrap" data-label="Amount">{{ l.amount|inr }}</td>
+        <td class="td text-right whitespace-nowrap" data-label="Collected">{{ l.amount_paid|inr }}{% if l.balance and l.amount_paid %}<span class="block text-theme-xs">bal {{ l.balance|inr }}</span>{% endif %}</td>
+        <td class="td" data-label="Status">{% badge l.status l.get_status_display %}{% if l.status == 'active' or l.status == 'partially_paid' %}{% if l.expires_at <= soon %} {% badge 'expiring' 'Expiring' %}{% endif %}{% endif %}</td>
+        <td class="td whitespace-nowrap" data-label="Expiry">{{ l.expires_at|dt }}</td>
+        <td class="td" data-label="Last event">{{ l.last_event|default:"—" }}{% if l.open_count %}<span class="ml-1 inline-flex items-center gap-1 text-blue-light-500" title="Opened {{ l.open_count }} times">{% icon 'eye' 14 %} {{ l.open_count }}</span>{% endif %}</td>
+        <td class="td text-right" data-label=""><a class="btn btn-secondary btn-sm" href="{% url 'crm:link_detail' l.pk %}">Open</a></td>
+      </tr>
+    {% endfor %}
+    </tbody></table></div>
+  {% include "crm/components/pagination.html" %}
+  {% else %}{% include "crm/components/empty_state.html" with filtered=any_filter title="No payment links yet" text="Generate a link from an approved quotation or an issued invoice." icon="link" %}{% endif %}
+</div>
+{% endblock %}

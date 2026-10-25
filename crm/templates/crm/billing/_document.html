@@ -1,0 +1,42 @@
+{% load crm_tags %}
+<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+  <div><p class="dl-label">Bill to</p><p class="dl-value">{{ inv.customer_name|default:inv.client.legal_name }}</p>
+    {% if inv.billing_address %}<p class="text-sm text-gray-600 dark:text-gray-400">{{ inv.billing_address|linebreaksbr }}</p>{% endif %}
+    {% if inv.customer_gstin %}<p class="text-sm text-gray-600 dark:text-gray-400">GSTIN {{ inv.customer_gstin }}</p>{% endif %}</div>
+  <div class="md:text-right"><p class="dl-label">From</p><p class="dl-value">{{ company.legal_name }}</p><p class="text-sm text-gray-600 dark:text-gray-400">{{ company.address_text }}{% if company.gstin %}<br>GSTIN {{ company.gstin }}{% endif %}</p></div>
+</div>
+<div class="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+  <div><p class="dl-label">Invoice date</p><p class="dl-value">{{ inv.invoice_date|d }}</p></div>
+  <div><p class="dl-label">Due date</p><p class="dl-value">{{ inv.due_date|d }}</p></div>
+  <div><p class="dl-label">Place of supply</p><p class="dl-value">{{ inv.place_of_supply|state_name|default:"—" }}</p></div>
+  <div><p class="dl-label">PO / reference</p><p class="dl-value">{{ inv.po_number|default:inv.milestone_ref|default:"—" }}</p></div>
+</div>
+<div class="table-wrap mt-4 rounded-xl border border-gray-200 dark:border-gray-800">
+  <table class="data-table">
+    <thead class="bg-gray-50 dark:bg-white/3"><tr><th class="th">#</th><th class="th">Description</th><th class="th">SAC</th><th class="th text-right">Qty</th><th class="th text-right">Rate</th><th class="th text-right">Discount</th><th class="th text-right">Taxable</th><th class="th text-right">GST</th><th class="th text-right">Total</th></tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+      {% for l in lines %}<tr><td class="td">{{ forloop.counter }}</td><td class="td text-gray-800 dark:text-white/90">{{ l.description }}</td><td class="td">{{ l.sac_code }}</td><td class="td text-right">{{ l.quantity|floatformat:"-2" }} {{ l.unit }}</td><td class="td text-right">{{ l.unit_price|inr }}</td><td class="td text-right">{% if l.discount_amount %}{{ l.discount_amount|inr }}{% else %}—{% endif %}</td><td class="td text-right">{{ l.taxable_value|inr }}</td><td class="td text-right">{% if l.taxability == 'taxable' %}{{ l.tax_rate|pct }}{% else %}{{ l.get_taxability_display }}{% endif %}</td><td class="td-strong px-5 py-3.5 text-right">{{ l.total|inr }}</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+<div class="mt-4 flex justify-end">
+  <dl class="w-full max-w-sm space-y-1.5 text-sm">
+    <div class="flex justify-between"><dt class="text-gray-500">Subtotal</dt><dd>{{ inv.subtotal|inr }}</dd></div>
+    {% if inv.discount_total %}<div class="flex justify-between"><dt class="text-gray-500">Discount</dt><dd>-{{ inv.discount_total|inr }}</dd></div>{% endif %}
+    <div class="flex justify-between"><dt class="text-gray-500">Taxable value</dt><dd>{{ inv.taxable_total|inr }}</dd></div>
+    {% if inv.supply_type == 'intra' %}<div class="flex justify-between"><dt class="text-gray-500">CGST</dt><dd>{{ inv.cgst_total|inr }}</dd></div><div class="flex justify-between"><dt class="text-gray-500">SGST</dt><dd>{{ inv.sgst_total|inr }}</dd></div>
+    {% elif inv.igst_total %}<div class="flex justify-between"><dt class="text-gray-500">IGST</dt><dd>{{ inv.igst_total|inr }}</dd></div>{% endif %}
+    {% if inv.round_off %}<div class="flex justify-between"><dt class="text-gray-500">Round-off</dt><dd>{{ inv.round_off|inr }}</dd></div>{% endif %}
+    <div class="flex justify-between border-t border-gray-200 pt-2 text-base font-semibold text-gray-800 dark:border-gray-700 dark:text-white/90"><dt>Invoice total</dt><dd>{{ inv.grand_total|inr }}</dd></div>
+    {% if inv.advance_adjusted %}<div class="flex justify-between"><dt class="text-gray-500">Advance adjusted</dt><dd>-{{ inv.advance_adjusted|inr }}</dd></div>{% endif %}
+    {% if inv.paid_amount %}<div class="flex justify-between"><dt class="text-gray-500">Paid</dt><dd>-{{ inv.paid_amount|inr }}</dd></div>{% endif %}
+    {% if inv.tds_withheld %}<div class="flex justify-between"><dt class="text-gray-500">TDS withheld</dt><dd>-{{ inv.tds_withheld|inr }}</dd></div>{% endif %}
+    {% if inv.credit_noted %}<div class="flex justify-between"><dt class="text-gray-500">Credit notes</dt><dd>-{{ inv.credit_noted|inr }}</dd></div>{% endif %}
+    {% if inv.written_off %}<div class="flex justify-between"><dt class="text-gray-500">Written off</dt><dd>-{{ inv.written_off|inr }}</dd></div>{% endif %}
+    {% if inv.number %}<div class="flex justify-between font-semibold text-gray-800 dark:text-white/90"><dt>Amount due</dt><dd>{{ inv.balance|inr }}</dd></div>{% endif %}
+    {% if inv.tds_expected and inv.balance %}<p class="text-theme-xs text-gray-500">The customer expects to deduct TDS of {{ inv.tds_expected|inr }}.</p>{% endif %}
+    <p class="pt-1 text-theme-xs text-gray-400">{{ inv.grand_total|words }}</p>
+  </dl>
+</div>
+{% if inv.notes %}<div class="mt-5 text-sm text-gray-700 dark:text-gray-300"><p class="dl-label">Notes</p><p class="whitespace-pre-line">{{ inv.notes }}</p></div>{% endif %}
+{% if inv.terms %}<div class="mt-3 text-sm text-gray-700 dark:text-gray-300"><p class="dl-label">Terms</p><p class="whitespace-pre-line">{{ inv.terms }}</p></div>{% endif %}

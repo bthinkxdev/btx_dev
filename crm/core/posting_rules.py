@@ -141,6 +141,15 @@ def invoice_written_off(row):
                       Line(AR, credit=amount, client_id=inv.client_id)]}
 
 
+def tds_written_off(row):
+    from crm.models import TdsReceivable
+    from django.utils import timezone
+    t = TdsReceivable.objects.get(pk=row.source_id)
+    return {'entry_date': timezone.localdate(), 'narration': f'Unclaimable TDS written off ({t.client}, {t.fiscal_year} {t.quarter})',
+            'event_key': 'written_off',
+            'lines': [Line(BAD_DEBTS, debit=t.amount, client_id=t.client_id), Line(TDS_RECEIVABLE, credit=t.amount, client_id=t.client_id)]}
+
+
 def expense_approved(row):
     from crm.models import Expense
     e = Expense.objects.select_related('category').get(pk=row.source_id)
@@ -249,6 +258,7 @@ HANDLERS = {
     'invoice_issued': invoice_issued,
     'invoice_cancelled': invoice_cancelled,
     'invoice_written_off': invoice_written_off,
+    'tds_written_off': tds_written_off,
     'payment_received': payment_received,
     'advance_allocated': advance_allocated,
     'allocation_reversed': allocation_reversed,

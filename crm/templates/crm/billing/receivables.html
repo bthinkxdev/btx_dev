@@ -1,0 +1,31 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Receivables{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-start justify-between gap-3">
+  <div><h1 class="page-title">Receivables ageing</h1><p class="muted mt-1">Open balances by days past due. Overdue is computed from the due date; invoice status stays Issued or Partially paid.</p></div>
+  <form method="get" class="flex items-center gap-2"><label class="sr-only" for="own">Owner</label><select id="own" name="owner" class="form-select h-10 w-48 py-2 text-sm" data-autosubmit><option value="">All owners</option>{% for o in owners %}<option value="{{ o.pk }}" {% if owner == o.pk|stringformat:'s' %}selected{% endif %}>{{ o|uname }}</option>{% endfor %}</select><noscript><button class="btn btn-secondary btn-sm">Apply</button></noscript></form>
+</div>
+{% endblock %}
+{% block content %}
+<div class="mb-6 grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
+  {% for b in buckets %}<a href="{% url 'crm:invoice_list' %}?{% if b == 'Current' %}quick=unpaid{% else %}age={{ b }}{% endif %}" class="card p-4 hover:border-brand-300"><p class="dl-label">{{ b }}{% if b != 'Current' %} days{% endif %}</p><p class="mt-1 text-lg font-semibold {% if b == '90+' %}text-error-600{% elif b != 'Current' %}text-warning-700{% else %}text-gray-800 dark:text-white/90{% endif %}">{{ totals|get_item:b|inr0 }}</p>
+    <div class="mt-2 h-1.5 rounded-full bg-gray-100 dark:bg-gray-800"><div class="h-1.5 rounded-full {% if b == 'Current' %}bg-brand-500{% elif b == '90+' %}bg-error-500{% else %}bg-warning-500{% endif %}" style="width: {% widthratio totals|get_item:b totals.total 100 %}%"></div></div></a>{% endfor %}
+  <div class="card p-4"><p class="dl-label">Total open</p><p class="mt-1 text-lg font-semibold text-gray-800 dark:text-white/90">{{ totals.total|inr0 }}</p></div>
+</div>
+<div class="card mb-6">
+  <div class="card-header"><h2 class="card-title">By client</h2></div>
+  {% if rows %}
+  <div class="table-wrap"><table class="data-table responsive-cards">
+    <thead><tr><th class="th">Client</th>{% for b in buckets %}<th class="th text-right">{{ b }}</th>{% endfor %}<th class="th text-right">Total</th><th class="th"></th></tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+    {% for r in rows %}<tr><td class="td" data-label="Client"><a class="link" href="{% url 'crm:client_detail' r.client.pk %}">{{ r.client.display_name }}</a>{% if r.client.dunning_paused %} <span class="badge badge-grey">reminders paused</span>{% endif %}</td>{% for b in buckets %}<td class="td text-right whitespace-nowrap" data-label="{{ b }}">{% with v=r|get_item:b %}{% if v %}{{ v|inr0 }}{% else %}—{% endif %}{% endwith %}</td>{% endfor %}<td class="td text-right font-medium whitespace-nowrap" data-label="Total">{{ r.total|inr0 }}</td>
+      <td class="td text-right" data-label=""><a class="btn btn-secondary btn-sm" href="{% url 'crm:invoice_list' %}?client={{ r.client.pk }}&quick=unpaid">Invoices</a> <a class="btn btn-secondary btn-sm" href="{% url 'crm:client_statement' r.client.pk %}">Statement</a></td></tr>{% endfor %}
+    </tbody></table></div>
+  {% else %}{% include "crm/components/empty_state.html" with title="Nothing outstanding" text="Every issued invoice is paid." icon="check" %}{% endif %}
+</div>
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+  <div class="card"><div class="card-header"><h2 class="card-title">Promises to pay</h2></div><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for i in promises %}<li class="flex justify-between gap-2 px-5 py-3 text-sm"><a class="link" href="{% url 'crm:invoice_detail' i.pk %}">{{ i.number }} · {{ i.client.display_name }}</a><span>{{ i.promise_amount|inr0 }} on {{ i.promise_date|d }}</span></li>{% empty %}<li class="muted px-5 py-4">None.</li>{% endfor %}</ul></div>
+  <div class="card"><div class="card-header"><h2 class="card-title">Broken promises</h2></div><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for i in broken %}<li class="flex justify-between gap-2 px-5 py-3 text-sm"><a class="link" href="{% url 'crm:invoice_detail' i.pk %}">{{ i.number }} · {{ i.client.display_name }}</a><span class="text-error-600">{{ i.promise_date|d }}</span></li>{% empty %}<li class="muted px-5 py-4">None.</li>{% endfor %}</ul></div>
+  <div class="card"><div class="card-header"><h2 class="card-title">Disputed</h2></div><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for i in disputed %}<li class="px-5 py-3 text-sm"><a class="link" href="{% url 'crm:invoice_detail' i.pk %}">{{ i.number }} · {{ i.client.display_name }}</a><span class="block text-theme-xs text-gray-500">{{ i.dispute_reason }}</span></li>{% empty %}<li class="muted px-5 py-4">None.</li>{% endfor %}</ul></div>
+</div>
+{% endblock %}

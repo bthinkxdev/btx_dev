@@ -128,6 +128,14 @@ class Invoice(TaxDocument, TimeStamped, Versioned):
         return self.balance
 
     @property
+    def collected(self):
+        return self.paid_amount + self.advance_adjusted
+
+    @property
+    def settled(self):
+        return self.paid_amount + self.advance_adjusted + self.tds_withheld + self.credit_noted + self.written_off
+
+    @property
     def is_editable(self) -> bool:
         return self.status == INV_DRAFT
 
@@ -191,3 +199,7 @@ class ReceiptVoucher(models.Model):
 
     def __str__(self):
         return self.number
+
+    @property
+    def tax_total(self):
+        return self.cgst + self.sgst + self.igst

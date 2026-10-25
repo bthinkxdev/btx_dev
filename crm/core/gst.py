@@ -290,16 +290,28 @@ def tax_share(collected, rate) -> Decimal:
     return q2(D(collected) * rate / (HUNDRED + rate))
 
 
+def split_tax(tax, cgst, sgst, igst) -> tuple[Decimal, Decimal, Decimal]:
+    """Split one rounded tax amount across heads in the source's proportion, so heads always add up exactly."""
+    tax, cgst, sgst, igst = D(tax), D(cgst), D(sgst), D(igst)
+    whole = cgst + sgst + igst
+    if not tax or not whole:
+        return ZERO, ZERO, ZERO
+    i = q2(tax * igst / whole) if igst else ZERO
+    rest = tax - i
+    if cgst + sgst:
+        c = q2(rest * cgst / (cgst + sgst))
+        return c, rest - c, i
+    return ZERO, ZERO, tax
+
+
 def proportional_split(amount, grand_total, cgst, sgst, igst) -> dict:
-    """Split a partial collection proportionally across taxable value and tax heads."""
+    """Tax contained in a partial collection: total share rounded once, then split (5000 of 11800 at 18% -> 762.71)."""
     amount, grand_total = D(amount), D(grand_total)
     if grand_total <= 0:
         return {'taxable': amount, 'cgst': ZERO, 'sgst': ZERO, 'igst': ZERO, 'tax': ZERO}
-    c = q2(amount * D(cgst) / grand_total)
-    s = q2(amount * D(sgst) / grand_total)
-    i = q2(amount * D(igst) / grand_total)
-    tax = c + s + i
-    return {'taxable': amount - tax, 'cgst': c, 'sgst': s, 'igst': i, 'tax': tax}
+    tax = q2(amount * (D(cgst) + D(sgst) + D(igst)) / grand_total)
+    c, s_, i = split_tax(tax, cgst, sgst, igst)
+    return {'taxable': amount - tax, 'cgst': c, 'sgst': s_, 'igst': i, 'tax': tax}
 
 
 SUPPLY_LABELS = {

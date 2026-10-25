@@ -1,0 +1,97 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Generate payment link{% endblock %}
+{% block page_header %}{% url 'crm:link_list' as lu %}{% include "crm/components/page_header.html" with title="Generate payment link" subtitle="The customer pays on a secure page. The tax breakup shown is frozen on the link." crumbs=None %}{% endblock %}
+{% block content %}
+{% if errors %}
+  <div class="alert alert-error mb-6" role="alert"><span class="text-error-500">{% icon 'alert' 20 %}</span><div class="text-sm text-gray-700 dark:text-gray-300"><p class="font-medium">A link cannot be generated yet.</p><ul class="mt-1 list-disc pl-5">{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul><a href="{{ back_url }}" class="link mt-2 inline-block">Back to {{ source.display_number }}</a></div></div>
+{% else %}
+<form method="post" novalidate data-dirty-check x-data="linkForm()" x-init="init()">{% csrf_token %}{% idem %}
+  {% if is_quotation %}<input type="hidden" name="src_quotation" value="{{ source.pk }}">{% else %}<input type="hidden" name="src_invoice" value="{{ source.pk }}">{% endif %}
+  {% include "crm/components/form_errors.html" %}
+  <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+    <div class="space-y-6 xl:col-span-2">
+      <div class="card"><div class="card-header"><h2 class="card-title">Source</h2></div>
+        <dl class="card-body grid grid-cols-2 gap-4 sm:grid-cols-4 text-sm">
+          <div><dt class="dl-label">{% if is_quotation %}Quotation{% else %}Invoice{% endif %}</dt><dd class="dl-value"><a class="link" href="{{ back_url }}">{{ source.display_number }}</a></dd></div>
+          <div><dt class="dl-label">Customer</dt><dd class="dl-value">{% if is_quotation %}{{ source.customer_display }}{% else %}{{ source.client }}{% endif %}</dd></div>
+          <div><dt class="dl-label">Document total</dt><dd class="dl-value">{{ source.grand_total|inr }}</dd></div>
+          <div><dt class="dl-label">Maximum collectable</dt><dd class="dl-value text-brand-500">{{ cap|inr }}</dd></div>
+        </dl></div>
+      <div class="card"><div class="card-header"><h2 class="card-title">What to collect</h2></div>
+        <div class="card-body space-y-5">
+          <fieldset><legend class="form-label">{{ form.purpose.label }}</legend>
+            <div class="flex flex-wrap gap-4">{% for r in form.purpose %}<label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"><input type="radio" name="{{ r.data.name }}" value="{{ r.data.value }}" {% if r.data.selected %}checked{% endif %} x-model="purpose" class="text-brand-500"> {{ r.choice_label }}</label>{% endfor %}</div>
+            {% for e in form.purpose.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+          </fieldset>
+          {% if form.milestone %}<div x-show="purpose === 'milestone'" x-cloak>{% field form.milestone %}</div>{% endif %}
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {% field form.amount prefix_text="₹" %}
+            {% field form.expires_at %}
+          </div>
+          {% field form.description %}
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {% field form.allow_partial %}
+            <div x-show="partial" x-cloak>{% field form.min_partial_amount prefix_text="₹" %}</div>
+          </div>
+          <fieldset><legend class="form-label">{{ form.methods.label }}</legend>
+            <div class="flex flex-wrap gap-4">{% for c in form.methods %}<label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">{{ c.tag }} {{ c.choice_label }}</label>{% endfor %}</div>
+            {% for e in form.methods.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+          </fieldset>
+        </div></div>
+      <div class="card"><div class="card-header"><h2 class="card-title">Customer contact and delivery</h2></div>
+        <div class="card-body grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {% field form.contact_name %}{% field form.contact_email %}{% field form.contact_phone %}
+          {% field form.send_now wrapper_class="sm:col-span-3" %}
+          {% field form.internal_note wrapper_class="sm:col-span-3" %}
+          {% if form.allow_multiple %}{% field form.allow_multiple wrapper_class="sm:col-span-3" %}{% endif %}
+          {% if not can_approve %}<div class="sm:col-span-3">{% field form.request_message help="Used only if this link needs approval (a large amount or a long expiry)." %}</div>{% endif %}
+        </div></div>
+    </div>
+    <div class="space-y-6">
+      <div class="card xl:sticky xl:top-24"><div class="card-header"><h2 class="card-title">Tax inside this payment</h2></div>
+        <div class="card-body space-y-2 text-sm">
+          <template x-if="error"><p class="form-error" x-text="error"></p></template>
+          <div class="flex justify-between"><span class="text-gray-500">Taxable value</span><span x-text="t.taxable">{{ tax_preview.taxable|inr_plain }}</span></div>
+          <div class="flex justify-between" x-show="t.intra"><span class="text-gray-500">CGST</span><span x-text="t.cgst"></span></div>
+          <div class="flex justify-between" x-show="t.intra"><span class="text-gray-500">SGST</span><span x-text="t.sgst"></span></div>
+          <div class="flex justify-between" x-show="!t.intra"><span class="text-gray-500">IGST</span><span x-text="t.igst"></span></div>
+          <div class="flex justify-between border-t border-gray-100 pt-2 text-base font-semibold text-gray-800 dark:border-gray-800 dark:text-white/90"><span>Customer pays</span><span x-text="t.total"></span></div>
+          <p class="text-theme-xs text-gray-500">Tax is the proportional share of the {% if is_quotation %}quotation{% else %}invoice{% endif %}'s frozen tax ({{ source.tax_total|inr }} on {{ source.grand_total|inr }}).</p>
+          <p class="text-theme-xs text-warning-700" x-show="t.over" x-cloak>Above the maximum collectable of <span x-text="t.cap"></span>.</p>
+        </div>
+        <div class="border-t border-gray-100 p-5 dark:border-gray-800">
+          {% field form.confirm %}
+          <div class="mt-4 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <a href="{{ back_url }}" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary" data-loading-text="Generating link…">{% icon 'link' 18 %} Generate link</button>
+          </div>
+        </div>
+      </div>
+      {% if test_mode %}<div class="alert alert-info"><p class="text-sm">Test mode: the customer page will use the test gateway.</p></div>{% endif %}
+    </div>
+  </div>
+</form>
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+<script>
+function linkForm() {
+  return {
+    purpose: '{{ form.purpose.value|default:"full"|escapejs }}', partial: {{ form.allow_partial.value|yesno:"true,false" }},
+    t: { taxable: '', cgst: '', sgst: '', igst: '', total: '', intra: true, over: false, cap: '' }, error: '',
+    init() {
+      const f = this.$root, amt = f.querySelector('[name=amount]'), chk = f.querySelector('[name=allow_partial]');
+      if (chk) chk.addEventListener('change', () => { this.partial = chk.checked; });
+      let timer = null;
+      const run = () => {
+        const body = { amount: amt.value || '0' };
+        f.querySelectorAll('[name=src_quotation],[name=src_invoice]').forEach((i) => { body[i.name] = i.value; });
+        crmPost('{% url "crm:link_tax_preview" %}', body).then((d) => { if (d.ok) { this.t = d; this.error = ''; } else { this.error = d.error; } }).catch(() => {});
+      };
+      amt.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(run, 300); });
+      run();
+    },
+  };
+}
+</script>
+{% endblock %}

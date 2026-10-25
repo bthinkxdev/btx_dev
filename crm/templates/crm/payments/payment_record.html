@@ -1,0 +1,45 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Record manual payment{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Record manual payment" subtitle="Bank transfer, UPI, cheque or cash. It stays Pending verification until a different Finance user verifies it." %}{% endblock %}
+{% block content %}
+<form method="post" enctype="multipart/form-data" novalidate data-dirty-check class="max-w-4xl">{% csrf_token %}{% idem %}
+  {% if link %}<input type="hidden" name="link" value="{{ link.pk }}">{% endif %}
+  {% include "crm/components/form_errors.html" %}
+  <div class="card mb-6"><div class="card-header"><h2 class="card-title">Payment</h2></div>
+    <div class="card-body grid grid-cols-1 gap-4 sm:grid-cols-2">
+      {% if link %}<div class="sm:col-span-2"><p class="text-sm text-gray-700 dark:text-gray-300">Against payment link <a class="link" href="{% url 'crm:link_detail' link.pk %}">{{ link.code }}</a> (balance {{ link.balance|inr }}).</p></div>{% endif %}
+      {% field form.client %}{% field form.invoice %}
+      {% field form.amount prefix_text="₹" %}{% field form.payment_date %}
+      {% field form.method %}{% field form.reference_number %}
+      {% field form.deposit_account %}
+    </div></div>
+  <div class="card mb-6"><div class="card-header"><h2 class="card-title">TDS deducted by the customer</h2></div>
+    <div class="card-body grid grid-cols-1 gap-4 sm:grid-cols-3">
+      {% field form.tds_amount prefix_text="₹" help="The invoice is cleared for amount plus TDS." %}{% field form.tds_section %}{% field form.deductor_tan %}
+    </div></div>
+  <div class="card mb-6"><div class="card-header"><h2 class="card-title">Proof and note</h2></div>
+    <div class="card-body grid grid-cols-1 gap-4">
+      {% field form.proof help="" %}
+      <p class="form-help -mt-2">Proof is required for payments above {{ proof_above|inr }}.</p>
+      {% field form.note %}
+    </div></div>
+  <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+    <a href="{% url 'crm:payment_list' %}" class="btn btn-secondary">Cancel</a>
+    <button class="btn btn-primary" data-loading-text="Saving…">Record payment</button>
+  </div>
+</form>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function () {
+  var c = document.getElementById('id_client');
+  if (!c) return;
+  c.addEventListener('change', function () {
+    var u = new URL(window.location.href);
+    u.searchParams.set('client', c.value);
+    u.searchParams.delete('invoice');
+    window.location.href = u.toString();
+  });
+})();
+</script>
+{% endblock %}

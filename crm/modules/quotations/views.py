@@ -191,6 +191,11 @@ def quotation_edit(request, pk):
 def quotation_preview_totals(request):
     """Live summary panel: server computes with the real engine (no float maths in the browser)."""
     permissions.require(request.user, 'quotations', 'create', request)
+    return preview_totals(request, round_off=CompanySettings.get().round_off_quotation, module='quotations')
+
+
+def preview_totals(request, *, round_off: bool, module: str):
+    """Shared by the quotation and invoice builders."""
     p = request.POST
     try:
         n = int(p.get('lines-TOTAL_FORMS', 0))
@@ -206,7 +211,7 @@ def quotation_preview_totals(request):
         try:
             svc_id = p.get(f'lines-{i}-service')
             taxability, rate = p.get(f'lines-{i}-taxability', 'taxable'), D(p.get(f'lines-{i}-tax_rate', '18'))
-            if svc_id and not permissions.has_perm(request.user, 'quotations', 'override'):
+            if svc_id and not permissions.has_perm(request.user, module, 'override'):
                 s = Service.objects.filter(pk=svc_id).first()
                 if s:
                     taxability, rate = s.tax_for(india.today())
@@ -220,7 +225,7 @@ def quotation_preview_totals(request):
         supplier_state=company.state_code, place_of_supply=p.get('place_of_supply') or p.get('customer_state') or
         ('96' if p.get('customer_type') == 'overseas' else ''), customer_type=p.get('customer_type', 'unregistered'),
         price_mode=p.get('price_mode', 'exclusive'), supplier_registered=company.gst_registered, lut=company.lut_enabled,
-        round_off=company.round_off_quotation, discount_mode=p.get('discount_mode', ''),
+        round_off=round_off, discount_mode=p.get('discount_mode', ''),
         discount_value=D(p.get('discount_value') or 0))
     try:
         r = gst.compute(lines, ctx)
@@ -244,7 +249,7 @@ def quotation_preview_totals(request):
         'cgst': format_inr(r.cgst), 'sgst': format_inr(r.sgst), 'igst': format_inr(r.igst), 'round_off': format_inr(r.round_off),
         'total': format_inr(r.grand_total), 'advance': format_inr(advance), 'balance': format_inr(r.grand_total - advance),
         'intra': r.supply_type == 'intra', 'discount_pct': str(disc_pct),
-        'over_limit': disc_pct > company.exec_discount_limit and not permissions.has_perm(request.user, 'quotations', 'approve'),
+        'over_limit': disc_pct > company.exec_discount_limit and not permissions.has_perm(request.user, module, 'approve'),
         'margin': str(margin) if margin is not None else None,
         'margin_low': margin is not None and margin < company.margin_floor_percent,
         'lines': [{'key': lr.key, 'total': format_inr(lr.total), 'tax': format_inr(lr.tax)} for lr in r.lines],
