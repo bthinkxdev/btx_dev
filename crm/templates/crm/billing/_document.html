@@ -35,7 +35,7 @@
     {% if inv.written_off %}<div class="flex justify-between"><dt class="text-gray-500">Written off</dt><dd>-{{ inv.written_off|inr }}</dd></div>{% endif %}
     {% if inv.number %}<div class="flex justify-between font-semibold text-gray-800 dark:text-white/90"><dt>Amount due</dt><dd>{{ inv.balance|inr }}</dd></div>{% endif %}
     {% if inv.tds_expected and inv.balance %}<p class="text-theme-xs text-gray-500">The customer expects to deduct TDS of {{ inv.tds_expected|inr }}.</p>{% endif %}
-    <p class="pt-1 text-theme-xs text-gray-400">{{ inv.grand_total|words }}</p>
+    <p class="pt-1 text-theme-xs text-gray-500 dark:text-gray-400">{{ inv.grand_total|words }}</p>
   </dl>
 </div>
 {% if inv.notes %}<div class="mt-5 text-sm text-gray-700 dark:text-gray-300"><p class="dl-label">Notes</p><p class="whitespace-pre-line">{{ inv.notes }}</p></div>{% endif %}

@@ -5,7 +5,7 @@
      role="dialog" aria-modal="true" aria-labelledby="modal-{{ id }}-title"
      @keydown.escape.window="$store.modal.open === '{{ id }}' && $store.modal.close()">
   <div class="fixed inset-0 h-full w-full bg-gray-400/50 backdrop-blur-[32px]" @click="$store.modal.close()"></div>
-  <div class="crm-modal-panel no-scrollbar relative w-full {% if size == 'lg' %}max-w-220{% else %}max-w-140{% endif %} overflow-y-auto rounded-3xl bg-white p-5 lg:p-8 dark:bg-gray-900">
+  <div class="crm-modal-panel shadow-theme-xl no-scrollbar relative w-full {% if size == 'lg' %}max-w-220{% else %}max-w-140{% endif %} overflow-y-auto rounded-3xl bg-white p-5 lg:p-8 dark:bg-gray-900 dark:shadow-none">
     <button type="button" @click="$store.modal.close()" class="absolute top-4 right-4 z-999 flex h-11 w-11 items-center justify-center rounded-full bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-600 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/[0.07]" aria-label="Close">{% icon 'x' 22 %}</button>
     <div class="pr-12">
       <h4 id="modal-{{ id }}-title" class="mb-1 text-xl font-semibold text-gray-800 dark:text-white/90">{{ title }}</h4>

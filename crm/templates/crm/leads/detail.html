@@ -59,7 +59,7 @@
           {% if can_merge %}<a class="menu-dropdown-item menu-dropdown-item-inactive" href="{% url 'crm:duplicate_list' %}">{% icon 'swap' 16 %} Merge duplicates</a>{% endif %}
           <button type="button" class="menu-dropdown-item menu-dropdown-item-inactive w-full" data-copy="{{ request.build_absolute_uri }}" data-copy-message="Link copied">{% icon 'link' 16 %} Copy link</button>
           {% if can_archive and not lead.archived_at %}
-            {% if archive_blockers %}<span class="menu-dropdown-item text-gray-400" title="Has {{ archive_blockers|join:' and ' }}">{% icon 'archive' 16 %} Archive (blocked)</span>
+            {% if archive_blockers %}<span class="menu-dropdown-item text-gray-500 dark:text-gray-400" title="Has {{ archive_blockers|join:' and ' }}">{% icon 'archive' 16 %} Archive (blocked)</span>
             {% else %}<form method="post" action="{% url 'crm:lead_archive' lead.pk %}" data-confirm="Archive this lead?" data-confirm-body="It is hidden from default lists but stays searchable. Open follow-ups are cancelled." data-confirm-reason="required" data-confirm-danger="1" data-confirm-ok="Yes, archive lead">{% csrf_token %}{% idem %}
               <button class="menu-dropdown-item w-full text-error-600 hover:bg-error-50 dark:hover:bg-error-500/10">{% icon 'archive' 16 %} Archive</button></form>{% endif %}
           {% endif %}
@@ -131,7 +131,7 @@
             <div class="min-w-0 flex-1">
               <p class="text-sm text-gray-800 dark:text-white/90"><span class="font-medium">{{ a.get_kind_display }}</span>{% if a.direction %} · {{ a.get_direction_display }}{% endif %}{% if a.outcome %} · {{ a.outcome|cut:'_'|title }}{% endif %}{% if a.duration_minutes %} · {{ a.duration_minutes }} min{% endif %}{% if a.visibility == 'private' %} {% badge 'draft' 'Private' %}{% endif %}</p>
               {% if a.summary %}<p class="mt-1 text-sm whitespace-pre-line break-words text-gray-600 dark:text-gray-400">{{ a.summary }}</p>{% endif %}
-              <p class="mt-1 text-theme-xs text-gray-400">{{ a.occurred_at|dt }} · {% if a.actor %}{{ a.actor|uname }}{% else %}System{% endif %} · {{ a.source_label }}</p>
+              <p class="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">{{ a.occurred_at|dt }} · {% if a.actor %}{{ a.actor|uname }}{% else %}System{% endif %} · {{ a.source_label }}</p>
             </div>
           </li>
         {% empty %}<li class="muted">No activity yet. Log the first call to start the timeline.</li>{% endfor %}
@@ -142,10 +142,10 @@
       <div class="card-header"><h2 class="card-title">Stage history and assignments</h2></div>
       <div class="card-body grid grid-cols-1 gap-6 md:grid-cols-2">
         <ul class="space-y-3 text-sm">
-          {% for h in stage_history %}<li><span class="text-gray-800 dark:text-white/90">{{ h.from_stage|default:'—'|cut:'_'|title }} → {{ h.to_stage|cut:'_'|title }}</span><span class="block text-theme-xs text-gray-400">{{ h.created_at|dt }} · {{ h.actor|uname }} · {% widthratio h.seconds_in_previous 86400 1 %} d in previous{% if h.reason %} · {{ h.reason }}{% endif %}</span></li>{% empty %}<li class="muted">No stage changes yet.</li>{% endfor %}
+          {% for h in stage_history %}<li><span class="text-gray-800 dark:text-white/90">{{ h.from_stage|default:'—'|cut:'_'|title }} → {{ h.to_stage|cut:'_'|title }}</span><span class="block text-theme-xs text-gray-500 dark:text-gray-400">{{ h.created_at|dt }} · {{ h.actor|uname }} · {% widthratio h.seconds_in_previous 86400 1 %} d in previous{% if h.reason %} · {{ h.reason }}{% endif %}</span></li>{% empty %}<li class="muted">No stage changes yet.</li>{% endfor %}
         </ul>
         <ul class="space-y-3 text-sm">
-          {% for a in assignments %}<li><span class="text-gray-800 dark:text-white/90">{{ a.from_user|uname }} → {{ a.to_user|uname }}</span><span class="block text-theme-xs text-gray-400">{{ a.created_at|dt }} · {{ a.get_rule_display }}{% if a.reason %} · {{ a.reason }}{% endif %}</span>
+          {% for a in assignments %}<li><span class="text-gray-800 dark:text-white/90">{{ a.from_user|uname }} → {{ a.to_user|uname }}</span><span class="block text-theme-xs text-gray-500 dark:text-gray-400">{{ a.created_at|dt }} · {{ a.get_rule_display }}{% if a.reason %} · {{ a.reason }}{% endif %}</span>
             {% if a.undo_until and a.undo_until > now and can_assign %}<form method="post" action="{% url 'crm:assignment_undo' a.pk %}" class="mt-1">{% csrf_token %}<button class="btn-link text-xs">Undo (until {{ a.undo_until|tm }})</button></form>{% endif %}</li>{% empty %}<li class="muted">No assignments yet.</li>{% endfor %}
         </ul>
       </div>

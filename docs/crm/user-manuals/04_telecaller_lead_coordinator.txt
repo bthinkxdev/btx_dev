@@ -1,0 +1,161 @@
+================================================================================
+BTHINKX BUSINESS OS — USER MANUAL
+ROLE: Telecaller / Lead Coordinator
+================================================================================
+Your access: COMPANY scope on Leads (view/create/edit/assign/import), view
+of Pipeline and the Service catalogue, and your OWN Leave/Attendance. You do
+not have access to quotations, payments, invoices, clients, or reports —
+your job is getting every enquiry in, qualified, and into the right rep's
+hands fast.
+Your home screen after login: Leads -> All leads.
+
+--------------------------------------------------------------------------------
+1. SIGNING IN
+--------------------------------------------------------------------------------
+Enter your email/username + password, complete 2FA if prompted. Forgot your
+password? Ask your Sales Manager or Owner — you cannot self-reset.
+
+--------------------------------------------------------------------------------
+2. YOUR CORE JOB, IN ORDER
+--------------------------------------------------------------------------------
+  1) Triage the Inbound inbox (new enquiries from forms/ads/missed calls).
+  2) Create/clean up leads from phone enquiries that didn't come in through
+     a form.
+  3) Qualify: confirm the contact is real, capture what they actually want.
+  4) Assign each lead to the right sales rep without delay.
+  5) Catch and merge duplicates before they confuse two reps.
+
+--------------------------------------------------------------------------------
+3. INBOUND INBOX — Leads -> Inbound inbox
+--------------------------------------------------------------------------------
+Every raw hit from a website form, Meta/Google lead ad, or missed call
+lands here first, with a status: Received -> (processing) -> Converted /
+Discarded.
+  1) Open an item — review the raw details captured (name, phone, message,
+     source).
+  2) "Convert to lead" if it's real; this creates a Lead you can then edit,
+     or "Discard" (with a reason) if it's spam/test/wrong number.
+  3) If a delivery attempt failed (e.g. webhook retry), the row shows a
+     retry count and next-retry time — leave it, the system retries
+     automatically; only escalate to Owner if it keeps failing.
+Must do: clear the inbox daily — the longer a real enquiry sits unconverted,
+the worse your first-response-time looks for the whole company, and it is
+measured.
+
+--------------------------------------------------------------------------------
+4. CREATING A LEAD MANUALLY — Leads -> All leads -> Add lead
+--------------------------------------------------------------------------------
+1) Fill name, phone, company (if any), service interested, and source/
+   channel: Website form, Meta lead form, Google Ads, Phone call, Missed
+   call, Email, WhatsApp, Manual entry, Referral, Existing client, Other.
+2) The system checks for likely duplicates by phone/email as you type —
+   resolve the match (it's probably the same person calling again) before
+   creating a new record.
+3) Save, then assign an owner (step 6) — don't leave it unassigned.
+Must do: always set the real source. "Manual entry" should only be used
+when you genuinely cannot tell where the lead came from; everything else
+has a specific, correct option.
+
+--------------------------------------------------------------------------------
+5. QUALIFYING A LEAD
+--------------------------------------------------------------------------------
+On the lead's detail page, use Quick log (Log call / Log meeting / Add
+note / Log email or WhatsApp) to record what you learned — budget signal,
+timeline, decision-maker, exact service needed. Set Priority (Hot / Warm /
+Cold) based on how ready-to-buy they sound; this is what tells the
+receiving rep what to do first. Move the stage to "Contacted" once you've
+actually spoken to them, or "Qualified" once you're confident it's a real
+opportunity worth a rep's time.
+
+--------------------------------------------------------------------------------
+6. ASSIGNING LEADS — Leads -> All leads
+--------------------------------------------------------------------------------
+- Single lead: open it -> "⋮" menu -> Assign, or "Change stage"/owner field
+  on the detail page.
+- Many at once: Table view -> tick the checkboxes -> the bulk bar appears
+  at the top -> "Assign selected" -> choose owner -> Apply.
+- The "Unassigned" quick filter on the list finds every lead still waiting
+  for a rep — run this filter first thing every session.
+- Every open lead must have a scheduled next follow-up; set one via
+  "Schedule follow-up" if the receiving rep hasn't yet, so nothing goes
+  cold waiting for them to pick it up.
+Must do: never leave a qualified lead unassigned overnight.
+
+--------------------------------------------------------------------------------
+7. DUPLICATES — Leads -> Duplicates
+--------------------------------------------------------------------------------
+1) Click "Scan" to find likely duplicate leads (matching phone/email).
+2) Open a pair -> "Compare" — pick which fields to keep from each side.
+3) Merge. Statuses on the list: Open (needs review), Merged, Not a
+   duplicate, Review later.
+Must do: run a scan at least weekly, and always just after a bulk import.
+
+--------------------------------------------------------------------------------
+8. IMPORTING LEADS IN BULK — Leads -> Import leads
+--------------------------------------------------------------------------------
+1) Download the CSV template (Import leads -> Download template).
+2) Fill it in exactly to the template's columns; upload the file.
+3) Map your columns to system fields on the Map screen.
+4) Validate — the system flags rows with missing/bad data; fix your source
+   file and re-upload the problem rows, or proceed and skip them.
+5) Run the import, then check the Result screen (how many created/skipped/
+   duplicated). If something went wrong, "Undo" reverts the whole batch —
+   do this quickly, before reps start working the new leads.
+Must do: always run the Duplicates scan right after a CSV import.
+
+--------------------------------------------------------------------------------
+9. SOURCES AND CAMPAIGNS — Leads -> Sources and campaigns
+--------------------------------------------------------------------------------
+Keep the list of sources/campaigns you tag leads against accurate and
+agreed with your Sales Manager — this feeds every source-performance
+report in the company. Don't invent new source names on the fly.
+
+--------------------------------------------------------------------------------
+10. STALE AND UNASSIGNED LEADS — Leads -> Stale and unassigned
+--------------------------------------------------------------------------------
+Leads that have had no activity for a while, or no owner. This is your
+daily cleanup list, alongside the "Unassigned" quick filter.
+
+--------------------------------------------------------------------------------
+11. TRACKING YOUR WORK
+--------------------------------------------------------------------------------
+Quick filters on Leads -> All leads: Unassigned, Due today, Overdue, No
+activity 3 days, New in last 24h, High priority, Open, Not yet contacted,
+First-response SLA breached. There is no personal dashboard for this role
+— your manager's Sales dashboard reports on response time and lead
+hand-off speed, which is driven entirely by how fast you work the inbox
+and assign.
+
+--------------------------------------------------------------------------------
+12. YOUR OWN LEAVE AND ATTENDANCE
+--------------------------------------------------------------------------------
+People -> Leave: apply for leave; it goes to your manager to approve.
+People -> Attendance: check in/out each day; request a correction if a
+check-in was missed or wrong.
+
+--------------------------------------------------------------------------------
+13. YOUR DAILY CHECKLIST
+--------------------------------------------------------------------------------
+  [ ] Inbound inbox — convert or discard everything new.
+  [ ] Leads -> Unassigned quick filter — assign everything.
+  [ ] Leads -> First-response SLA breached — chase/escalate immediately.
+  [ ] Duplicates — scan if you did a bulk import or a busy ad day.
+  [ ] Stale and unassigned — redistribute anything slipping.
+
+--------------------------------------------------------------------------------
+14. TROUBLESHOOTING
+--------------------------------------------------------------------------------
+"I can't see quotations/clients/payments" -> correct, by design — that is
+  outside your role; ask a Sales Executive/Manager for that information.
+"The same person keeps submitting the form" -> check Duplicates; merge
+  them into one lead instead of working two records.
+"An inbound item keeps failing to convert" -> leave it, the system retries
+  automatically; escalate to Owner only if it stays failed after several
+  retries.
+"I assigned a lead to the wrong person" -> reassign it correctly, then use
+  "Undo" on that assignment entry in the lead's Timeline if it was done
+  moments ago, otherwise just assign it again to the right person.
+
+================================================================================
+End of Telecaller / Lead Coordinator manual.
+================================================================================

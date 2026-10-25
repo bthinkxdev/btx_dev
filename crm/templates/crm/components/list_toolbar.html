@@ -7,7 +7,7 @@
     {% if request.GET.sort %}<input type="hidden" name="sort" value="{{ request.GET.sort }}">{% endif %}
     {% if date_range %}{% if request.GET.from %}<input type="hidden" name="from" value="{{ request.GET.from }}">{% endif %}{% if request.GET.to %}<input type="hidden" name="to" value="{{ request.GET.to }}">{% endif %}{% if request.GET.on %}<input type="hidden" name="on" value="{{ request.GET.on }}">{% endif %}{% endif %}
     <div class="relative w-full lg:max-w-xs">
-      <span class="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-gray-400">{% icon 'search' 18 %}</span>
+      <span class="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-gray-500 dark:text-gray-400">{% icon 'search' 18 %}</span>
       <input type="search" name="q" value="{{ q }}" placeholder="{{ search_placeholder|default:'Search…' }}" aria-label="Search" class="form-input pl-11" data-debounce-submit>
     </div>
     <div class="flex flex-wrap items-center gap-2">
@@ -45,7 +45,7 @@
       {% endfor %}
       {% for sf in saved_filters %}
         <span class="chip chip-inactive"><a href="?{{ sf.querystring }}">★ {{ sf.name }}</a>
-          <form method="post" action="{% url 'crm:saved_filter_delete' sf.pk %}" class="inline">{% csrf_token %}<button class="text-gray-400 hover:text-error-500" aria-label="Remove saved filter {{ sf.name }}">×</button></form></span>
+          <form method="post" action="{% url 'crm:saved_filter_delete' sf.pk %}" class="inline">{% csrf_token %}<button class="text-gray-500 dark:text-gray-400 hover:text-error-500" aria-label="Remove saved filter {{ sf.name }}">×</button></form></span>
       {% endfor %}
       {% if any_filter %}
         <form method="post" action="{% url 'crm:saved_filter_save' %}" class="flex items-center gap-2" x-data="{ s: false }">{% csrf_token %}

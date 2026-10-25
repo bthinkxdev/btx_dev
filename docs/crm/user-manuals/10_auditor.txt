@@ -1,0 +1,136 @@
+================================================================================
+BTHINKX BUSINESS OS — USER MANUAL
+ROLE: Auditor
+================================================================================
+Your access: READ-ONLY, COMPANY-wide, across every module except Payroll,
+Employees and Settings (you cannot see salary/bank/payroll detail or change
+system configuration). You additionally have export rights on Reports and
+view access to the Audit log. You create and change nothing in this system
+— your job is to look, verify, and export evidence.
+Your home screen after login: Dashboards -> Owner.
+
+--------------------------------------------------------------------------------
+1. SIGNING IN
+--------------------------------------------------------------------------------
+Enter your email/username + password, complete 2FA if prompted (6-digit
+code, 5-minute window). Forgot your password? Ask the Owner — you cannot
+self-reset.
+
+--------------------------------------------------------------------------------
+2. WHAT YOU CAN DO
+--------------------------------------------------------------------------------
+  - Open and read any record in Leads, Pipeline, Quotations, Payment links,
+    Payments, Invoices, Receipts, Refunds, Clients, Services, Contracts,
+    Projects, Tasks, Tickets, Expenses, Vendors, Accounting, Banking,
+    Leave, Commissions — company-wide, not just one team's.
+  - Read every record's Timeline/history tab — this is your primary
+    evidence trail: who did what, when, and (for destructive/approval
+    actions) why.
+  - View and export every report in the Report catalogue.
+  - View the Audit log (Settings -> Audit) — the system's own immutable
+    log of every action taken by every user.
+  - Export CSV from any list or report screen.
+
+--------------------------------------------------------------------------------
+3. WHAT YOU CANNOT DO (and why)
+--------------------------------------------------------------------------------
+  - No create/edit/delete anywhere — you are a read/export-only role by
+    design, so your presence never changes what you're reviewing.
+  - No access to Payroll or Employee records (salary, bank details, tax
+    IDs are excluded) — these stay restricted to HR Manager and Owner.
+  - No access to Settings (users, roles, company/tax/gateway config) —
+    system configuration is an Owner-only function.
+  - If you hit a 403 "You do not have access to..." on something outside
+    this list, that is expected, not a bug — it is simply outside an
+    auditor's scope by design.
+
+--------------------------------------------------------------------------------
+4. HOW TO ACTUALLY AUDIT SOMETHING, STEP BY STEP
+--------------------------------------------------------------------------------
+4.1 Tracing one transaction end to end (e.g. a payment)
+  1) Find it: use the top-bar search (Ctrl/Cmd+K), or the module's list
+     with filters, or start from the Client it belongs to (Client detail
+     shows every related lead/quotation/invoice/payment/project in one
+     place).
+  2) Open the record, read its Timeline — every status change, who made
+     it, when, and the reason given for any destructive/approval action.
+  3) Follow the links on the record to its related documents (e.g. a
+     Payment links back to its Invoice/Quotation and to any Gateway
+     events/Settlement it was matched against during reconciliation).
+  4) Cross-check against Settings -> Audit log for the same user/date/
+     module if you need the raw, unfiltered system event, not just the
+     record's own view of its history.
+
+4.2 Verifying a control is actually working (e.g. "payments require
+  verification before counting as revenue")
+  1) Pick a sample of Payments -> filter to Verified.
+  2) Open each — confirm a Pending verification -> Verified transition
+     exists in its Timeline, with a named verifier different from whoever
+     recorded it.
+  3) Spot-check that nothing reached Verified without going through
+     Pending first (would indicate a control bypass — escalate to Owner
+     immediately if found).
+
+4.3 Verifying approval limits are respected (e.g. discounts/refunds)
+  1) Open Settings -> Audit (or the relevant report) filtered to "approve"
+     actions for the period.
+  2) For each, confirm the approver is not the same person who requested
+     it, and that items above the configured policy limit actually went
+     through an approval step rather than straight to Approved/Issued.
+
+4.4 Checking for forbidden-access attempts
+  Settings -> Security -> Security events shows every 403 (forbidden)
+  event — someone trying an action their role doesn't permit. A pattern of
+  these from one account is worth flagging to Owner even though it did not
+  succeed.
+
+--------------------------------------------------------------------------------
+5. REPORTS — Reports (company scope, export enabled)
+--------------------------------------------------------------------------------
+The full Report catalogue is your fastest route to evidence: receivables
+ageing, GST/TDS summaries, sales funnel/win-loss, expense analysis, vendor
+spend, delivery utilisation, headcount (where visible). Open a report, set
+the exact date range the audit period requires, and Export CSV for your
+workpapers. "Schedule" a report if you need the same export delivered
+automatically on a recurring basis during a long engagement.
+
+--------------------------------------------------------------------------------
+6. THE AUDIT LOG, IN DETAIL — Settings -> Audit
+--------------------------------------------------------------------------------
+Every entry shows: who, what module/action, on which record, when, and
+from where (IP/session where captured). Filter by user, module or date
+range. Treat this as the system of record over any report or dashboard
+figure if the two ever disagree — the audit log is the raw event stream
+everything else is computed from.
+
+--------------------------------------------------------------------------------
+7. YOUR WORKING CHECKLIST FOR AN ENGAGEMENT
+--------------------------------------------------------------------------------
+  [ ] Define the period and modules in scope.
+  [ ] Pull the relevant reports for the period, export as your baseline.
+  [ ] Sample transactions across each in-scope module; trace each one's
+      Timeline end to end (section 4.1).
+  [ ] Verify key controls (payment verification, approval-before-limit,
+      numbering-series integrity, period close discipline) against the
+      Audit log (section 4.2-4.3).
+  [ ] Review Security events for the period for anomalies.
+  [ ] Document findings with record IDs/numbers and audit-log timestamps
+      so Owner can verify or respond to each one directly.
+
+--------------------------------------------------------------------------------
+8. TROUBLESHOOTING
+--------------------------------------------------------------------------------
+"I need to see something in Payroll/Employees" -> that's outside your
+  role by design; request it formally through the Owner, who can pull it
+  or temporarily extend access with a clear audit trail of why.
+"A number in a report doesn't match what I see in the list" -> check the
+  date range and any filters on each side match exactly; also check for
+  records outside your scope that might differ (should not happen at
+  company scope, but confirm) before treating it as a real discrepancy.
+"I can't find a record" -> try the global search (Ctrl/Cmd+K) with any
+  identifier you have (name, phone, invoice number, amount won't search
+  directly — use the relevant list's filters for amount-based lookups).
+
+================================================================================
+End of Auditor manual.
+================================================================================

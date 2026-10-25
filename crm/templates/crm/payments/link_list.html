@@ -17,7 +17,7 @@
     <thead class="border-b border-gray-100 dark:border-gray-800"><tr><th class="th">Link ID</th><th class="th">Client</th><th class="th">Source</th><th class="th">Purpose</th><th class="th text-right">{% sort_link 'amount' 'Amount' %}</th><th class="th text-right">Collected</th><th class="th">Status</th><th class="th">{% sort_link 'expires' 'Expiry' %}</th><th class="th">Last event</th><th class="th"></th></tr></thead>
     <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
     {% for l in object_list %}
-      <tr class="hover:bg-gray-50 dark:hover:bg-white/3">
+      <tr data-href="{% url 'crm:link_detail' l.pk %}" class="hover:bg-gray-50 dark:hover:bg-white/3">
         <td class="td" data-label="Link ID"><a class="td-strong hover:text-brand-500" href="{% url 'crm:link_detail' l.pk %}">{{ l.code }}</a><span class="block text-theme-xs">{{ l.owner|uname }}</span></td>
         <td class="td" data-label="Client">{{ l.client.display_name }}</td>
         <td class="td" data-label="Source">{% if l.invoice_id %}<a class="link" href="{% url 'crm:invoice_detail' l.invoice_id %}">{{ l.invoice.display_number }}</a>{% else %}<a class="link" href="{% url 'crm:quotation_detail' l.quotation_id %}">{{ l.quotation.display_number }}</a>{% endif %}</td>

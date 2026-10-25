@@ -36,12 +36,63 @@ def notify(users: Iterable, title: str, *, body: str = '', url: str = '', event_
         except Exception:  # pragma: no cover
             logger.exception('notification failed')
             continue
+        profile = getattr(user, 'crm_profile', None)
+        link = (settings.SITE_BASE_URL + url) if url.startswith('/') else url
         if email and user.email:
-            profile = getattr(user, 'crm_profile', None)
             if profile is None or profile.notify_email or event_type in CRITICAL_EVENTS:
-                link = (settings.SITE_BASE_URL + url) if url.startswith('/') else url
                 send_email(user.email, title, f'{body}\n\n{link}'.strip(), template_code=f'notify:{event_type}')
+        if profile is None or profile.notify_push or event_type in CRITICAL_EVENTS:
+            send_push(user, title, body=body, url=url, tag=event_type)
     return created
+
+
+def send_push(user, title: str, *, body: str = '', url: str = '', tag: str = '') -> None:
+    """Deliver a Web Push notification to every device the user has enabled (PWA).
+
+    Fire-and-forget, off the request path, same pattern as email dispatch — a slow or
+    unreachable push service must never add latency to the request that triggered it.
+    Never raises; a dead subscription (the browser/OS dropped it) is cleaned up quietly.
+    """
+    if not (settings.VAPID_PRIVATE_KEY and settings.VAPID_PUBLIC_KEY):
+        return  # push not configured in this environment (e.g. a fresh local checkout)
+    from crm.models import PushSubscription
+    subs = list(PushSubscription.objects.filter(user=user))
+    if not subs:
+        return
+    import threading
+
+    def run():
+        from django.db import connection
+        try:
+            _deliver_push(subs, title, body, url, tag)
+        finally:
+            connection.close()
+    threading.Thread(target=run, daemon=True, name=f'crm-push-{user.pk}').start()
+
+
+def _deliver_push(subs, title: str, body: str, url: str, tag: str) -> None:
+    import json
+
+    from pywebpush import WebPushException, webpush
+
+    from crm.models import PushSubscription
+    link = (settings.SITE_BASE_URL + url) if url.startswith('/') else url
+    payload = json.dumps({'title': title[:150], 'body': body[:300], 'url': link or settings.SITE_BASE_URL,
+                          'tag': tag or 'crm'})
+    for sub in subs:
+        subscription_info = {'endpoint': sub.endpoint, 'keys': {'p256dh': sub.p256dh, 'auth': sub.auth}}
+        try:
+            webpush(subscription_info=subscription_info, data=payload,
+                   vapid_private_key=settings.VAPID_PRIVATE_KEY,
+                   vapid_claims={'sub': settings.VAPID_CLAIM_EMAIL}, ttl=259200)
+        except WebPushException as exc:
+            status = getattr(exc.response, 'status_code', None)
+            if status in (404, 410):  # the browser/OS unsubscribed this endpoint
+                PushSubscription.objects.filter(pk=sub.pk).delete()
+            else:
+                logger.warning('Push to subscription %s failed: %s', sub.pk, exc)
+        except Exception:  # pragma: no cover
+            logger.exception('Push delivery failed')
 
 
 def render(template_text: str, context: dict) -> str:

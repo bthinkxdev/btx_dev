@@ -5,7 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
   <title>{% block title %}{{ page_title|default:"BThinkX Business OS" }}{% endblock %} | {{ company.display_name|default:"BThinkX" }}</title>
+  <meta name="description" content="{{ company.display_name|default:'BThinkX' }} Business OS — leads, quotations, billing, projects and more, in one app.">
+  <meta name="theme-color" content="#465fff">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="{{ company.display_name|default:'BThinkX' }}">
+  <link rel="manifest" href="{% url 'crm:manifest' %}">
   <link rel="icon" href="{% static 'crm/images/icon-192.png' %}">
+  <link rel="apple-touch-icon" href="{% static 'crm/images/apple-touch-icon.png' %}">
   <script>
     (function () {
       try {
@@ -23,6 +31,9 @@
   class="bg-gray-50 dark:bg-gray-900"
   data-csrf="{{ csrf_token }}"
   data-open-modal="{{ open_modal|default:'' }}"
+  data-vapid-public-key="{{ vapid_public_key }}"
+  data-push-subscribe-url="{% url 'crm:push_subscribe' %}"
+  data-push-unsubscribe-url="{% url 'crm:push_unsubscribe' %}"
 >
   <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-999999 focus:rounded-lg focus:bg-white focus:px-4 focus:py-2">Skip to content</a>
 
@@ -58,6 +69,7 @@
   {% include "crm/partials/quick_create.html" %}
 
   <script src="{% static 'crm/js/ui.js' %}"></script>
+  <script src="{% static 'crm/js/pwa.js' %}"></script>
   {% block extra_js %}{% endblock %}
   <script defer src="{% static 'crm/vendor/alpine.min.js' %}"></script>
 </body>

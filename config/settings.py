@@ -87,6 +87,13 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
+# Remote MCP "Business Manager" server (crm.mcp) - a separate process, run with
+# `manage.py run_mcp_http`, not part of the WSGI site above. Put TLS termination in
+# front of it before exposing it beyond localhost.
+MCP_HTTP_HOST = os.environ.get('MCP_HTTP_HOST', '127.0.0.1')
+MCP_HTTP_PORT = int(os.environ.get('MCP_HTTP_PORT', '8800'))
+MCP_HTTP_PATH = os.environ.get('MCP_HTTP_PATH', '/mcp')
+
 # PostgreSQL is the production database (Business OS spec). Set DB_ENGINE=postgres and
 # DB_NAME / DB_USER / DB_PASSWORD / DB_HOST / DB_PORT in .env. SQLite remains the
 # zero-config default for local development.
@@ -208,6 +215,14 @@ CRM_PRIVATE_MEDIA_ROOT = Path(os.environ.get('CRM_PRIVATE_MEDIA_ROOT', str(BASE_
 # Key used to encrypt gateway secrets at rest. Keep it outside the database (env / secret
 # manager). Falls back to a key derived from SECRET_KEY for development only.
 CRM_ENCRYPTION_KEY = os.environ.get('CRM_ENCRYPTION_KEY', '').strip()
+
+# Web Push (PWA install + notifications). Same keypair in every environment — see
+# `python manage.py crm_generate_vapid_keys` and .env.example. Push is simply disabled
+# (devices can still install the app, they just won't get push notifications) when a
+# keypair isn't configured, e.g. on a fresh local checkout.
+VAPID_PUBLIC_KEY = os.environ.get('VAPID_PUBLIC_KEY', '').strip()
+VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', '').strip()
+VAPID_CLAIM_EMAIL = os.environ.get('VAPID_CLAIM_EMAIL', 'mailto:hr@bthinkx.com').strip()
 
 # Upload limits (Part 15.1)
 CRM_MAX_UPLOAD_MB = int(os.environ.get('CRM_MAX_UPLOAD_MB', '10'))

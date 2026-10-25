@@ -63,7 +63,7 @@
     <div class="card">
       <div class="card-header"><h2 class="card-title">History</h2></div>
       <ul class="card-body space-y-3">
-        {% for h in history %}<li class="text-sm"><a class="link" href="{% url 'crm:approval_detail' h.pk %}">{{ h.get_kind_display }}</a> · {% badge h.status h.get_status_display %}<span class="block text-theme-xs text-gray-400">{{ h.requested_at|dt }} by {{ h.requested_by|uname }}</span></li>{% endfor %}
+        {% for h in history %}<li class="text-sm"><a class="link" href="{% url 'crm:approval_detail' h.pk %}">{{ h.get_kind_display }}</a> · {% badge h.status h.get_status_display %}<span class="block text-theme-xs text-gray-500 dark:text-gray-400">{{ h.requested_at|dt }} by {{ h.requested_by|uname }}</span></li>{% endfor %}
       </ul>
     </div>
   </div>

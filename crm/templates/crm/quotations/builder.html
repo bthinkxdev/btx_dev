@@ -82,10 +82,10 @@
 
     <aside class="2xl:col-span-4">
       <div class="card sticky top-24" aria-live="polite">
-        <div class="card-header"><h2 class="card-title">Summary</h2><span class="text-theme-xs text-gray-400" id="calc-state">Calculated by the server</span></div>
+        <div class="card-header"><h2 class="card-title">Summary</h2><span class="text-theme-xs text-gray-500 dark:text-gray-400" id="calc-state">Calculated by the server</span></div>
         <div class="card-body space-y-2 text-sm" id="summary">
           <p class="text-theme-xs text-gray-500" id="sum-supply">—</p>
-          <p class="text-theme-xs text-gray-400" id="sum-why"></p>
+          <p class="text-theme-xs text-gray-500 dark:text-gray-400" id="sum-why"></p>
           <div class="flex justify-between"><span class="text-gray-500">Subtotal</span><span id="sum-subtotal">—</span></div>
           <div class="flex justify-between"><span class="text-gray-500">Discount <span id="sum-disc-pct" class="text-theme-xs"></span></span><span id="sum-discount">—</span></div>
           <div class="flex justify-between"><span class="text-gray-500">Taxable amount</span><span id="sum-taxable">—</span></div>
@@ -99,7 +99,7 @@
           <p class="hidden rounded-lg bg-warning-50 p-2 text-theme-xs text-warning-700 dark:bg-warning-500/15" id="sum-limit">Discount is above your limit: needs manager approval.</p>
           {% if can_cost %}<p class="text-theme-xs text-gray-500" id="sum-margin"></p>{% endif %}
           <p class="hidden text-theme-xs text-error-600" id="sum-error"></p>
-          <p class="text-theme-xs text-gray-400" id="draft-local"></p>
+          <p class="text-theme-xs text-gray-500 dark:text-gray-400" id="draft-local"></p>
         </div>
       </div>
     </aside>

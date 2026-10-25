@@ -1,0 +1,279 @@
+================================================================================
+BTHINKX BUSINESS OS — USER MANUAL
+ROLE: Sales Manager
+================================================================================
+Your access: TEAM scope on Leads, Pipeline, Quotations, Payment links,
+Payments, Refunds, Clients, Contracts; COMPANY view on Services; TEAM view on
+Projects; TEAM create/view on Tickets; TEAM approve on Commissions; OWN on
+Leave/Attendance/Expenses. "Team" = everyone who reports into you or shares
+your team in Settings -> Teams.
+Your home screen after login: Pipeline (Sales -> Pipeline).
+
+--------------------------------------------------------------------------------
+1. SIGNING IN
+--------------------------------------------------------------------------------
+Enter your email/username + password, complete 2FA if prompted (6-digit
+code, 5-minute window). Forgot your password? You cannot self-reset — ask
+your administrator (Owner) to reset it from Settings -> Users.
+
+--------------------------------------------------------------------------------
+2. YOUR DASHBOARD AND NAVIGATION
+--------------------------------------------------------------------------------
+Dashboards -> Sales is your team's scoreboard: pipeline value, win rate,
+average response time, targets vs actual, for your team only. Use the date
+presets (Today / This week / This month / Last month / This quarter / This
+financial year) or a custom range.
+My Day (top of sidebar) is your own personal daily list — overdue and
+today's follow-ups assigned to you.
+
+--------------------------------------------------------------------------------
+3. LEADS — Sales -> Leads
+--------------------------------------------------------------------------------
+3.1 What a lead is and where it comes from
+  Every enquiry becomes a Lead with a source/channel: Website form, Meta
+  lead form, Google Ads, Phone call, Missed call, Email, WhatsApp, Manual
+  entry, CSV import, Referral, Existing client, Other. Leads coming in from
+  forms/ads land first in Leads -> Inbound inbox for triage (see 3.6).
+
+3.2 The stage pipeline (a lead moves left to right)
+  New -> Contacted -> Nurturing -> Qualified -> Quotation prepared ->
+  Quotation sent -> Negotiation -> Won / Lost
+  Priority on every lead is Hot / Warm / Cold — set it realistically, it
+  drives who gets chased first.
+
+3.3 Creating and qualifying a lead
+  1) Leads -> All leads -> "Add lead".
+  2) Fill name, phone, company, service interested, source, owner. The
+     system checks for likely duplicates as you type — resolve matches
+     before saving where shown.
+  3) Save. The lead opens on its detail page with Quick log actions: Log
+     call, Log meeting, Add note, Log email or WhatsApp, Schedule follow-up.
+  4) Every open lead must always have a dated "Next action" — the system
+     enforces this: a lead cannot sit open with no scheduled follow-up.
+     Use "Schedule another" in the Next action panel if one isn't set.
+  Must do: log every real contact via Quick log, even a short call — this
+  is what the Timeline and your reports are built from.
+
+3.4 Moving a lead through stages
+  - "Change stage" button on the lead, or drag the card in Leads -> Board
+    view. Each stage change is recorded in Stage history with who/when.
+  - "Mark won" closes the lead as Won (this is normally followed by
+    creating a quotation/invoice if not already done).
+  - "Mark lost" requires a lost reason: Price too high, Chose a competitor,
+    No budget, No response, Not ready/timing, Scope mismatch, Invalid/wrong
+    number, Duplicate, Other. Pick the real reason — Leads -> Lost-lead
+    analysis reports off this field.
+  - "Postpone" a follow-up pushes the next action out with a reason;
+    "Cancel" closes the follow-up without completing it; "Complete" marks
+    it done (you'll be prompted to schedule the next one).
+
+3.5 Assigning and re-assigning
+  As Sales Manager you can assign/re-assign any lead within your team:
+  open the lead -> "⋮" -> Assign, or use Table view's checkbox + bulk bar
+  (select rows -> "Assign selected" -> choose owner -> Apply). Unassigned
+  leads show a red "Unassigned" badge — the quick filter "Unassigned" on
+  the list finds them all. Every re-assignment can be undone once from the
+  Timeline ("Undo" on the assignment entry) if it was a mistake.
+
+3.6 Inbound inbox — Leads -> Inbound inbox
+  Raw inbound hits (web forms, Meta lead ads, missed calls) land here first
+  with a status (Received -> ... -> Converted / Discarded). Open each,
+  review the payload, and convert to a lead or discard. Failed deliveries
+  show a retry count and next-retry time.
+
+3.7 Duplicates — Leads -> Duplicates
+  Run "Scan" to find likely duplicate leads (phone/email match). Open a
+  pair in "Compare" to pick which fields to keep from A or B, then merge.
+  Statuses: Open / Merged / Not a duplicate / Review later.
+
+3.8 Import — Leads -> Import leads
+  1) Download the CSV template, fill it, upload.
+  2) Map your columns to system fields (Map step).
+  3) Validate — fix any rows flagged with errors.
+  4) Run the import. Review the result summary; "Undo" reverts an entire
+     import batch if something went wrong (only shortly after import).
+
+3.9 Sources and campaigns — Leads -> Sources and campaigns
+  Add/edit the sources and campaigns your team tags leads with. Keep this
+  list tidy and agreed with Owner — it is the backbone of source-performance
+  reporting.
+
+3.10 Tracking your team's leads
+  - Quick filters on the list: My leads, Unassigned, Due today, Overdue, No
+    activity 3 days, New in last 24h, High priority, Open, Not yet
+    contacted, First-response SLA breached, Archived.
+  - Follow-up calendar (Leads -> Follow-up calendar): a calendar view of
+    every scheduled follow-up across your team.
+  - Stale and unassigned (Leads -> Stale and unassigned): leads nobody has
+    touched recently — redistribute these daily.
+  - Lost-lead analysis (Leads -> Lost-lead analysis): lost reasons broken
+    down by source/rep/period — use this to coach the team and to push
+    back on bad-quality lead sources.
+
+--------------------------------------------------------------------------------
+4. PIPELINE AND TARGETS — Sales -> Pipeline / Sales -> Targets
+--------------------------------------------------------------------------------
+Pipeline is a Kanban of every open deal by stage with weighted value shown
+per column; drag cards between columns to move stage (same effect as
+"Change stage" on the lead). Targets lets you set each rep's revenue/deal
+target for a period and track actual vs target live.
+Must do: set targets at the start of each period; an un-set target shows as
+blank on every rep's dashboard and makes the whole team scoreboard useless.
+
+--------------------------------------------------------------------------------
+5. CLIENTS — Sales -> Clients
+--------------------------------------------------------------------------------
+A Client is created from a Won lead, or directly. Client types: Company,
+Proprietor, Individual, (and others your admin has configured). Statuses:
+Active, On hold, Restricted, Archived.
+  - Client detail shows every related lead, quotation, project, contract,
+    invoice, payment and ticket in one place — this is your single view of
+    the relationship. Click any row to jump straight to that record.
+  - Add Contacts (people at the client) from the Contacts panel.
+  - "Merge" combines two client records that turned out to be the same
+    company (keeps one, archives the other, relinks everything).
+  - Archiving a client needs a reason and is blocked while it still has
+    open leads/quotations/invoices — clear those first.
+
+--------------------------------------------------------------------------------
+6. QUOTATIONS — Sales -> Quotations
+--------------------------------------------------------------------------------
+6.1 Status lifecycle
+  Draft -> Awaiting approval -> Approved -> Sent -> Viewed -> Accepted
+  (or Rejected / Expired / Superseded / Converted / Void at various points)
+  Only a Draft can be freely edited. Once sent, further edits create a New
+  version instead of changing the live document.
+
+6.2 Creating and sending a quotation
+  1) Quotations -> Add quotation (or from a lead's "Create quotation").
+  2) Add line items from the service catalogue, set quantities/discounts;
+     totals (tax, GST) calculate live as you type.
+  3) Save as Draft, review, then submit — if the discount is within your
+     limit it goes straight to Approved; above your limit it goes to
+     Awaiting approval and lands in your manager's/Owner's Approvals inbox.
+  4) "Send" delivers it to the client (email/WhatsApp per their contact
+     preference) and generates a trackable link; "Viewed" status fires
+     automatically when the client opens it.
+  5) Record the client's decision: "Accept" or "Reject" (with a rejection
+     reason: Price too high / Chose a competitor / Scope mismatch / Not the
+     right time / No budget / Other) if they didn't respond via the public
+     link themselves.
+  Other actions: "Duplicate" (start a new quotation from this one),
+  "New version" (supersede with a revised one), "Compare" (see two
+  versions side by side), "Resend", "Void" (kill it, with reason).
+  As Sales Manager you can also "Override" a quotation outside normal
+  limits and "Cancel" (an approval) your team's own requests.
+Must do: never let a quotation sit in "Sent" unresolved past its validity
+date — chase it or mark it Expired/Rejected so the pipeline stays honest.
+
+--------------------------------------------------------------------------------
+7. PAYMENT LINKS — Money -> Collections -> Payment links
+--------------------------------------------------------------------------------
+Purpose = collecting money against a quotation/invoice without a full
+invoice cycle. Statuses: Draft -> Pending approval -> Active -> Partially
+paid / Paid (or Expired / Cancelled / Refunded / Partially refunded).
+  1) Create from a quotation/invoice: choose purpose (Full balance /
+     Advance percent / Milestone / Custom partial amount) and method
+     (UPI/Card/Netbanking/Wallet/Bank transfer/Cheque/Cash/Other).
+  2) Above your approval limit it needs sign-off before it becomes Active.
+  3) "Send" delivers the pay link to the client; "Extend" pushes its expiry;
+     "Sync" re-checks the gateway status; "Cancel" needs a reason.
+Must do: never cancel an Active link with unreconciled gateway activity —
+check Payments -> Gateway events first.
+
+--------------------------------------------------------------------------------
+8. PAYMENTS AND REFUNDS
+--------------------------------------------------------------------------------
+Money -> Collections -> Payments: you can view and create payments for
+your team's clients (e.g. recording a manual bank transfer/cheque/cash
+receipt). Verification (marking a submitted payment as Verified) is done
+by Finance/Accounting, not by you — your submitted payment shows "Pending
+verification" until they clear it.
+Refunds: you can create a refund request for your team's payments; a
+Finance/Accounting role approves and executes it.
+
+--------------------------------------------------------------------------------
+9. CONTRACTS AND RECURRING BILLING
+--------------------------------------------------------------------------------
+Money -> Contracts: you can view/create/edit AMC/retainer contracts for
+your team's clients. Key screens: Contracts -> Renewals (what's coming up
+for renewal) and Contracts -> Billing schedule (what recurring invoices are
+due to be generated). Contract statuses move Draft -> Active -> (Suspended
+<-> Resumed) -> Completed/Terminated, or Lost at renewal.
+Must do: review Renewals at least monthly — a lapsed AMC with no renewal
+action is lost revenue that won't show up anywhere else as "in progress".
+
+--------------------------------------------------------------------------------
+10. PROJECTS AND TICKETS (view only, for context)
+--------------------------------------------------------------------------------
+You can view your team's projects and create/view support tickets so you
+can answer a client's delivery question without chasing Delivery for every
+detail. Day-to-day project/ticket management is the Project Manager's job
+— see manual 08 if you need the detail.
+
+--------------------------------------------------------------------------------
+11. COMMISSIONS — People -> Payroll -> Commissions
+--------------------------------------------------------------------------------
+View your team's commission entries (Accrued -> Approved -> Paid, or
+Clawed back) and approve them once a deal is confirmed won and collected.
+Must do: only approve a commission after checking the underlying deal is
+genuinely won and the payment behind it is verified — approving pulls it
+into the next payroll run.
+
+--------------------------------------------------------------------------------
+12. REPORTS — Reports (team scope)
+--------------------------------------------------------------------------------
+You can view and export reports scoped to your team: funnel conversion,
+source performance, rep activity/SLA, win/loss, quota attainment. Open a
+report, pick a date range, Export CSV, or Schedule it to land in your inbox
+weekly.
+
+--------------------------------------------------------------------------------
+13. YOUR OWN LEAVE, ATTENDANCE AND EXPENSES (own scope)
+--------------------------------------------------------------------------------
+Use People -> Leave / Attendance / Expenses to apply for leave, check in/
+out, and submit your own expense claims — same screens every employee
+uses. See manual 09 (Team Member), section 7, for the exact steps.
+
+--------------------------------------------------------------------------------
+14. APPROVALS — YOUR INBOX
+--------------------------------------------------------------------------------
+Anything your team submits above their own limit (quotation discounts,
+payment links, etc.) lands in your Approvals -> Mine tab. Open, read the
+detail and history, then Approve / Reject with a comment. Clear this daily
+— your team is blocked from sending/collecting until you decide.
+
+--------------------------------------------------------------------------------
+15. YOUR DAILY / WEEKLY CHECKLIST
+--------------------------------------------------------------------------------
+Daily:
+  [ ] My Day — your own overdue/today follow-ups.
+  [ ] Leads -> Overdue / Unassigned quick filters — redistribute.
+  [ ] Approvals -> Mine — clear to zero.
+  [ ] Dashboards -> Sales — scan for anything off-target.
+Weekly:
+  [ ] Leads -> Stale and unassigned.
+  [ ] Quotations stuck in "Sent" past validity — chase or close out.
+  [ ] Contracts -> Renewals due.
+  [ ] Commissions to approve.
+Monthly:
+  [ ] Sales -> Targets — set/confirm next period's targets.
+  [ ] Leads -> Lost-lead analysis — review with the team.
+
+--------------------------------------------------------------------------------
+16. TROUBLESHOOTING
+--------------------------------------------------------------------------------
+"I can't see a lead/client my rep has" -> confirm they're actually on your
+  team in Settings -> Teams (ask Owner); TEAM scope only follows that list.
+"Quotation won't send" -> check its status; it must be Approved first — if
+  it's still "Awaiting approval", it's sitting in someone's Approvals inbox.
+"Payment link cancel is greyed out" -> check Payments -> Gateway events for
+  unresolved activity on it first.
+"A lead has no next action and I can't find why" -> open its Timeline; the
+  system blocks leads from staying open with no scheduled follow-up, so a
+  missing one usually means the last follow-up was completed/cancelled
+  without a new one being scheduled — fix with "Schedule another".
+
+================================================================================
+End of Sales Manager manual.
+================================================================================

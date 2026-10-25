@@ -1,0 +1,280 @@
+================================================================================
+BTHINKX BUSINESS OS — USER MANUAL
+ROLE: Finance Executive
+================================================================================
+Your access: COMPANY scope on Invoices, Receipts, Payments (incl. verify/
+approve), Payment links, Refunds, Expenses (incl. approve), Vendors,
+Banking (incl. import); COMPANY view on Quotations, Clients, Services,
+Contracts, Accounting, Reports; OWN Leave/Attendance. You are the gatekeeper
+between "the client paid" and "the books show it".
+Your home screen after login: Dashboards -> Finance.
+
+--------------------------------------------------------------------------------
+1. SIGNING IN
+--------------------------------------------------------------------------------
+Enter your email/username + password, complete 2FA if prompted. Forgot your
+password? Ask your Owner — you cannot self-reset.
+
+--------------------------------------------------------------------------------
+2. YOUR DASHBOARD
+--------------------------------------------------------------------------------
+Dashboards -> Finance: receivables ageing, collections today/period, GST/
+TDS position, pending verifications. Set the date range (Today / This week
+/ This month / Last month / This quarter / This financial year, or custom)
+to match the period you're closing or reviewing.
+
+--------------------------------------------------------------------------------
+3. INVOICES — Money -> Invoices
+--------------------------------------------------------------------------------
+3.1 Status lifecycle
+  Draft -> Pending approval -> Issued -> Partially paid -> Paid
+  (or Credit noted / Cancelled / Written off at various points)
+  INV_OPEN (has a balance to collect) = Issued, Partially paid.
+
+3.2 Creating and issuing an invoice
+  1) Money -> Invoices -> Add invoice (standalone) or from a Won
+     quotation/contract (keeps the line items and client linked).
+  2) Check line items, tax (GST), place of supply and the client's GSTIN/
+     customer type are correct — these drive the tax calculation and your
+     GST reports. Preview totals before saving.
+  3) Save as Draft. If it needs approval (above policy limit, or a manual
+     override), submit — it moves to Pending approval in the approver's
+     queue.
+  4) "Issue" — this locks the invoice number from the configured numbering
+     series and makes it live/collectable; it cannot be freely edited after
+     this (use a Credit note for corrections instead, see 3.4).
+  5) "Send" delivers the PDF to the client; "Remind" (single, or bulk via
+     Invoices -> Remind on the list) nudges them for payment.
+  Must do: never back-date or renumber an issued invoice; raise a credit
+  note for any correction once issued.
+
+3.3 Collecting against an invoice
+  - Record a payment directly (see section 4), or create a Payment link
+    from the invoice.
+  - "Apply advance" pulls an existing advance/credit balance on the client
+    onto this invoice.
+  - "Promise to pay" logs a client's payment promise with a date, useful
+    for the receivables follow-up queue.
+  - "Dispute" / "Resolve dispute" if the client contests the amount —
+    track the conversation on the invoice until resolved.
+
+3.4 Corrections and write-offs
+  - "Credit" raises a Credit note against the invoice (reason: Return /
+    Cancellation / Discount after sale / other) — goes Draft -> Pending
+    approval -> Issued, same numbering-series discipline as invoices.
+  - "Write off" only for genuinely uncollectable balances, with a reason —
+    this is a finance decision, document it clearly; it affects receivables
+    reporting and the P&L.
+  - "Cancel" an invoice only while still unpaid and before it should have
+    counted as revenue — needs a reason and, above your limit, approval.
+
+3.5 Credit notes — Money -> Credit notes
+  List and PDF of every credit note issued; same status lifecycle pattern
+  as invoices (Draft -> Pending approval -> Issued, or Cancelled).
+
+3.6 Receivables — Money -> Receivables
+  Ageing view of every outstanding balance (current / 30 / 60 / 90+ days),
+  by client. This is your daily collections work list — sort by days
+  overdue, call/email the oldest first, log a "Promise to pay" where you
+  get one.
+
+3.7 Advances — Money -> Advances
+  Client advance balances not yet applied to an invoice. Apply them from
+  the invoice ("Apply advance") rather than leaving them sitting idle.
+
+3.8 TDS receivable — Money -> TDS receivable
+  Tracks TDS the client deducted on your invoices: Expected -> Certificate
+  received -> Claimed in return. Mark certificates received as you get
+  Form 16A from clients; this must reconcile with your tax filings.
+
+3.9 Client statements — open from a Client's detail page -> Statement
+  A full running account statement for one client (every invoice, credit
+  note, payment) — send this when a client asks "what do I owe you".
+
+--------------------------------------------------------------------------------
+4. PAYMENTS — Money -> Payments
+--------------------------------------------------------------------------------
+4.1 Status lifecycle
+  Pending verification -> Verified (or Rejected) -> ... -> Partially
+  refunded / Refunded. Only Verified (and refund states) count toward
+  collected revenue.
+
+4.2 Recording a payment
+  Payments -> Record payment: pick client/invoice, amount, method (UPI,
+  Card, Netbanking, Wallet, Bank transfer, Cheque, Cash, Other), reference
+  number, date, attach proof (screenshot/bank entry) if manual. Gateway
+  (UPI/Card/Netbanking/Wallet) payments usually arrive already verified via
+  the webhook; manual methods start as Pending verification.
+
+4.3 Verifying payments — Payments -> Verify queue
+  This is your core daily task. For each pending payment:
+  1) Open it, check the proof attached against the amount and client.
+  2) "Verify" if it checks out — it becomes Verified and allocates against
+     the invoice/link it was recorded for.
+  3) "Reject" (with a reason) if it doesn't check out — the submitter is
+     notified to correct and resubmit.
+  4) "Accept for review" if you need a second pair of eyes before a final
+     call on a borderline case.
+  Must do: verify or reject every item daily — nothing collected counts
+  anywhere in reporting until it is Verified.
+
+4.4 Allocating a payment — Payments -> Allocation, or from the payment
+  If a payment wasn't tied to one specific invoice (e.g. a lump sum against
+  several), use "Allocate" to split it across the right invoices/links.
+  "Reverse allocation" undoes a wrong split (with a reason) so you can
+  redo it correctly.
+
+4.5 Refunds — Money -> Refunds
+  Requested -> Approved -> (processed) / Rejected. Review the request
+  against the original payment, "Approve" + "Refund" to execute it (or
+  "Reject" with a reason). This also triggers the matching credit note/
+  invoice adjustment where relevant.
+
+4.6 Disputes (chargebacks) — tracked per payment
+  Open -> Evidence submitted -> Won / Lost. Attach your evidence (invoice,
+  delivery proof, communication) before the gateway's deadline; track
+  status here rather than only in the payment gateway's own portal.
+
+4.7 Gateway events — Payments -> Gateway events
+  Raw webhook events from the payment gateway (Received -> Processed /
+  Duplicate / ...). Use this to debug "the client paid but nothing
+  updated" — find the event, check its status, and "Reprocess" it if it's
+  stuck, or "Ignore" if it's confirmed irrelevant/duplicate.
+
+4.8 Settlements — Money -> Settlements
+  Gateway settlement batches (money actually landing in your bank). Match
+  these against verified payments during bank reconciliation (section 6).
+
+--------------------------------------------------------------------------------
+5. PAYMENT LINKS — Money -> Collections -> Payment links
+--------------------------------------------------------------------------------
+You can create, approve (within policy) and cancel payment links company-
+wide. Same lifecycle and fields as described in the Sales manuals (02/03,
+section 7) — your extra responsibility is approving links above a sales
+rep's own limit, and investigating any link stuck "Active" with no
+matching Gateway event.
+
+--------------------------------------------------------------------------------
+6. BANKING — Money -> Banking
+--------------------------------------------------------------------------------
+6.1 Bank accounts — Banking -> Accounts: your company's bank accounts on
+  file; add a new one if the company opens one.
+6.2 Statement import and reconciliation — Banking -> Reconciliation
+  1) Import a bank statement file (CSV/format your bank exports).
+  2) Each transaction line comes in Unmatched; the system suggests matches
+     against payments/expenses (Suggested) — confirm correct suggestions to
+     Matched, or match manually.
+  3) Once every line for the period is matched (or deliberately left
+     unmatched with a note), "Finalise" the reconciliation — this locks it.
+  4) "Undo" is available shortly after finalising if you catch a mistake;
+     after that, raise a correcting entry instead.
+  Open Banking -> Reconciliation -> a past reconciliation's "Report" to see
+  the finalised record for an audit or month-end review.
+Must do: reconcile every statement import before month-end close; don't
+  let unmatched lines pile up across periods.
+
+--------------------------------------------------------------------------------
+7. EXPENSES AND VENDORS — Money -> Expenses / Vendors
+--------------------------------------------------------------------------------
+7.1 Status lifecycle
+  Draft -> Submitted -> Approved (or Rejected / Correction requested) ->
+  Partially paid -> Paid (or Reversed)
+
+7.2 Approving expenses — Expenses -> Approvals
+  Queue of Submitted expenses waiting on you. Open each, check the
+  category, amount and attached receipt:
+  - "Approve" if valid — it becomes payable.
+  - "Reject" (reason required) if it shouldn't be paid.
+  - "Request correction" if the claim is fixable (wrong category, missing
+    receipt) — it goes back to the submitter to fix and resubmit.
+  Must do: never approve an expense with no receipt attached except where
+  company policy explicitly allows it (e.g. small per-diems) — check
+  Settings -> Policy if unsure.
+
+7.3 Paying expenses
+  Once Approved, "Pay" records the payout (bank transfer/cheque/cash),
+  moving it to Partially paid/Paid. "Allocate" splits a payout across
+  multiple approved expenses if you pay several at once. "Reverse" undoes
+  an incorrect payment entry (with a reason).
+
+7.4 Recurring expenses — Expenses -> Recurring
+  Rent, subscriptions, retainers that repeat on a schedule. Active / Paused
+  / Ended. Review monthly — pause anything no longer needed rather than
+  letting it keep generating.
+
+7.5 TDS payable — Expenses -> TDS payable
+  TDS you owe to deduct/deposit on vendor bills, by section (194C
+  Contractors, 194J Professional/technical, etc.). Reconcile this against
+  your TDS challans each filing period.
+
+7.6 Vendors — Money -> Vendors
+  Vendor master: Active / On hold / Blocked. Open a vendor to see every
+  expense/bill against them and their running balance. Set a vendor
+  On hold/Blocked to stop new bills being raised against them without
+  deleting their history.
+
+--------------------------------------------------------------------------------
+8. ACCOUNTING (view only for you)
+--------------------------------------------------------------------------------
+You can view the chart of accounts, journals, ledger and financial reports
+(trial balance, P&L, balance sheet, cash flow, tax reports) from
+Accounting, to answer "what does this look like in the books" questions —
+but creating/posting journals and closing periods is the Accountant's job
+(manual 06).
+
+--------------------------------------------------------------------------------
+9. REPORTS — Reports (company scope, export enabled)
+--------------------------------------------------------------------------------
+Receivables ageing, collections, GST summary, TDS summary, expense
+analysis, vendor spend. Export CSV or Schedule any of these to land in
+your inbox on a recurring basis (daily/weekly/monthly).
+
+--------------------------------------------------------------------------------
+10. YOUR OWN LEAVE AND ATTENDANCE
+--------------------------------------------------------------------------------
+People -> Leave / Attendance — same self-service screens every employee
+uses; see manual 09, section 7, for the exact steps.
+
+--------------------------------------------------------------------------------
+11. APPROVALS — YOUR INBOX
+--------------------------------------------------------------------------------
+Expense approvals, invoice/credit-note approvals above policy limits, and
+refund approvals land here. Clear "Mine" daily — a stuck approval blocks
+payroll-linked reimbursements, vendor payments and client collections
+alike.
+
+--------------------------------------------------------------------------------
+12. YOUR DAILY / WEEKLY / MONTHLY CHECKLIST
+--------------------------------------------------------------------------------
+Daily:
+  [ ] Payments -> Verify queue — clear to zero.
+  [ ] Expenses -> Approvals — clear to zero.
+  [ ] Approvals -> Mine — clear to zero.
+  [ ] Receivables — chase anything newly overdue.
+Weekly:
+  [ ] Banking -> Reconciliation — import and match the latest statement.
+  [ ] Gateway events — any stuck/Failed entries to investigate.
+  [ ] Refunds — any pending beyond a couple of days.
+Monthly:
+  [ ] TDS receivable / TDS payable reconciled against filings.
+  [ ] Recurring expenses reviewed (pause/end what's no longer needed).
+  [ ] Receivables ageing report sent to Sales Manager/Owner for follow-up
+      on anything 60+ days.
+
+--------------------------------------------------------------------------------
+13. TROUBLESHOOTING
+--------------------------------------------------------------------------------
+"Client says they paid but it's not showing" -> check Payments -> Gateway
+  events for the matching webhook; "Reprocess" if found but stuck.
+"Can't edit an issued invoice" -> correct, by design — issued invoices are
+  locked; raise a Credit note for any correction.
+"Payment stuck in Pending verification" -> that's your queue; verify or
+  reject it — it isn't collected revenue until you act.
+"Reconciliation won't finalise" -> every line must be Matched or
+  deliberately left with a note; check for stray Unmatched/Suggested rows.
+"I can't post/edit a journal entry" -> correct — that's the Accountant's
+  permission, not yours; raise it with them.
+
+================================================================================
+End of Finance Executive manual.
+================================================================================

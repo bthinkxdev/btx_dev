@@ -3,7 +3,7 @@
   <thead class="border-b border-gray-100 dark:border-gray-800"><tr><th class="th">Receipt</th><th class="th">{% sort_link 'date' 'Date' %}</th><th class="th">Client</th><th class="th">Method</th><th class="th text-right">{% sort_link 'amount' 'Amount' %}</th><th class="th text-right">TDS</th><th class="th text-right">Unallocated</th><th class="th">Status</th><th class="th">Reference</th></tr></thead>
   <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
   {% for p in object_list %}
-    <tr class="hover:bg-gray-50 dark:hover:bg-white/3">
+    <tr data-href="{% url 'crm:payment_detail' p.pk %}" class="hover:bg-gray-50 dark:hover:bg-white/3">
       <td class="td" data-label="Receipt"><a class="td-strong hover:text-brand-500" href="{% url 'crm:payment_detail' p.pk %}">{{ p.receipt_number|default:"Unverified" }}</a><span class="block text-theme-xs">{{ p.get_kind_display }}{% if p.submitted_by %} · {{ p.submitted_by|uname }}{% endif %}</span></td>
       <td class="td whitespace-nowrap" data-label="Date">{{ p.payment_date|d }}</td>
       <td class="td" data-label="Client">{{ p.client.display_name }}</td>

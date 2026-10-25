@@ -1,0 +1,188 @@
+================================================================================
+BTHINKX BUSINESS OS — USER MANUAL
+ROLE: HR Manager
+================================================================================
+Your access: COMPANY scope and full control of Employees (incl. reveal
+sensitive fields, archive, export), Attendance (incl. approve/import),
+Leave (incl. approve/configure), Payroll (create/edit); COMPANY view on
+Commissions and Reports; OWN Expenses.
+Your home screen after login: Dashboards -> HR.
+
+--------------------------------------------------------------------------------
+1. SIGNING IN
+--------------------------------------------------------------------------------
+Enter your email/username + password, complete 2FA if prompted. Forgot your
+password? Ask your Owner — you cannot self-reset.
+
+--------------------------------------------------------------------------------
+2. HR DASHBOARD — Dashboards -> HR
+--------------------------------------------------------------------------------
+Headcount, upcoming joiners (next 30 days), exits/notice period in progress,
+attendance exceptions. Use this every morning to catch anything that needs
+action today (e.g. someone's last working day is today, or an unexplained
+absence streak).
+
+--------------------------------------------------------------------------------
+3. EMPLOYEES — People -> Employees
+--------------------------------------------------------------------------------
+3.1 Status lifecycle
+  Onboarding -> Active -> On notice -> Exited (or On leave (long) alongside)
+
+3.2 Onboarding a new employee
+  1) Employees -> Add employee: personal details, employment type (Full
+     time / Part time / Contract / Intern), designation, department, team,
+     manager, joining date, shift.
+  2) Sensitive fields (salary, bank details, PAN/tax IDs) are entered here
+     too, but only visible to roles with "reveal sensitive" access — that's
+     you and Owner. Double-check these carefully; they drive payroll.
+  3) Assign a Shift and, if relevant, link their system user account so
+     they can log in and use self-service screens.
+  4) Checklist items (if your onboarding checklist is configured) track
+     document collection, asset handover, etc. — tick off as completed.
+
+3.3 Transfers, offboarding, exits
+  On an employee's detail page, "⋮" menu:
+  - "Transfer" — move them to a new team/department/manager (effective
+    date), keeps full history under one employee record.
+  - "Offboard" — start the exit process: set last working day, reason,
+    moves status to On notice.
+  - "Exit now" — immediate exit (status -> Exited) for cases with no
+    notice period.
+  - "Reveal" — temporarily reveal sensitive fields (salary/bank/tax ID) on
+    screen; every reveal is logged in the audit trail, so only do this when
+    you actually need to check/update the value.
+  - "Activate" — reactivate a record (e.g. correcting an accidental exit).
+Must do: process an exit the same day it's confirmed — a stale Active
+  employee still shows on rosters, attendance expectations and payroll
+  drafts.
+
+--------------------------------------------------------------------------------
+4. ATTENDANCE — People -> Attendance
+--------------------------------------------------------------------------------
+Statuses per day: Present / Absent / Half day / On leave (and others your
+company has configured). You can:
+  - "Mark" attendance manually for someone (e.g. a field visit not caught
+    by check-in/out).
+  - Review and approve/reject "Correction" requests employees raise when
+    their own check-in/out was missed or wrong.
+  - "Import" a bulk attendance file (e.g. from a biometric device export).
+Must do: review and clear correction requests within the same pay cycle —
+  unresolved corrections distort payroll calculations.
+
+--------------------------------------------------------------------------------
+5. LEAVE — People -> Leave
+--------------------------------------------------------------------------------
+5.1 Status lifecycle (leave requests)
+  Pending -> Approved / Rejected (or Cancelled by the employee before
+  decision)
+
+5.2 Approving leave — People -> HR approvals (or the Leave list filtered to
+  Pending)
+  Open a request, check it against the employee's leave balance (shown on
+  the request) and team coverage, then Approve or Reject (reason
+  recommended). "Adjust" lets you manually correct someone's leave balance
+  (e.g. a carry-forward or a manual grant) — always with a note explaining
+  why.
+
+5.3 Configuring leave policy — People -> Leave -> Configure (leave types,
+  entitlement, carry-forward rules). Agree any policy change with Owner
+  before applying it company-wide.
+
+5.4 Holidays — People -> Holidays
+  Maintain the company holiday calendar; this feeds both the Leave and
+  Attendance screens so holidays aren't miscounted as absences.
+
+--------------------------------------------------------------------------------
+6. PAYROLL — People -> Payroll
+--------------------------------------------------------------------------------
+6.1 Status lifecycle
+  Draft -> In review -> Pending approval -> Approved and locked -> Paid
+  (or Partially paid / Reversed)
+
+6.2 Running payroll for a period
+  1) Payroll -> Add run (or it's auto-created from a schedule) for the
+     period (first day of the payroll month).
+  2) "Recalculate" pulls in attendance, leave, salary structure and any
+     adjustments to compute each employee's pay.
+  3) "Review" the run — check individual payslips for anything unusual
+     (big swings from last period, missing employees, wrong structure).
+  4) Add one-off "Adjustments" (Payroll -> Adjustment) for bonuses,
+     deductions, arrears not covered by the standard structure, before
+     recalculating again.
+  5) "Submit" moves it to Pending approval — a Finance/Accounting or Owner
+     sign-off is required before payment; you cannot both prepare and pay a
+     run yourself. This is a deliberate control, not a bug.
+  6) Once approved, generate the "Payment file" for your bank, then
+     "Mark paid" once the bank transfer is actually done, or "Release" to
+     make payslips visible to employees.
+  7) "Reverse" only for a genuine error after approval, with a reason — it
+     re-opens the run for correction.
+Must do: never mark a run "Paid" before the bank transfer has actually
+  gone through — employees see payslips as soon as it's released.
+
+6.3 Salary structures — Payroll -> Structures
+  Components (basic, HRA, allowances, deductions) per structure; assign a
+  structure to each employee on their record. Changes apply from the
+  effective date you set, not retroactively to already-paid periods.
+
+6.4 Payslips — Payroll -> My payslips (your own) / from a run's detail for
+  others. PDF download available per payslip.
+
+6.5 Commissions — People -> Payroll -> Commissions (view)
+  See commission entries flowing from Sales approvals (Accrued -> Approved
+  -> Paid / Clawed back) so you can include approved ones in the right
+  payroll run.
+
+--------------------------------------------------------------------------------
+7. REPORTS — Reports (company scope)
+--------------------------------------------------------------------------------
+Headcount, attrition, attendance exceptions, leave utilisation, payroll
+cost. Export or schedule any of these for your own monthly HR review.
+
+--------------------------------------------------------------------------------
+8. YOUR OWN EXPENSES (own scope)
+--------------------------------------------------------------------------------
+People -> Expenses -> Add expense: same self-service flow every employee
+uses (choose kind, category, amount, attach receipt, submit) — see manual
+09, section 7, for the exact steps. Someone else approves your own claims.
+
+--------------------------------------------------------------------------------
+9. APPROVALS — YOUR INBOX
+--------------------------------------------------------------------------------
+Leave requests and attendance corrections needing a decision land in
+Approvals -> Mine (or the dedicated HR approvals screen). Clear daily —
+unresolved leave requests leave employees uncertain and distort attendance/
+payroll data.
+
+--------------------------------------------------------------------------------
+10. YOUR DAILY / WEEKLY / MONTHLY CHECKLIST
+--------------------------------------------------------------------------------
+Daily:
+  [ ] HR approvals / Approvals -> Mine — clear leave & correction requests.
+  [ ] Dashboards -> HR — any exit due today, any attendance exception?
+Weekly:
+  [ ] Employees -> anyone due to move from On notice to Exited?
+  [ ] Attendance corrections backlog.
+Monthly:
+  [ ] Run payroll: recalculate -> review -> adjustments -> submit.
+  [ ] Confirm the prior run reached Paid status.
+  [ ] Reports -> Headcount / Attrition / Leave utilisation reviewed.
+
+--------------------------------------------------------------------------------
+11. TROUBLESHOOTING
+--------------------------------------------------------------------------------
+"I can't see an employee's salary/bank details" -> use "Reveal" on their
+  record; if still hidden, your role may have lost field access — check
+  with Owner.
+"Payroll run won't let me mark it paid" -> it must reach Approved and
+  locked first via Finance/Accounting or Owner sign-off — you cannot
+  self-approve your own prepared run.
+"An employee's leave balance looks wrong" -> check Leave -> their history
+  for any manual Adjustment, and confirm the right Leave type/policy is
+  assigned to them.
+"Attendance import didn't match some rows" -> check employee IDs in your
+  source file match exactly; fix and re-import just the failed rows.
+
+================================================================================
+End of HR Manager manual.
+================================================================================

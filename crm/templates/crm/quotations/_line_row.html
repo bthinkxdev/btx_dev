@@ -1,6 +1,6 @@
 {% load crm_tags %}
 <tr class="align-top" data-line-row {% if lf.DELETE.value %}style="display:none"{% endif %}>
-  <td class="px-2 py-3">{% for h in lf.hidden_fields %}{{ h }}{% endfor %}<span class="text-theme-xs text-gray-400" data-line-no></span></td>
+  <td class="px-2 py-3">{% for h in lf.hidden_fields %}{{ h }}{% endfor %}<span class="text-theme-xs text-gray-500 dark:text-gray-400" data-line-no></span></td>
   <td class="px-2 py-3 min-w-56">
     <select name="{{ lf.service.html_name }}" id="{{ lf.service.auto_id }}" class="form-select mb-2 h-10" data-service aria-label="Service">
       <option value="">Custom line</option>

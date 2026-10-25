@@ -15,7 +15,7 @@
         <th class="th">Request</th><th class="th">Type</th><th class="th">Amount</th><th class="th">Requested by</th><th class="th">When</th><th class="th">Status</th></tr></thead>
       <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
       {% for r in page_obj %}
-        <tr class="hover:bg-gray-50 dark:hover:bg-white/3">
+        <tr data-href="{% url 'crm:approval_detail' r.pk %}" class="hover:bg-gray-50 dark:hover:bg-white/3">
           <td class="td" data-label="Request"><a class="td-strong hover:text-brand-500" href="{% url 'crm:approval_detail' r.pk %}">{{ r.title }}</a></td>
           <td class="td" data-label="Type">{{ r.get_kind_display }}</td>
           <td class="td" data-label="Amount">{% if r.amount is not None %}{{ r.amount|inr }}{% else %}—{% endif %}</td>

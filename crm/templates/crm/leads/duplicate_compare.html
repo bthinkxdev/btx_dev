@@ -15,7 +15,7 @@
     {% for r in rows %}
       <tr class="{% if r.differs %}bg-warning-25 dark:bg-warning-500/5{% endif %}">
         <td class="td font-medium">{{ r.label }}</td><td class="td">{{ r.a|default:"—" }}</td><td class="td">{{ r.b|default:"—" }}</td>
-        <td class="td">{% if r.differs %}<select name="keep_{{ r.field }}" class="form-select h-9 w-24 py-1"><option value="a">A</option><option value="b">B</option></select>{% else %}<span class="text-theme-xs text-gray-400">Same</span>{% endif %}</td>
+        <td class="td">{% if r.differs %}<select name="keep_{{ r.field }}" class="form-select h-9 w-24 py-1"><option value="a">A</option><option value="b">B</option></select>{% else %}<span class="text-theme-xs text-gray-500 dark:text-gray-400">Same</span>{% endif %}</td>
       </tr>
     {% endfor %}
     </tbody></table></div>

@@ -6,7 +6,7 @@
       {% for a in attachments %}
         <li class="flex items-center justify-between gap-3 rounded-lg border border-gray-100 px-3 py-2 dark:border-gray-800">
           <a href="{% url 'crm:attachment_open' a.pk %}" target="_blank" rel="noopener" class="flex min-w-0 items-center gap-2 text-sm text-gray-700 hover:text-brand-500 dark:text-gray-300">{% icon 'document' 18 %}<span class="truncate">{{ a.original_name }}</span></a>
-          <span class="flex items-center gap-2 text-theme-xs text-gray-400">{{ a.size|filesizeformat }}
+          <span class="flex items-center gap-2 text-theme-xs text-gray-500 dark:text-gray-400">{{ a.size|filesizeformat }}
             {% if can_upload %}<form method="post" action="{% url 'crm:attachment_archive' a.pk %}" data-confirm="Remove {{ a.original_name }}?" data-confirm-body="The file is archived and kept for audit." data-confirm-danger="1">{% csrf_token %}<button class="btn-icon-sm" aria-label="Remove">{% icon 'trash' 16 %}</button></form>{% endif %}
           </span>
         </li>

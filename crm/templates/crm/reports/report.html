@@ -31,7 +31,7 @@
   <div class="table-wrap"><table class="data-table responsive-cards">
     <thead class="border-b border-gray-100 dark:border-gray-800"><tr>{% for label, kind in table.columns %}<th class="th {% if kind != 'text' %}text-right{% endif %}">{{ label }}</th>{% endfor %}</tr></thead>
     <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
-      {% for r in table.rows %}<tr class="hover:bg-gray-50 dark:hover:bg-white/3">
+      {% for r in table.rows %}<tr{% if r.href %} data-href="{{ r.href }}"{% endif %} class="hover:bg-gray-50 dark:hover:bg-white/3">
         {% for v in r.cells %}{% with col=table.columns|at:forloop.counter0 %}
           <td class="td {% if col.1 != 'text' %}text-right{% endif %}" data-label="{{ col.0 }}">{% if forloop.first and r.href %}<a class="td-strong hover:text-brand-500" href="{{ r.href }}">{{ v }}</a>{% else %}{% include "crm/reports/_cell.html" with v=v kind=col.1 %}{% endif %}</td>
         {% endwith %}{% endfor %}</tr>

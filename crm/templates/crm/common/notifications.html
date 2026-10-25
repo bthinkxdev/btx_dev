@@ -15,7 +15,7 @@
           <span>
             <span class="block text-sm font-medium text-gray-800 dark:text-white/90">{{ n.title }}</span>
             {% if n.body %}<span class="block text-sm text-gray-500 dark:text-gray-400">{{ n.body }}</span>{% endif %}
-            <span class="text-theme-xs text-gray-400">{{ n.created_at|dt }}{% if not n.read_at %} · Unread{% endif %}</span>
+            <span class="text-theme-xs text-gray-500 dark:text-gray-400">{{ n.created_at|dt }}{% if not n.read_at %} · Unread{% endif %}</span>
           </span>
         </a>
         {% if not n.read_at and n.level != 'critical' %}

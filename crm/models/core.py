@@ -218,11 +218,34 @@ class UserProfile(Versioned):
     delegate_from = models.DateField(null=True, blank=True)
     delegate_until = models.DateField(null=True, blank=True)
     notify_email = models.BooleanField(default=True)
+    notify_push = models.BooleanField(default=True)
     quiet_hours = models.BooleanField(default=True)
     dashboard_prefs = models.JSONField(default=dict, blank=True, help_text='{dashboard: {"hidden": [...], "order": [...]}}')
 
     def __str__(self):
         return f'Profile of {self.user}'
+
+
+class McpApiKey(TimeStamped):
+    """A bearer credential for the remote MCP server (Part 3 extension). The service-account
+    user named by `owner` is the actor every tool call runs as; `token_hash` never stores the
+    raw key, mirroring PaymentLink's token pattern."""
+    owner = models.ForeignKey(USER, on_delete=models.PROTECT, related_name='mcp_api_keys')
+    label = models.CharField(max_length=120)
+    token_nonce = models.CharField(max_length=32, editable=False)
+    token_hash = models.CharField(max_length=64, unique=True, editable=False)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.label
+
+    @property
+    def is_active(self) -> bool:
+        return self.revoked_at is None
 
 
 # ---------------------------------------------------------------- Audit and security
@@ -333,6 +356,27 @@ class Notification(models.Model):
             models.UniqueConstraint(fields=['user', 'dedupe_key'], condition=~models.Q(dedupe_key=''),
                                     name='crm_notification_dedupe'),
         ]
+
+
+class PushSubscription(models.Model):
+    """A browser/device endpoint registered for Web Push (PWA install + notifications).
+
+    One row per device/browser a user has enabled notifications on, so a push can be
+    delivered to every device they use, not just the last one.
+    """
+    user = models.ForeignKey(USER, on_delete=models.CASCADE, related_name='crm_push_subscriptions')
+    endpoint = models.URLField(max_length=500, unique=True)
+    p256dh = models.CharField(max_length=180)
+    auth = models.CharField(max_length=60)
+    user_agent = models.CharField(max_length=300, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    last_seen_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ['-last_seen_at']
+
+    def __str__(self):
+        return f'Push subscription for {self.user}'
 
 
 class MessageTemplate(models.Model):

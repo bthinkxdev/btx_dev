@@ -77,7 +77,7 @@
       </tr></thead>
       <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
       {% for l in object_list %}
-        <tr class="hover:bg-gray-50 dark:hover:bg-white/3">
+        <tr data-href="{% url 'crm:lead_detail' l.pk %}" class="hover:bg-gray-50 dark:hover:bg-white/3">
           {% if can_assign %}<td class="td mobile-hide"><input type="checkbox" class="form-checkbox-box" name="ids" value="{{ l.pk }}" form="bulk-form" data-bulk-item aria-label="Select {{ l.name }}"></td>{% endif %}
           <td class="td" data-label="Lead"><a href="{% url 'crm:lead_detail' l.pk %}" class="td-strong hover:text-brand-500">{{ l.name }}</a>{% if l.company %}<span class="block text-theme-xs text-gray-500">{{ l.company }}</span>{% endif %}</td>
           <td class="td whitespace-nowrap" data-label="Phone">{% if l.phone %}<a href="tel:{{ l.phone }}" class="hover:text-brand-500">{{ l.phone|phone }}</a>{% else %}{{ l.email|default:"—" }}{% endif %}</td>

@@ -26,7 +26,7 @@
       <th class="th">Number</th><th class="th">Client</th><th class="th">{% sort_link 'date' 'Issued' %}</th><th class="th">{% sort_link 'due' 'Due' %}</th><th class="th text-right">{% sort_link 'total' 'Total' %}</th><th class="th text-right">Paid</th><th class="th text-right">TDS</th><th class="th text-right">{% sort_link 'balance' 'Balance' %}</th><th class="th">Status</th><th class="th"></th></tr></thead>
     <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
     {% for i in object_list %}
-      <tr class="hover:bg-gray-50 dark:hover:bg-white/3">
+      <tr data-href="{% url 'crm:invoice_detail' i.pk %}" class="hover:bg-gray-50 dark:hover:bg-white/3">
         {% if can_remind %}<td class="td mobile-hide">{% if i.status == 'issued' or i.status == 'partially_paid' %}<input type="checkbox" class="form-checkbox-box" name="ids" value="{{ i.pk }}" form="bulk-form" data-bulk-item aria-label="Select {{ i.display_number }}">{% endif %}</td>{% endif %}
         <td class="td" data-label="Number"><a class="td-strong hover:text-brand-500" href="{% url 'crm:invoice_detail' i.pk %}">{{ i.number|default:"Draft" }}</a>{% if not i.number %}<span class="block text-theme-xs">#{{ i.pk }}</span>{% endif %}{% if i.disputed %} {% badge 'review' 'Disputed' %}{% endif %}</td>
         <td class="td" data-label="Client">{{ i.client.display_name }}<span class="block text-theme-xs">{{ i.owner|uname }}</span></td>

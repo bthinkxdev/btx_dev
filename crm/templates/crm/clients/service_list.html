@@ -13,7 +13,7 @@
     <thead class="border-b border-gray-100 dark:border-gray-800"><tr><th class="th">Service</th><th class="th">Category</th><th class="th">SAC/HSN</th><th class="th">Tax</th><th class="th text-right">Price</th>{% if show_cost %}<th class="th text-right">Cost estimate</th>{% endif %}<th class="th">Billing</th><th class="th">Status</th></tr></thead>
     <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
     {% for s in object_list %}
-      <tr><td class="td" data-label="Service">{% if can_configure %}<a class="td-strong hover:text-brand-500" href="{% url 'crm:service_edit' s.pk %}">{{ s.name }}</a>{% else %}<span class="td-strong">{{ s.name }}</span>{% endif %}<span class="block text-theme-xs">{{ s.code }}</span></td>
+      <tr data-href="{% url 'crm:service_edit' s.pk %}"><td class="td" data-label="Service">{% if can_configure %}<a class="td-strong hover:text-brand-500" href="{% url 'crm:service_edit' s.pk %}">{{ s.name }}</a>{% else %}<span class="td-strong">{{ s.name }}</span>{% endif %}<span class="block text-theme-xs">{{ s.code }}</span></td>
         <td class="td" data-label="Category">{{ s.category }}</td><td class="td" data-label="SAC">{{ s.sac_code|default:"—" }}</td>
         <td class="td" data-label="Tax">{{ s.get_taxability_display }}{% if s.taxability == 'taxable' %} {{ s.tax_rate|pct }}{% endif %}</td>
         <td class="td text-right" data-label="Price">{{ s.default_price|inr }} <span class="block text-theme-xs">{{ s.get_price_mode_display }}</span></td>

@@ -250,6 +250,37 @@
     });
   });
 
+  /* ------------------------------------------------------------ clickable list rows (2.7) */
+  // A row/card marked data-href opens its detail page when clicked anywhere
+  // that isn't itself an interactive element (link, button, checkbox, etc.).
+  function rowTarget(e) {
+    var el = e.target.closest('[data-href]');
+    if (!el || !el.dataset.href) return null;
+    if (e.target.closest('a, button, input, select, textarea, label, [data-no-row-link]')) return null;
+    var sel = window.getSelection();
+    if (sel && String(sel).length) return null;
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var el = rowTarget(e);
+    if (!el) return;
+    if (e.ctrlKey || e.metaKey) { window.open(el.dataset.href, '_blank'); return; }
+    window.location.href = el.dataset.href;
+  });
+  document.addEventListener('auxclick', function (e) {
+    if (e.button !== 1) return;
+    var el = rowTarget(e);
+    if (!el) return;
+    e.preventDefault();
+    window.open(el.dataset.href, '_blank');
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter') return;
+    var el = e.target.closest('[data-href]');
+    if (!el || e.target !== el) return;
+    window.location.href = el.dataset.href;
+  });
+
   /* ------------------------------------------------------------ list helpers (2.7) */
   var debounceTimer = null;
   document.addEventListener('input', function (e) {
@@ -364,6 +395,9 @@
 
   /* ------------------------------------------------------------ boot */
   function boot() {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-href]'), function (el) {
+      if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
+    });
     Array.prototype.forEach.call(document.querySelectorAll('.crm-toast'), wireToast);
     Array.prototype.forEach.call(document.querySelectorAll('[data-kanban]'), initKanban);
     Array.prototype.forEach.call(document.querySelectorAll('[data-bulk-scope]'), refreshBulk);

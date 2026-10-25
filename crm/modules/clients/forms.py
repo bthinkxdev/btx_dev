@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from decimal import Decimal
+
 from django import forms
 from django.contrib.auth import get_user_model
 
@@ -100,6 +102,10 @@ class ServiceForm(VersionedModelFormMixin, CrmModelForm):
             self.add_error('sac_code', 'A taxable service needs a SAC or HSN code.')
         if c.get('floor_price') and c.get('default_price') is not None and c['floor_price'] > c['default_price']:
             self.add_error('floor_price', 'The floor price cannot be above the default price.')
+        if c.get('floor_price') is None:
+            c['floor_price'] = Decimal('0.00')
+        if 'cost_estimate' in self.fields and c.get('cost_estimate') is None:
+            c['cost_estimate'] = Decimal('0.00')
         return c
 
 

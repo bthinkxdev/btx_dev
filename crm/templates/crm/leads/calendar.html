@@ -60,7 +60,7 @@
               <p class="text-theme-xs {% if fu.due_at < now %}text-error-600{% else %}text-gray-500{% endif %}">{{ fu.due_at|tm }} · {{ fu.get_kind_display }} · {{ fu.assignee|uname }}</p>
               <button type="button" class="btn-link mt-1 text-xs" @click="document.getElementById('postpone-quick-form').action='{% url 'crm:follow_up_quick' fu.pk 'postpone' %}'; $store.modal.show('postpone_quick')">Reschedule</button>
             </li>
-          {% empty %}<li class="text-theme-xs text-gray-400">Nothing scheduled</li>{% endfor %}
+          {% empty %}<li class="text-theme-xs text-gray-500 dark:text-gray-400">Nothing scheduled</li>{% endfor %}
         </ul>
       </div>
     {% endfor %}

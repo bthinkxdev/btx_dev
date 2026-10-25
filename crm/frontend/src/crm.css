@@ -20,7 +20,7 @@
 
 /* ---------- Cards ---------- */
 @utility card {
-  @apply rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/3;
+  @apply shadow-theme-sm rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/3 dark:shadow-none;
 }
 @utility card-header {
   @apply flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-5;
@@ -34,7 +34,7 @@
 
 /* ---------- Buttons (Part 2.1 / 2.2) ---------- */
 @utility btn {
-  @apply shadow-theme-xs inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium whitespace-nowrap transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 active:translate-y-px disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50;
+  @apply shadow-theme-xs hover:shadow-theme-sm inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium whitespace-nowrap transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 active:translate-y-px disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none;
 }
 @utility btn-primary {
   @apply bg-brand-500 hover:bg-brand-600 text-white;
@@ -127,7 +127,7 @@
   @apply min-w-full text-left rtl:text-right;
 }
 @utility th {
-  @apply text-theme-xs px-5 py-3 font-medium whitespace-nowrap text-gray-500 dark:text-gray-400;
+  @apply text-theme-xs bg-gray-50/70 px-5 py-3 font-medium whitespace-nowrap text-gray-500 dark:bg-transparent dark:text-gray-400;
 }
 @utility td {
   @apply text-theme-sm px-5 py-3.5 text-gray-500 dark:text-gray-400;
@@ -221,6 +221,12 @@
 /* Visible focus ring is never removed (Part 2.2) */
 :focus-visible {
   outline-color: var(--color-brand-500);
+}
+
+/* Clickable list rows/cards (Part 2.7): the whole row opens the detail page,
+   not just the name link. See data-href handling in ui.js. */
+[data-href] {
+  cursor: pointer;
 }
 
 /* Tables collapse to cards under 640px (Part 2.10) */

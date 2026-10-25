@@ -301,6 +301,31 @@ def tds_by_vendor(fy: str):
 
 # ---------------------------------------------------------------- vendors
 
+class DuplicateVendorError(ExpenseError):
+    """Raised instead of silently saving when possible_vendor_duplicates() finds a match and
+    the caller hasn't confirmed this is a genuinely new vendor."""
+    def __init__(self, dupes):
+        self.dupes = dupes
+        super().__init__('A vendor with the same name, PAN or GSTIN exists.')
+
+
+def save_vendor(form, actor, *, confirm_new: bool = False) -> Vendor:
+    """Validated-save shared by the web view (crm.modules.expenses.views.vendor_form) and the
+    MCP tool. `form` must already be a bound, valid VendorForm."""
+    v = form.instance if form.instance.pk else None
+    dupes = list(possible_vendor_duplicates(form.cleaned_data['name'], form.cleaned_data.get('pan', ''),
+                                            form.cleaned_data.get('gstin', ''), exclude=v.pk if v else None))
+    if dupes and not confirm_new:
+        raise DuplicateVendorError(dupes)
+    obj = form.save(commit=False)
+    obj.updated_by = actor
+    if not obj.pk:
+        obj.created_by = actor
+    obj.save()
+    audit.log('vendor.saved', obj, actor=actor, changes={'fields': form.changed_data})
+    return obj
+
+
 def set_vendor_status(v: Vendor, actor, status: str, reason: str = ''):
     if status not in dict(Vendor.STATUSES):
         raise ExpenseError('Unknown status.')

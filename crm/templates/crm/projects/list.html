@@ -12,7 +12,7 @@
   {% if object_list %}
   <div class="table-wrap"><table class="data-table responsive-cards">
     <thead><tr><th class="th">Project</th><th class="th">Client</th><th class="th">PM</th><th class="th">Status</th><th class="th">Budget used</th><th class="th">{% sort_link 'due' 'Due' %}</th><th class="th">Next milestone</th></tr></thead>
-    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for p in object_list %}<tr class="hover:bg-gray-50 dark:hover:bg-white/3">
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for p in object_list %}<tr data-href="{% url 'crm:project_detail' p.pk %}" class="hover:bg-gray-50 dark:hover:bg-white/3">
       <td class="td" data-label="Project"><a class="td-strong hover:text-brand-500" href="{% url 'crm:project_detail' p.pk %}">{{ p.code }}</a><span class="block text-theme-xs">{{ p.name|truncatechars:50 }}</span></td>
       <td class="td" data-label="Client">{{ p.client.display_name }}</td><td class="td" data-label="PM">{{ p.manager|uname }}</td>
       <td class="td" data-label="Status">{% badge p.status p.get_status_display %}{% if p.is_at_risk %} {% badge 'at_risk' 'At risk' %}{% endif %}</td>

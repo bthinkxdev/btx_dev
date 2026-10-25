@@ -1,7 +1,7 @@
 {% load crm_tags %}
 <div class="table-wrap"><table class="data-table responsive-cards">
   <thead><tr><th class="th">Expense</th><th class="th">{% sort_link 'date' 'Date' %}</th><th class="th">Vendor / employee</th><th class="th">Category</th><th class="th text-right">{% sort_link 'total' 'Total' %}</th><th class="th text-right">TDS</th><th class="th text-right">Balance</th><th class="th">Status</th></tr></thead>
-  <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for e in object_list %}<tr class="hover:bg-gray-50 dark:hover:bg-white/3">
+  <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for e in object_list %}<tr data-href="{% url 'crm:expense_detail' e.pk %}" class="hover:bg-gray-50 dark:hover:bg-white/3">
     <td class="td" data-label="Expense"><a class="td-strong hover:text-brand-500" href="{% url 'crm:expense_detail' e.pk %}">{{ e }}</a><span class="block text-theme-xs">{{ e.get_kind_display }} · {{ e.description|truncatechars:40 }}</span></td>
     <td class="td whitespace-nowrap" data-label="Date">{{ e.bill_date|d }}</td><td class="td" data-label="Vendor">{% if e.vendor %}{{ e.vendor }}{% else %}{{ e.employee|uname }}{% endif %}</td><td class="td" data-label="Category">{{ e.category }}{% if e.project %}<span class="block text-theme-xs">{{ e.project.code }}</span>{% endif %}</td>
     <td class="td text-right whitespace-nowrap" data-label="Total">{{ e.total|inr }}</td><td class="td text-right whitespace-nowrap" data-label="TDS">{% if e.tds_amount %}{{ e.tds_amount|inr }}{% else %}—{% endif %}</td>

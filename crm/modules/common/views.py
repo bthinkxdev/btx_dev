@@ -9,7 +9,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
 from django.db.models import Q
-from django.http import FileResponse, Http404
+from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -272,3 +272,94 @@ def attachment_archive(request, pk):
     audit.log('attachment.archived', target, changes={'file': att.original_name})
     messages.success(request, f'Removed {att.original_name}.')
     return back(request, reverse('crm:home'))
+
+
+# ---------------------------------------------------------------- PWA: manifest, service worker, push
+
+def manifest(request):
+    """The web app manifest (Part 2 install surface). Served dynamically, not as a static
+    file, so the name/short_name always match the company's current branding."""
+    from crm.models import CompanySettings
+    try:
+        company = CompanySettings.get()
+        name = company.display_name or 'BThinkX Business OS'
+    except Exception:  # pragma: no cover - before migrate
+        name = 'BThinkX Business OS'
+    data = {
+        'name': f'{name} — Business OS',
+        'short_name': name[:30] or 'BThinkX',
+        'description': 'Leads, quotations, billing, projects and more, in one app.',
+        'id': '/crm/',
+        'start_url': '/crm/?source=pwa',
+        'scope': '/crm/',
+        'display': 'standalone',
+        'display_override': ['window-controls-overlay', 'standalone'],
+        'background_color': '#ffffff',
+        'theme_color': '#465fff',
+        'orientation': 'portrait-primary',
+        'lang': 'en',
+        'categories': ['business', 'productivity'],
+        'icons': [
+            {'src': '/static/crm/images/icon-192.png', 'sizes': '192x192', 'type': 'image/png', 'purpose': 'any'},
+            {'src': '/static/crm/images/icon-256.png', 'sizes': '256x256', 'type': 'image/png', 'purpose': 'any'},
+            {'src': '/static/crm/images/icon-384.png', 'sizes': '384x384', 'type': 'image/png', 'purpose': 'any'},
+            {'src': '/static/crm/images/icon-512.png', 'sizes': '512x512', 'type': 'image/png', 'purpose': 'any'},
+            {'src': '/static/crm/images/icon-512-maskable.png', 'sizes': '512x512', 'type': 'image/png',
+             'purpose': 'maskable'},
+        ],
+    }
+    return JsonResponse(data, content_type='application/manifest+json')
+
+
+def service_worker(request):
+    """Served at /crm/service-worker.js (not /static/) so its default scope covers the
+    whole app (/crm/) with no extra Service-Worker-Allowed header needed. The real source
+    lives at crm/static/crm/js/sw.js (kept as a plain static file for editing/linting);
+    this view just serves its content from the one URL a service worker's scope allows."""
+    from django.contrib.staticfiles import finders
+    path = finders.find('crm/js/sw.js')
+    if not path:
+        raise Http404
+    with open(path, 'r', encoding='utf-8') as f:
+        js = f.read()
+    resp = HttpResponse(js, content_type='application/javascript')
+    resp['Service-Worker-Allowed'] = '/crm/'
+    resp['Cache-Control'] = 'no-cache'
+    return resp
+
+
+@staff_required
+@require_POST
+def push_subscribe(request):
+    """Save (or refresh) the browser's push subscription for this user and device."""
+    import json
+    from crm.models import PushSubscription
+    try:
+        payload = json.loads(request.body.decode('utf-8'))
+        endpoint = payload['endpoint']
+        keys = payload['keys']
+        p256dh, auth = keys['p256dh'], keys['auth']
+    except (KeyError, ValueError, TypeError):
+        return JsonResponse({'ok': False, 'error': 'Invalid subscription payload.'}, status=400)
+    PushSubscription.objects.update_or_create(
+        endpoint=endpoint[:500],
+        defaults={'user': request.user, 'p256dh': p256dh[:180], 'auth': auth[:60],
+                  'user_agent': request.META.get('HTTP_USER_AGENT', '')[:300],
+                  'last_seen_at': timezone.now()},
+    )
+    return JsonResponse({'ok': True, 'message': 'Notifications enabled on this device.'})
+
+
+@staff_required
+@require_POST
+def push_unsubscribe(request):
+    """Remove this device's push subscription (user turned notifications off, or the
+    browser reports the old subscription is no longer valid)."""
+    import json
+    from crm.models import PushSubscription
+    try:
+        endpoint = json.loads(request.body.decode('utf-8'))['endpoint']
+    except (KeyError, ValueError, TypeError):
+        return JsonResponse({'ok': False, 'error': 'Invalid request.'}, status=400)
+    PushSubscription.objects.filter(user=request.user, endpoint=endpoint[:500]).delete()
+    return JsonResponse({'ok': True, 'message': 'Notifications turned off on this device.'})

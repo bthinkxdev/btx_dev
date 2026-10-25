@@ -1,0 +1,129 @@
+================================================================================
+BTHINKX BUSINESS OS — USER MANUAL
+ROLE: Team Member (Developer / Designer / Tester)
+================================================================================
+Your access: OWN scope — the projects you're on, the tasks assigned to you,
+the tickets assigned to you, and your own leave/attendance/expenses.
+Your home screen after login: My Day.
+
+--------------------------------------------------------------------------------
+1. SIGNING IN
+--------------------------------------------------------------------------------
+Enter your email/username + password, complete 2FA if prompted (6-digit
+code, 5-minute window). Forgot your password? Ask your manager or Owner —
+you cannot self-reset.
+
+--------------------------------------------------------------------------------
+2. MY DAY
+--------------------------------------------------------------------------------
+Your personal daily list — what's due today across your tasks. Start here
+every day before opening anything else.
+
+--------------------------------------------------------------------------------
+3. PROJECTS (view only, the ones you're on) — Delivery -> Projects
+--------------------------------------------------------------------------------
+See the projects you're a member of: client, timeline, milestones, and
+where your assigned tasks sit. You cannot edit project details — that's
+your Project Manager's job (manual 08).
+
+--------------------------------------------------------------------------------
+4. TASKS — Delivery -> Tasks
+--------------------------------------------------------------------------------
+4.1 Status lifecycle
+  To do -> In progress -> (Blocked) -> In review -> Done (or Cancelled)
+
+4.2 Working your tasks
+  1) Open a task assigned to you from Tasks or from My Day.
+  2) Move it to "In progress" when you start.
+  3) If something stops you, set it to "Blocked" and log a Blocker
+     (Delivery -> Blockers -> Add, or from the task) with a clear
+     description — don't just leave it stalled silently.
+  4) Move to "In review" when done and ready for your manager/lead to
+     check; "Done" once confirmed, or back to "In progress" if it's sent
+     back.
+  5) You can also create your own tasks (e.g. a sub-task you've identified)
+     — Tasks -> Add task, project + title + due date.
+Must do: keep status current in real time, not at end of week — your
+  Project Manager's utilisation and delivery reporting reads directly off
+  this, and a stale "To do" that's actually done hides real progress.
+
+--------------------------------------------------------------------------------
+5. TIMESHEETS — Delivery -> Timesheet
+--------------------------------------------------------------------------------
+Status lifecycle: Draft -> Submitted -> Approved (or Rejected)
+  1) Log hours against the task/project you worked on, for the day/week.
+  2) Save as Draft while you're still filling it in; "Submit" once the
+     period is complete and accurate — this sends it to your manager for
+     approval.
+  3) If rejected, check the reason, correct it, and resubmit.
+Must do: submit your timesheet on the cadence your team uses (usually
+  weekly) — approvals and billing both wait on it.
+
+--------------------------------------------------------------------------------
+6. TICKETS (assigned to you) — Delivery -> Tickets
+--------------------------------------------------------------------------------
+Status lifecycle: Open -> In progress -> Waiting for client -> Resolved ->
+  Closed
+  Work tickets assigned to you the same way as tasks — move status as you
+  progress, and watch for the "Breached" badge (SLA due has passed) which
+  means it needs attention right now, ahead of everything else non-urgent.
+
+--------------------------------------------------------------------------------
+7. YOUR OWN LEAVE, ATTENDANCE AND EXPENSES (same for every role)
+--------------------------------------------------------------------------------
+7.1 Leave — People -> Leave
+  1) "Apply for leave" — pick leave type, start/end dates, reason.
+  2) Check your leave balance shown on the form before applying.
+  3) Submit — status Pending until your manager Approves/Rejects it; you
+     can "Cancel" your own request while still Pending.
+
+7.2 Attendance — People -> Attendance
+  1) Check in when you start work, check out when you finish (button on
+     the Attendance screen, or however your company captures it e.g.
+     biometric import).
+  2) If a check-in/out was missed or wrong, raise a "Correction" request
+     with the right time and a reason — it goes to HR/your manager to
+     approve.
+
+7.3 Expenses — People -> Expenses -> Add expense
+  1) Choose kind: Expense / Vendor bill / Reimbursement.
+  2) Pick category, enter amount, attach the receipt (required).
+  3) Submit. Status moves Draft -> Submitted -> Approved -> Paid (or
+     Rejected / Correction requested — fix what's flagged and resubmit).
+Must do: always attach a receipt before submitting; claims with no proof
+  are routinely sent back.
+
+7.4 Your payslips — People -> Payroll -> My payslips
+  View and download your own payslips once a payroll run is released.
+
+--------------------------------------------------------------------------------
+8. NOTIFICATIONS
+--------------------------------------------------------------------------------
+The bell icon shows task assignments, approval decisions on your own
+requests, and anything due. Click to jump straight to it, "Snooze" if
+you'll deal with it later, "Mark all read" once triaged.
+
+--------------------------------------------------------------------------------
+9. YOUR DAILY CHECKLIST
+--------------------------------------------------------------------------------
+  [ ] My Day — what's due today.
+  [ ] Update status on any task/ticket you worked on (don't batch this up).
+  [ ] Log a Blocker the moment something stops you, don't wait.
+  [ ] Check in/out for attendance.
+  [ ] Notifications bell — triage.
+
+--------------------------------------------------------------------------------
+10. TROUBLESHOOTING
+--------------------------------------------------------------------------------
+"I can't see a project/task" -> you only see ones you're a member of or
+  assigned to; ask your Project Manager to add you.
+"I can't edit the project details" -> correct, by design — that's your
+  Project Manager's permission; ask them for the change.
+"My leave/expense request is stuck" -> it's Pending until your manager
+  decides; check with them directly if it's been a while.
+"My timesheet was rejected" -> open it, read the rejection reason, correct
+  the hours/task/project, and resubmit.
+
+================================================================================
+End of Team Member manual.
+================================================================================

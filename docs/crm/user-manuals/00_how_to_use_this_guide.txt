@@ -1,0 +1,63 @@
+================================================================================
+BTHINKX BUSINESS OS — USER MANUAL SET
+How to use this guide
+================================================================================
+
+This folder contains one complete user manual per role (user type) in the
+system. Every manual is self-contained — you only need to read the one that
+matches your role(s).
+
+  00_how_to_use_this_guide.txt        <- you are here
+  01_owner_super_admin.txt
+  02_sales_manager.txt
+  03_sales_executive.txt
+  04_telecaller_lead_coordinator.txt
+  05_finance_executive.txt
+  06_accountant.txt
+  07_hr_manager.txt
+  08_project_manager.txt
+  09_team_member.txt
+  10_auditor.txt
+
+WHICH ONE IS MINE?
+  Your role is shown next to your name in the top-right corner of the app,
+  and under Settings -> Users -> (your name). If you hold more than one role
+  (e.g. Sales Manager + Project Manager), read both manuals — your screen
+  will show the combined menu of both.
+
+WHAT "SCOPE" MEANS (you will see this word in every manual)
+  Every permission in this system is granted at one of four scopes:
+    OWN        - only records where you are the owner / assignee
+    TEAM       - your own records plus your team's
+    DEPARTMENT - your own, your team's, and your department's
+    COMPANY    - every record in the company
+  Your manual tells you which scope applies to each feature you can use.
+  If a screen or record is not visible to you, it is almost always because
+  it is outside your scope — that is expected, not a bug.
+
+HOW THE SYSTEM IS LAID OUT (true for every role)
+  - Top bar: global search (click the search box or press Ctrl/Cmd+K),
+    a bell icon for notifications, a sun/moon icon to switch light/dark
+    mode, and your name (profile, password, logout) on the far right.
+  - Left sidebar: your modules, grouped by area (Sales, Money, Delivery,
+    People, Insights, Admin). Only the modules you have access to appear.
+  - Every list screen (leads, invoices, tasks, etc.) has filters at the
+    top, a "Saved filters" option to re-use a filter combination, and an
+    Export button (large exports may need a manager's approval — see
+    "Approvals" in your manual).
+  - Clicking anywhere on a row/card (not just its name) opens the record.
+  - Destructive actions (archive, cancel, delete, write-off, reject) ask
+    for a reason before they go through. Always give a real reason — it
+    is kept permanently in that record's history and in the audit log.
+  - A record's "Timeline" / "Activity" tab is the full history of what
+    happened to it, who did it, and when. This is how you "track" things
+    in this system — read it before asking a colleague what happened.
+
+GETTING HELP
+  - If a button is missing or you get "You do not have access to...",
+    that is a permissions issue — see the Troubleshooting section at the
+    end of your manual, then contact your Owner / Super Admin.
+  - If something looks broken (wrong numbers, a stuck record, an error
+    toast), screenshot it and send it to your administrator with the
+    record's ID/number — do not try to fix data directly in two places.
+================================================================================

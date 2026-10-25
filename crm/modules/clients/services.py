@@ -17,6 +17,14 @@ class ClientError(ValidationError):
     pass
 
 
+class DuplicateClientError(ClientError):
+    """Raised instead of silently saving when possible_duplicates() finds a match and the
+    caller hasn't confirmed this is a genuinely different client."""
+    def __init__(self, dupes):
+        self.dupes = dupes
+        super().__init__('Possible duplicate client found.')
+
+
 def normalized(name: str) -> str:
     return re.sub(r'[^a-z0-9]', '', (name or '').lower())
 
@@ -40,6 +48,47 @@ def possible_duplicates(*, legal_name='', gstin='', pan='', phone='', email='', 
     if exclude_id:
         qs = qs.exclude(pk=exclude_id)
     return qs
+
+
+def save_client(form, actor, *, confirm_duplicate: bool = False) -> Client:
+    """Validated-save shared by the web view (crm.modules.clients.views.client_form) and the
+    MCP tool. `form` must already be a bound, valid ClientForm (is_valid() already called)."""
+    from django.db import IntegrityError
+    c = form.cleaned_data
+    client = form.instance if form.instance.pk else None
+    dupes = list(possible_duplicates(legal_name=c['legal_name'], gstin=c.get('gstin', ''), pan=c.get('pan', ''),
+                                      phone=c.get('phone', ''), email=c.get('email', ''),
+                                      exclude_id=client.pk if client else None))
+    if dupes and not confirm_duplicate:
+        raise DuplicateClientError(dupes)
+    try:
+        with transaction.atomic():
+            before = {f: getattr(client, f) for f in form.changed_data if hasattr(client, f)} if client else {}
+            obj = form.save(commit=False)
+            if not obj.pk:
+                obj.created_by = actor
+            obj.updated_by = actor
+            obj.save()
+            if client is None and (obj.phone or obj.email):
+                Contact.objects.create(client=obj, name=obj.display_name, phone=obj.phone, email=obj.email,
+                                       is_primary=True, is_billing=True, created_by=actor)
+            audit.log('client.updated' if client else 'client.created', obj,
+                      changes=audit.diff(before, {f: getattr(obj, f) for f in before}) if client else {}, actor=actor)
+    except IntegrityError:
+        raise ClientError('Another active client already has this GSTIN.')
+    return obj
+
+
+def save_service(form, actor):
+    """Validated-save shared by the web view (crm.modules.clients.views.service_form) and
+    the MCP tool. `form` must already be a bound, valid ServiceForm."""
+    s = form.save(commit=False)
+    if not s.pk:
+        s.created_by = actor
+    s.updated_by = actor
+    s.save()
+    audit.log('service.saved', s, actor=actor, changes={'fields': form.changed_data})
+    return s
 
 
 def client_from_lead(lead, actor) -> Client:

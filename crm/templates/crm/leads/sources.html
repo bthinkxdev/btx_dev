@@ -13,7 +13,7 @@
       <thead class="border-b border-gray-100 dark:border-gray-800"><tr><th class="th">Source</th><th class="th">Health</th><th class="th text-right">Leads (30 d)</th><th class="th text-right">Total</th><th class="th text-right">Won</th><th class="th text-right">Conversion</th><th class="th text-right">Cost per lead</th><th class="th text-right">Revenue</th><th class="th">Last lead</th><th class="th"><span class="sr-only">Actions</span></th></tr></thead>
       <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
       {% for r in rows %}{% with s=r.s %}
-        <tr x-data="{ show: false }">
+        <tr data-href="{% url 'crm:source_edit' s.pk %}" x-data="{ show: false }">
           <td class="td" data-label="Source"><a href="{% url 'crm:source_edit' s.pk %}" class="td-strong hover:text-brand-500">{{ s.name }}</a><span class="block text-theme-xs text-gray-500">{{ s.get_channel_display }}</span></td>
           <td class="td" data-label="Health">{% if not s.is_active %}{% badge 'archived' 'Inactive' %}{% elif s.is_paused %}{% badge 'on_hold' 'Paused' %}{% elif s.is_silent %}{% badge 'silent' 'Silent' %}{% else %}{% badge 'active' 'Healthy' %}{% endif %}</td>
           <td class="td text-right" data-label="Leads (30 d)">{{ s.leads_30 }}</td>

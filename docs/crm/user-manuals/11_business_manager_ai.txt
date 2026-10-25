@@ -1,0 +1,85 @@
+================================================================================
+BTHINKX BUSINESS OS — USER MANUAL
+ROLE: Business Manager (AI) — service account for the remote MCP server
+================================================================================
+This manual is read by two audiences: a human administrator deciding whether
+to grant this access, and the connected AI tool itself (it is published as an
+MCP resource, glossary://business-manual/business_manager_ai). Everything
+below is both a policy statement and the ground truth for what the AI can do.
+
+There is no login for this role. It exists only as a service-account user
+(business_manager_ai) that an AI tool authenticates as over the MCP server
+using a bearer API key (see section 5). Every action it takes runs through
+the exact same permission checks and service-layer functions as a human user
+— nothing it does bypasses the rules in this system.
+
+--------------------------------------------------------------------------------
+1. WHAT THIS ROLE CAN DO
+--------------------------------------------------------------------------------
+COMPANY scope, Create + View + Edit + Export, on: Leads, Pipeline, Quotations,
+Payment links, Payments (record only), Invoices, Receipts, Clients, Service
+catalogue, Contracts, Projects, Tasks, Tickets, Expenses, Vendors, Employees
+(non-sensitive fields only), Attendance, Leave, Commissions, Reports.
+
+VIEW ONLY on: Accounting, Banking, Payroll, Refunds, Audit log.
+
+A dedicated "business_overview" tool returns a consolidated snapshot: open
+pipeline value, profit & loss, cash flow, cash position, MRR, receivables
+ageing, and delivery health — this is the fastest way to answer "how is the
+business doing?" without pulling every module separately.
+
+--------------------------------------------------------------------------------
+2. WHAT THIS ROLE CANNOT DO (BY DESIGN, NOT BY ACCIDENT)
+--------------------------------------------------------------------------------
+No Delete, Archive, Approve, Override, Configure, Import, Assign, Cancel, or
+Refund action exists anywhere in this role's tool set — not merely denied by
+permission, the corresponding tool is simply never implemented. Specifically:
+  - Cannot verify a manual payment it (or anyone) recorded — that needs the
+    Payments "approve" permission, held by Finance, as a maker-checker check.
+  - Cannot post a manual journal, create a bank account, or import a bank
+    statement — Accounting/Banking are view-only for this role.
+  - Cannot create or edit a payroll run, payslip, or salary structure.
+  - Cannot see or set an employee's salary, bank account, PAN/UAN, date of
+    birth, or any payment-gateway credential — these field groups are
+    excluded entirely; the employee tools' parameters don't even accept them.
+  - Cannot change company settings, users, roles, or templates.
+  - Cannot delete anything, anywhere, under any name.
+
+If a request needs one of these, it is for a human with the right role, not
+this account.
+
+--------------------------------------------------------------------------------
+3. HOW IT WORKS
+--------------------------------------------------------------------------------
+The server is a separate process (manage.py run_mcp_http) from the normal
+website, reachable over HTTPS at its own address, speaking MCP (Streamable
+HTTP). Every tool call is a thin wrapper around the same crm/modules/*/
+services.py functions the web app's own views call — the same validation,
+GST/tax computation, duplicate checks and audit logging apply either way.
+
+--------------------------------------------------------------------------------
+4. AUDIT TRAIL
+--------------------------------------------------------------------------------
+Every create/update this role performs is written to the normal Audit log
+(Settings -> Audit) with actor "Business Manager (AI)" — filter or search by
+that name to see everything an AI tool has done, exactly like any other
+user's history.
+
+--------------------------------------------------------------------------------
+5. ISSUING AND REVOKING ACCESS (for the administrator)
+--------------------------------------------------------------------------------
+Keys are per-integration, not per-person — one shared service account, many
+revocable keys. From a shell on the server:
+  python manage.py mcp_issue_key --label "Claude Desktop"     (prints the raw
+                                                                key once)
+  python manage.py mcp_issue_key --revoke <id>                 (immediately
+                                                                cuts that
+                                                                integration
+                                                                off)
+There is no way to recover a lost raw key — issue a new one and revoke the
+old. Treat it like any other production credential: share it over a secure
+channel, never paste it into chat history or a ticket.
+
+================================================================================
+End of Business Manager (AI) manual.
+================================================================================

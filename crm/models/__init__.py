@@ -1,8 +1,9 @@
 """All CRM models, grouped by module file. Import from `crm.models`."""
 from .core import (  # noqa: F401
     ApprovalRequest, Attachment, AuditCheckpoint, AuditLog, CompanySettings, DeliveryLog, Department,
-    DocumentSequence, ExportLog, IdempotencyKey, ImportBatch, JobRun, MessageTemplate, Notification, Role,
-    ReportSchedule, SavedFilter, SecurityEvent, SequenceSeries, Team, UserProfile, UserSession,
+    DocumentSequence, ExportLog, IdempotencyKey, ImportBatch, JobRun, McpApiKey, MessageTemplate, Notification,
+    PushSubscription, Role, ReportSchedule, SavedFilter, SecurityEvent, SequenceSeries, Team, UserProfile,
+    UserSession,
 )
 from .catalog import Service, ServiceTaxRule  # noqa: F401
 from .clients import Client, Contact  # noqa: F401

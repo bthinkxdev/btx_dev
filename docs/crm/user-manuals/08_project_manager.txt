@@ -1,0 +1,171 @@
+================================================================================
+BTHINKX BUSINESS OS — USER MANUAL
+ROLE: Project Manager
+================================================================================
+Your access: Projects (view own, create company-wide, edit/approve/export
+own), Tasks (TEAM full control), Tickets (COMPANY full control); COMPANY
+view on Clients, Contracts, Services; OWN Reports/Leave/Attendance/
+Expenses.
+Your home screen after login: Projects -> All projects.
+
+--------------------------------------------------------------------------------
+1. SIGNING IN
+--------------------------------------------------------------------------------
+Enter your email/username + password, complete 2FA if prompted. Forgot your
+password? Ask your Owner — you cannot self-reset.
+
+--------------------------------------------------------------------------------
+2. YOUR DASHBOARD — Dashboards -> Delivery
+--------------------------------------------------------------------------------
+Milestones due this week, open blockers, and team utilisation (hours logged
+against expected hours per working day) for the period selected. Click any
+milestone or blocker to jump straight to it.
+
+--------------------------------------------------------------------------------
+3. PROJECTS — Delivery -> Projects
+--------------------------------------------------------------------------------
+3.1 Status lifecycle
+  Planned -> Active -> (On hold <-> resumed) -> Completed / Cancelled
+
+3.2 Creating a project
+  1) Projects -> Add project: code, name, client, contract (if delivery is
+     tied to one), manager (you, by default), planned start/end dates,
+     budget.
+  2) Add team members — Project detail -> "Member" action: pick the user
+     and their role on the project (developer/designer/tester/etc.).
+     "Remove member" takes someone off without deleting their logged time.
+  3) Set milestones — "Milestone" action: name, due date, linked billing if
+     this milestone triggers an invoice on completion.
+  4) Move status to Active once resourcing is confirmed.
+
+3.3 Running the project day to day
+  - "Task" action creates a task directly from the project (or use Tasks ->
+    Add task). Assign, set priority (Low/Medium/High/Urgent) and due date.
+  - "Deadline" action adjusts the project's planned end date, with a
+    reason — keep this honest, it's what the Delivery dashboard reports
+    against.
+  - Milestones move Pending -> In progress -> Ready for review -> Accepted
+    (or stay pending until started). "ms_ready" marks a milestone ready for
+    client sign-off; "ms_accept" confirms the client accepted it (triggers
+    its linked billing where configured).
+  - "Change request" (cr) logs scope changes outside the original project
+    with effort/price/tax; status Draft -> Submitted -> Approved/Rejected
+    -> Billed. "cr_bill" generates the invoice for an approved change
+    request once delivered.
+  - "Close" the project once everything is delivered and billed — this is
+    final; don't close with open tasks or unresolved blockers.
+Must do: keep milestones and change requests current — they are what
+  Finance bills from and what the client sees progress against.
+
+--------------------------------------------------------------------------------
+4. TASKS — Delivery -> Tasks
+--------------------------------------------------------------------------------
+Status lifecycle: To do -> In progress -> (Blocked) -> In review -> Done
+  (or Cancelled)
+  Priority: Low / Medium / High / Urgent.
+  1) Tasks -> Add task (or from a project): title, project, assignee,
+     priority, due date, description.
+  2) You (TEAM scope) can create, edit and assign any task for your team;
+     team members move their own tasks through status themselves (see
+     manual 09) — you reassign or re-prioritise when workload needs
+     rebalancing.
+  3) A task marked "Blocked" should have a matching entry in Blockers (see
+     section 6) so it's visible company-wide, not just buried in the task.
+Must do: review tasks sitting in "Blocked" or "In review" daily — these are
+  the ones actually losing time.
+
+--------------------------------------------------------------------------------
+5. TIMESHEETS — Delivery -> Timesheet / Timesheet approvals
+--------------------------------------------------------------------------------
+Status lifecycle: Draft -> Submitted -> Approved (or Rejected)
+  Team members log hours against tasks/projects; "Timesheet approvals" is
+  your queue of Submitted entries. Open each, check it against the task's
+  actual progress, Approve or Reject (with a reason — e.g. wrong
+  project/task, hours look wrong). Approved hours feed the Delivery
+  dashboard's utilisation numbers and, where applicable, billing.
+Must do: clear timesheet approvals weekly — stale submissions make
+  utilisation and project-cost reporting wrong for everyone.
+
+--------------------------------------------------------------------------------
+6. BLOCKERS — Delivery -> Blockers
+--------------------------------------------------------------------------------
+Status lifecycle: Open -> Escalated -> Resolved
+Log anything stopping a task/project from progressing, with a description.
+"Resolve" once cleared (with a short note on how). Escalate (status change
+to Escalated) if it needs the client's or Owner's attention — this is what
+shows on the Delivery dashboard's "Open blockers" list so nothing silently
+stalls.
+
+--------------------------------------------------------------------------------
+7. TICKETS (support) — Delivery -> Tickets
+--------------------------------------------------------------------------------
+Status lifecycle: Open -> In progress -> Waiting for client -> Resolved ->
+  Closed
+  1) Tickets -> Add ticket (or a client/contract raises one): client,
+     linked AMC contract if applicable, priority, assignee, SLA due date
+     (calculated from the contract's SLA terms where configured).
+  2) Assign and track like any task; "Breached" badge appears if SLA due
+     has passed with the ticket still open — treat these as top priority.
+  3) Move to Resolved once fixed, Closed once confirmed with the client.
+Must do: never let a ticket sit "Waiting for client" indefinitely without a
+  follow-up nudge logged — it should not become the silent reason an SLA
+  breaches.
+
+--------------------------------------------------------------------------------
+8. CONTRACTS AND CLIENTS (view only, for delivery context)
+--------------------------------------------------------------------------------
+View a client's or contract's detail to see delivery history, SLA terms,
+and billing schedule so you can plan resourcing and answer delivery
+questions without chasing Sales/Finance for every detail. You do not create
+or edit contracts — that's Sales Manager/Finance (manual 02/05).
+
+--------------------------------------------------------------------------------
+9. REPORTS (your own projects)
+--------------------------------------------------------------------------------
+Reports -> Delivery-related reports scoped to projects you manage:
+utilisation, milestone slippage, blocker ageing. Export CSV as needed.
+
+--------------------------------------------------------------------------------
+10. YOUR OWN LEAVE, ATTENDANCE AND EXPENSES
+--------------------------------------------------------------------------------
+People -> Leave / Attendance / Expenses — same self-service screens every
+employee uses; see manual 09, section 7, for the exact steps.
+
+--------------------------------------------------------------------------------
+11. APPROVALS — YOUR INBOX
+--------------------------------------------------------------------------------
+Timesheet approvals and change-request approvals for your projects land
+here (and in the dedicated Timesheet approvals screen). Clear regularly so
+billing and utilisation reporting stay current.
+
+--------------------------------------------------------------------------------
+12. YOUR DAILY / WEEKLY CHECKLIST
+--------------------------------------------------------------------------------
+Daily:
+  [ ] Dashboards -> Delivery — milestones due this week, open blockers.
+  [ ] Tickets -> any SLA-breached items — action immediately.
+  [ ] Tasks -> Blocked / In review — unstick what you can.
+Weekly:
+  [ ] Timesheet approvals — clear the queue.
+  [ ] Change requests — any Submitted waiting on your decision?
+  [ ] Projects nearing their deadline — update stakeholders proactively.
+Monthly:
+  [ ] Projects -> milestone sign-offs reconciled with Finance's billing.
+  [ ] Utilisation report reviewed against planned capacity.
+
+--------------------------------------------------------------------------------
+13. TROUBLESHOOTING
+--------------------------------------------------------------------------------
+"I can't see a project" -> you only see projects where you are the manager
+  or a member; ask whoever manages it to add you, or ask Owner.
+"A milestone's billing didn't trigger" -> confirm it reached "Accepted"
+  (ms_accept) and is actually linked to billing; check with Finance if the
+  invoice still doesn't appear.
+"Team member can't update their own task" -> check they are the assignee;
+  only the assignee (or you) can move a task's status.
+"Ticket SLA looks wrong" -> SLA due is driven by the linked contract's
+  terms; check the contract's SLA configuration with Sales/Finance.
+
+================================================================================
+End of Project Manager manual.
+================================================================================

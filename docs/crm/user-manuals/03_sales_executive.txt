@@ -1,0 +1,192 @@
+================================================================================
+BTHINKX BUSINESS OS — USER MANUAL
+ROLE: Sales Executive
+================================================================================
+Your access: OWN scope only — the leads, deals, quotations, payment links,
+payments, clients, commissions and reports that belong to you. You cannot
+see or act on another rep's records.
+Your home screen after login: My Day.
+
+--------------------------------------------------------------------------------
+1. SIGNING IN
+--------------------------------------------------------------------------------
+Enter your email/username + password, complete 2FA if prompted. Forgot your
+password? You cannot self-reset — ask your Sales Manager or Owner.
+
+--------------------------------------------------------------------------------
+2. MY DAY — your starting screen every morning
+--------------------------------------------------------------------------------
+My Day lists, for you only:
+  - Overdue follow-ups (red) — act on these first.
+  - Today's follow-ups.
+  - Anything else due today across your leads.
+Click any item to jump straight into that lead and log the call/meeting/
+note, or complete/postpone the follow-up from there.
+
+--------------------------------------------------------------------------------
+3. LEADS — Sales -> Leads -> All leads
+--------------------------------------------------------------------------------
+3.1 What you see
+  Only leads where you are the owner. New leads are assigned to you by your
+  Sales Manager or Telecaller, or you create your own.
+
+3.2 Creating a lead
+  1) "Add lead" -> fill name, phone, company, service interested, source.
+  2) The system flags likely duplicates as you type — check them before
+     saving to avoid double-working the same enquiry.
+  3) Save — you are automatically the owner.
+
+3.3 Working a lead (the stage pipeline)
+  New -> Contacted -> Nurturing -> Qualified -> Quotation prepared ->
+  Quotation sent -> Negotiation -> Won / Lost
+  On the lead's detail page:
+  - Quick log: Log call, Log meeting, Add note, Log email or WhatsApp —
+    use these every time you actually speak to or message the prospect.
+  - "Change stage" moves it forward (or back) in the pipeline.
+  - "Schedule follow-up" sets your next action and due date/time — this is
+    required; an open lead cannot sit with no scheduled next action.
+  - "Mark won" when the deal closes; "Mark lost" requires picking a real
+    lost reason (Price too high / Competitor / No budget / No response /
+    Not ready / Scope mismatch / Invalid number / Duplicate / Other).
+  Must do: log every contact. Your manager and the Owner dashboard read
+  straight off this activity log, not off memory or chat messages.
+
+3.4 Priority
+  Set each lead Hot / Warm / Cold honestly — it decides what shows first
+  under the "High priority" quick filter and who gets chased by your
+  manager if it slips.
+
+3.5 Tracking your own pipeline
+  Quick filters on the list: My leads, Due today, Overdue, No activity 3
+  days, New in last 24h, High priority, Open, Not yet contacted,
+  First-response SLA breached. Use "Follow-up calendar" (Leads -> Follow-up
+  calendar) to see your schedule on a calendar instead of a list.
+
+--------------------------------------------------------------------------------
+4. YOUR PIPELINE AND DEALS — Sales -> Pipeline
+--------------------------------------------------------------------------------
+Kanban view of your own open deals by stage with weighted value. Drag a
+card to change its stage (same as "Change stage" on the lead). Your numbers
+against target appear on your own dashboard tile where your manager has
+set one.
+
+--------------------------------------------------------------------------------
+5. CLIENTS — Sales -> Clients
+--------------------------------------------------------------------------------
+Clients you own (usually created when your lead is marked Won). Client
+detail shows every quotation/invoice/payment/project tied to them in one
+place — use it before any call so you walk in knowing the full history.
+Create a client directly from Clients -> Add client if one didn't come from
+a lead (e.g. a walk-in).
+
+--------------------------------------------------------------------------------
+6. QUOTATIONS — Sales -> Quotations
+--------------------------------------------------------------------------------
+6.1 Status lifecycle
+  Draft -> Awaiting approval -> Approved -> Sent -> Viewed -> Accepted
+  (or Rejected / Expired / Superseded / Converted / Void)
+
+6.2 Step by step
+  1) From the lead, click "Create quotation" (only enabled once the lead is
+     Qualified) or Quotations -> Add quotation.
+  2) Add line items from the service catalogue; set quantity and any
+     discount. Totals (incl. GST) calculate live.
+  3) Save as Draft and review. Submitting:
+     - within your discount limit -> goes straight to Approved.
+     - above your limit -> goes to "Awaiting approval" in your Sales
+       Manager's Approvals inbox; you'll be notified once decided.
+  4) "Send" — delivers the quotation to the client and creates a trackable
+     link; status becomes Sent, then Viewed automatically once they open
+     it.
+  5) Record the outcome: "Accept" or "Reject" (pick the real rejection
+     reason) if the client told you directly rather than acting on the
+     public link themselves.
+  You can also: "Duplicate" (reuse as a starting point for a new one),
+  "New version" (revise a sent quotation — this supersedes the old one),
+  "Compare" versions, "Resend", "Cancel" your own pending-approval request,
+  or "Void" it (with a reason) if it's dead.
+Must do: chase anything sitting in "Sent" near its validity date — do not
+let quotations silently expire; either close the deal, extend/re-send, or
+mark it lost on the lead.
+
+--------------------------------------------------------------------------------
+7. PAYMENT LINKS — Money -> Collections -> Payment links
+--------------------------------------------------------------------------------
+Create a payment link from an approved quotation/invoice to collect money
+without waiting for a full invoice: choose purpose (Full balance / Advance
+percent / Milestone / Custom partial amount) and payment method. Above your
+limit it needs your manager's approval before it goes Active. "Cancel" it
+if it's no longer needed (reason required).
+
+--------------------------------------------------------------------------------
+8. PAYMENTS AND REFUNDS (your own clients only)
+--------------------------------------------------------------------------------
+Payments -> Payments: record a payment you personally received (e.g. a
+cheque or bank transfer the client told you about) — it goes in as
+"Pending verification" until Finance/Accounting clears it; you cannot
+verify your own entries. Refunds: you can raise a refund request for your
+own client's payment; Finance/Accounting approves and processes it.
+
+--------------------------------------------------------------------------------
+9. INVOICES (view only)
+--------------------------------------------------------------------------------
+Money -> Invoices shows invoices for your own clients so you can answer "has
+this been billed / paid" questions. You cannot create or edit invoices —
+that is Finance's job once a deal is won (ask your manager or Finance to
+raise one, referencing the won quotation).
+
+--------------------------------------------------------------------------------
+10. COMMISSIONS — People -> Payroll -> Commissions (view only)
+--------------------------------------------------------------------------------
+See your own commission entries and their status: Accrued -> Approved ->
+Paid (or Clawed back). Approval is done by your Sales Manager once the
+underlying deal and payment are confirmed.
+
+--------------------------------------------------------------------------------
+11. REPORTS (your own numbers)
+--------------------------------------------------------------------------------
+Reports shows your own activity/performance reports — conversion rate,
+average response time, win/loss, quota attainment. Use these in your own
+1:1s with your manager instead of guessing your numbers.
+
+--------------------------------------------------------------------------------
+12. YOUR OWN LEAVE, ATTENDANCE AND EXPENSES
+--------------------------------------------------------------------------------
+People -> Leave: apply for leave (pick type and dates, submit — goes to
+your manager to approve/reject).
+People -> Attendance: check in/out; request a correction if a check-in was
+missed or wrong (goes for approval).
+People -> Expenses: Expenses -> Add expense — choose kind (Expense / Vendor
+bill / Reimbursement), category, amount, attach the receipt, and Submit.
+Status moves Draft -> Submitted -> Approved -> Paid (or Rejected /
+Correction requested — fix and resubmit if so).
+Must do: attach a receipt to every expense claim before submitting; claims
+without proof are routinely sent back for correction.
+
+--------------------------------------------------------------------------------
+13. YOUR DAILY CHECKLIST
+--------------------------------------------------------------------------------
+  [ ] My Day — clear overdue follow-ups first, then today's.
+  [ ] Every lead you touched today has Quick-log activity recorded.
+  [ ] Every open lead has a scheduled next action.
+  [ ] Quotations sitting in "Sent" — any need chasing today?
+  [ ] Notifications bell — any approval decision or SLA warning for you?
+
+--------------------------------------------------------------------------------
+14. TROUBLESHOOTING
+--------------------------------------------------------------------------------
+"I can't find a lead I was told about" -> it may not be assigned to you yet
+  — ask your Sales Manager or Telecaller to assign it; you only see leads
+  where you are the owner.
+"Create quotation is disabled on my lead" -> the lead must reach
+  "Qualified" stage first.
+"My quotation/payment link is stuck" -> check its status; "Awaiting
+  approval" means it's sitting with your manager, not an error.
+"I can't verify a payment I recorded" -> correct — only Finance/Accounting
+  verifies payments, by design, as a control.
+"I can't see/edit an invoice" -> you have view-only on invoices; ask
+  Finance to make the change.
+
+================================================================================
+End of Sales Executive manual.
+================================================================================

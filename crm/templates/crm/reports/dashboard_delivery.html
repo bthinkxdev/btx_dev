@@ -6,12 +6,12 @@
 <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
   <div class="card"><div class="card-header"><h2 class="card-title">Milestones due this week</h2></div>
     <ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for m in milestones %}
-      <li class="flex items-center justify-between gap-3 px-5 py-3 text-sm"><div><a class="td-strong hover:text-brand-500" href="{% url 'crm:project_detail' m.project_id %}?tab=milestones">{{ m.name }}</a><span class="block text-theme-xs text-gray-500">{{ m.project }}</span></div>
+      <li class="flex items-center justify-between gap-3 px-5 py-3 text-sm" data-href="{% url 'crm:project_detail' m.project_id %}?tab=milestones"><div><a class="td-strong hover:text-brand-500" href="{% url 'crm:project_detail' m.project_id %}?tab=milestones">{{ m.name }}</a><span class="block text-theme-xs text-gray-500">{{ m.project }}</span></div>
         <div class="text-right"><span class="{% if m.due_date < today %}text-error-600{% endif %}">{{ m.due_date|d }}</span><span class="block">{% badge m.status m.get_status_display %}</span></div></li>
     {% empty %}<li class="muted px-5 py-4">No milestones due this week.</li>{% endfor %}</ul></div>
   <div class="card"><div class="card-header"><h2 class="card-title">Open blockers</h2><a class="link text-sm" href="{% url 'crm:blockers' %}">All blockers</a></div>
     <ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for b in blockers %}
-      <li class="px-5 py-3 text-sm"><a class="td-strong hover:text-brand-500" href="{% url 'crm:task_detail' b.task_id %}">{{ b.task.title }}</a> <span class="text-gray-500">· {{ b.task.project }}</span>
+      <li class="px-5 py-3 text-sm" data-href="{% url 'crm:task_detail' b.task_id %}"><a class="td-strong hover:text-brand-500" href="{% url 'crm:task_detail' b.task_id %}">{{ b.task.title }}</a> <span class="text-gray-500">· {{ b.task.project }}</span>
         <span class="block text-theme-xs text-gray-500">{{ b.description|truncatechars:140 }} · open {{ b.created_at|timesince }}</span></li>
     {% empty %}<li class="muted px-5 py-4">Nothing is blocked.</li>{% endfor %}</ul></div>
   {% if util %}

@@ -6,8 +6,8 @@
       <span class="-mt-0.5 {% if message.level_tag == 'success' %}text-success-500{% elif message.level_tag == 'error' %}text-error-500{% elif message.level_tag == 'warning' %}text-warning-500{% else %}text-blue-light-500{% endif %}">
         {% if message.level_tag == 'success' %}{% icon 'check' 22 %}{% elif message.level_tag == 'error' %}{% icon 'alert' 22 %}{% else %}{% icon 'info' 22 %}{% endif %}
       </span>
-      <p class="flex-1 text-sm text-gray-700 dark:text-gray-300">{{ message }}{% if message.level_tag == 'error' and request.request_id %}<span class="mt-1 block text-theme-xs text-gray-400">Reference: {{ request.request_id }}</span>{% endif %}</p>
-      <button type="button" class="crm-toast-close -mt-1 text-gray-400 hover:text-gray-600" aria-label="Dismiss">{% icon 'x' 18 %}</button>
+      <p class="flex-1 text-sm text-gray-700 dark:text-gray-300">{{ message }}{% if message.level_tag == 'error' and request.request_id %}<span class="mt-1 block text-theme-xs text-gray-500 dark:text-gray-400">Reference: {{ request.request_id }}</span>{% endif %}</p>
+      <button type="button" class="crm-toast-close -mt-1 text-gray-500 dark:text-gray-400 hover:text-gray-600" aria-label="Dismiss">{% icon 'x' 18 %}</button>
     </div>
   {% endfor %}
 </div>

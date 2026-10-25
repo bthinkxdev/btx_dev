@@ -9,7 +9,7 @@
     <thead class="border-b border-gray-100 dark:border-gray-800"><tr><th class="th">Number</th><th class="th">Customer</th><th class="th">Version</th><th class="th text-right">{% sort_link 'total' 'Total' %}</th><th class="th">Status</th><th class="th">Owner</th><th class="th">{% sort_link 'sent' 'Sent' %}</th><th class="th">{% sort_link 'valid' 'Valid until' %}</th><th class="th">Viewed</th><th class="th"></th></tr></thead>
     <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
     {% for q in object_list %}
-      <tr class="hover:bg-gray-50 dark:hover:bg-white/3">
+      <tr data-href="{% url 'crm:quotation_detail' q.pk %}" class="hover:bg-gray-50 dark:hover:bg-white/3">
         <td class="td" data-label="Number"><a class="td-strong hover:text-brand-500" href="{% url 'crm:quotation_detail' q.pk %}">{{ q.number|default:"Draft" }}</a>{% if not q.number %}<span class="block text-theme-xs">#{{ q.pk }}</span>{% endif %}</td>
         <td class="td" data-label="Customer">{{ q.customer_display }}{% if q.title %}<span class="block text-theme-xs">{{ q.title|truncatechars:40 }}</span>{% endif %}</td>
         <td class="td" data-label="Version">v{{ q.version }}</td>

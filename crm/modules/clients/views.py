@@ -77,34 +77,15 @@ def client_form(request, pk=None):
     form = ClientForm(request.POST or None, instance=client, user=request.user, can_see_tax=can_tax)
     dupes = []
     if request.method == 'POST' and form.is_valid():
-        c = form.cleaned_data
-        dupes = list(svc.possible_duplicates(legal_name=c['legal_name'], gstin=c.get('gstin', ''), pan=c.get('pan', ''),
-                                             phone=c.get('phone', ''), email=c.get('email', ''),
-                                             exclude_id=client.pk if client else None))
-        if dupes and not request.POST.get('confirm_duplicate'):
+        try:
+            obj = svc.save_client(form, request.user, confirm_duplicate=bool(request.POST.get('confirm_duplicate')))
+            messages.success(request, f'Client {obj} saved.')
+            return redirect('crm:client_detail', pk=obj.pk)
+        except svc.DuplicateClientError as exc:
+            dupes = exc.dupes
             messages.warning(request, 'Possible duplicate client found. Open it, or tick "This is a different client" to save.')
-        else:
-            try:
-                with transaction.atomic():
-                    before = {f: getattr(client, f) for f in form.changed_data if hasattr(client, f)} if client else {}
-                    obj = form.save(commit=False)
-                    if not obj.pk:
-                        obj.created_by = request.user
-                    obj.updated_by = request.user
-                    obj.save()
-                    if client is None and (obj.phone or obj.email):
-                        Contact.objects.create(client=obj, name=obj.display_name, phone=obj.phone, email=obj.email,
-                                               is_primary=True, is_billing=True, created_by=request.user)
-                    audit.log('client.updated' if client else 'client.created', obj,
-                              changes=audit.diff(before, {f: getattr(obj, f) for f in before}) if client else {})
-                messages.success(request, f'Client {obj} saved.')
-                return redirect('crm:client_detail', pk=obj.pk)
-            except Exception as exc:  # unique GSTIN race
-                from django.db import IntegrityError
-                if isinstance(exc, IntegrityError):
-                    form.add_error('gstin', 'Another active client already has this GSTIN.')
-                else:
-                    raise
+        except svc.ClientError as exc:
+            form.add_error('gstin', str(exc.message if hasattr(exc, 'message') else exc))
     return render(request, 'crm/clients/form.html', {'form': form, 'client': client, 'dupes': dupes})
 
 
@@ -283,12 +264,7 @@ def service_form(request, pk=None):
     form = ServiceForm(request.POST or None, instance=obj, can_see_cost=permissions.can_see(request.user, 'cost_price'))
     rule_form = TaxRuleForm(prefix='rule')
     if request.method == 'POST' and form.is_valid():
-        s = form.save(commit=False)
-        if not s.pk:
-            s.created_by = request.user
-        s.updated_by = request.user
-        s.save()
-        audit.log('service.saved', s, changes={'fields': form.changed_data})
+        s = svc.save_service(form, request.user)
         messages.success(request, f'Service {s} saved.')
         return redirect('crm:service_edit', pk=s.pk)
     return render(request, 'crm/clients/service_form.html', {'form': form, 'obj': obj, 'rule_form': rule_form,

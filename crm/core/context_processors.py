@@ -5,7 +5,8 @@ from __future__ import annotations
 def crm(request):
     if not request.path.startswith('/crm/'):
         return {}
-    ctx = {'crm_section': True}
+    from django.conf import settings
+    ctx = {'crm_section': True, 'vapid_public_key': settings.VAPID_PUBLIC_KEY}
     user = getattr(request, 'user', None)
     try:
         from crm.models import CompanySettings

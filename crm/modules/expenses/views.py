@@ -242,20 +242,14 @@ def vendor_form(request, pk=None):
     form = VendorForm(request.POST or None, instance=v, show_bank=permissions.can_see(request.user, 'bank_details'))
     dups = []
     if request.method == 'POST' and form.is_valid():
-        dups = list(svc.possible_vendor_duplicates(form.cleaned_data['name'], form.cleaned_data.get('pan', ''),
-                                                   form.cleaned_data.get('gstin', ''), exclude=v.pk))
-        if dups and not request.POST.get('confirm_new'):
-            messages.warning(request, 'A vendor with the same name, PAN or GSTIN exists. Use it, or tick "Create anyway".')
-        else:
-            obj = form.save(commit=False)
-            obj.updated_by = request.user
-            if not pk:
-                obj.created_by = request.user
-            obj.save()
-            audit.log('vendor.saved', obj, changes={'fields': form.changed_data})
+        try:
+            obj = svc.save_vendor(form, request.user, confirm_new=bool(request.POST.get('confirm_new')))
             messages.success(request, f'Vendor {obj.name} saved.')
             nxt = request.GET.get('next', '')
             return redirect(nxt if nxt.startswith('/crm/') else reverse('crm:vendor_detail', args=[obj.pk]))
+        except svc.DuplicateVendorError as exc:
+            dups = exc.dupes
+            messages.warning(request, 'A vendor with the same name, PAN or GSTIN exists. Use it, or tick "Create anyway".')
     return render(request, 'crm/expenses/vendor_form.html', {'form': form, 'v': v, 'dups': dups})
 
 

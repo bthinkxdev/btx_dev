@@ -9,6 +9,8 @@ from . import posting as P
 from .numbering import DEFAULT_SERIES
 from .roles import ROLE_TEMPLATES
 
+MCP_SERVICE_ACCOUNT = 'business_manager_ai'
+
 # (code, name, type, group, system_code)
 CHART_OF_ACCOUNTS = [
     ('1000', 'Bank accounts', 'asset', 'Bank', ''),
@@ -174,4 +176,19 @@ def run(verbose: bool = False) -> dict:
     for code, name, subject, body in MESSAGE_TEMPLATES:
         MessageTemplate.objects.get_or_create(code=code, channel='email', version=1,
                                               defaults={'name': name, 'subject': subject, 'body': body})
+
+    from django.contrib.auth import get_user_model
+    from crm.models import UserProfile
+    User = get_user_model()
+    bm_user, bm_created = User.objects.get_or_create(username=MCP_SERVICE_ACCOUNT, defaults={
+        'first_name': 'Business Manager', 'last_name': '(AI)', 'email': f'{MCP_SERVICE_ACCOUNT}@service.local',
+        'is_active': True})
+    if bm_created:
+        bm_user.set_unusable_password()
+        bm_user.save()
+    profile, _ = UserProfile.objects.get_or_create(user=bm_user)
+    profile.roles.set(Role.objects.filter(code='business_manager'))
+    profile.receives_leads = False
+    profile.save()
+    out['mcp_service_account'] = bm_created
     return out

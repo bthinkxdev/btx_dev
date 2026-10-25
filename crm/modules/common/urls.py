@@ -19,4 +19,10 @@ urlpatterns = [
     path('files/download/<str:token>/', views.file_download, name='file_download'),
     path('filters/save/', core_views.staff_required(core_views.save_filter_view), name='saved_filter_save'),
     path('filters/<int:pk>/delete/', core_views.staff_required(core_views.delete_filter_view), name='saved_filter_delete'),
+    # PWA: installable app + web push (no login required for the first two — the browser
+    # fetches them to decide whether the app can be installed, including from the login page).
+    path('manifest.webmanifest', views.manifest, name='manifest'),
+    path('service-worker.js', views.service_worker, name='service_worker'),
+    path('push/subscribe/', views.push_subscribe, name='push_subscribe'),
+    path('push/unsubscribe/', views.push_unsubscribe, name='push_unsubscribe'),
 ]

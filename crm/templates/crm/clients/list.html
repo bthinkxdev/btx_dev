@@ -14,7 +14,7 @@
     <thead class="border-b border-gray-100 dark:border-gray-800"><tr><th class="th">{% sort_link 'name' 'Client' %}</th><th class="th">Contact</th>{% if show_tax %}<th class="th">GSTIN</th>{% endif %}<th class="th">Location</th><th class="th">Owner</th><th class="th text-right">Outstanding</th><th class="th">Status</th></tr></thead>
     <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
     {% for c in object_list %}
-      <tr class="hover:bg-gray-50 dark:hover:bg-white/3">
+      <tr data-href="{% url 'crm:client_detail' c.pk %}" class="hover:bg-gray-50 dark:hover:bg-white/3">
         <td class="td" data-label="Client"><a class="td-strong hover:text-brand-500" href="{% url 'crm:client_detail' c.pk %}">{{ c.display_name }}</a><span class="block text-theme-xs">{{ c.get_client_type_display }}{% if c.industry %} · {{ c.industry }}{% endif %}</span></td>
         <td class="td" data-label="Contact">{% if c.phone %}<a href="tel:{{ c.phone }}" class="hover:text-brand-500">{{ c.phone|phone }}</a>{% endif %}{% if c.email %}<span class="block text-theme-xs">{{ c.email }}</span>{% endif %}</td>
         {% if show_tax %}<td class="td font-mono text-theme-xs" data-label="GSTIN">{{ c.gstin|default:"—" }}</td>{% endif %}

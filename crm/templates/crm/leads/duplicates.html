@@ -17,7 +17,7 @@
     <thead class="border-b border-gray-100 dark:border-gray-800"><tr><th class="th">Lead A</th><th class="th">Lead B</th><th class="th">Reason</th><th class="th">Score</th><th class="th">Status</th><th class="th"></th></tr></thead>
     <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
     {% for p in pairs %}
-      <tr>
+      <tr data-href="{% url 'crm:lead_detail' p.lead_a_id %}">
         <td class="td" data-label="Lead A"><a class="td-strong hover:text-brand-500" href="{% url 'crm:lead_detail' p.lead_a_id %}">{{ p.lead_a.name }}</a><span class="block text-theme-xs">{{ p.lead_a.phone|phone }} · {{ p.lead_a.owner|uname }}</span></td>
         <td class="td" data-label="Lead B"><a class="td-strong hover:text-brand-500" href="{% url 'crm:lead_detail' p.lead_b_id %}">{{ p.lead_b.name }}</a><span class="block text-theme-xs">{{ p.lead_b.phone|phone }} · {{ p.lead_b.owner|uname }}</span></td>
         <td class="td" data-label="Reason">{{ p.reason }}</td>

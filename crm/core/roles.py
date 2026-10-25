@@ -178,6 +178,22 @@ ROLE_TEMPLATES = [
         'field_groups': [],
     },
     {
+        'code': 'business_manager', 'name': 'Business Manager (AI)', 'home': 'crm:dashboard_owner',
+        'description': 'Service-account role for the MCP server: create, view and edit business records '
+                       'company-wide. No delete, approve, override or configure. Accounting, banking and '
+                       'payroll are view-only here - an AI may read financial reports but not post entries, '
+                       'manage bank accounts or touch payroll runs.',
+        'grants': _grant(
+            **{m: {'view': 'company', 'create': 'company', 'edit': 'company', 'export': 'company'}
+               for m in ('leads', 'deals', 'quotations', 'payment_links', 'payments', 'invoices', 'receipts',
+                         'clients', 'services', 'contracts', 'projects', 'tasks', 'tickets', 'expenses', 'vendors',
+                         'employees', 'attendance', 'leave', 'commissions', 'reports')},
+            accounting={'view': 'company'}, banking={'view': 'company'}, payroll={'view': 'company'},
+            refunds={'view': 'company'}, audit={'view': 'company'},
+        ),
+        'field_groups': ['internal_notes', 'tax_ids', 'cost_price'],
+    },
+    {
         'code': 'auditor', 'name': 'Auditor', 'home': 'crm:dashboard_owner',
         'description': 'Read-only across approved modules, export reports.',
         'grants': {m: {'view': 'company'} for m in MODULES if m not in ('payroll', 'employees', 'settings')}

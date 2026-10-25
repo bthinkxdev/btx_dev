@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import timedelta
+from decimal import Decimal
 
 from django import forms
 from django.contrib.auth import get_user_model
@@ -145,6 +146,8 @@ class LeadForm(VersionedModelFormMixin, CrmModelForm):
                 self.add_error('expected_close_date', 'Required from Qualified onward.')
             if not cleaned.get('decision_maker'):
                 self.add_error('decision_maker', 'Required from Qualified onward.')
+        if cleaned.get('value') is None:
+            cleaned['value'] = cleaned.get('budget_max') or Decimal('0.00')
         return cleaned
 
 

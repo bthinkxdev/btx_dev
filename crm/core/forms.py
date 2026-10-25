@@ -66,7 +66,7 @@ class StyledFormMixin:
                 w.attrs['aria-invalid'] = 'true'
                 w.attrs['aria-describedby'] = f'{self.add_prefix(name)}-error'
                 if 'form-invalid' not in w.attrs.get('class', ''):
-                    w.attrs['class'] += ' form-invalid'
+                    w.attrs['class'] = (w.attrs.get('class', '') + ' form-invalid').strip()
             if isinstance(f, forms.DecimalField) and getattr(f, 'decimal_places', None) == 2:
                 w.attrs.setdefault('step', '0.01')
                 w.attrs.setdefault('inputmode', 'decimal')

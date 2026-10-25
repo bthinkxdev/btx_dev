@@ -32,7 +32,7 @@
     {% if q.round_off %}<div class="flex justify-between"><dt class="text-gray-500">Round-off</dt><dd>{{ q.round_off|inr }}</dd></div>{% endif %}
     <div class="flex justify-between border-t border-gray-200 pt-2 text-base font-semibold text-gray-800 dark:border-gray-700 dark:text-white/90"><dt>Grand total</dt><dd>{{ q.grand_total|inr }}</dd></div>
     {% if q.advance_amount %}<div class="flex justify-between"><dt class="text-gray-500">Advance ({{ q.advance_percent|pct }})</dt><dd>{{ q.advance_amount|inr }}</dd></div>{% endif %}
-    <p class="pt-1 text-theme-xs text-gray-400">{{ q.grand_total|words }}</p>
+    <p class="pt-1 text-theme-xs text-gray-500 dark:text-gray-400">{{ q.grand_total|words }}</p>
   </dl>
 </div>
 {% if milestones %}<div class="mt-5"><p class="dl-label mb-2">Payment milestones</p><ul class="space-y-1 text-sm">{% for m in milestones %}<li class="flex justify-between"><span>{{ m.name }} — {{ m.get_trigger_display }} {{ m.due_rule }}</span><span>{{ m.percent|pct }}</span></li>{% endfor %}</ul></div>{% endif %}

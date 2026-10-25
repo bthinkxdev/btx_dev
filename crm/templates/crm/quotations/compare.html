@@ -4,7 +4,7 @@
 {% block content %}
 <form method="get" class="card mb-6 flex flex-wrap items-center gap-3 p-4">
   <select name="a" class="form-select h-10 w-auto" aria-label="Version A">{% for v in versions %}<option value="{{ v.pk }}" {% if v.pk == a.pk %}selected{% endif %}>v{{ v.version }} ({{ v.get_status_display }})</option>{% endfor %}</select>
-  <span class="text-gray-400">vs</span>
+  <span class="text-gray-500 dark:text-gray-400">vs</span>
   <select name="b" class="form-select h-10 w-auto" aria-label="Version B">{% for v in versions %}<option value="{{ v.pk }}" {% if v.pk == b.pk %}selected{% endif %}>v{{ v.version }} ({{ v.get_status_display }})</option>{% endfor %}</select>
   <button class="btn btn-secondary btn-sm">Compare</button>
 </form>

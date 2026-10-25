@@ -1,11 +1,11 @@
 {% load static crm_tags %}
 <aside
   :class="sidebarToggle ? 'translate-x-0 xl:w-22.5' : '-translate-x-full'"
-  class="sidebar fixed top-0 left-0 z-9999 flex h-screen w-72.5 flex-col overflow-y-auto border-r border-gray-200 bg-white px-5 transition-all duration-300 xl:static xl:translate-x-0 dark:border-gray-800 dark:bg-black"
+  class="sidebar shadow-theme-sm fixed top-0 left-0 z-9999 flex h-screen w-72.5 flex-col border-r border-gray-200 bg-white px-5 transition-all duration-300 xl:static xl:translate-x-0 dark:border-gray-800 dark:bg-black dark:shadow-none"
   @click.outside="if (window.innerWidth < 1280) sidebarToggle = false"
   aria-label="Main navigation"
 >
-  <div :class="sidebarToggle ? 'justify-center' : 'justify-between'" class="sidebar-header flex items-center gap-2 pt-8 pb-7">
+  <div :class="sidebarToggle ? 'justify-center' : 'justify-between'" class="sidebar-header flex shrink-0 items-center gap-2 pt-8 pb-7">
     <a href="{% url 'crm:home' %}" class="flex items-center gap-3">
       <img src="{% static 'crm/images/logo.jpg' %}" alt="" class="h-10 w-9 shrink-0 rounded-lg object-cover object-top">
       <span class="logo" :class="sidebarToggle ? 'hidden' : ''">
@@ -15,11 +15,11 @@
     </a>
   </div>
 
-  <div class="no-scrollbar flex flex-col overflow-y-auto pb-10 duration-300 ease-linear">
+  <div class="no-scrollbar flex flex-1 flex-col overflow-y-auto pb-4 duration-300 ease-linear">
     <nav x-data="{ selected: '{% for g in nav_groups %}{% for item in g.items %}{% if item.active %}{{ item.key }}{% endif %}{% endfor %}{% endfor %}' }">
       {% for group in nav_groups %}
         <div>
-          <h3 class="mb-4 text-xs leading-5 text-gray-400 uppercase">
+          <h3 class="mb-4 text-xs leading-5 text-gray-500 dark:text-gray-400 uppercase">
             <span class="menu-group-title" :class="sidebarToggle ? 'xl:hidden' : ''">{{ group.label }}</span>
             <span :class="sidebarToggle ? 'xl:block hidden' : 'hidden'" class="menu-group-icon mx-auto block text-center">•••</span>
           </h3>
@@ -62,5 +62,21 @@
         </div>
       {% endfor %}
     </nav>
+  </div>
+
+  <div class="shrink-0 flex flex-col gap-1 border-t border-gray-100 py-3 dark:border-gray-800">
+    <button type="button" @click="$store.pwa.install()" x-cloak
+            x-show="!$store.pwa.isStandalone && ($store.pwa.installAvailable || $store.pwa.isIOS)"
+            class="menu-item menu-item-inactive w-full text-left">
+      <span class="menu-item-icon-inactive">{% icon 'download' 24 %}</span>
+      <span class="menu-item-text" :class="sidebarToggle ? 'xl:hidden' : ''">Install app</span>
+    </button>
+    <button type="button" @click="$store.pwa.toggleNotifications()" x-cloak
+            x-show="$store.pwa.pushSupported" :disabled="$store.pwa.busy"
+            class="menu-item menu-item-inactive w-full text-left disabled:opacity-50">
+      <span :class="$store.pwa.pushEnabled ? 'menu-item-icon-active' : 'menu-item-icon-inactive'">{% icon 'bell' 24 %}</span>
+      <span class="menu-item-text" :class="sidebarToggle ? 'xl:hidden' : ''"
+            x-text="$store.pwa.pushEnabled ? 'Notifications on' : 'Enable notifications'"></span>
+    </button>
   </div>
 </aside>

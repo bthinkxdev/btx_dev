@@ -1,0 +1,234 @@
+================================================================================
+BTHINKX BUSINESS OS — USER MANUAL
+ROLE: Owner / Super Admin
+================================================================================
+Your access: EVERYTHING, at COMPANY scope. You configure the system, manage
+users and roles, approve what others cannot, and are the final escalation
+point for every module below.
+Your home screen after login: Owner Dashboard (Dashboards -> Owner).
+
+--------------------------------------------------------------------------------
+1. SIGNING IN
+--------------------------------------------------------------------------------
+1) Go to the login page and enter your email/username and password.
+2) If your account has too many wrong attempts, it locks temporarily — wait
+   for the time shown on screen, do not keep retrying.
+3) If two-factor authentication (2FA) is enabled on your account, enter the
+   6-digit code from your authenticator app within 5 minutes of the prompt.
+4) You land on the Owner Dashboard. Use the profile menu (top right) to view
+   your profile, change password, or log out.
+Must do: keep 2FA enabled on your own account — you hold the keys to every
+other account in the company.
+
+--------------------------------------------------------------------------------
+2. YOUR DASHBOARDS (Dashboards menu)
+--------------------------------------------------------------------------------
+You can open any dashboard in the system, and switch between them with the
+"Switch" button on each dashboard page:
+  - Owner       : cash collected, outstanding receivables, revenue, gross/
+                  operating profit, cash & bank balance, pipeline, MRR,
+                  renewals due, approvals waiting > 24h — the whole business
+                  on one page.
+  - Sales       : pipeline, win rate, lead response times, targets vs actual.
+  - Finance     : receivables ageing, collections, GST/TDS position.
+  - Delivery    : milestones due, open blockers, team utilisation.
+  - HR          : headcount, upcoming joiners/exits, attendance exceptions.
+  Each dashboard has a date-range picker (Today / This week / This month /
+  Last month / This quarter / This financial year, or a custom From-To) and
+  a "Configure" button to choose which stat cards show for your company.
+How to track the business day to day: open the Owner Dashboard every
+morning, check "Approvals waiting over 24h" and anything red/overdue, then
+drill into the module behind any number that looks wrong (click the card).
+
+--------------------------------------------------------------------------------
+3. USER, ROLE AND TEAM ADMINISTRATION (Settings)
+--------------------------------------------------------------------------------
+This is the area only you (and anyone you grant 'settings' access) can see.
+
+3.1 Users — Settings -> Users
+  - List shows every user, their role(s), team and status.
+  - Open a user to: change their roles, reset 2FA, lock/unlock the account,
+    deactivate (never hard-delete a user who has created records — archive
+    instead, since their history must stay attributable).
+  Must do: when someone leaves the company, deactivate their account the
+  same day and reassign their open leads/deals/tasks to someone active.
+
+3.2 Roles — Settings -> Roles
+  - Each role is a named bundle of module -> action -> scope grants (the
+    same model this manual is built on: view/create/edit/archive/approve/
+    export/assign/cancel/refund/override/reveal_sensitive/import/configure,
+    each at own/team/department/company).
+  - Use "New role" to create a custom role, or open an existing one to
+    adjust its grants and which sensitive field groups it can see (Salary,
+    Bank details, PAN/GSTIN, Gateway credentials, Internal notes, Cost
+    price & margin).
+  Must do: change permissions here, never by asking a developer to hard-code
+  an exception — every grant you create is visible and auditable.
+
+3.3 Teams and Departments — Settings -> Teams
+  - Define teams and department structure; this drives what "team" and
+    "department" scope actually mean for every Sales Manager, Project
+    Manager, etc. Keep manager assignments current — scope rules depend on
+    them directly.
+
+3.4 Company, Tax and Gateway settings — Settings -> Company / Tax / Gateway
+  - Company: legal name, address, logo, financial year, default currency.
+  - Tax: GST registration, tax categories, TDS sections, and the document
+    numbering series for leads/quotations/invoices/credit notes/payment
+    receipts (Settings -> Tax -> series). Numbering series must never be
+    edited once documents have been issued against them — create a new
+    series instead.
+  - Gateway: payment gateway credentials (card/UPI/netbanking provider
+    keys). Only an Owner should hold 'gateway_credentials' field access.
+
+3.5 Message templates — Settings -> Templates
+  - Edit the wording of system emails/WhatsApp messages (quotation sent,
+    invoice reminder, payment confirmation, etc.). Use the merge fields
+    shown on the editor; test with "Send test" before relying on a change.
+
+3.6 Automation / Jobs — Settings -> Jobs
+  - Shows background jobs (recurring invoices, reminders, bank imports,
+    report schedules). A failed job is shown in red with a retry action.
+  Must do: check this weekly; a silently-failing job (e.g. invoice reminders)
+  is invisible everywhere else in the app.
+
+3.7 Audit log — Settings -> Audit
+  - Full, immutable history of who did what, when, from where. Filter by
+    user, module or date. This is your record of truth in any dispute.
+
+3.8 Security events — Settings -> Security
+  - Failed logins, lockouts, 2FA failures, forbidden-access attempts (someone
+    hitting a URL they have no permission for returns a 403 and logs here).
+  - "Unlock" button releases an account that locked itself out.
+  Must do: review this at least weekly; repeated forbidden-access attempts
+  from one account is worth a direct conversation.
+
+--------------------------------------------------------------------------------
+4. SALES: LEADS, PIPELINE, QUOTATIONS
+--------------------------------------------------------------------------------
+See the Sales Manager and Sales Executive manuals (02, 03) for full
+step-by-step detail — as Owner you have the same screens at COMPANY scope,
+plus the ability to re-assign anything, override discount/approval limits,
+and reconfigure lead sources, campaigns and sales targets (Sales ->
+Targets).
+
+Key things only you should decide:
+  - Discount/approval thresholds (set in Settings -> Policy): the amount
+    above which a quotation or payment link needs manager approval.
+  - Lead sources/channels and campaigns (Leads -> Sources and campaigns):
+    keep this list clean — reporting by source is only useful if reps are
+    not inventing new source names ad hoc.
+
+--------------------------------------------------------------------------------
+5. MONEY: QUOTATIONS, PAYMENT LINKS, PAYMENTS, INVOICES, REFUNDS
+--------------------------------------------------------------------------------
+Full detail is in the Finance Executive and Accountant manuals (05, 06).
+As Owner, you additionally:
+  - Approve/override quotations and invoices beyond normal limits (the
+    "Override" action on a quotation/invoice sets its totals or status
+    outside the normal workflow — use sparingly, it is logged).
+  - See every payment verification queue and every refund request company-
+    wide, not just your own team's.
+  - Can issue, cancel, write off or apply advances to any invoice.
+
+--------------------------------------------------------------------------------
+6. ACCOUNTING AND BANKING
+--------------------------------------------------------------------------------
+Full detail in the Accountant manual (06). As Owner you can additionally
+configure the chart of accounts, open/close accounting periods, and
+override posted journal entries if a correction is unavoidable — always via
+a reversing entry, never by editing a posted line.
+
+--------------------------------------------------------------------------------
+7. DELIVERY: CONTRACTS, PROJECTS, TASKS, TICKETS
+--------------------------------------------------------------------------------
+Full detail in the Project Manager manual (08). You can create and approve
+any contract/project/ticket company-wide, and see delivery utilisation
+across every team from the Delivery dashboard.
+
+--------------------------------------------------------------------------------
+8. EXPENSES AND VENDORS
+--------------------------------------------------------------------------------
+Full step-by-step in the Finance Executive manual (05). You have company-
+wide view/create/edit/approve/export on expenses and vendors; use this to
+spot-check the finance team's approvals periodically.
+
+--------------------------------------------------------------------------------
+9. HR, ATTENDANCE, LEAVE, PAYROLL
+--------------------------------------------------------------------------------
+Full step-by-step in the HR Manager manual (07). As Owner you have the same
+access, plus final sign-off is still required from Finance/Accounting
+before a payroll run is paid — the system does not let a single role both
+prepare and pay a payroll run without that second approval.
+
+--------------------------------------------------------------------------------
+10. REPORTS AND THE REPORT CATALOGUE
+--------------------------------------------------------------------------------
+Reports -> Report catalogue lists every pre-built report (sales funnel,
+source performance, SLA breaches, receivables ageing, GST/TDS, utilisation,
+headcount, etc.), grouped by area. Open any report, set a date range or
+preset (Today / This week / This month / Last month / This quarter / This
+financial year), and:
+  - Export CSV directly from the report toolbar.
+  - Click "Schedule" to have it emailed to a chosen group on a recurring
+    basis (daily/weekly/monthly) — manage existing schedules from the same
+    screen.
+  - Click any row to drill into the underlying record where the report
+    supports it (most do).
+
+--------------------------------------------------------------------------------
+11. APPROVALS — YOUR INBOX (top bar / Approvals)
+--------------------------------------------------------------------------------
+Any approval that escalates above a manager's own limit lands with you.
+  - Tab "Mine": everything waiting on your decision. Filter "Overdue" to
+    see only items waiting more than 24 hours.
+  - Tab "Requested": approvals you yourself raised.
+  - Tab "History": decisions you have made.
+  Open an item, read its detail panel and history, then Approve / Reject
+  (with a comment) or, if you raised it yourself, Cancel.
+Must do: clear your "Mine" tab daily. A stuck approval blocks the record
+(a quotation cannot be sent, a payment link cannot be collected, an invoice
+cannot be issued) until you act.
+
+--------------------------------------------------------------------------------
+12. NOTIFICATIONS
+--------------------------------------------------------------------------------
+The bell icon shows unread items (approvals, overdue follow-ups, SLA
+breaches, failed jobs). Click one to jump straight to the record, "Snooze"
+to come back to it later, or "Mark all read" once you have triaged them.
+
+--------------------------------------------------------------------------------
+13. YOUR DAILY / WEEKLY CHECKLIST
+--------------------------------------------------------------------------------
+Daily:
+  [ ] Owner Dashboard — scan every stat card for anything red/unexpected.
+  [ ] Approvals -> Mine — clear to zero (or a conscious, explained backlog).
+  [ ] Notifications bell — triage.
+Weekly:
+  [ ] Settings -> Jobs — any failed background job? Retry or escalate.
+  [ ] Settings -> Security — review failed logins / forbidden attempts.
+  [ ] Reports -> Receivables ageing — anything sliding past terms?
+  [ ] Reports -> Renewals due (60 days) — contracts at risk of lapsing.
+Monthly:
+  [ ] Accounting -> Periods — soft-close last month once reconciled.
+  [ ] HR -> Payroll — confirm the run was prepared, approved and paid.
+  [ ] Settings -> Audit — spot-check a sample of sensitive-field reveals.
+
+--------------------------------------------------------------------------------
+14. TROUBLESHOOTING
+--------------------------------------------------------------------------------
+"User says they can't see/do something" -> Settings -> Users -> open them
+  -> check their role(s) and scope. Fix at the role level, not by creating
+  one-off exceptions per user where avoidable.
+"A number on a dashboard looks wrong" -> click into the underlying report
+  or list and filter to the same date range; the dashboard and report use
+  the same data, so a mismatch is usually a date-range or scope difference.
+"A record is stuck mid-workflow" -> open its Timeline/history tab first;
+  it will show exactly which approval or status step it is waiting on.
+"Someone got a 403 (forbidden)" -> expected behaviour if they lack the
+  permission; check Settings -> Security to confirm it logged, then decide
+  whether to grant the permission via their role.
+
+================================================================================
+End of Owner / Super Admin manual.
+================================================================================

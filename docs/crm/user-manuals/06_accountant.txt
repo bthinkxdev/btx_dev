@@ -1,0 +1,196 @@
+================================================================================
+BTHINKX BUSINESS OS — USER MANUAL
+ROLE: Accountant
+================================================================================
+Your access: COMPANY scope and full control of Accounting (incl. configure/
+override) and Banking (incl. approve); COMPANY on Invoices (incl. approve/
+cancel/export/override), Receipts, Payments (incl. approve), Payment links
+(approve), Refunds (approve/execute), Expenses (approve/export), Audit log
+(view); COMPANY view on Quotations (+override), Clients, Services
+(+configure), Contracts, Vendors, Reports (+export); OWN Leave/Attendance.
+You own the books — journals, ledgers, reconciliation, period close,
+statutory reports.
+Your home screen after login: Accounting -> Dashboard.
+
+--------------------------------------------------------------------------------
+1. SIGNING IN
+--------------------------------------------------------------------------------
+Enter your email/username + password, complete 2FA if prompted. Forgot your
+password? Ask your Owner — you cannot self-reset.
+
+--------------------------------------------------------------------------------
+2. ACCOUNTING DASHBOARD — Accounting -> Dashboard
+--------------------------------------------------------------------------------
+Shows posting health (how many transactions are queued/failed to post to
+the ledger), period status, and a snapshot of the trial balance. "Retry
+postings" re-attempts any failed automatic postings (e.g. an invoice that
+should have created a journal entry but didn't) — run this first if a
+number looks off anywhere downstream.
+
+--------------------------------------------------------------------------------
+3. CHART OF ACCOUNTS — Accounting -> Accounts
+--------------------------------------------------------------------------------
+Asset / Liability / Equity / Income / Expense accounts. "Add account" to
+create a new one (code, name, type, parent if sub-account); "Edit" to
+rename/reclassify; "Deactivate" to retire an account you no longer post to
+(history stays, you just can't post new entries to it).
+Must do: agree any chart-of-accounts change with your Owner before making
+it — restating the structure after real postings exist complicates every
+historical report.
+
+--------------------------------------------------------------------------------
+4. JOURNAL ENTRIES — Accounting -> Journals
+--------------------------------------------------------------------------------
+4.1 Status lifecycle
+  Draft -> Pending approval -> Posted (or Reversed)
+  Most journal entries post automatically from source transactions
+  (invoices, payments, expenses, payroll) — you mainly create manual
+  entries for adjustments, accruals, depreciation, and corrections.
+
+4.2 Creating a manual journal
+  1) Journals -> New journal — enter narration, date, and debit/credit
+     lines against accounts; debits must equal credits before you can
+     save.
+  2) Save as Draft, review.
+  3) "Post" to commit it to the ledger (above your policy limit it instead
+     goes to Pending approval first).
+  4) To correct a posted entry, never edit it — open it and "Reverse": this
+     creates an exact opposite entry dated today, tagged as a reversal of
+     the original, then post a corrected entry. "Discard" only applies to
+     an entry still in Draft/Pending approval that was never posted.
+Must do: every manual journal needs a clear narration — "adjustment" is not
+  enough; write what it's for and reference the source document/ticket.
+
+4.3 General ledger — Accounting -> Ledger
+  Every posted line, filterable by account and date range — your main tool
+  for investigating "why does this account show this balance".
+
+4.4 Trial balance / P&L / Balance sheet / Cash flow / Tax reports —
+  Accounting -> Trial balance / Profit and loss / Balance sheet / Cash flow
+  / Tax
+  Standard financial statements, each with a date-range/period selector and
+  CSV export. Tax reports covers your GST and TDS summaries for filing.
+
+--------------------------------------------------------------------------------
+5. PERIOD CLOSE — Accounting -> Periods
+--------------------------------------------------------------------------------
+Status lifecycle: Open -> Soft-closed -> Closed
+  - "Soft close" a period once you've reconciled everything in it but want
+    a short buffer before fully locking it — postings are flagged/warned
+    but not yet fully blocked.
+  - "Close" locks the period completely — no new postings against it;
+    corrections must go through the current open period instead.
+  - "Reopen" only in an emergency, with a reason — this is logged and
+    should be rare and agreed with your Owner.
+Must do: close the prior month only after bank reconciliation, invoice/
+  expense approvals, and payroll for that month are all finalised.
+
+--------------------------------------------------------------------------------
+6. BANKING AND RECONCILIATION — Banking -> Accounts / Reconciliation
+--------------------------------------------------------------------------------
+6.1 Bank accounts — add/maintain the company's bank accounts.
+6.2 Import a statement — Banking -> Reconciliation -> Import: upload the
+  bank's exported statement file for the period.
+6.3 Matching — each line starts Unmatched; "Auto match" suggests matches
+  against payments/expenses by amount+date+reference (Suggested); for each
+  suggestion, "Confirm" if correct. For anything left:
+  - "Match" it manually to an existing payment/expense.
+  - "Create" a new expense/journal line directly from the bank line if
+    nothing in the system corresponds to it yet (e.g. a bank charge).
+  - "Ignore" a line that's genuinely not yours to reconcile (rare).
+  - "Unmatch" to undo an incorrect match before finalising.
+6.4 Finalise — Banking -> Reconciliation -> Finalise once every line for
+  the period is resolved. This locks the reconciliation; "Undo" is
+  available only shortly after, from the reconciliation's own page — after
+  that, correct via a new entry in the current period instead.
+6.5 Reconciliation report — open any past reconciliation to see its
+  finalised detail, e.g. for an audit request.
+Must do: reconcile every bank account every period before soft-closing it.
+
+--------------------------------------------------------------------------------
+7. INVOICES, PAYMENTS, PAYMENT LINKS, REFUNDS (full company control)
+--------------------------------------------------------------------------------
+You hold the same day-to-day actions described in the Finance Executive
+manual (05, sections 3-5) at company scope, plus:
+  - "Override" on an invoice/quotation — forces a status/total outside the
+    normal workflow for a genuine correction case. Always logged; use only
+    when a credit note or reversal genuinely cannot express the fix.
+  - Final approval authority on payment links, refunds and invoice credit
+    notes/cancellations above Finance Executive's own limit.
+Must do: treat Override as a last resort, not a shortcut — prefer a Credit
+  note, a Reversal, or a Refund, which all leave a cleaner trail.
+
+--------------------------------------------------------------------------------
+8. EXPENSES AND VENDORS (approve + export)
+--------------------------------------------------------------------------------
+Same screens as Finance Executive manual (05, section 7); you additionally
+have export rights company-wide for audit/filing purposes and can approve
+anything a Finance Executive has escalated or is unavailable to clear.
+
+--------------------------------------------------------------------------------
+9. SERVICE CATALOGUE CONFIGURATION — Sales -> Services
+--------------------------------------------------------------------------------
+You can configure tax rules per service (Services -> a service -> Tax
+rules): taxability, GST rate, price mode (inclusive/exclusive), effective
+dates. "End" a tax rule when a rate changes rather than editing the old
+one, so historical documents keep the rate that applied when they were
+issued.
+Must do: any GST rate change goes live only from a clear effective date —
+  never retroactively alter a rule that already has documents against it.
+
+--------------------------------------------------------------------------------
+10. AUDIT LOG — Settings -> Audit (view)
+--------------------------------------------------------------------------------
+Full, immutable history of who did what, when. Use this to investigate any
+discrepancy before assuming data is wrong — it usually tells you exactly
+which action changed a number and who did it.
+
+--------------------------------------------------------------------------------
+11. REPORTS (company scope, export enabled)
+--------------------------------------------------------------------------------
+Every financial report in the catalogue, exportable and schedulable. Use
+Schedule to have your month-end pack (P&L, balance sheet, cash flow, tax
+summary) land automatically for the Owner each month-end.
+
+--------------------------------------------------------------------------------
+12. YOUR OWN LEAVE AND ATTENDANCE
+--------------------------------------------------------------------------------
+People -> Leave / Attendance — same self-service screens every employee
+uses; see manual 09, section 7.
+
+--------------------------------------------------------------------------------
+13. APPROVALS — YOUR INBOX
+--------------------------------------------------------------------------------
+Journal approvals, invoice/credit-note approvals above policy limit,
+payment link/refund approvals, reconciliation sign-offs where configured.
+Clear "Mine" daily.
+
+--------------------------------------------------------------------------------
+14. YOUR MONTH-END CHECKLIST
+--------------------------------------------------------------------------------
+  [ ] All bank accounts reconciled for the period.
+  [ ] All Expense approvals and Payment verifications for the period clear.
+  [ ] Accounting -> Retry postings run, zero failed postings remain.
+  [ ] Trial balance reviewed for any account with an unexpected balance.
+  [ ] P&L, Balance sheet, Cash flow reviewed and exported.
+  [ ] Tax reports reconciled against what you intend to file.
+  [ ] Period soft-closed, then fully closed once confirmed clean.
+
+--------------------------------------------------------------------------------
+15. TROUBLESHOOTING
+--------------------------------------------------------------------------------
+"An invoice didn't create a journal entry" -> Accounting -> Dashboard ->
+  "Retry postings"; if it still fails, check the invoice's own status/
+  totals for something invalid before escalating.
+"Trial balance doesn't balance" -> check for a Draft/Pending-approval
+  journal you expected posted, and for any entry posted into the wrong
+  period (check its date against period boundaries).
+"Can't post into a period" -> it's Closed; use the current open period for
+  the correction, or Reopen only with Owner agreement.
+"Reconciliation line won't match anything" -> "Create" a new entry from the
+  bank line directly (e.g. an unrecorded bank charge) rather than leaving
+  it Unmatched indefinitely.
+
+================================================================================
+End of Accountant manual.
+================================================================================
