@@ -1,0 +1,26 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Inbound inbox{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Inbound inbox" subtitle="Every raw payload from every channel, stored before processing. Nothing arrives silently." count=total %}{% endblock %}
+{% block content %}
+<div class="card">
+  {% include "crm/components/list_toolbar.html" with search_placeholder="Search payloads and errors" %}
+  {% if object_list %}
+  <div class="table-wrap"><table class="data-table responsive-cards">
+    <thead class="border-b border-gray-100 dark:border-gray-800"><tr><th class="th">#</th><th class="th">Received</th><th class="th">Source</th><th class="th">Status</th><th class="th">Attempts</th><th class="th">Lead</th><th class="th">Error</th></tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+    {% for i in object_list %}
+      <tr class="hover:bg-gray-50 dark:hover:bg-white/3">
+        <td class="td" data-label="#"><a class="td-strong hover:text-brand-500" href="{% url 'crm:inbox_detail' i.pk %}">#{{ i.pk }}</a></td>
+        <td class="td whitespace-nowrap" data-label="Received">{{ i.received_at|dt }}</td>
+        <td class="td" data-label="Source">{{ i.source.name }}</td>
+        <td class="td" data-label="Status">{% badge i.status i.get_status_display %}</td>
+        <td class="td" data-label="Attempts">{{ i.attempts }}{% if i.next_retry_at %}<span class="block text-theme-xs text-gray-400">retry {{ i.next_retry_at|ago }}</span>{% endif %}</td>
+        <td class="td" data-label="Lead">{% if i.lead %}<a class="link" href="{% url 'crm:lead_detail' i.lead_id %}">{{ i.lead.name }}</a>{% else %}—{% endif %}</td>
+        <td class="td" data-label="Error">{{ i.last_error|truncatechars:80|default:"—" }}</td>
+      </tr>
+    {% endfor %}
+    </tbody></table></div>
+  {% include "crm/components/pagination.html" %}
+  {% else %}{% include "crm/components/empty_state.html" with filtered=any_filter title="The inbox is empty" text="Inbound form, ad and webhook payloads appear here." icon="inbox" %}{% endif %}
+</div>
+{% endblock %}

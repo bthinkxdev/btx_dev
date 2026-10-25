@@ -1,0 +1,71 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{{ req.title }}{% endblock %}
+{% block page_header %}{% url 'crm:approval_list' as list_url %}{% include "crm/components/page_header.html" with title=req.title crumbs=None %}{% endblock %}
+{% block content %}
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+  <div class="space-y-6 xl:col-span-2">
+    <div class="card">
+      <div class="card-header">
+        <div><h2 class="card-title">{{ req.get_kind_display }}</h2><p class="muted">Requested by {{ req.requested_by|uname }} · {{ req.requested_at|dt }}</p></div>
+        {% badge req.status req.get_status_display %}
+      </div>
+      <div class="card-body space-y-5">
+        {% if target_url %}<a class="link inline-flex items-center gap-1" href="{{ target_url }}">Open the record {% icon 'arrow_right' 16 %}</a>{% endif %}
+        {% if req.amount is not None %}<div><p class="dl-label">Amount</p><p class="dl-value text-lg">{{ req.amount|inr }}</p></div>{% endif %}
+        {% if req.reasons %}
+          <div><p class="dl-label">Why approval is needed</p>
+            <ul class="list-disc space-y-1 pl-5 text-sm text-gray-700 dark:text-gray-300">{% for r in req.reasons %}<li>{{ r }}</li>{% endfor %}</ul></div>
+        {% endif %}
+        {% if req.message %}<div><p class="dl-label">Requester's note</p><p class="text-sm text-gray-700 dark:text-gray-300">{{ req.message|linebreaksbr }}</p></div>{% endif %}
+        {% if rows %}
+          <div>
+            <p class="dl-label mb-2">What will change</p>
+            <div class="table-wrap rounded-xl border border-gray-200 dark:border-gray-800">
+              <table class="data-table"><thead><tr><th class="th">Field</th><th class="th">Before</th><th class="th">After</th></tr></thead>
+                <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                  {% for label, b, a in rows %}<tr><td class="td">{{ label }}</td><td class="td">{{ b }}</td><td class="td-strong px-5 py-3.5">{{ a }}</td></tr>{% endfor %}
+                </tbody></table>
+            </div>
+          </div>
+        {% endif %}
+        {% if req.decided_at %}
+          <div class="alert {% if req.status == 'approved' %}alert-success{% else %}alert-warning{% endif %}">
+            <p class="text-sm text-gray-700 dark:text-gray-300">{{ req.get_status_display }}{% if req.decided_by %} by {{ req.decided_by|uname }}{% endif %} on {{ req.decided_at|dt }}.{% if req.comment %} “{{ req.comment }}”{% endif %}</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="space-y-6">
+    {% if req.status == 'pending' %}
+      <div class="card">
+        <div class="card-header"><h2 class="card-title">Decision</h2></div>
+        <div class="card-body">
+          {% if can_decide %}
+            <form method="post" action="{% url 'crm:approval_decide' req.pk %}" class="space-y-4">{% csrf_token %}{% idem %}
+              <div><label for="comment" class="form-label">Comment</label>
+                <textarea id="comment" name="comment" rows="3" class="form-textarea" maxlength="1000" placeholder="Required when rejecting (at least 10 characters)"></textarea></div>
+              <div class="flex flex-col gap-3 sm:flex-row sm:justify-between">
+                <button name="decision" value="reject" class="btn btn-danger-outline" data-loading-text="Rejecting…">Reject</button>
+                <button name="decision" value="approve" class="btn btn-primary" data-loading-text="Approving…">Approve</button>
+              </div>
+            </form>
+          {% else %}
+            <p class="muted">{{ why }}</p>
+            {% if req.requested_by_id == request.user.pk %}
+              <form method="post" action="{% url 'crm:approval_decide' req.pk %}" class="mt-4" data-confirm="Cancel this approval request?" data-confirm-body="The record returns to its previous state.">{% csrf_token %}
+                <button name="decision" value="cancel" class="btn btn-secondary">Cancel request</button></form>
+            {% endif %}
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">History</h2></div>
+      <ul class="card-body space-y-3">
+        {% for h in history %}<li class="text-sm"><a class="link" href="{% url 'crm:approval_detail' h.pk %}">{{ h.get_kind_display }}</a> · {% badge h.status h.get_status_display %}<span class="block text-theme-xs text-gray-400">{{ h.requested_at|dt }} by {{ h.requested_by|uname }}</span></li>{% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}

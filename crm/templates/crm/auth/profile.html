@@ -1,0 +1,74 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}My profile and security{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="My profile and security" subtitle="Password, two-factor sign-in and active devices." %}{% endblock %}
+{% block content %}
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+  <div class="card">
+    <div class="card-header"><h2 class="card-title">Account</h2></div>
+    <div class="card-body grid grid-cols-2 gap-5">
+      <div><p class="dl-label">Name</p><p class="dl-value">{{ request.user|uname }}</p></div>
+      <div><p class="dl-label">Email</p><p class="dl-value">{{ request.user.email|default:"—" }}</p></div>
+      <div><p class="dl-label">Team</p><p class="dl-value">{{ profile.team|default:"—" }}</p></div>
+      <div><p class="dl-label">Roles</p><p class="dl-value">{% for r in roles %}{{ r.name }}{% if not forloop.last %}, {% endif %}{% empty %}{% if request.user.is_superuser %}Super admin{% else %}None{% endif %}{% endfor %}</p></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2 class="card-title">Change password</h2></div>
+    <form method="post" class="card-body space-y-5" data-dirty-check>{% csrf_token %}{% idem %}
+      <input type="hidden" name="action" value="password">
+      {% include "crm/components/form_errors.html" with form=pw_form %}
+      {% field pw_form.old_password %}
+      {% field pw_form.new_password1 help="At least 12 characters. Avoid common words." %}
+      {% field pw_form.new_password2 %}
+      <div class="flex justify-end"><button class="btn btn-primary" data-loading-text="Saving…">Change password</button></div>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Two-factor sign-in</h2>
+      {% if profile.totp_enabled %}{% badge 'active' 'On' %}{% else %}{% badge 'draft' 'Off' %}{% endif %}
+    </div>
+    <div class="card-body space-y-4">
+      {% if needs_2fa and not profile.totp_enabled %}
+        <div class="alert alert-warning"><p class="text-sm text-gray-700 dark:text-gray-300">Your role handles money or salary data. Turn on two-factor sign-in.</p></div>
+      {% endif %}
+      {% if profile.totp_enabled %}
+        <p class="muted">Every sign-in asks for a code from your authenticator app.</p>
+        <form method="post" data-confirm="Turn off two-factor sign-in?" data-confirm-body="Your account will only be protected by your password." data-confirm-danger="1">{% csrf_token %}
+          <input type="hidden" name="action" value="totp_disable"><button class="btn btn-danger-outline">Turn off two-factor</button>
+        </form>
+      {% elif pending_secret %}
+        <p class="muted">Add this key to Google Authenticator, Microsoft Authenticator or any TOTP app, then enter the code it shows.</p>
+        <div class="rounded-lg bg-gray-50 p-4 font-mono text-sm break-all text-gray-800 dark:bg-white/5 dark:text-white/90">{{ pending_secret }}</div>
+        <button type="button" class="btn btn-secondary btn-sm" data-copy="{{ pending_uri }}" data-copy-message="Setup link copied">{% icon 'copy' 16 %} Copy setup link</button>
+        <form method="post" class="space-y-4">{% csrf_token %}<input type="hidden" name="action" value="totp_confirm">
+          {% field totp_form.code %}
+          <button class="btn btn-primary" data-loading-text="Checking…">Confirm and turn on</button>
+        </form>
+      {% else %}
+        <p class="muted">Protect your account with a 6-digit code from an authenticator app.</p>
+        <form method="post">{% csrf_token %}<input type="hidden" name="action" value="totp_start"><button class="btn btn-primary">Set up two-factor</button></form>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Signed-in devices</h2>
+      <form method="post" data-confirm="Sign out all other devices?" data-confirm-body="Every other browser where you are signed in will be signed out.">{% csrf_token %}
+        <input type="hidden" name="action" value="signout_all"><button class="btn btn-secondary btn-sm">Sign out all other devices</button>
+      </form>
+    </div>
+    <div class="table-wrap border-t border-gray-100 dark:border-gray-800">
+      <table class="data-table"><thead><tr><th class="th">Device</th><th class="th">IP</th><th class="th">Last seen</th></tr></thead>
+        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+        {% for s in sessions %}
+          <tr><td class="td">{{ s.user_agent|truncatechars:60|default:"Unknown" }}{% if s.session_key == current_key %} {% badge 'active' 'This device' %}{% endif %}</td><td class="td">{{ s.ip|default:"—" }}</td><td class="td">{{ s.last_seen_at|dt }}</td></tr>
+        {% empty %}<tr><td class="td" colspan="3">No active sessions recorded.</td></tr>{% endfor %}
+        </tbody></table>
+    </div>
+  </div>
+</div>
+{% endblock %}

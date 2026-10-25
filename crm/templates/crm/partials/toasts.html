@@ -1,0 +1,13 @@
+{% load crm_tags %}
+<div id="toast-region" class="pointer-events-none fixed top-20 right-4 z-999999 flex w-[calc(100%-2rem)] max-w-sm flex-col gap-3" aria-live="polite" aria-atomic="false">
+  {% for message in messages %}
+    <div class="crm-toast pointer-events-auto alert shadow-theme-lg bg-white dark:bg-gray-900 {% if message.level_tag == 'success' %}alert-success{% elif message.level_tag == 'error' %}alert-error{% elif message.level_tag == 'warning' %}alert-warning{% else %}alert-info{% endif %}"
+         role="{% if message.level_tag == 'error' %}alert{% else %}status{% endif %}" data-sticky="{% if message.level_tag == 'error' %}1{% else %}0{% endif %}">
+      <span class="-mt-0.5 {% if message.level_tag == 'success' %}text-success-500{% elif message.level_tag == 'error' %}text-error-500{% elif message.level_tag == 'warning' %}text-warning-500{% else %}text-blue-light-500{% endif %}">
+        {% if message.level_tag == 'success' %}{% icon 'check' 22 %}{% elif message.level_tag == 'error' %}{% icon 'alert' 22 %}{% else %}{% icon 'info' 22 %}{% endif %}
+      </span>
+      <p class="flex-1 text-sm text-gray-700 dark:text-gray-300">{{ message }}{% if message.level_tag == 'error' and request.request_id %}<span class="mt-1 block text-theme-xs text-gray-400">Reference: {{ request.request_id }}</span>{% endif %}</p>
+      <button type="button" class="crm-toast-close -mt-1 text-gray-400 hover:text-gray-600" aria-label="Dismiss">{% icon 'x' 18 %}</button>
+    </div>
+  {% endfor %}
+</div>

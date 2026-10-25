@@ -1,0 +1,25 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Map columns{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Map columns" subtitle=batch.file_name %}{% endblock %}
+{% block content %}
+{% include "crm/leads/_import_steps.html" %}
+<form method="post" class="card">{% csrf_token %}
+  {% if error %}<div class="alert alert-error m-5" role="alert"><p class="text-sm">{{ error }}</p></div>{% endif %}
+  <div class="card-body grid grid-cols-1 gap-5 md:grid-cols-3">
+    {% for key, label, required in fields %}
+      <div>
+        <label class="form-label" for="map_{{ key }}">{{ label }}{% if required %} <span class="text-error-500">*</span>{% endif %}</label>
+        <select id="map_{{ key }}" name="map_{{ key }}" class="form-select">
+          <option value="">Not in file</option>
+          {% for i, h in headers %}<option value="{{ i }}" {% if batch.mapping|get_item:key == i|stringformat:'s' %}selected{% endif %}>{{ h }}</option>{% endfor %}
+        </select>
+      </div>
+    {% endfor %}
+  </div>
+  {% if sample %}
+  <div class="table-wrap border-t border-gray-100 dark:border-gray-800"><p class="px-5 pt-4 text-theme-sm text-gray-500">First rows of your file</p>
+    <table class="data-table"><thead><tr>{% for i, h in headers %}<th class="th">{{ h }}</th>{% endfor %}</tr></thead><tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for r in sample %}<tr>{% for c in r %}<td class="td">{{ c|truncatechars:40 }}</td>{% endfor %}</tr>{% endfor %}</tbody></table></div>
+  {% endif %}
+  <div class="flex justify-end gap-3 border-t border-gray-100 p-5 dark:border-gray-800"><a href="{% url 'crm:lead_import' %}" class="btn btn-secondary">Back</a><button class="btn btn-primary" data-loading-text="Checking…">Next: validate</button></div>
+</form>
+{% endblock %}

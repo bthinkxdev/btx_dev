@@ -1,0 +1,37 @@
+{% extends "crm/base.html" %}{% load static crm_tags %}
+{% block title %}Lost-lead analysis{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+  <div><h1 class="page-title">Lost-lead analysis</h1><p class="muted mt-1">{{ total }} leads lost in the last {{ days }} days, worth {{ total_value|inr0 }}.</p></div>
+  <form method="get"><label class="sr-only" for="days">Period</label><select id="days" name="days" class="form-select h-10 w-auto" data-autosubmit><option value="30" {% if days == 30 %}selected{% endif %}>Last 30 days</option><option value="90" {% if days == 90 %}selected{% endif %}>Last 90 days</option><option value="180" {% if days == 180 %}selected{% endif %}>Last 180 days</option><option value="365" {% if days == 365 %}selected{% endif %}>Last 12 months</option></select></form>
+</div>
+{% endblock %}
+{% block content %}
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+  <div class="card xl:col-span-2"><div class="card-header"><h2 class="card-title">By reason</h2></div><div class="card-body"><div id="lost-chart" class="min-h-64"></div>
+    <table class="data-table mt-4"><tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for label, n, v in by_reason %}<tr><td class="td">{{ label }}</td><td class="td text-right">{{ n }}</td><td class="td text-right">{{ v|inr0 }}</td></tr>{% endfor %}</tbody></table></div></div>
+  <div class="card"><div class="card-header"><h2 class="card-title">Competitors chosen</h2></div><ul class="card-body space-y-2 text-sm">{% for c in competitors %}<li class="flex justify-between"><span>{{ c.lost_competitor }}</span><span class="text-gray-500">{{ c.n }}</span></li>{% empty %}<li class="muted">No competitors recorded.</li>{% endfor %}</ul></div>
+  <div class="card"><div class="card-header"><h2 class="card-title">By source</h2></div><ul class="card-body space-y-2 text-sm">{% for r in by_source %}<li class="flex justify-between"><span>{{ r.source__name }}</span><span class="text-gray-500">{{ r.n }} · {{ r.v|default:0|inr0 }}</span></li>{% endfor %}</ul></div>
+  <div class="card"><div class="card-header"><h2 class="card-title">By executive</h2></div><ul class="card-body space-y-2 text-sm">{% for r in by_owner %}<li class="flex justify-between"><span>{{ r.owner__first_name|default:r.owner__username|default:"Unassigned" }} {{ r.owner__last_name }}</span><span class="text-gray-500">{{ r.n }} · {{ r.v|default:0|inr0 }}</span></li>{% endfor %}</ul></div>
+  <div class="card"><div class="card-header"><h2 class="card-title">By service</h2></div><ul class="card-body space-y-2 text-sm">{% for r in by_service %}<li class="flex justify-between"><span>{{ r.services__name|default:"Not set" }}</span><span class="text-gray-500">{{ r.n }}</span></li>{% endfor %}</ul></div>
+  <div class="card xl:col-span-3"><div class="card-header"><h2 class="card-title">Win-back pipeline</h2></div>
+    <div class="table-wrap border-t border-gray-100 dark:border-gray-800"><table class="data-table responsive-cards"><thead><tr><th class="th">Lead</th><th class="th">Owner</th><th class="th">Lost reason</th><th class="th">Win-back date</th><th class="th"></th></tr></thead>
+      <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for l in winback %}<tr><td class="td" data-label="Lead"><a class="td-strong hover:text-brand-500" href="{% url 'crm:lead_detail' l.pk %}">{{ l.name }}</a></td><td class="td" data-label="Owner">{{ l.owner|uname }}</td><td class="td" data-label="Reason">{{ l.get_lost_reason_display }}</td><td class="td" data-label="Win-back">{{ l.win_back_date|d }}</td>
+        <td class="td text-right" data-label=""><form method="post" action="{% url 'crm:lead_winback' l.pk %}">{% csrf_token %}{% idem %}<button class="btn btn-secondary btn-sm">Create win-back task</button></form></td></tr>{% empty %}<tr><td class="td" colspan="5">No lost leads with a win-back date.</td></tr>{% endfor %}</tbody></table></div></div>
+</div>
+{{ chart|json_script:"lost-data" }}
+{% endblock %}
+{% block extra_js %}
+<script src="{% static 'crm/vendor/apexcharts.min.js' %}"></script>
+<script>
+  (function () {
+    var d = JSON.parse(document.getElementById('lost-data').textContent);
+    if (!d.values.length) { document.getElementById('lost-chart').innerHTML = '<p class="muted">No lost leads in this period.</p>'; return; }
+    new ApexCharts(document.getElementById('lost-chart'), {
+      chart: { type: 'bar', height: 260, fontFamily: 'Outfit, sans-serif', toolbar: { show: false } },
+      series: [{ name: 'Leads', data: d.values }], xaxis: { categories: d.labels },
+      colors: ['#465fff'], plotOptions: { bar: { borderRadius: 4, horizontal: true } }, dataLabels: { enabled: false }
+    }).render();
+  })();
+</script>
+{% endblock %}

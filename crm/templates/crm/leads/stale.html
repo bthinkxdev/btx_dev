@@ -1,0 +1,19 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Stale and unassigned leads{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Stale and unassigned leads" subtitle="Leads drift here when nobody acts. Assign or log an activity to clear them." %}{% endblock %}
+{% block content %}
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+  <section class="card">
+    <div class="card-header"><h2 class="card-title">Unassigned {% badge 'overdue' unassigned|length %}</h2></div>
+    <ul class="divide-y divide-gray-100 border-t border-gray-100 dark:divide-gray-800 dark:border-gray-800">
+      {% for l in unassigned %}<li class="flex items-center justify-between gap-3 px-5 py-3"><div><a class="text-sm font-medium text-gray-800 hover:text-brand-500 dark:text-white/90" href="{% url 'crm:lead_detail' l.pk %}">{{ l.name }}</a><p class="text-theme-xs text-gray-500">{{ l.source.name }} · waiting {{ l.created_at|timesince }}</p></div><a class="btn btn-primary btn-sm" href="{% url 'crm:lead_detail' l.pk %}?modal=assign">Assign</a></li>{% empty %}<li class="px-5 py-6 text-sm text-gray-500">Every lead has an owner.</li>{% endfor %}
+    </ul>
+  </section>
+  <section class="card">
+    <div class="card-header"><h2 class="card-title">No activity for {{ company.stale_days }}+ days</h2></div>
+    <ul class="divide-y divide-gray-100 border-t border-gray-100 dark:divide-gray-800 dark:border-gray-800">
+      {% for l in stale %}<li class="flex items-center justify-between gap-3 px-5 py-3"><div><a class="text-sm font-medium text-gray-800 hover:text-brand-500 dark:text-white/90" href="{% url 'crm:lead_detail' l.pk %}">{{ l.name }}</a><p class="text-theme-xs text-gray-500">{{ l.owner|uname }} · {{ l.get_stage_display }} · last activity {{ l.last_activity_at|ago }}</p></div><a class="btn btn-secondary btn-sm" href="{% url 'crm:lead_detail' l.pk %}?modal=log_call">Log activity</a></li>{% empty %}<li class="px-5 py-6 text-sm text-gray-500">No stale leads.</li>{% endfor %}
+    </ul>
+  </section>
+</div>
+{% endblock %}

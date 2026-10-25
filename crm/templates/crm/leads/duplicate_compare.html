@@ -1,0 +1,33 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Compare duplicates{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Compare and merge" subtitle=pair.reason %}{% endblock %}
+{% block content %}
+<form method="post" class="card" data-dirty-check>{% csrf_token %}{% idem %}
+  <div class="card-header">
+    <fieldset class="flex flex-wrap items-center gap-4"><legend class="form-label">Keep as primary record</legend>
+      <label class="flex items-center gap-2 text-sm"><input type="radio" name="primary" value="{{ a.pk }}" checked class="text-brand-500"> A: {{ a.name }} (#{{ a.pk }})</label>
+      <label class="flex items-center gap-2 text-sm"><input type="radio" name="primary" value="{{ b.pk }}" class="text-brand-500"> B: {{ b.name }} (#{{ b.pk }})</label>
+    </fieldset>
+  </div>
+  <div class="table-wrap border-t border-gray-100 dark:border-gray-800"><table class="data-table">
+    <thead class="border-b border-gray-100 dark:border-gray-800"><tr><th class="th">Field</th><th class="th">A</th><th class="th">B</th><th class="th">Keep</th></tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+    {% for r in rows %}
+      <tr class="{% if r.differs %}bg-warning-25 dark:bg-warning-500/5{% endif %}">
+        <td class="td font-medium">{{ r.label }}</td><td class="td">{{ r.a|default:"—" }}</td><td class="td">{{ r.b|default:"—" }}</td>
+        <td class="td">{% if r.differs %}<select name="keep_{{ r.field }}" class="form-select h-9 w-24 py-1"><option value="a">A</option><option value="b">B</option></select>{% else %}<span class="text-theme-xs text-gray-400">Same</span>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody></table></div>
+  <div class="flex flex-col-reverse justify-between gap-3 border-t border-gray-100 p-5 sm:flex-row dark:border-gray-800">
+    <div class="flex gap-2">
+      <button name="action" value="not_duplicate" class="btn btn-secondary">Not a duplicate</button>
+      <button name="action" value="later" class="btn btn-secondary">Review later</button>
+    </div>
+    <div class="flex gap-2">
+      <button name="action" value="request_merge" class="btn btn-secondary" data-loading-text="Requesting…">Request merge</button>
+      {% if can_merge_now %}<button name="action" value="merge" class="btn btn-primary" data-confirm="Merge these leads?" data-confirm-body="The timeline of the second record moves into the primary. The second record is archived with a pointer." data-confirm-ok="Yes, merge" data-loading-text="Merging…">Merge now</button>{% endif %}
+    </div>
+  </div>
+</form>
+{% endblock %}

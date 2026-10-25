@@ -1,0 +1,29 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Validate import{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Validate and choose handling" subtitle=batch.file_name %}{% endblock %}
+{% block content %}
+{% include "crm/leads/_import_steps.html" %}
+<div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+  <div class="card p-5"><p class="muted">Valid rows</p><p class="text-title-sm font-bold text-success-600">{{ batch.valid_rows }}</p></div>
+  <div class="card p-5"><p class="muted">Duplicates</p><p class="text-title-sm font-bold text-warning-600">{{ batch.duplicate_rows }}</p></div>
+  <div class="card p-5"><p class="muted">Invalid rows</p><p class="text-title-sm font-bold text-error-600">{{ batch.invalid_rows }}</p></div>
+</div>
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+  <form method="post" action="{% url 'crm:lead_import_run' batch.pk %}" class="card xl:col-span-1">{% csrf_token %}{% idem %}
+    <div class="card-header"><h2 class="card-title">Handling</h2></div>
+    <div class="card-body space-y-5">
+      <fieldset><legend class="form-label">{{ form.duplicates.label }}</legend>{% for r in form.duplicates %}<label class="mb-2 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">{{ r.tag }} {{ r.choice_label }}</label>{% endfor %}</fieldset>
+      {% field form.owner %}{% field form.source %}{% field form.campaign %}
+    </div>
+    <div class="flex justify-end gap-3 border-t border-gray-100 p-5 dark:border-gray-800">
+      <a href="{% url 'crm:lead_import_map' batch.pk %}" class="btn btn-secondary">Back</a>
+      <button class="btn btn-primary" {% if not batch.valid_rows and not batch.duplicate_rows %}disabled title="There are no rows to import"{% endif %} data-loading-text="Importing…">Import valid rows</button>
+    </div>
+  </form>
+  <div class="card xl:col-span-2">
+    <div class="card-header"><h2 class="card-title">Rows needing attention</h2>{% if problems %}<a class="btn btn-secondary btn-sm" href="?download=errors">{% icon 'download' 16 %} Download error report</a>{% endif %}</div>
+    <div class="table-wrap border-t border-gray-100 dark:border-gray-800"><table class="data-table"><thead><tr><th class="th">Row</th><th class="th">Status</th><th class="th">Problems</th></tr></thead>
+      <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for r in problems %}<tr><td class="td">{{ r.row }}</td><td class="td">{% badge r.status %}</td><td class="td">{{ r.errors|join:"; " }}</td></tr>{% empty %}<tr><td class="td" colspan="3">Every row is valid.</td></tr>{% endfor %}</tbody></table></div>
+  </div>
+</div>
+{% endblock %}

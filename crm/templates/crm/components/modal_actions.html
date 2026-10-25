@@ -1,0 +1,5 @@
+{# Primary on the right, Cancel on its left (Part 2.2 rule 3). #}
+<div class="mt-6 flex flex-col-reverse justify-end gap-3 sm:flex-row">
+  <button type="button" class="btn btn-secondary" @click="$store.modal.close()">Cancel</button>
+  <button type="submit" class="btn {% if danger %}btn-danger{% else %}btn-primary{% endif %}" data-loading-text="{{ loading|default:'Saving…' }}">{{ label }}</button>
+</div>

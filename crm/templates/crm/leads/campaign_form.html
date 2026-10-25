@@ -1,0 +1,9 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Campaign{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Campaign" %}{% endblock %}
+{% block content %}
+<form method="post" class="card max-w-3xl" data-dirty-check>{% csrf_token %}{% idem %}
+  <div class="card-body grid grid-cols-1 gap-5 md:grid-cols-2">{% include "crm/components/form_errors.html" %}{% for f in form.visible_fields %}{% field f %}{% endfor %}</div>
+  <div class="flex justify-end gap-3 border-t border-gray-100 p-5 dark:border-gray-800"><a href="{% url 'crm:source_list' %}" class="btn btn-secondary">Cancel</a><button class="btn btn-primary" data-loading-text="Saving…">Save campaign</button></div>
+</form>
+{% endblock %}

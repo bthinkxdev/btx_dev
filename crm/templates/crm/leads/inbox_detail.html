@@ -1,0 +1,32 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Inbox #{{ item.pk }}{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Inbound payload" subtitle=item.source.name %}{% endblock %}
+{% block content %}
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+  <div class="card xl:col-span-2">
+    <div class="card-header"><h2 class="card-title">Raw payload</h2>{% badge item.status item.get_status_display %}</div>
+    <pre class="card-body max-h-[60vh] overflow-auto text-xs whitespace-pre-wrap text-gray-700 dark:text-gray-300">{{ pretty }}</pre>
+  </div>
+  <div class="space-y-6">
+    <div class="card"><div class="card-header"><h2 class="card-title">Processing</h2></div>
+      <dl class="card-body space-y-3 text-sm">
+        <div><dt class="dl-label">Received</dt><dd class="dl-value">{{ item.received_at|dt }} from {{ item.remote_ip|default:"—" }}</dd></div>
+        <div><dt class="dl-label">Signature</dt><dd class="dl-value">{% if item.signature_valid %}Verified{% else %}Not verified{% endif %}</dd></div>
+        <div><dt class="dl-label">Attempts</dt><dd class="dl-value">{{ item.attempts }}</dd></div>
+        {% if item.lead %}<div><dt class="dl-label">Lead</dt><dd><a class="link" href="{% url 'crm:lead_detail' item.lead_id %}">{{ item.lead }}</a></dd></div>{% endif %}
+        {% if item.last_error %}<div><dt class="dl-label">Error</dt><dd class="text-error-600">{{ item.last_error }}</dd></div>{% endif %}
+        {% if item.resolution_note %}<div><dt class="dl-label">Resolution</dt><dd class="dl-value">{{ item.resolution_note }} ({{ item.resolved_by|uname }})</dd></div>{% endif %}
+      </dl>
+    </div>
+    <div class="card"><div class="card-header"><h2 class="card-title">What we read</h2></div>
+      <dl class="card-body space-y-2 text-sm">{% for k, v in parsed.items %}<div class="flex justify-between gap-3"><dt class="text-gray-500">{{ k }}</dt><dd class="text-right text-gray-800 dark:text-white/90">{{ v|truncatechars:60 }}</dd></div>{% empty %}<p class="muted">No recognised fields. Add a field mapping on the source.</p>{% endfor %}</dl>
+    </div>
+    {% if item.status != 'processed' and item.status != 'duplicate' and item.status != 'resolved' %}
+    <div class="card"><div class="card-body space-y-3">
+      <form method="post" action="{% url 'crm:inbox_action' item.pk 'reprocess' %}">{% csrf_token %}<button class="btn btn-primary w-full" data-loading-text="Reprocessing…">{% icon 'refresh' 18 %} Reprocess</button></form>
+      <form method="post" action="{% url 'crm:inbox_action' item.pk 'resolve' %}" data-confirm="Mark this payload resolved?" data-confirm-body="Use this after handling it manually (for example, adding the lead yourself)." data-confirm-reason="required" data-confirm-reason-min="5">{% csrf_token %}<button class="btn btn-secondary w-full">Mark resolved</button></form>
+    </div></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

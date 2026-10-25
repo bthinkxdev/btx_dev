@@ -1,0 +1,66 @@
+{% load static crm_tags %}
+<aside
+  :class="sidebarToggle ? 'translate-x-0 xl:w-22.5' : '-translate-x-full'"
+  class="sidebar fixed top-0 left-0 z-9999 flex h-screen w-72.5 flex-col overflow-y-auto border-r border-gray-200 bg-white px-5 transition-all duration-300 xl:static xl:translate-x-0 dark:border-gray-800 dark:bg-black"
+  @click.outside="if (window.innerWidth < 1280) sidebarToggle = false"
+  aria-label="Main navigation"
+>
+  <div :class="sidebarToggle ? 'justify-center' : 'justify-between'" class="sidebar-header flex items-center gap-2 pt-8 pb-7">
+    <a href="{% url 'crm:home' %}" class="flex items-center gap-3">
+      <img src="{% static 'crm/images/logo.jpg' %}" alt="" class="h-10 w-9 shrink-0 rounded-lg object-cover object-top">
+      <span class="logo" :class="sidebarToggle ? 'hidden' : ''">
+        <span class="block text-lg leading-5 font-semibold text-gray-900 dark:text-white">{{ company.display_name|default:"BThinkX" }}</span>
+        <span class="block text-theme-xs text-gray-500 dark:text-gray-400">Business OS</span>
+      </span>
+    </a>
+  </div>
+
+  <div class="no-scrollbar flex flex-col overflow-y-auto pb-10 duration-300 ease-linear">
+    <nav x-data="{ selected: '{% for g in nav_groups %}{% for item in g.items %}{% if item.active %}{{ item.key }}{% endif %}{% endfor %}{% endfor %}' }">
+      {% for group in nav_groups %}
+        <div>
+          <h3 class="mb-4 text-xs leading-5 text-gray-400 uppercase">
+            <span class="menu-group-title" :class="sidebarToggle ? 'xl:hidden' : ''">{{ group.label }}</span>
+            <span :class="sidebarToggle ? 'xl:block hidden' : 'hidden'" class="menu-group-icon mx-auto block text-center">•••</span>
+          </h3>
+          <ul class="mb-6 flex flex-col gap-1">
+            {% for item in group.items %}
+              <li>
+                {% if item.single %}
+                  <a href="{{ item.children.0.href }}"
+                     class="menu-item group {% if item.active %}menu-item-active{% else %}menu-item-inactive{% endif %}"
+                     {% if item.active %}aria-current="page"{% endif %}>
+                    <span class="{% if item.active %}menu-item-icon-active{% else %}menu-item-icon-inactive{% endif %}">{% icon item.icon 24 %}</span>
+                    <span class="menu-item-text" :class="sidebarToggle ? 'xl:hidden' : ''">{{ item.label }}</span>
+                  </a>
+                {% else %}
+                  <a href="#" @click.prevent="selected = (selected === '{{ item.key }}' ? '' : '{{ item.key }}')"
+                     class="menu-item group"
+                     :class="(selected === '{{ item.key }}') ? 'menu-item-active' : 'menu-item-inactive'"
+                     :aria-expanded="selected === '{{ item.key }}'">
+                    <span :class="(selected === '{{ item.key }}') ? 'menu-item-icon-active' : 'menu-item-icon-inactive'">{% icon item.icon 24 %}</span>
+                    <span class="menu-item-text" :class="sidebarToggle ? 'xl:hidden' : ''">{{ item.label }}</span>
+                    <svg class="menu-item-arrow" :class="[(selected === '{{ item.key }}') ? 'menu-item-arrow-active' : 'menu-item-arrow-inactive', sidebarToggle ? 'xl:hidden' : '']"
+                         width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                      <path d="M4.79175 7.39584L10.0001 12.6042L15.2084 7.39585" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </a>
+                  <div class="translate transform overflow-hidden" :class="(selected === '{{ item.key }}') ? 'block' : 'hidden'">
+                    <ul :class="sidebarToggle ? 'xl:hidden' : 'flex'" class="menu-dropdown mt-2 flex flex-col gap-1 pl-9">
+                      {% for child in item.children %}
+                        <li>
+                          <a href="{{ child.href }}" class="menu-dropdown-item group {% if child.active %}menu-dropdown-item-active{% else %}menu-dropdown-item-inactive{% endif %}"
+                             {% if child.active %}aria-current="page"{% endif %}>{{ child.label }}</a>
+                        </li>
+                      {% endfor %}
+                    </ul>
+                  </div>
+                {% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endfor %}
+    </nav>
+  </div>
+</aside>

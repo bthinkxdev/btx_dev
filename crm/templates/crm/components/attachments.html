@@ -1,0 +1,23 @@
+{% load crm_tags %}
+<div class="card">
+  <div class="card-header"><h2 class="card-title">Documents</h2></div>
+  <div class="card-body space-y-4">
+    <ul class="space-y-2">
+      {% for a in attachments %}
+        <li class="flex items-center justify-between gap-3 rounded-lg border border-gray-100 px-3 py-2 dark:border-gray-800">
+          <a href="{% url 'crm:attachment_open' a.pk %}" target="_blank" rel="noopener" class="flex min-w-0 items-center gap-2 text-sm text-gray-700 hover:text-brand-500 dark:text-gray-300">{% icon 'document' 18 %}<span class="truncate">{{ a.original_name }}</span></a>
+          <span class="flex items-center gap-2 text-theme-xs text-gray-400">{{ a.size|filesizeformat }}
+            {% if can_upload %}<form method="post" action="{% url 'crm:attachment_archive' a.pk %}" data-confirm="Remove {{ a.original_name }}?" data-confirm-body="The file is archived and kept for audit." data-confirm-danger="1">{% csrf_token %}<button class="btn-icon-sm" aria-label="Remove">{% icon 'trash' 16 %}</button></form>{% endif %}
+          </span>
+        </li>
+      {% empty %}<li class="muted">No documents yet.</li>{% endfor %}
+    </ul>
+    {% if can_upload %}
+      <form method="post" enctype="multipart/form-data" action="{% url 'crm:attachment_upload' model_name obj.pk %}" class="flex flex-col gap-3 sm:flex-row sm:items-center">{% csrf_token %}{% idem %}
+        <input type="file" name="file" required accept=".pdf,.png,.jpg,.jpeg,.webp,.csv,.xlsx,.docx,.txt" class="block w-full text-sm text-gray-700 file:mr-4 file:rounded-lg file:border-0 file:bg-brand-50 file:px-4 file:py-2.5 file:text-sm file:font-medium file:text-brand-500 dark:text-gray-400 dark:file:bg-brand-500/15" aria-label="File">
+        <button class="btn btn-secondary btn-sm shrink-0" data-loading-text="Uploading…">{% icon 'upload' 16 %} Upload</button>
+      </form>
+      <p class="form-help">PDF, images, CSV, Excel or Word, up to 10 MB.</p>
+    {% endif %}
+  </div>
+</div>

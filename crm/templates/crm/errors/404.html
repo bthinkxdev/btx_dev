@@ -1,0 +1,19 @@
+{% load static crm_tags %}<!doctype html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="robots" content="noindex">
+<title>Page not found</title>
+<script>try{if(JSON.parse(localStorage.getItem('darkMode')))document.documentElement.classList.add('dark')}catch(e){}</script>
+<link rel="stylesheet" href="{% static 'crm/css/crm.css' %}"></head>
+<body class="bg-white dark:bg-gray-900">
+<div class="relative z-1 flex min-h-screen flex-col items-center justify-center overflow-hidden p-6">
+  <div class="absolute top-0 right-0 -z-1 w-full max-w-[250px] xl:max-w-[450px]"><img src="{% static 'crm/images/grid-01.svg' %}" alt=""></div>
+  <div class="absolute bottom-0 left-0 -z-1 w-full max-w-[250px] rotate-180 xl:max-w-[450px]"><img src="{% static 'crm/images/grid-01.svg' %}" alt=""></div>
+  <div class="mx-auto w-full max-w-60.5 text-center sm:max-w-118">
+    <h1 class="text-title-md xl:text-title-2xl mb-8 font-bold text-gray-800 dark:text-white/90">ERROR</h1>
+    <img src="{% static 'crm/images/404.svg' %}" alt="404" class="dark:hidden">
+    <img src="{% static 'crm/images/404-dark.svg' %}" alt="404" class="hidden dark:block">
+    <p class="mt-10 mb-6 text-base text-gray-700 sm:text-lg dark:text-gray-400">We can’t find the page you are looking for.</p>
+    {% if not public %}<a href="{% url 'crm:home' %}" class="btn btn-secondary">Back to My Day</a>{% endif %}
+  </div>
+  <p class="absolute bottom-6 left-1/2 -translate-x-1/2 text-center text-sm text-gray-500 dark:text-gray-400">&copy; {% now "Y" %} BThinkX</p>
+</div>
+</body></html>

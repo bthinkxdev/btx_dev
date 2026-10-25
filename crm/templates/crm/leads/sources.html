@@ -1,0 +1,57 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Lead sources and campaigns{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+  <div><h1 class="page-title">Lead sources and campaigns</h1><p class="muted mt-1">Health, volume, conversion and cost per lead. A source that goes silent alerts the owner.</p></div>
+  <div class="flex gap-2"><a href="{% url 'crm:campaign_create' %}" class="btn btn-secondary">Add campaign</a><a href="{% url 'crm:source_create' %}" class="btn btn-primary">{% icon 'plus' 18 %} Add source</a></div>
+</div>
+{% endblock %}
+{% block content %}
+<div class="card mb-6">
+  <div class="table-wrap">
+    <table class="data-table responsive-cards">
+      <thead class="border-b border-gray-100 dark:border-gray-800"><tr><th class="th">Source</th><th class="th">Health</th><th class="th text-right">Leads (30 d)</th><th class="th text-right">Total</th><th class="th text-right">Won</th><th class="th text-right">Conversion</th><th class="th text-right">Cost per lead</th><th class="th text-right">Revenue</th><th class="th">Last lead</th><th class="th"><span class="sr-only">Actions</span></th></tr></thead>
+      <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+      {% for r in rows %}{% with s=r.s %}
+        <tr x-data="{ show: false }">
+          <td class="td" data-label="Source"><a href="{% url 'crm:source_edit' s.pk %}" class="td-strong hover:text-brand-500">{{ s.name }}</a><span class="block text-theme-xs text-gray-500">{{ s.get_channel_display }}</span></td>
+          <td class="td" data-label="Health">{% if not s.is_active %}{% badge 'archived' 'Inactive' %}{% elif s.is_paused %}{% badge 'on_hold' 'Paused' %}{% elif s.is_silent %}{% badge 'silent' 'Silent' %}{% else %}{% badge 'active' 'Healthy' %}{% endif %}</td>
+          <td class="td text-right" data-label="Leads (30 d)">{{ s.leads_30 }}</td>
+          <td class="td text-right" data-label="Total">{{ s.leads_total }}</td>
+          <td class="td text-right" data-label="Won">{{ s.won }}</td>
+          <td class="td text-right" data-label="Conversion">{{ r.conv }}%</td>
+          <td class="td text-right" data-label="Cost per lead">{% if r.cpl %}{{ r.cpl|inr0 }}{% else %}—{% endif %}</td>
+          <td class="td text-right" data-label="Revenue">{{ s.revenue|default:0|inr0 }}</td>
+          <td class="td whitespace-nowrap" data-label="Last lead">{{ s.last_lead_at|ago }}</td>
+          <td class="td text-right whitespace-nowrap" data-label="">
+            <div class="flex justify-end gap-1">
+              <button type="button" class="btn btn-secondary btn-sm" data-copy="{{ inbound_base }}{{ s.source_key }}/" data-copy-message="Inbound URL copied">{% icon 'copy' 14 %} URL</button>
+              <form method="post" action="{% url 'crm:source_action' s.pk 'test' %}">{% csrf_token %}<button class="btn btn-secondary btn-sm" data-loading-text="Testing…">Test</button></form>
+              <form method="post" action="{% url 'crm:source_action' s.pk 'pause' %}">{% csrf_token %}<button class="btn btn-secondary btn-sm">{% if s.is_paused %}Resume{% else %}Pause{% endif %}</button></form>
+              <form method="post" action="{% url 'crm:source_action' s.pk 'rotate' %}" data-confirm="Rotate the key for {{ s.name }}?" data-confirm-body="The old inbound URL and secret stop working immediately. Update your forms afterwards." data-confirm-danger="1" data-confirm-ok="Yes, rotate key">{% csrf_token %}<button class="btn btn-secondary btn-sm">Rotate key</button></form>
+            </div>
+          </td>
+        </tr>
+      {% endwith %}{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+  <div class="card">
+    <div class="card-header"><h2 class="card-title">Campaigns</h2></div>
+    <ul class="divide-y divide-gray-100 border-t border-gray-100 dark:divide-gray-800 dark:border-gray-800">
+      {% for c in campaigns %}<li class="flex items-center justify-between px-5 py-3"><a href="{% url 'crm:campaign_edit' c.pk %}" class="text-sm font-medium text-gray-800 hover:text-brand-500 dark:text-white/90">{{ c.name }}</a><span class="text-theme-sm text-gray-500">{{ c.source.name }} · {{ c.n }} leads · budget {{ c.budget|inr0 }}</span></li>{% empty %}<li class="px-5 py-6 text-sm text-gray-500">No campaigns yet.</li>{% endfor %}
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-header"><h2 class="card-title">How to connect a form</h2></div>
+    <div class="card-body space-y-3 text-sm text-gray-600 dark:text-gray-400">
+      <p>POST the form fields (JSON or form-encoded) to the source's inbound URL. Authenticate with either header:</p>
+      <ul class="list-disc space-y-1 pl-5"><li><code class="rounded bg-gray-100 px-1 dark:bg-white/5">X-Signature</code>: hex HMAC-SHA256 of the raw body using the source secret (recommended)</li><li><code class="rounded bg-gray-100 px-1 dark:bg-white/5">X-Source-Secret</code>: the source secret, for server-side posts</li></ul>
+      <p>Every payload is stored raw first (inbound inbox), then deduplicated and assigned. Send an <code class="rounded bg-gray-100 px-1 dark:bg-white/5">id</code> field to make retries safe.</p>
+      <p>The secret is shown on each source's edit page to users with the configure permission.</p>
+    </div>
+  </div>
+</div>
+{% endblock %}

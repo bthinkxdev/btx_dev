@@ -1,0 +1,10 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Access denied{% endblock %}
+{% block content %}
+<div class="card flex flex-col items-center px-6 py-16 text-center">
+  <div class="bg-error-50 text-error-500 dark:bg-error-500/15 mb-5 flex h-16 w-16 items-center justify-center rounded-full">{% icon 'lock' 30 %}</div>
+  <h1 class="mb-2 text-2xl font-semibold text-gray-800 dark:text-white/90">You do not have access</h1>
+  <p class="muted mb-6 max-w-lg">{{ message }}</p>
+  <a href="{% url 'crm:home' %}" class="btn btn-secondary">Back to My Day</a>
+</div>
+{% endblock %}

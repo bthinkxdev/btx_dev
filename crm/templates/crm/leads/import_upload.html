@@ -1,0 +1,20 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Import leads{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Import leads" subtitle="CSV or Excel up to 10 MB or 10,000 rows. Every row's result is kept in the import batch." %}{% endblock %}
+{% block content %}
+{% include "crm/leads/_import_steps.html" %}
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+  <form method="post" enctype="multipart/form-data" class="card xl:col-span-2">{% csrf_token %}{% idem %}
+    <div class="card-body space-y-5">
+      {% include "crm/components/form_errors.html" %}
+      {% field form.file %}
+      <a href="{% url 'crm:lead_import_template' %}" class="link inline-flex items-center gap-1 text-sm">{% icon 'download' 16 %} Download the template</a>
+    </div>
+    <div class="flex justify-end gap-3 border-t border-gray-100 p-5 dark:border-gray-800"><a href="{% url 'crm:lead_list' %}" class="btn btn-secondary">Cancel</a><button class="btn btn-primary" data-loading-text="Uploading…">Upload file</button></div>
+  </form>
+  <div class="card"><div class="card-header"><h2 class="card-title">Recent imports</h2></div>
+    <ul class="divide-y divide-gray-100 border-t border-gray-100 dark:divide-gray-800 dark:border-gray-800">
+      {% for b in recent %}<li class="px-5 py-3"><a href="{% if b.status == 'imported' or b.status == 'undone' %}{% url 'crm:lead_import_result' b.pk %}{% else %}{% url 'crm:lead_import_map' b.pk %}{% endif %}" class="text-sm font-medium text-gray-800 hover:text-brand-500 dark:text-white/90">{{ b.file_name }}</a><p class="text-theme-xs text-gray-500">{{ b.created_at|dt }} · {{ b.created_by|uname }} · {{ b.get_status_display }}{% if b.created_count %} · {{ b.created_count }} created{% endif %}</p></li>{% empty %}<li class="px-5 py-6 text-sm text-gray-500">No imports yet.</li>{% endfor %}
+    </ul></div>
+</div>
+{% endblock %}

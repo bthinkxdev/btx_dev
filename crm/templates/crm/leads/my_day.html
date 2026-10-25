@@ -1,0 +1,120 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}My Day{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+  <div>
+    <h1 class="page-title">Good {% if now.hour < 12 %}morning{% elif now.hour < 17 %}afternoon{% else %}evening{% endif %}, {{ request.user.first_name|default:request.user.username }}</h1>
+    <p class="muted mt-1">What must you do right now? {{ today|d }}</p>
+  </div>
+  {% can 'leads' 'create' as can_create %}{% if can_create %}<a href="{% url 'crm:lead_create' %}" class="btn btn-primary">{% icon 'plus' 18 %} Add lead</a>{% endif %}
+</div>
+{% endblock %}
+{% block content %}
+{% if target %}
+<div class="card mb-6 p-5 sm:p-6">
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <p class="muted">Collected this month against target</p>
+      <p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ collected|inr0 }} <span class="text-base font-normal text-gray-500">of {{ target.collected_value|inr0 }}</span></p>
+      <p class="text-theme-sm text-gray-500">Gap to target: {{ target_gap|inr0 }}</p>
+    </div>
+    <div class="w-full sm:w-80">
+      <div class="h-3 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800" role="progressbar" aria-valuenow="{{ target_pct }}" aria-valuemin="0" aria-valuemax="100">
+        <div class="bg-brand-500 h-full rounded-full" style="width: {{ target_pct }}%"></div>
+      </div>
+      <p class="mt-1 text-right text-theme-sm text-gray-500">{{ target_pct }}%</p>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+  {% if overdue is not None %}
+  <section class="card" aria-labelledby="h-overdue">
+    <div class="card-header"><h2 id="h-overdue" class="card-title">Overdue {% if overdue %}{% badge 'overdue' overdue|length %}{% endif %}</h2><a class="btn-link text-sm" href="{% url 'crm:lead_list' %}?quick=overdue">See all</a></div>
+    <ul class="divide-y divide-gray-100 border-t border-gray-100 dark:divide-gray-800 dark:border-gray-800">
+      {% for fu in overdue %}{% include "crm/leads/_follow_up_row.html" with overdue=True %}{% empty %}<li class="px-5 py-6 text-sm text-gray-500">Nothing overdue. 👏</li>{% endfor %}
+    </ul>
+  </section>
+
+  <section class="card" aria-labelledby="h-today">
+    <div class="card-header"><h2 id="h-today" class="card-title">Today</h2><a class="btn-link text-sm" href="{% url 'crm:followup_calendar' %}">Calendar</a></div>
+    <ul class="divide-y divide-gray-100 border-t border-gray-100 dark:divide-gray-800 dark:border-gray-800">
+      {% for fu in today_list %}{% include "crm/leads/_follow_up_row.html" %}{% empty %}<li class="px-5 py-6 text-sm text-gray-500">No more follow-ups due today.</li>{% endfor %}
+    </ul>
+  </section>
+
+  <section class="card" aria-labelledby="h-new">
+    <div class="card-header"><h2 id="h-new" class="card-title">New leads waiting</h2></div>
+    <ul class="divide-y divide-gray-100 border-t border-gray-100 dark:divide-gray-800 dark:border-gray-800">
+      {% for l in waiting %}
+        <li class="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div><a href="{% url 'crm:lead_detail' l.pk %}" class="text-sm font-medium text-gray-800 hover:text-brand-500 dark:text-white/90">{{ l.name }}</a>
+            <p class="text-theme-xs {% if l.sla_seconds < 0 %}text-error-600{% else %}text-gray-500{% endif %}">{% if l.sla_seconds < 0 %}SLA missed{% else %}Contact within {% widthratio l.sla_seconds 60 1 %} min{% endif %} · {{ l.source.name }}</p></div>
+          <div class="flex gap-2">
+            {% if l.phone %}<a href="tel:{{ l.phone }}" class="btn btn-primary btn-sm">{% icon 'phone' 16 %} Call now</a>{% endif %}
+            <a href="{% url 'crm:lead_detail' l.pk %}?modal=log_call" class="btn btn-secondary btn-sm">Log</a>
+          </div>
+        </li>
+      {% empty %}<li class="px-5 py-6 text-sm text-gray-500">No new leads waiting for first contact.</li>{% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  {% if quotes_to_chase is not None %}
+  <section class="card" aria-labelledby="h-quotes">
+    <div class="card-header"><h2 id="h-quotes" class="card-title">Quotations to chase</h2><a class="btn-link text-sm" href="{% url 'crm:quotation_list' %}">All quotations</a></div>
+    <ul class="divide-y divide-gray-100 border-t border-gray-100 dark:divide-gray-800 dark:border-gray-800">
+      {% for q in quotes_to_chase %}
+        <li class="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div><a href="{% url 'crm:quotation_detail' q.pk %}" class="text-sm font-medium text-gray-800 hover:text-brand-500 dark:text-white/90">{{ q.display_number }} · {{ q.customer_display }}</a>
+            <p class="text-theme-xs text-gray-500">{{ q.grand_total|inr0 }} · valid until {{ q.valid_until|d }}{% if q.view_count %} · viewed {{ q.view_count }}×{% endif %}</p></div>
+          <div class="flex items-center gap-2">{% if q.valid_until <= soon %}{% badge 'expiring' 'Expiring soon' %}{% endif %}{% badge q.status q.get_status_display %}
+            {% if q.contact_phone %}<a href="tel:{{ q.contact_phone }}" class="btn btn-secondary btn-sm">Call</a>{% endif %}</div>
+        </li>
+      {% empty %}<li class="px-5 py-6 text-sm text-gray-500">No sent quotations waiting for a decision.</li>{% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  {% if links_to_nudge is not None %}
+  <section class="card" aria-labelledby="h-links">
+    <div class="card-header"><h2 id="h-links" class="card-title">Payment links to nudge</h2></div>
+    <ul class="divide-y divide-gray-100 border-t border-gray-100 dark:divide-gray-800 dark:border-gray-800">
+      {% for pl in links_to_nudge %}
+        <li class="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div><a href="{% url 'crm:link_detail' pl.pk %}" class="text-sm font-medium text-gray-800 hover:text-brand-500 dark:text-white/90">{{ pl.code }} · {{ pl.client }}</a>
+            <p class="text-theme-xs text-gray-500">{{ pl.balance|inr }} to collect · opened {{ pl.open_count }}× · expires {{ pl.expires_at|dt }}</p></div>
+          <div class="flex gap-2">{% if pl.expires_soon %}{% badge 'expiring' 'Expiring' %}{% endif %}<a href="{% url 'crm:link_detail' pl.pk %}?modal=send" class="btn btn-secondary btn-sm">Resend</a>{% if pl.contact_phone %}<a href="tel:{{ pl.contact_phone }}" class="btn btn-secondary btn-sm">Call</a>{% endif %}</div>
+        </li>
+      {% empty %}<li class="px-5 py-6 text-sm text-gray-500">No opened-but-unpaid links.</li>{% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  {% if approvals_waiting %}
+  <section class="card" aria-labelledby="h-approvals">
+    <div class="card-header"><h2 id="h-approvals" class="card-title">Approvals waiting {% badge 'pending' approvals_waiting|length %}</h2><a class="btn-link text-sm" href="{% url 'crm:approval_list' %}">All</a></div>
+    <ul class="divide-y divide-gray-100 border-t border-gray-100 dark:divide-gray-800 dark:border-gray-800">
+      {% for r in approvals_waiting %}<li class="flex items-center justify-between gap-3 px-5 py-4"><div><p class="text-sm font-medium text-gray-800 dark:text-white/90">{{ r.title }}</p><p class="text-theme-xs text-gray-500">{{ r.requested_by|uname }} · {{ r.requested_at|ago }}</p></div><a href="{% url 'crm:approval_detail' r.pk %}" class="btn btn-primary btn-sm">Review</a></li>{% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  {% if my_tasks %}
+  <section class="card" aria-labelledby="h-tasks">
+    <div class="card-header"><h2 id="h-tasks" class="card-title">My tasks</h2><a class="btn-link text-sm" href="{% url 'crm:task_list' %}">All tasks</a></div>
+    <ul class="divide-y divide-gray-100 border-t border-gray-100 dark:divide-gray-800 dark:border-gray-800">
+      {% for t in my_tasks %}<li class="flex items-center justify-between gap-3 px-5 py-4"><div><a href="{% url 'crm:task_detail' t.pk %}" class="text-sm font-medium text-gray-800 hover:text-brand-500 dark:text-white/90">{{ t.title }}</a><p class="text-theme-xs {% if t.is_overdue %}text-error-600{% else %}text-gray-500{% endif %}">{{ t.project.name }} · due {{ t.due_date|d }}</p></div>{% badge t.status t.get_status_display %}</li>{% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+</div>
+
+{% include "crm/components/modal_start.html" with id="postpone_quick" title="Postpone follow-up" subtitle="Give a reason. More than 3 postponements flags the lead for review." %}
+  <form method="post" id="postpone-quick-form" action="" novalidate>{% csrf_token %}{% idem %}
+    {% include "crm/components/modal_form.html" with form=postpone_form %}
+    {% include "crm/components/modal_actions.html" with label="Postpone" %}
+  </form>
+{% include "crm/components/modal_end.html" %}
+{% endblock %}

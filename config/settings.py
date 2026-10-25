@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'django.contrib.sitemaps',
     'django.contrib.humanize',
     'pages',
+    'crm',
 ]
 
 MIDDLEWARE = [
@@ -60,6 +61,7 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    'crm.core.middleware.CrmRequestMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
@@ -77,6 +79,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'pages.context_processors.seo',
+                'crm.core.context_processors.crm',
             ],
         },
     },
@@ -84,16 +87,34 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
+# PostgreSQL is the production database (Business OS spec). Set DB_ENGINE=postgres and
+# DB_NAME / DB_USER / DB_PASSWORD / DB_HOST / DB_PORT in .env. SQLite remains the
+# zero-config default for local development.
+if os.environ.get('DB_ENGINE', '').strip().lower() in ('postgres', 'postgresql'):
+  DATABASES = {
+      'default': {
+          'ENGINE': 'django.db.backends.postgresql',
+          'NAME': os.environ.get('DB_NAME', 'bthinkx'),
+          'USER': os.environ.get('DB_USER', 'bthinkx'),
+          'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+          'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
+          'PORT': os.environ.get('DB_PORT', '5432'),
+          'CONN_MAX_AGE': int(os.environ.get('DB_CONN_MAX_AGE', '60')),
+          'ATOMIC_REQUESTS': False,
+      }
+  }
+else:
+  DATABASES = {
+      'default': {
+          'ENGINE': 'django.db.backends.sqlite3',
+          'NAME': BASE_DIR / 'db.sqlite3',
+          'OPTIONS': {'timeout': 20},
+      }
+  }
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator', 'OPTIONS': {'min_length': 12}},
     {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
@@ -172,3 +193,66 @@ CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', '').strip() or (REDIS_UR
 CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', '').strip() or (REDIS_URL or '')
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_ENABLE_UTC = True
+
+
+# ---------------------------------------------------------------------------
+# BThinkX Business OS (crm app)
+# ---------------------------------------------------------------------------
+LOGIN_URL = 'crm:login'
+LOGIN_REDIRECT_URL = 'crm:home'
+
+# Private uploads (attachments, PDFs, imports) live outside MEDIA_ROOT and are only
+# served through signed, permission-checked URLs.
+CRM_PRIVATE_MEDIA_ROOT = Path(os.environ.get('CRM_PRIVATE_MEDIA_ROOT', str(BASE_DIR / 'private_media')))
+
+# Key used to encrypt gateway secrets at rest. Keep it outside the database (env / secret
+# manager). Falls back to a key derived from SECRET_KEY for development only.
+CRM_ENCRYPTION_KEY = os.environ.get('CRM_ENCRYPTION_KEY', '').strip()
+
+# Upload limits (Part 15.1)
+CRM_MAX_UPLOAD_MB = int(os.environ.get('CRM_MAX_UPLOAD_MB', '10'))
+DATA_UPLOAD_MAX_MEMORY_SIZE = 12 * 1024 * 1024
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 5000
+
+# Session hygiene for staff (Part 3.6). Idle timeout is enforced per request by
+# crm.core.middleware using CompanySettings.idle_timeout_minutes.
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE = 'Lax'
+X_FRAME_OPTIONS = 'DENY'
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = 'same-origin'
+if not DEBUG:
+  SESSION_COOKIE_SECURE = True
+  CSRF_COOKIE_SECURE = True
+  SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+  SECURE_HSTS_SECONDS = int(os.environ.get('SECURE_HSTS_SECONDS', '0'))
+  SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT', 'false').lower() in ('1', 'true', 'yes')
+
+CSRF_TRUSTED_ORIGINS = [
+    o.strip() for o in os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',') if o.strip()
+]
+
+# Scheduled jobs (Part 13.4). Run either with Celery beat (when REDIS_URL is set) or
+# with cron:  */5 * * * *  python manage.py crm_run_jobs
+CELERY_BEAT_SCHEDULE = {
+    'crm-frequent-jobs': {'task': 'crm.tasks.run_frequent_jobs', 'schedule': 300.0},
+    'crm-daily-jobs': {'task': 'crm.tasks.run_daily_jobs', 'schedule': 86400.0},
+}
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'filters': {'request_id': {'()': 'crm.core.middleware.RequestIdLogFilter'}},
+    'formatters': {
+        'standard': {'format': '%(asctime)s %(levelname)s %(name)s [%(request_id)s] %(message)s'},
+    },
+    'handlers': {
+        'console': {'class': 'logging.StreamHandler', 'formatter': 'standard', 'filters': ['request_id']},
+    },
+    'root': {'handlers': ['console'], 'level': os.environ.get('LOG_LEVEL', 'INFO')},
+    'loggers': {
+        'django.db.backends': {'level': 'WARNING'},
+    },
+}

@@ -1,0 +1,261 @@
+/*
+ * BThinkX Business OS stylesheet.
+ * Built with Tailwind CSS v4 from the TailAdmin design in crmdashboardtemplate/.
+ * Every component class below is composed only of the template's own utility
+ * classes so the CRM looks exactly like the template.
+ *
+ * Rebuild:  cd crm/frontend && npm install && npm run build
+ */
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap") layer(base);
+@import "tailwindcss";
+@plugin "@tailwindcss/forms";
+
+@source "../../templates";
+@source "../../core";
+@source "../../modules";
+@source "../../templatetags";
+@source "../../static/crm/js";
+
+@import "./template-base.css";
+
+/* ---------- Cards ---------- */
+@utility card {
+  @apply rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/3;
+}
+@utility card-header {
+  @apply flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-5;
+}
+@utility card-title {
+  @apply text-base font-medium text-gray-800 dark:text-white/90;
+}
+@utility card-body {
+  @apply border-t border-gray-100 p-5 sm:p-6 dark:border-gray-800;
+}
+
+/* ---------- Buttons (Part 2.1 / 2.2) ---------- */
+@utility btn {
+  @apply shadow-theme-xs inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium whitespace-nowrap transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 active:translate-y-px disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50;
+}
+@utility btn-primary {
+  @apply bg-brand-500 hover:bg-brand-600 text-white;
+}
+@utility btn-secondary {
+  @apply border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/3 dark:hover:text-gray-200;
+}
+@utility btn-danger {
+  @apply bg-error-500 hover:bg-error-600 text-white;
+}
+@utility btn-danger-outline {
+  @apply border-error-300 text-error-600 hover:bg-error-50 dark:border-error-500/40 dark:text-error-500 dark:hover:bg-error-500/10 border bg-white dark:bg-gray-900;
+}
+@utility btn-success {
+  @apply bg-success-500 hover:bg-success-600 text-white;
+}
+@utility btn-link {
+  @apply text-brand-500 hover:text-brand-600 dark:text-brand-400 min-h-0 bg-transparent px-0 py-0 shadow-none hover:underline;
+}
+@utility btn-sm {
+  @apply min-h-9 px-3 py-1.5 text-xs;
+}
+@utility btn-icon {
+  @apply flex h-11 w-11 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white;
+}
+@utility btn-icon-sm {
+  @apply flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300;
+}
+
+/* ---------- Form fields (Part 2.5) ---------- */
+@utility form-label {
+  @apply mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400;
+}
+@utility form-input {
+  @apply shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:disabled:bg-white/3;
+}
+@utility form-textarea {
+  @apply shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30;
+}
+@utility form-select {
+  @apply shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pr-11 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90;
+}
+@utility form-multiselect {
+  @apply shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 min-h-28 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90;
+}
+@utility form-checkbox-box {
+  @apply text-brand-500 focus:ring-brand-500/20 h-5 w-5 rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900;
+}
+@utility form-invalid {
+  @apply border-error-300 focus:border-error-300 focus:ring-error-500/10 dark:border-error-700 dark:focus:border-error-800;
+}
+@utility form-help {
+  @apply text-theme-xs mt-1.5 text-gray-500 dark:text-gray-400;
+}
+@utility form-error {
+  @apply text-theme-xs text-error-500 mt-1.5;
+}
+
+/* ---------- Badges (Part 2.9) ---------- */
+@utility badge {
+  @apply inline-flex items-center justify-center gap-1 rounded-full px-2.5 py-0.5 text-theme-xs font-medium whitespace-nowrap;
+}
+@utility badge-grey {
+  @apply bg-gray-100 text-gray-700 dark:bg-white/5 dark:text-white/80;
+}
+@utility badge-blue {
+  @apply bg-blue-light-50 text-blue-light-500 dark:bg-blue-light-500/15 dark:text-blue-light-500;
+}
+@utility badge-amber {
+  @apply bg-warning-50 text-warning-600 dark:bg-warning-500/15 dark:text-orange-400;
+}
+@utility badge-green {
+  @apply bg-success-50 text-success-600 dark:bg-success-500/15 dark:text-success-500;
+}
+@utility badge-red {
+  @apply bg-error-50 text-error-600 dark:bg-error-500/15 dark:text-error-500;
+}
+@utility badge-purple {
+  @apply bg-theme-purple-500/10 text-theme-purple-500 dark:bg-theme-purple-500/20;
+}
+@utility badge-brand {
+  @apply bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400;
+}
+
+/* ---------- Tables (Part 2.7) ---------- */
+@utility table-wrap {
+  @apply custom-scrollbar max-w-full overflow-x-auto;
+}
+@utility data-table {
+  @apply min-w-full text-left rtl:text-right;
+}
+@utility th {
+  @apply text-theme-xs px-5 py-3 font-medium whitespace-nowrap text-gray-500 dark:text-gray-400;
+}
+@utility td {
+  @apply text-theme-sm px-5 py-3.5 text-gray-500 dark:text-gray-400;
+}
+@utility td-strong {
+  @apply text-theme-sm font-medium text-gray-800 dark:text-white/90;
+}
+
+/* ---------- Alerts / banners (Part 2.4) ---------- */
+@utility alert {
+  @apply flex items-start gap-3 rounded-xl border p-4 text-sm;
+}
+@utility alert-success {
+  @apply border-success-500 bg-success-50 dark:border-success-500/30 dark:bg-success-500/15;
+}
+@utility alert-error {
+  @apply border-error-500 bg-error-50 dark:border-error-500/30 dark:bg-error-500/15;
+}
+@utility alert-warning {
+  @apply border-warning-500 bg-warning-50 dark:border-warning-500/30 dark:bg-warning-500/15;
+}
+@utility alert-info {
+  @apply border-blue-light-500 bg-blue-light-50 dark:border-blue-light-500/30 dark:bg-blue-light-500/15;
+}
+
+/* ---------- Tabs ---------- */
+@utility tab {
+  @apply text-theme-sm inline-flex items-center gap-2 border-b-2 px-1 py-3 font-medium whitespace-nowrap;
+}
+@utility tab-active {
+  @apply border-brand-500 text-brand-500 dark:text-brand-400;
+}
+@utility tab-inactive {
+  @apply border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200;
+}
+
+/* ---------- Filter chips ---------- */
+@utility chip {
+  @apply text-theme-sm inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 py-1.5 font-medium transition;
+}
+@utility chip-active {
+  @apply border-brand-500 bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400;
+}
+@utility chip-inactive {
+  @apply border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-white/5;
+}
+
+/* ---------- Description lists on detail pages ---------- */
+@utility dl-label {
+  @apply text-theme-xs mb-1 text-gray-500 dark:text-gray-400;
+}
+@utility dl-value {
+  @apply text-sm font-medium break-words text-gray-800 dark:text-white/90;
+}
+
+/* ---------- Misc ---------- */
+@utility page-title {
+  @apply text-xl font-semibold text-gray-800 dark:text-white/90;
+}
+@utility muted {
+  @apply text-sm text-gray-500 dark:text-gray-400;
+}
+@utility link {
+  @apply text-brand-500 hover:text-brand-600 dark:text-brand-400 font-medium hover:underline;
+}
+
+/* Modal shell (Part 2.6): focus trap and scroll lock are handled in ui.js */
+.crm-modal-panel {
+  max-height: calc(100vh - 2.5rem);
+}
+
+/* Kanban */
+.kanban-card.is-dragging {
+  opacity: 0.6;
+}
+.kanban-col.is-over {
+  outline: 2px dashed var(--color-brand-300);
+  outline-offset: -4px;
+}
+
+/* Loading spinner used inside buttons */
+.btn-spinner {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 9999px;
+  animation: spin 0.7s linear infinite;
+}
+
+/* Visible focus ring is never removed (Part 2.2) */
+:focus-visible {
+  outline-color: var(--color-brand-500);
+}
+
+/* Tables collapse to cards under 640px (Part 2.10) */
+@media (max-width: 639px) {
+  table.responsive-cards thead {
+    display: none;
+  }
+  table.responsive-cards tr {
+    display: block;
+    border-bottom: 1px solid var(--color-gray-100);
+    padding: 0.75rem 0;
+  }
+  .dark table.responsive-cards tr {
+    border-color: var(--color-gray-800);
+  }
+  table.responsive-cards td {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.25rem 1rem;
+  }
+  table.responsive-cards td[data-label]::before {
+    content: attr(data-label);
+    font-size: 12px;
+    color: var(--color-gray-400);
+  }
+  table.responsive-cards td.mobile-hide {
+    display: none;
+  }
+}
+
+@media print {
+  aside.sidebar,
+  header,
+  .no-print {
+    display: none !important;
+  }
+}

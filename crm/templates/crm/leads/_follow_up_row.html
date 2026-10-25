@@ -1,0 +1,14 @@
+{% load crm_tags %}
+<li class="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+  <div class="min-w-0">
+    <a href="{% url 'crm:lead_detail' fu.lead_id %}" class="text-sm font-medium text-gray-800 hover:text-brand-500 dark:text-white/90">{{ fu.lead.name }}{% if fu.lead.company %} · {{ fu.lead.company }}{% endif %}</a>
+    <p class="text-theme-xs {% if overdue %}text-error-600 dark:text-error-500{% else %}text-gray-500{% endif %}">{{ fu.get_kind_display }} · {{ fu.due_at|dt }}{% if overdue %} · {{ fu.due_at|timesince }} late{% endif %}{% if fu.purpose %} · {{ fu.purpose }}{% endif %}</p>
+  </div>
+  <div class="flex flex-wrap gap-2">
+    {% if fu.lead.phone %}<a href="tel:{{ fu.lead.phone }}" class="btn btn-secondary btn-sm" aria-label="Call {{ fu.lead.name }}">{% icon 'phone' 16 %}</a>
+      <a href="https://wa.me/{{ fu.lead.phone|wa }}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" aria-label="WhatsApp {{ fu.lead.name }}">{% icon 'whatsapp' 16 %}</a>{% endif %}
+    <a href="{% url 'crm:lead_detail' fu.lead_id %}?modal=complete&amp;fu={{ fu.pk }}" class="btn btn-primary btn-sm">Complete</a>
+    <button type="button" class="btn btn-secondary btn-sm"
+            @click="document.getElementById('postpone-quick-form').action='{% url 'crm:follow_up_quick' fu.pk 'postpone' %}'; $store.modal.show('postpone_quick')">Postpone</button>
+  </div>
+</li>

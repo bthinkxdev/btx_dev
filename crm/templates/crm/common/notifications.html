@@ -1,0 +1,36 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Notifications{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Notifications" subtitle="Unread first, newest at the top." %}{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">All notifications</h2>
+    <form method="post" action="{% url 'crm:notifications_read_all' %}">{% csrf_token %}<button class="btn btn-secondary btn-sm">Mark all read</button></form>
+  </div>
+  <ul class="divide-y divide-gray-100 border-t border-gray-100 dark:divide-gray-800 dark:border-gray-800">
+    {% for n in page_obj %}
+      <li class="flex flex-col gap-2 px-5 py-4 sm:flex-row sm:items-center sm:justify-between {% if not n.read_at %}bg-brand-25 dark:bg-white/3{% endif %}">
+        <a href="{% url 'crm:notification_open' n.pk %}" class="flex items-start gap-3">
+          <span class="mt-0.5 {% if n.level == 'critical' %}text-error-500{% elif n.level == 'warning' %}text-warning-500{% elif n.level == 'success' %}text-success-500{% else %}text-brand-500{% endif %}">{% icon 'bell' 20 %}</span>
+          <span>
+            <span class="block text-sm font-medium text-gray-800 dark:text-white/90">{{ n.title }}</span>
+            {% if n.body %}<span class="block text-sm text-gray-500 dark:text-gray-400">{{ n.body }}</span>{% endif %}
+            <span class="text-theme-xs text-gray-400">{{ n.created_at|dt }}{% if not n.read_at %} · Unread{% endif %}</span>
+          </span>
+        </a>
+        {% if not n.read_at and n.level != 'critical' %}
+          <form method="post" action="{% url 'crm:notification_snooze' n.pk %}">{% csrf_token %}<button class="btn btn-secondary btn-sm">Snooze 1 hour</button></form>
+        {% endif %}
+      </li>
+    {% empty %}
+      <li>{% include "crm/components/empty_state.html" with title="No notifications yet" text="Alerts about leads, approvals and payments appear here." icon="bell" %}</li>
+    {% endfor %}
+  </ul>
+  {% if page_obj.has_other_pages %}
+    <div class="flex justify-end gap-2 border-t border-gray-100 px-5 py-4 dark:border-gray-800">
+      {% if page_obj.has_previous %}<a class="btn btn-secondary btn-sm" href="?page={{ page_obj.previous_page_number }}">Previous</a>{% endif %}
+      {% if page_obj.has_next %}<a class="btn btn-secondary btn-sm" href="?page={{ page_obj.next_page_number }}">Next</a>{% endif %}
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

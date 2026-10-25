@@ -1,0 +1,55 @@
+{% load crm_tags %}
+{# Search (debounced 300 ms), quick filters, filter selects, saved filters, export (Part 2.7). #}
+<div class="space-y-3 border-b border-gray-100 px-5 py-4 dark:border-gray-800">
+  <form method="get" class="flex flex-col gap-3 lg:flex-row lg:items-center" data-filter-form>
+    {% if request.GET.quick %}<input type="hidden" name="quick" value="{{ request.GET.quick }}">{% endif %}
+    {% if request.GET.view %}<input type="hidden" name="view" value="{{ request.GET.view }}">{% endif %}
+    {% if request.GET.sort %}<input type="hidden" name="sort" value="{{ request.GET.sort }}">{% endif %}
+    <div class="relative w-full lg:max-w-xs">
+      <span class="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-gray-400">{% icon 'search' 18 %}</span>
+      <input type="search" name="q" value="{{ q }}" placeholder="{{ search_placeholder|default:'Search…' }}" aria-label="Search" class="form-input pl-11" data-debounce-submit>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      {% for flt, choices in filters %}
+        <label class="sr-only" for="flt-{{ flt.name }}">{{ flt.label }}</label>
+        <select id="flt-{{ flt.name }}" name="{{ flt.name }}" class="form-select h-10 w-auto min-w-36 py-2 text-sm" data-autosubmit>
+          <option value="">{{ flt.label }}: all</option>
+          {% for value, label in choices %}<option value="{{ value }}" {% if active_filters|get_item:flt.name == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      {% endfor %}
+      <noscript><button class="btn btn-secondary btn-sm">Apply</button></noscript>
+    </div>
+    <div class="flex items-center gap-2 lg:ml-auto">
+      {% if any_filter %}<a href="{{ request.path }}{% if request.GET.view %}?view={{ request.GET.view }}{% endif %}" class="btn btn-secondary btn-sm">Clear all</a>{% endif %}
+      {% if can_export and total %}
+        <div class="relative" x-data="{ o: false }" @click.outside="o = false">
+          <button type="button" class="btn btn-secondary btn-sm" @click="o = !o">{% icon 'download' 16 %} Export</button>
+          <div x-show="o" x-cloak class="shadow-theme-lg absolute right-0 z-99 mt-2 w-44 rounded-xl border border-gray-200 bg-white p-2 dark:border-gray-800 dark:bg-gray-900">
+            <a class="menu-dropdown-item menu-dropdown-item-inactive" href="{% qs export='csv' %}">CSV ({{ total }} rows)</a>
+            <a class="menu-dropdown-item menu-dropdown-item-inactive" href="{% qs export='xlsx' %}">Excel ({{ total }} rows)</a>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </form>
+  {% if quick_filters or saved_filters %}
+    <div class="flex flex-wrap items-center gap-2" role="group" aria-label="Quick filters">
+      {% for key, label in quick_filters %}
+        <a href="{% if request.GET.quick == key %}{% qs quick='' %}{% else %}{% qs quick=key %}{% endif %}"
+           class="chip {% if request.GET.quick == key %}chip-active{% else %}chip-inactive{% endif %}">{{ label }}</a>
+      {% endfor %}
+      {% for sf in saved_filters %}
+        <span class="chip chip-inactive"><a href="?{{ sf.querystring }}">★ {{ sf.name }}</a>
+          <form method="post" action="{% url 'crm:saved_filter_delete' sf.pk %}" class="inline">{% csrf_token %}<button class="text-gray-400 hover:text-error-500" aria-label="Remove saved filter {{ sf.name }}">×</button></form></span>
+      {% endfor %}
+      {% if any_filter %}
+        <form method="post" action="{% url 'crm:saved_filter_save' %}" class="flex items-center gap-2" x-data="{ s: false }">{% csrf_token %}
+          <input type="hidden" name="module" value="{{ module_code }}"><input type="hidden" name="querystring" value="{{ request.GET.urlencode }}">
+          <button type="button" class="btn-link text-sm" x-show="!s" @click="s = true">Save filter</button>
+          <input x-show="s" x-cloak name="name" maxlength="60" placeholder="Filter name" class="form-input h-9 w-40 py-1 text-sm" aria-label="Filter name">
+          <button x-show="s" x-cloak class="btn btn-secondary btn-sm" data-loading-text="Saving…">Save</button>
+        </form>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>

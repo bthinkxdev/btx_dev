@@ -1,0 +1,19 @@
+{% load crm_tags %}
+{# Global confirmation popup used by data-confirm forms (Part 2.4 / 2.2 rule 6). #}
+<div id="crm-confirm" class="fixed inset-0 z-999999 hidden items-center justify-center overflow-y-auto p-5" role="dialog" aria-modal="true" aria-labelledby="crm-confirm-title">
+  <div class="fixed inset-0 h-full w-full bg-gray-400/50 backdrop-blur-[32px]" data-confirm-cancel></div>
+  <div class="relative w-full max-w-140 rounded-3xl bg-white p-6 lg:p-8 dark:bg-gray-900">
+    <h4 id="crm-confirm-title" class="mb-2 text-xl font-semibold text-gray-800 dark:text-white/90">Are you sure?</h4>
+    <p id="crm-confirm-body" class="mb-5 text-sm text-gray-500 dark:text-gray-400"></p>
+    <div id="crm-confirm-reason-wrap" class="mb-5 hidden">
+      <label for="crm-confirm-reason" class="form-label">Reason <span class="text-error-500">*</span></label>
+      <textarea id="crm-confirm-reason" rows="3" class="form-textarea" maxlength="500"></textarea>
+      <p id="crm-confirm-reason-help" class="form-help">At least 10 characters.</p>
+      <p id="crm-confirm-reason-error" class="form-error hidden">Enter at least 10 characters.</p>
+    </div>
+    <div class="flex flex-col-reverse justify-end gap-3 sm:flex-row">
+      <button type="button" class="btn btn-secondary" data-confirm-cancel id="crm-confirm-cancel">Keep editing</button>
+      <button type="button" class="btn btn-primary" id="crm-confirm-ok">Confirm</button>
+    </div>
+  </div>
+</div>

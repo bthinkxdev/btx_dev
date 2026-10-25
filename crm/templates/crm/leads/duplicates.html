@@ -1,0 +1,31 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Duplicate review{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+  <div><h1 class="page-title">Duplicate review</h1><p class="muted mt-1">Suspected pairs with the match reason. Merging keeps both histories; the second record is archived with a pointer.</p></div>
+  <form method="post" action="{% url 'crm:duplicate_scan' %}">{% csrf_token %}<button class="btn btn-secondary" data-loading-text="Scanning…">{% icon 'search' 18 %} Scan for duplicates</button></form>
+</div>
+{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="flex gap-6 overflow-x-auto px-5" role="tablist">
+    <a href="?status=open" class="tab {% if status == 'open' %}tab-active{% else %}tab-inactive{% endif %}">To review</a>
+    <a href="?status=merged" class="tab {% if status == 'merged' %}tab-active{% else %}tab-inactive{% endif %}">Merged</a>
+    <a href="?status=not_duplicate" class="tab {% if status == 'not_duplicate' %}tab-active{% else %}tab-inactive{% endif %}">Not duplicates</a>
+  </div>
+  <div class="table-wrap border-t border-gray-100 dark:border-gray-800"><table class="data-table responsive-cards">
+    <thead class="border-b border-gray-100 dark:border-gray-800"><tr><th class="th">Lead A</th><th class="th">Lead B</th><th class="th">Reason</th><th class="th">Score</th><th class="th">Status</th><th class="th"></th></tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+    {% for p in pairs %}
+      <tr>
+        <td class="td" data-label="Lead A"><a class="td-strong hover:text-brand-500" href="{% url 'crm:lead_detail' p.lead_a_id %}">{{ p.lead_a.name }}</a><span class="block text-theme-xs">{{ p.lead_a.phone|phone }} · {{ p.lead_a.owner|uname }}</span></td>
+        <td class="td" data-label="Lead B"><a class="td-strong hover:text-brand-500" href="{% url 'crm:lead_detail' p.lead_b_id %}">{{ p.lead_b.name }}</a><span class="block text-theme-xs">{{ p.lead_b.phone|phone }} · {{ p.lead_b.owner|uname }}</span></td>
+        <td class="td" data-label="Reason">{{ p.reason }}</td>
+        <td class="td" data-label="Score">{{ p.score }}</td>
+        <td class="td" data-label="Status">{% badge p.status p.get_status_display %}</td>
+        <td class="td text-right" data-label="">{% if p.status == 'open' or p.status == 'later' %}<a class="btn btn-primary btn-sm" href="{% url 'crm:duplicate_compare' p.pk %}">Compare</a>{% endif %}</td>
+      </tr>
+    {% empty %}<tr><td colspan="6">{% include "crm/components/empty_state.html" with title="No suspected duplicates" text="Run a scan, or check back after new leads arrive." icon="users" %}</td></tr>{% endfor %}
+    </tbody></table></div>
+</div>
+{% endblock %}

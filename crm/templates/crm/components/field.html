@@ -1,0 +1,24 @@
+{% load crm_tags %}
+{% with w=f.field.widget.input_type %}
+<div class="{{ wrapper_class }}">
+  {% if w == 'checkbox' %}
+    <label for="{{ f.id_for_label }}" class="flex cursor-pointer items-start gap-3 text-sm font-medium text-gray-700 select-none dark:text-gray-400">
+      {{ f }}
+      <span>{{ label }}{% if help %}<span class="form-help mt-0.5 block font-normal">{{ help }}</span>{% endif %}</span>
+    </label>
+  {% else %}
+    <label for="{{ f.id_for_label }}" class="form-label">{{ label }}{% if f.field.required %} <span class="text-error-500" aria-hidden="true">*</span><span class="sr-only">(required)</span>{% endif %}</label>
+    {% if prefix_text or suffix_text %}
+      <div class="relative">
+        {% if prefix_text %}<span class="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400">{{ prefix_text }}</span>{% endif %}
+        <div class="{% if prefix_text %}[&_input]:pl-9{% endif %} {% if suffix_text %}[&_input]:pr-14{% endif %}">{{ f }}</div>
+        {% if suffix_text %}<span class="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400">{{ suffix_text }}</span>{% endif %}
+      </div>
+    {% else %}
+      {{ f }}
+    {% endif %}
+    {% if help and not f.errors %}<p class="form-help">{{ help }}</p>{% endif %}
+  {% endif %}
+  {% for e in f.errors %}<p id="{{ f.html_name }}-error" class="form-error flex items-center gap-1">{% icon 'alert' 14 %} {{ e }}</p>{% endfor %}
+</div>
+{% endwith %}

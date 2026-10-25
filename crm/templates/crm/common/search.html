@@ -1,0 +1,25 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Search{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Search" subtitle="Leads, clients, quotations and invoices you can access." %}{% endblock %}
+{% block content %}
+<div class="card">
+  <form method="get" class="card-header" role="search">
+    <div class="relative w-full max-w-xl">
+      <span class="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-gray-400">{% icon 'search' 18 %}</span>
+      <input type="search" name="q" value="{{ term }}" class="form-input pl-11" placeholder="Name, phone, email, GSTIN or number" aria-label="Search" autofocus>
+    </div>
+    <button class="btn btn-primary">Search</button>
+  </form>
+  {% if term %}
+    <ul class="divide-y divide-gray-100 border-t border-gray-100 dark:divide-gray-800 dark:border-gray-800">
+      {% for kind, label, status, url in results %}
+        <li><a href="{{ url }}" class="flex items-center justify-between gap-3 px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-white/3">
+          <span class="flex items-center gap-3"><span class="badge badge-grey">{{ kind }}</span><span class="text-sm font-medium text-gray-800 dark:text-white/90">{{ label }}</span></span>
+          <span class="text-theme-sm text-gray-500">{{ status }}</span></a></li>
+      {% empty %}
+        <li>{% include "crm/components/empty_state.html" with title="Nothing found" text="Check the spelling, or search by phone number or document number." icon="search" %}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+</div>
+{% endblock %}

@@ -32,6 +32,7 @@ local_settings.py
 db.sqlite3
 db.sqlite3-journal
 media/
+private_media/
 staticfiles/
 *.mo
 *.pot
@@ -45,6 +46,10 @@ celerybeat.pid
 # ==============================
 **/migrations/*
 !**/migrations/__init__.py
+# The CRM ships its migrations: they contain database-level guarantees (triggers,
+# constraints) that must be identical on every server.
+!crm/migrations/
+!crm/migrations/*.py
 
 # ==============================
 # SECRETS / CREDENTIALS (keep *.example templates)

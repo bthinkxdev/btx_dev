@@ -1,0 +1,32 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Approvals{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Approvals" subtitle="Requests waiting for your decision, and requests you raised." %}{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="flex gap-6 overflow-x-auto px-5 sm:px-6" role="tablist">
+    <a href="?tab=mine" class="tab {% if tab == 'mine' %}tab-active{% else %}tab-inactive{% endif %}" role="tab">Waiting for me</a>
+    <a href="?tab=requested" class="tab {% if tab == 'requested' %}tab-active{% else %}tab-inactive{% endif %}" role="tab">Requested by me</a>
+    <a href="?tab=history" class="tab {% if tab == 'history' %}tab-active{% else %}tab-inactive{% endif %}" role="tab">Decided by me</a>
+  </div>
+  <div class="table-wrap border-t border-gray-100 dark:border-gray-800">
+    <table class="data-table responsive-cards">
+      <thead class="border-b border-gray-100 dark:border-gray-800"><tr>
+        <th class="th">Request</th><th class="th">Type</th><th class="th">Amount</th><th class="th">Requested by</th><th class="th">When</th><th class="th">Status</th></tr></thead>
+      <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+      {% for r in page_obj %}
+        <tr class="hover:bg-gray-50 dark:hover:bg-white/3">
+          <td class="td" data-label="Request"><a class="td-strong hover:text-brand-500" href="{% url 'crm:approval_detail' r.pk %}">{{ r.title }}</a></td>
+          <td class="td" data-label="Type">{{ r.get_kind_display }}</td>
+          <td class="td" data-label="Amount">{% if r.amount is not None %}{{ r.amount|inr }}{% else %}—{% endif %}</td>
+          <td class="td" data-label="Requested by">{{ r.requested_by|uname }}</td>
+          <td class="td" data-label="When">{{ r.requested_at|ago }}</td>
+          <td class="td" data-label="Status">{% badge r.status r.get_status_display %}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="6">{% include "crm/components/empty_state.html" with title="Nothing waiting" text="Approval requests that need your decision appear here." icon="shield" %}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

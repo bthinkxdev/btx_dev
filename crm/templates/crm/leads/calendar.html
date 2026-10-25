@@ -1,0 +1,74 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Follow-up calendar{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Follow-up calendar" subtitle="Pending follow-ups by day. Colour shows the type; red is overdue." %}{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <div class="flex items-center gap-2">
+      {% if view == 'month' %}
+        <a class="btn btn-secondary btn-sm" href="?year={{ prev.year }}&month={{ prev.month }}&owner={{ owner }}" aria-label="Previous month">{% icon 'chevron_left' 16 %}</a>
+        <h2 class="card-title min-w-36 text-center">{{ current|date:"F Y" }}</h2>
+        <a class="btn btn-secondary btn-sm" href="?year={{ next.year }}&month={{ next.month }}&owner={{ owner }}" aria-label="Next month">{% icon 'chevron_right' 16 %}</a>
+      {% else %}
+        <a class="btn btn-secondary btn-sm" href="?view=week&start={{ prev_start }}&owner={{ owner }}" aria-label="Previous week">{% icon 'chevron_left' 16 %}</a>
+        <h2 class="card-title min-w-36 text-center">Week of {{ start|d }}</h2>
+        <a class="btn btn-secondary btn-sm" href="?view=week&start={{ next_start }}&owner={{ owner }}" aria-label="Next week">{% icon 'chevron_right' 16 %}</a>
+      {% endif %}
+      <a class="btn btn-secondary btn-sm" href="?view={{ view }}&owner={{ owner }}">Today</a>
+    </div>
+    <form method="get" class="flex items-center gap-2">
+      <input type="hidden" name="view" value="{{ view }}">
+      {% if owners %}<label class="sr-only" for="cal-owner">Owner</label>
+        <select id="cal-owner" name="owner" class="form-select h-10 w-auto" data-autosubmit><option value="">Everyone I can see</option>{% for u in owners %}<option value="{{ u.pk }}" {% if owner == u.pk|stringformat:'s' %}selected{% endif %}>{{ u|uname }}</option>{% endfor %}</select>{% endif %}
+      <div class="inline-flex rounded-lg border border-gray-200 p-0.5 dark:border-gray-800">
+        <a href="?view=month&owner={{ owner }}" class="rounded-md px-3 py-1.5 text-sm {% if view == 'month' %}bg-gray-100 font-medium dark:bg-white/10{% else %}text-gray-500{% endif %}">Month</a>
+        <a href="?view=week&owner={{ owner }}" class="rounded-md px-3 py-1.5 text-sm {% if view == 'week' %}bg-gray-100 font-medium dark:bg-white/10{% else %}text-gray-500{% endif %}">Week</a>
+      </div>
+    </form>
+  </div>
+  {% if view == 'month' %}
+  <div class="overflow-x-auto border-t border-gray-100 dark:border-gray-800">
+    <table class="w-full min-w-[720px] table-fixed border-collapse">
+      <thead><tr>{% for label in weeks.0 %}<th class="th border-b border-gray-100 text-center dark:border-gray-800">{{ label.0|date:"D" }}</th>{% endfor %}</tr></thead>
+      <tbody>
+      {% for week in weeks %}<tr>
+        {% for day, items in week %}
+          <td class="h-28 border border-gray-100 p-1.5 align-top dark:border-gray-800 {% if day.month != current.month %}bg-gray-50 dark:bg-white/2{% endif %}">
+            <p class="mb-1 text-right text-theme-xs {% if day == today %}bg-brand-500 ml-auto flex h-6 w-6 items-center justify-center rounded-full text-white{% else %}text-gray-500{% endif %}">{{ day.day }}</p>
+            <ul class="space-y-1">
+              {% for fu in items|slice:":4" %}
+                <li><a href="{% url 'crm:lead_detail' fu.lead_id %}" title="{{ fu.get_kind_display }} with {{ fu.lead.name }} at {{ fu.due_at|tm }}"
+                       class="block truncate rounded px-1.5 py-0.5 text-theme-xs {% if fu.due_at < now %}bg-error-50 text-error-700 dark:bg-error-500/15 dark:text-error-400{% elif fu.kind == 'meeting' %}bg-success-50 text-success-700 dark:bg-success-500/15{% elif fu.kind == 'email' %}bg-blue-light-50 text-blue-light-700 dark:bg-blue-light-500/15{% elif fu.kind == 'whatsapp' %}bg-warning-50 text-warning-700 dark:bg-warning-500/15{% else %}bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300{% endif %}">{{ fu.due_at|tm }} {{ fu.lead.name }}</a></li>
+              {% endfor %}
+              {% if items|length > 4 %}<li><a class="text-theme-xs text-brand-500" href="?view=week&start={{ day|date:'Y-m-d' }}&owner={{ owner }}">+{{ items|length|add:"-4" }} more</a></li>{% endif %}
+            </ul>
+          </td>
+        {% endfor %}
+      </tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="grid grid-cols-1 gap-px border-t border-gray-100 bg-gray-100 md:grid-cols-7 dark:border-gray-800 dark:bg-gray-800">
+    {% for day, items in week %}
+      <div class="min-h-40 bg-white p-3 dark:bg-gray-900">
+        <p class="mb-2 text-theme-sm font-medium {% if day == today %}text-brand-500{% else %}text-gray-700 dark:text-gray-300{% endif %}">{{ day|date:"D j M" }}</p>
+        <ul class="space-y-2">
+          {% for fu in items %}
+            <li class="rounded-lg border border-gray-100 p-2 dark:border-gray-800">
+              <a href="{% url 'crm:lead_detail' fu.lead_id %}" class="block text-theme-sm font-medium text-gray-800 hover:text-brand-500 dark:text-white/90">{{ fu.lead.name }}</a>
+              <p class="text-theme-xs {% if fu.due_at < now %}text-error-600{% else %}text-gray-500{% endif %}">{{ fu.due_at|tm }} · {{ fu.get_kind_display }} · {{ fu.assignee|uname }}</p>
+              <button type="button" class="btn-link mt-1 text-xs" @click="document.getElementById('postpone-quick-form').action='{% url 'crm:follow_up_quick' fu.pk 'postpone' %}'; $store.modal.show('postpone_quick')">Reschedule</button>
+            </li>
+          {% empty %}<li class="text-theme-xs text-gray-400">Nothing scheduled</li>{% endfor %}
+        </ul>
+      </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% include "crm/components/modal_start.html" with id="postpone_quick" title="Reschedule follow-up" subtitle="Rescheduling needs a reason and is recorded on the timeline." %}
+  <form method="post" id="postpone-quick-form" action="" novalidate>{% csrf_token %}{% idem %}
+    {% include "crm/components/modal_form.html" with form=postpone_form %}{% include "crm/components/modal_actions.html" with label="Reschedule" %}</form>
+{% include "crm/components/modal_end.html" %}
+{% endblock %}

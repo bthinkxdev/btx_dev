@@ -1,0 +1,64 @@
+{% load static crm_tags %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>{% block title %}{{ page_title|default:"BThinkX Business OS" }}{% endblock %} | {{ company.display_name|default:"BThinkX" }}</title>
+  <link rel="icon" href="{% static 'crm/images/icon-192.png' %}">
+  <script>
+    (function () {
+      try {
+        var dark = JSON.parse(localStorage.getItem('darkMode'));
+        if (dark) document.documentElement.classList.add('dark');
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="{% static 'crm/css/crm.css' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body
+  x-data="{ sidebarToggle: false, darkMode: document.documentElement.classList.contains('dark') }"
+  x-init="$watch('darkMode', v => { document.documentElement.classList.toggle('dark', v); try { localStorage.setItem('darkMode', JSON.stringify(v)) } catch (e) {} })"
+  class="bg-gray-50 dark:bg-gray-900"
+  data-csrf="{{ csrf_token }}"
+  data-open-modal="{{ open_modal|default:'' }}"
+>
+  <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-999999 focus:rounded-lg focus:bg-white focus:px-4 focus:py-2">Skip to content</a>
+
+  <div class="flex h-screen overflow-hidden">
+    {% include "crm/partials/sidebar.html" %}
+
+    <div class="relative flex flex-1 flex-col overflow-x-hidden overflow-y-auto" id="scroll-root">
+      <div @click="sidebarToggle = false" :class="sidebarToggle ? 'block xl:hidden' : 'hidden'" class="fixed z-9 h-screen w-full bg-gray-900/50"></div>
+
+      {% include "crm/partials/header.html" %}
+
+      <div id="offline-banner" class="hidden border-b border-warning-500 bg-warning-50 px-4 py-2 text-center text-sm font-medium text-warning-700 dark:bg-warning-500/15 dark:text-orange-400" role="status">
+        Connection lost. Changes are not saved. Retrying…
+      </div>
+      {% if gateway_test_mode %}
+        <div class="border-b border-blue-light-500 bg-blue-light-50 px-4 py-2 text-center text-sm font-medium text-blue-light-700 dark:bg-blue-light-500/15 dark:text-blue-light-400" role="status">
+          Test mode: the payment gateway is using test credentials. No real money moves.
+        </div>
+      {% endif %}
+
+      <main id="main" tabindex="-1">
+        <div class="mx-auto max-w-(--breakpoint-2xl) p-4 pb-24 md:p-6 md:pb-6">
+          {% block banners %}{% endblock %}
+          {% block page_header %}{% endblock %}
+          {% block content %}{% endblock %}
+        </div>
+      </main>
+    </div>
+  </div>
+
+  {% include "crm/partials/toasts.html" %}
+  {% include "crm/partials/confirm.html" %}
+  {% include "crm/partials/quick_create.html" %}
+
+  <script src="{% static 'crm/js/ui.js' %}"></script>
+  {% block extra_js %}{% endblock %}
+  <script defer src="{% static 'crm/vendor/alpine.min.js' %}"></script>
+</body>
+</html>

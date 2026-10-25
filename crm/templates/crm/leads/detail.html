@@ -1,0 +1,276 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{{ lead.name }}{% endblock %}
+{% block banners %}
+  {% if lead.archived_at %}<div class="alert alert-info mb-5"><span class="text-blue-light-500">{% icon 'archive' 20 %}</span><p class="text-sm text-gray-700 dark:text-gray-300">Archived on {{ lead.archived_at|dt }}. {{ lead.archive_reason }}{% if lead.merged_into %} <a class="link" href="{% url 'crm:lead_detail' lead.merged_into_id %}">Open the merged lead</a>{% endif %}</p></div>{% endif %}
+  {% if pending_approval %}<div class="alert alert-info mb-5"><span class="text-blue-light-500">{% icon 'clock' 20 %}</span><p class="text-sm text-gray-700 dark:text-gray-300">Awaiting approval: {{ pending_approval.title }}. <a class="link" href="{% url 'crm:approval_detail' pending_approval.pk %}">View request</a></p></div>{% endif %}
+  {% if lead.is_overdue %}<div class="alert alert-warning mb-5"><span class="text-warning-500">{% icon 'alert' 20 %}</span><p class="text-sm text-gray-700 dark:text-gray-300">The next follow-up is overdue by {{ lead.next_follow_up_at|timesince }}. Act now or postpone with a reason.</p></div>{% endif %}
+  {% if wrong_number and lead.is_open %}
+    <div class="alert alert-warning mb-5"><span class="text-warning-500">{% icon 'phone' 20 %}</span>
+      <div class="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><p class="text-sm text-gray-700 dark:text-gray-300">You logged a wrong number. Mark this lead invalid?</p>
+      <form method="post" action="{% url 'crm:lead_mark_invalid' lead.pk %}">{% csrf_token %}{% idem %}<button class="btn btn-danger-outline btn-sm">Mark lead invalid</button></form></div></div>
+  {% endif %}
+  {% if duplicates %}<div class="alert alert-info mb-5"><span class="text-blue-light-500">{% icon 'users' 20 %}</span><p class="text-sm text-gray-700 dark:text-gray-300">{{ duplicates|length }} other lead{{ duplicates|length|pluralize }} share this phone or email.{% if can_merge %} <a class="link" href="{% url 'crm:duplicate_list' %}">Review duplicates</a>{% endif %}</p></div>{% endif %}
+  {% if request.GET.won %}<div class="alert alert-success mb-5"><span class="text-success-500">{% icon 'trophy' 22 %}</span><div class="flex flex-1 flex-wrap items-center justify-between gap-3"><p class="text-sm text-gray-700 dark:text-gray-300">Won! Next step: set up delivery and billing.</p>
+    <div class="flex flex-wrap gap-2">{% if lead.client_id %}<a href="{% url 'crm:contract_create' %}?client={{ lead.client_id }}" class="btn btn-secondary btn-sm">Create contract</a><a href="{% url 'crm:project_create' %}?client={{ lead.client_id }}&lead={{ lead.pk }}" class="btn btn-secondary btn-sm">Create project</a><a href="{% url 'crm:client_detail' lead.client_id %}" class="btn btn-primary btn-sm">Open client</a>{% endif %}</div></div></div>{% endif %}
+{% endblock %}
+{% block content %}
+<div class="card mb-6">
+  <div class="flex flex-col gap-4 p-5 sm:p-6 xl:flex-row xl:items-start xl:justify-between">
+    <div class="flex items-start gap-4">
+      <div class="bg-brand-50 text-brand-500 dark:bg-brand-500/15 flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-lg font-semibold">{{ lead.name|initials }}</div>
+      <div>
+        <h1 class="text-xl font-semibold text-gray-800 dark:text-white/90">{{ lead.name }}</h1>
+        <p class="muted">{{ lead.company|default:"No company" }}{% if lead.city %} · {{ lead.city }}{% endif %}</p>
+        <div class="mt-2 flex flex-wrap items-center gap-2">
+          {% badge lead.stage lead.get_stage_display %}
+          {% badge lead.priority lead.get_priority_display %}
+          {% if lead.is_invalid %}{% badge 'failed' 'Invalid' %}{% endif %}
+          {% if lead.flagged_for_merge %}{% badge 'review' 'Flagged for merge review' %}{% endif %}
+          <span class="text-theme-sm text-gray-500 dark:text-gray-400">Owner: <strong class="font-medium text-gray-700 dark:text-gray-300">{% if lead.owner %}{{ lead.owner|uname }}{% else %}Unassigned{% endif %}</strong></span>
+          <span class="text-theme-sm text-gray-500 dark:text-gray-400">· Value {{ lead.value|inr0 }} ({{ lead.probability }}%)</span>
+          <span class="text-theme-sm text-gray-500 dark:text-gray-400">· Age {{ lead.age_days }} d · {{ lead.days_in_stage }} d in stage</span>
+        </div>
+      </div>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      {% if lead.phone %}<a href="tel:{{ lead.phone }}" class="btn btn-secondary">{% icon 'phone' 18 %} Call</a>
+        <a href="https://wa.me/{{ lead.phone|wa }}" target="_blank" rel="noopener" class="btn btn-secondary">{% icon 'whatsapp' 18 %} WhatsApp</a>{% endif %}
+      {% if lead.is_open %}
+        {% if can_edit %}
+          <button type="button" class="btn btn-secondary" @click="$store.modal.show('stage')">Change stage</button>
+          {% if can_quote %}
+            {% if quote_block_reason %}<span class="btn btn-secondary opacity-50" title="{{ quote_block_reason }}" aria-disabled="true">{% icon 'document' 18 %} Create quotation</span>
+            {% else %}<a href="{% url 'crm:quotation_create' %}?lead={{ lead.pk }}" class="btn btn-secondary">{% icon 'document' 18 %} Create quotation</a>{% endif %}
+          {% endif %}
+          <button type="button" class="btn btn-success" @click="$store.modal.show('won')">Mark won</button>
+          <button type="button" class="btn btn-danger-outline" @click="$store.modal.show('lost')">Mark lost</button>
+        {% else %}
+          <span class="text-theme-sm text-gray-500" title="You can view but not edit this lead">{% icon 'lock' 16 %} View only</span>
+        {% endif %}
+      {% elif lead.stage == 'lost' and can_edit_any and not lead.archived_at %}
+        <button type="button" class="btn btn-primary" @click="$store.modal.show('reopen')">Re-open lead</button>
+      {% endif %}
+      <div class="relative" x-data="{ o: false }" @click.outside="o = false">
+        <button type="button" class="btn btn-secondary" @click="o = !o" aria-label="More actions">{% icon 'kebab' 18 %}</button>
+        <div x-show="o" x-cloak class="shadow-theme-lg absolute right-0 z-99 mt-2 w-56 rounded-xl border border-gray-200 bg-white p-2 dark:border-gray-800 dark:bg-gray-900">
+          {% if can_edit_any and not lead.archived_at %}<a class="menu-dropdown-item menu-dropdown-item-inactive" href="{% url 'crm:lead_edit' lead.pk %}">{% icon 'edit' 16 %} Edit details</a>{% endif %}
+          {% if can_assign and not lead.archived_at %}<button type="button" class="menu-dropdown-item menu-dropdown-item-inactive w-full" @click="o=false; $store.modal.show('assign')">{% icon 'users' 16 %} Assign or reassign</button>{% endif %}
+          {% if lead.client_id %}<a class="menu-dropdown-item menu-dropdown-item-inactive" href="{% url 'crm:client_detail' lead.client_id %}">{% icon 'briefcase' 16 %} Open client</a>{% endif %}
+          {% if can_merge %}<a class="menu-dropdown-item menu-dropdown-item-inactive" href="{% url 'crm:duplicate_list' %}">{% icon 'swap' 16 %} Merge duplicates</a>{% endif %}
+          <button type="button" class="menu-dropdown-item menu-dropdown-item-inactive w-full" data-copy="{{ request.build_absolute_uri }}" data-copy-message="Link copied">{% icon 'link' 16 %} Copy link</button>
+          {% if can_archive and not lead.archived_at %}
+            {% if archive_blockers %}<span class="menu-dropdown-item text-gray-400" title="Has {{ archive_blockers|join:' and ' }}">{% icon 'archive' 16 %} Archive (blocked)</span>
+            {% else %}<form method="post" action="{% url 'crm:lead_archive' lead.pk %}" data-confirm="Archive this lead?" data-confirm-body="It is hidden from default lists but stays searchable. Open follow-ups are cancelled." data-confirm-reason="required" data-confirm-danger="1" data-confirm-ok="Yes, archive lead">{% csrf_token %}{% idem %}
+              <button class="menu-dropdown-item w-full text-error-600 hover:bg-error-50 dark:hover:bg-error-500/10">{% icon 'archive' 16 %} Archive</button></form>{% endif %}
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-12">
+  {# ------------------------------------------------------------------ left: details #}
+  <div class="space-y-6 xl:col-span-3">
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Contact</h2></div>
+      <dl class="card-body space-y-4">
+        <div><dt class="dl-label">Phone</dt><dd class="dl-value">{% if lead.phone %}<a href="tel:{{ lead.phone }}" class="hover:text-brand-500">{{ lead.phone|phone }}</a>{% else %}—{% endif %}{% if lead.alt_phone %}<span class="block text-theme-xs text-gray-500">Alt: {{ lead.alt_phone|phone }}</span>{% endif %}</dd></div>
+        <div><dt class="dl-label">Email</dt><dd class="dl-value">{% if lead.email %}<a href="mailto:{{ lead.email }}" class="hover:text-brand-500">{{ lead.email }}</a>{% else %}—{% endif %}</dd></div>
+        <div><dt class="dl-label">Website</dt><dd class="dl-value">{% if lead.website %}<a href="{{ lead.website }}" target="_blank" rel="noopener noreferrer" class="hover:text-brand-500">{{ lead.website }}</a>{% else %}—{% endif %}</dd></div>
+        <div><dt class="dl-label">Location</dt><dd class="dl-value">{{ lead.city|default:"—" }}{% if lead.state %}, {{ lead.state|state_name }}{% endif %}</dd></div>
+      </dl>
+    </div>
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Deal</h2></div>
+      <dl class="card-body space-y-4">
+        <div><dt class="dl-label">Service interested</dt><dd class="dl-value">{% for s in lead.services.all %}{{ s.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</dd></div>
+        <div><dt class="dl-label">Budget</dt><dd class="dl-value">{% if lead.budget_min or lead.budget_max %}{{ lead.budget_min|inr0 }} – {{ lead.budget_max|inr0 }}{% else %}—{% endif %}</dd></div>
+        <div><dt class="dl-label">Value · weighted</dt><dd class="dl-value">{{ lead.value|inr0 }} · {{ lead.weighted_value|inr0 }}</dd></div>
+        <div><dt class="dl-label">Expected close</dt><dd class="dl-value">{{ lead.expected_close_date|d }}</dd></div>
+        <div><dt class="dl-label">Decision-maker</dt><dd class="dl-value">{{ lead.decision_maker|default:"—" }}</dd></div>
+        <div><dt class="dl-label">Source</dt><dd class="dl-value">{{ lead.source }}{% if lead.campaign %} · {{ lead.campaign.name }}{% endif %}{% if lead.referrer %}<span class="block text-theme-xs text-gray-500">Referred by {{ lead.referrer }}</span>{% endif %}</dd></div>
+        <div><dt class="dl-label">First response</dt><dd class="dl-value">{% if lead.first_response_seconds is not None %}{% widthratio lead.first_response_seconds 60 1 %} min{% else %}Not yet contacted{% endif %}</dd></div>
+        {% if lead.stage == 'won' %}<div><dt class="dl-label">Won</dt><dd class="dl-value">{{ lead.won_value|inr }} on {{ lead.won_at|d }}</dd></div>{% endif %}
+        {% if lead.stage == 'lost' %}<div><dt class="dl-label">Lost</dt><dd class="dl-value">{{ lost_reason_label }}{% if lead.lost_competitor %} · to {{ lead.lost_competitor }}{% endif %}<span class="block text-theme-xs text-gray-500">Win-back: {{ lead.win_back_date|d }}</span></dd></div>{% endif %}
+        {% if lead.tags.all %}<div><dt class="dl-label">Tags</dt><dd class="flex flex-wrap gap-1">{% for t in lead.tags.all %}{% badge t.color t.name t.color %}{% endfor %}</dd></div>{% endif %}
+        {% if lead.notes %}<div><dt class="dl-label">Notes</dt><dd class="text-sm whitespace-pre-line text-gray-700 dark:text-gray-300">{{ lead.notes }}</dd></div>{% endif %}
+      </dl>
+    </div>
+  </div>
+
+  {# ------------------------------------------------------------------ centre: timeline #}
+  <div class="space-y-6 xl:col-span-6">
+    {% if lead.is_open and can_edit %}
+    <div class="card p-4">
+      <p class="mb-3 text-theme-sm font-medium text-gray-700 dark:text-gray-300">Quick log</p>
+      <div class="flex flex-wrap gap-2">
+        <button type="button" class="btn btn-secondary btn-sm" @click="$store.modal.show('log_call')">{% icon 'phone' 16 %} Log call</button>
+        <button type="button" class="btn btn-secondary btn-sm" @click="$store.modal.show('log_meeting')">{% icon 'users' 16 %} Log meeting</button>
+        <button type="button" class="btn btn-secondary btn-sm" @click="$store.modal.show('add_note')">{% icon 'note' 16 %} Add note</button>
+        <button type="button" class="btn btn-secondary btn-sm" @click="$store.modal.show('log_message')">{% icon 'mail' 16 %} Log email or WhatsApp</button>
+        <button type="button" class="btn btn-secondary btn-sm" @click="$store.modal.show('schedule')">{% icon 'calendar' 16 %} Schedule follow-up</button>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Timeline</h2>
+        <form method="get"><label for="tl-type" class="sr-only">Filter timeline</label>
+          <select id="tl-type" name="type" class="form-select h-10 w-auto" data-autosubmit>
+            <option value="">All activity</option>{% for k, label in activity_kinds %}<option value="{{ k }}" {% if activity_type == k %}selected{% endif %}>{{ label }}</option>{% endfor %}
+          </select></form>
+      </div>
+      <ol class="card-body space-y-5">
+        {% for a in activities %}
+          <li class="flex gap-3">
+            <span class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full {% if a.kind == 'stage' %}bg-brand-50 text-brand-500 dark:bg-brand-500/15{% elif a.kind == 'call' or a.kind == 'meeting' %}bg-success-50 text-success-600 dark:bg-success-500/15{% elif a.kind == 'inbound' %}bg-warning-50 text-warning-600 dark:bg-warning-500/15{% else %}bg-gray-100 text-gray-500 dark:bg-gray-800{% endif %}">
+              {% if a.kind == 'call' %}{% icon 'phone' 16 %}{% elif a.kind == 'meeting' %}{% icon 'users' 16 %}{% elif a.kind == 'email' %}{% icon 'mail' 16 %}{% elif a.kind == 'whatsapp' %}{% icon 'whatsapp' 16 %}{% elif a.kind == 'stage' %}{% icon 'board' 16 %}{% elif a.kind == 'assignment' %}{% icon 'user' 16 %}{% elif a.kind == 'follow_up' %}{% icon 'calendar' 16 %}{% elif a.kind == 'quotation' %}{% icon 'document' 16 %}{% elif a.kind == 'payment' %}{% icon 'rupee' 16 %}{% elif a.kind == 'inbound' %}{% icon 'inbox' 16 %}{% else %}{% icon 'note' 16 %}{% endif %}
+            </span>
+            <div class="min-w-0 flex-1">
+              <p class="text-sm text-gray-800 dark:text-white/90"><span class="font-medium">{{ a.get_kind_display }}</span>{% if a.direction %} · {{ a.get_direction_display }}{% endif %}{% if a.outcome %} · {{ a.outcome|cut:'_'|title }}{% endif %}{% if a.duration_minutes %} · {{ a.duration_minutes }} min{% endif %}{% if a.visibility == 'private' %} {% badge 'draft' 'Private' %}{% endif %}</p>
+              {% if a.summary %}<p class="mt-1 text-sm whitespace-pre-line break-words text-gray-600 dark:text-gray-400">{{ a.summary }}</p>{% endif %}
+              <p class="mt-1 text-theme-xs text-gray-400">{{ a.occurred_at|dt }} · {% if a.actor %}{{ a.actor|uname }}{% else %}System{% endif %} · {{ a.source_label }}</p>
+            </div>
+          </li>
+        {% empty %}<li class="muted">No activity yet. Log the first call to start the timeline.</li>{% endfor %}
+      </ol>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Stage history and assignments</h2></div>
+      <div class="card-body grid grid-cols-1 gap-6 md:grid-cols-2">
+        <ul class="space-y-3 text-sm">
+          {% for h in stage_history %}<li><span class="text-gray-800 dark:text-white/90">{{ h.from_stage|default:'—'|cut:'_'|title }} → {{ h.to_stage|cut:'_'|title }}</span><span class="block text-theme-xs text-gray-400">{{ h.created_at|dt }} · {{ h.actor|uname }} · {% widthratio h.seconds_in_previous 86400 1 %} d in previous{% if h.reason %} · {{ h.reason }}{% endif %}</span></li>{% empty %}<li class="muted">No stage changes yet.</li>{% endfor %}
+        </ul>
+        <ul class="space-y-3 text-sm">
+          {% for a in assignments %}<li><span class="text-gray-800 dark:text-white/90">{{ a.from_user|uname }} → {{ a.to_user|uname }}</span><span class="block text-theme-xs text-gray-400">{{ a.created_at|dt }} · {{ a.get_rule_display }}{% if a.reason %} · {{ a.reason }}{% endif %}</span>
+            {% if a.undo_until and a.undo_until > now and can_assign %}<form method="post" action="{% url 'crm:assignment_undo' a.pk %}" class="mt-1">{% csrf_token %}<button class="btn-link text-xs">Undo (until {{ a.undo_until|tm }})</button></form>{% endif %}</li>{% empty %}<li class="muted">No assignments yet.</li>{% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  {# ------------------------------------------------------------------ right rail #}
+  <div class="space-y-6 xl:col-span-3">
+    <div class="card {% if lead.is_overdue %}border-error-300 dark:border-error-500/40{% endif %}">
+      <div class="card-header"><h2 class="card-title">Next action</h2></div>
+      <div class="card-body space-y-4">
+        {% for fu in pending_follow_ups %}
+          <div class="rounded-xl border {% if fu.is_overdue %}border-error-200 bg-error-25 dark:border-error-500/30 dark:bg-error-500/10{% else %}border-gray-100 dark:border-gray-800{% endif %} p-3">
+            <p class="text-sm font-medium text-gray-800 dark:text-white/90">{{ fu.get_kind_display }}{% if fu.purpose %}: {{ fu.purpose }}{% endif %}</p>
+            <p class="text-theme-xs {% if fu.is_overdue %}text-error-600 dark:text-error-500{% else %}text-gray-500{% endif %}">{{ fu.due_at|dt }}{% if fu.is_overdue %} · {{ fu.due_at|timesince }} late{% endif %} · {{ fu.assignee|uname }}{% if fu.postpone_count %} · postponed {{ fu.postpone_count }}×{% endif %}</p>
+            {% if can_edit %}
+            <div class="mt-3 flex flex-wrap gap-2">
+              <button type="button" class="btn btn-primary btn-sm" @click="document.getElementById('id_complete-follow_up').value='{{ fu.pk }}'; $store.modal.show('complete')">Complete</button>
+              <button type="button" class="btn btn-secondary btn-sm" @click="document.getElementById('id_postpone-follow_up').value='{{ fu.pk }}'; $store.modal.show('postpone')">Postpone</button>
+              <button type="button" class="btn btn-secondary btn-sm" @click="document.getElementById('id_cancel_follow_up-follow_up').value='{{ fu.pk }}'; $store.modal.show('cancel_follow_up')">Cancel</button>
+            </div>
+            {% endif %}
+          </div>
+        {% empty %}
+          {% if lead.is_open %}<p class="text-sm text-error-600">No pending follow-up. Schedule one now.</p>{% else %}<p class="muted">Lead closed. No follow-up needed.</p>{% endif %}
+        {% endfor %}
+        {% if lead.is_open and can_edit %}<button type="button" class="btn btn-secondary btn-sm w-full" @click="$store.modal.show('schedule')">{% icon 'plus' 16 %} Schedule another</button>{% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Quotations</h2>{% if can_quote and lead.is_open and not quote_block_reason %}<a href="{% url 'crm:quotation_create' %}?lead={{ lead.pk }}" class="btn-link text-sm">New</a>{% endif %}</div>
+      <ul class="card-body space-y-3">
+        {% for q in quotations %}<li class="flex items-center justify-between gap-2"><a class="text-sm font-medium text-gray-800 hover:text-brand-500 dark:text-white/90" href="{% url 'crm:quotation_detail' q.pk %}">{{ q.display_number }}</a><span class="flex items-center gap-2"><span class="text-theme-sm text-gray-500">{{ q.grand_total|inr0 }}</span>{% badge q.status q.get_status_display %}</span></li>{% empty %}<li class="muted">{% if quote_block_reason %}{{ quote_block_reason }} before creating a quotation.{% else %}No quotations yet.{% endif %}</li>{% endfor %}
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Payment links</h2></div>
+      <ul class="card-body space-y-3">
+        {% for pl in payment_links %}<li class="flex items-center justify-between gap-2"><a class="text-sm font-medium text-gray-800 hover:text-brand-500 dark:text-white/90" href="{% url 'crm:link_detail' pl.pk %}">{{ pl.code }}</a><span class="flex items-center gap-2"><span class="text-theme-sm text-gray-500">{{ pl.amount_paid|inr0 }} / {{ pl.amount|inr0 }}</span>{% badge pl.status pl.get_status_display %}</span></li>{% empty %}<li class="muted">No payment links yet.</li>{% endfor %}
+      </ul>
+    </div>
+
+    {% include "crm/components/attachments.html" with model_name="lead" obj=lead %}
+  </div>
+</div>
+
+{# ================================================================== popups (Part 4.7) #}
+{% with f=forms.log_call %}{% include "crm/components/modal_start.html" with id="log_call" title="Log call" subtitle="Summary is required when connected. Schedule the next follow-up unless closing." %}
+  <form method="post" action="{% url 'crm:lead_action' lead.pk 'log_call' %}" data-dirty-check novalidate>{% csrf_token %}{% idem %}
+    {% include "crm/components/modal_form.html" with form=f %}{% include "crm/components/modal_actions.html" with label="Save call" %}</form>
+{% include "crm/components/modal_end.html" %}{% endwith %}
+
+{% with f=forms.log_meeting %}{% include "crm/components/modal_start.html" with id="log_meeting" title="Log meeting" %}
+  <form method="post" action="{% url 'crm:lead_action' lead.pk 'log_meeting' %}" data-dirty-check novalidate>{% csrf_token %}{% idem %}
+    {% include "crm/components/modal_form.html" with form=f %}{% include "crm/components/modal_actions.html" with label="Save meeting" %}</form>
+{% include "crm/components/modal_end.html" %}{% endwith %}
+
+{% with f=forms.add_note %}{% include "crm/components/modal_start.html" with id="add_note" title="Add note" subtitle="Notes can be corrected for 10 minutes; after that add a new note." %}
+  <form method="post" action="{% url 'crm:lead_action' lead.pk 'add_note' %}" data-dirty-check novalidate>{% csrf_token %}{% idem %}
+    {% include "crm/components/modal_form.html" with form=f %}{% include "crm/components/modal_actions.html" with label="Save note" %}</form>
+{% include "crm/components/modal_end.html" %}{% endwith %}
+
+{% with f=forms.log_message %}{% include "crm/components/modal_start.html" with id="log_message" title="Log email or WhatsApp" %}
+  <form method="post" action="{% url 'crm:lead_action' lead.pk 'log_message' %}" data-dirty-check novalidate>{% csrf_token %}{% idem %}
+    {% include "crm/components/modal_form.html" with form=f %}{% include "crm/components/modal_actions.html" with label="Save message" %}</form>
+{% include "crm/components/modal_end.html" %}{% endwith %}
+
+{% with f=forms.schedule %}{% include "crm/components/modal_start.html" with id="schedule" title="Schedule follow-up" subtitle="The assignee must have access to this lead." %}
+  <form method="post" action="{% url 'crm:lead_action' lead.pk 'schedule' %}" data-dirty-check novalidate>{% csrf_token %}{% idem %}
+    {% include "crm/components/modal_form.html" with form=f %}{% include "crm/components/modal_actions.html" with label="Schedule" loading="Scheduling…" %}</form>
+{% include "crm/components/modal_end.html" %}{% endwith %}
+
+{% with f=forms.complete %}{% include "crm/components/modal_start.html" with id="complete" title="Complete follow-up" subtitle="Schedule the next one so the lead keeps a dated next action." %}
+  <form method="post" action="{% url 'crm:lead_action' lead.pk 'complete' %}" data-dirty-check novalidate>{% csrf_token %}{% idem %}
+    {% include "crm/components/modal_form.html" with form=f %}{% include "crm/components/modal_actions.html" with label="Complete and schedule next" %}</form>
+{% include "crm/components/modal_end.html" %}{% endwith %}
+
+{% with f=forms.postpone %}{% include "crm/components/modal_start.html" with id="postpone" title="Postpone follow-up" subtitle="More than 3 postponements flags the lead for manager review." %}
+  <form method="post" action="{% url 'crm:lead_action' lead.pk 'postpone' %}" novalidate>{% csrf_token %}{% idem %}
+    {% include "crm/components/modal_form.html" with form=f %}{% include "crm/components/modal_actions.html" with label="Postpone" %}</form>
+{% include "crm/components/modal_end.html" %}{% endwith %}
+
+{% with f=forms.cancel_follow_up %}{% include "crm/components/modal_start.html" with id="cancel_follow_up" title="Cancel follow-up?" subtitle="An open lead must keep at least one dated next action." %}
+  <form method="post" action="{% url 'crm:lead_action' lead.pk 'cancel_follow_up' %}" novalidate>{% csrf_token %}{% idem %}
+    {% include "crm/components/modal_form.html" with form=f %}{% include "crm/components/modal_actions.html" with label="Yes, cancel follow-up" danger=True %}</form>
+{% include "crm/components/modal_end.html" %}{% endwith %}
+
+{% with f=forms.stage %}{% include "crm/components/modal_start.html" with id="stage" title="Change stage" subtitle="Backward moves and skipped stages need a reason." %}
+  <form method="post" action="{% url 'crm:lead_action' lead.pk 'stage' %}" novalidate x-data="{ to: '{{ f.to.value|default_if_none:'' }}' }">{% csrf_token %}{% idem %}
+    {% for e in f.non_field_errors %}<div class="alert alert-error mb-4" role="alert"><p class="text-sm">{{ e }}</p></div>{% endfor %}
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div class="sm:col-span-2">
+        <label for="id_stage-to" class="form-label">New stage <span class="text-error-500">*</span></label>
+        <select id="id_stage-to" name="stage-to" class="form-select" x-model="to" required>
+          <option value="">Choose a stage</option>
+          {% for value, label in f.fields.to.choices %}{% with r=stage_rules|get_item:value %}<option value="{{ value }}" {% if not r.allowed %}disabled{% endif %}>{{ label }}{% if not r.allowed %} — {{ r.error }}{% elif r.needs_reason %} (reason needed){% endif %}</option>{% endwith %}{% endfor %}
+        </select>
+        {% for e in f.to.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+      </div>
+      {% field f.reason wrapper_class="sm:col-span-2" %}
+      {% field f.next_due %}{% field f.next_kind %}{% field f.next_purpose wrapper_class="sm:col-span-2" %}
+    </div>
+    {% include "crm/components/modal_actions.html" with label="Change stage" %}
+  </form>
+{% include "crm/components/modal_end.html" %}{% endwith %}
+
+{% with f=forms.won %}{% include "crm/components/modal_start.html" with id="won" title="Mark won" subtitle="The client is created or linked, and commission accrues." %}
+  <form method="post" action="{% url 'crm:lead_action' lead.pk 'won' %}" novalidate>{% csrf_token %}{% idem %}
+    {% include "crm/components/modal_form.html" with form=f %}{% include "crm/components/modal_actions.html" with label="Mark won" loading="Saving…" %}</form>
+{% include "crm/components/modal_end.html" %}{% endwith %}
+
+{% with f=forms.lost %}{% include "crm/components/modal_start.html" with id="lost" title="Mark lost" subtitle="A win-back date is set automatically. High-value deals need manager approval." %}
+  <form method="post" action="{% url 'crm:lead_action' lead.pk 'lost' %}" novalidate>{% csrf_token %}{% idem %}
+    {% include "crm/components/modal_form.html" with form=f %}{% include "crm/components/modal_actions.html" with label="Mark lost" danger=True %}</form>
+{% include "crm/components/modal_end.html" %}{% endwith %}
+
+{% with f=forms.assign %}{% include "crm/components/modal_start.html" with id="assign" title="Assign or reassign" subtitle="Both owners are notified and the assignment history is recorded." %}
+  <form method="post" action="{% url 'crm:lead_action' lead.pk 'assign' %}" novalidate>{% csrf_token %}{% idem %}
+    {% include "crm/components/modal_form.html" with form=f %}{% include "crm/components/modal_actions.html" with label="Assign" loading="Assigning…" %}</form>
+{% include "crm/components/modal_end.html" %}{% endwith %}
+
+{% with f=forms.reopen %}{% include "crm/components/modal_start.html" with id="reopen" title="Re-open lead" subtitle="History is kept. A new follow-up is required." %}
+  <form method="post" action="{% url 'crm:lead_action' lead.pk 'reopen' %}" novalidate>{% csrf_token %}{% idem %}
+    {% include "crm/components/modal_form.html" with form=f %}{% include "crm/components/modal_actions.html" with label="Re-open lead" %}</form>
+{% include "crm/components/modal_end.html" %}{% endwith %}
+{% endblock %}

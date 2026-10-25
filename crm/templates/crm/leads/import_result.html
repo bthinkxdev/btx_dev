@@ -1,0 +1,18 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Import result{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Import result" subtitle=batch.file_name %}{% endblock %}
+{% block content %}
+{% include "crm/leads/_import_steps.html" %}
+<div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-4">
+  <div class="card p-5"><p class="muted">Created</p><p class="text-title-sm font-bold text-gray-800 dark:text-white/90">{{ batch.created_count }}</p></div>
+  <div class="card p-5"><p class="muted">Added to existing</p><p class="text-title-sm font-bold text-gray-800 dark:text-white/90">{{ batch.interaction_count }}</p></div>
+  <div class="card p-5"><p class="muted">Skipped</p><p class="text-title-sm font-bold text-gray-800 dark:text-white/90">{{ batch.skipped_count }}</p></div>
+  <div class="card p-5"><p class="muted">Status</p><p class="mt-2">{% badge batch.status batch.get_status_display %}</p></div>
+</div>
+<div class="card">
+  <div class="card-header"><h2 class="card-title">Every row</h2>
+    {% if batch.can_undo %}<form method="post" action="{% url 'crm:lead_import_undo' batch.pk %}" data-confirm="Undo this import?" data-confirm-body="Leads with no activity yet are archived. Leads someone has started working on are kept." data-confirm-danger="1" data-confirm-ok="Yes, undo import">{% csrf_token %}<button class="btn btn-danger-outline btn-sm">Undo import (24 h)</button></form>{% endif %}</div>
+  <div class="table-wrap border-t border-gray-100 dark:border-gray-800"><table class="data-table"><thead><tr><th class="th">Row</th><th class="th">Name</th><th class="th">Result</th></tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for r in rows %}<tr><td class="td">{{ r.row }}</td><td class="td">{{ r.data.name }}</td><td class="td">{% if r.lead_id %}<a class="link" href="{% url 'crm:lead_detail' r.lead_id %}">{{ r.result }}</a>{% else %}{{ r.result|default:r.status }}{% endif %}</td></tr>{% endfor %}</tbody></table></div>
+</div>
+{% endblock %}

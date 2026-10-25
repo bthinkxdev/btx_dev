@@ -1,0 +1,27 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{% if obj %}Edit {{ obj }}{% else %}Add source{% endif %}{% endblock %}
+{% block page_header %}{% if obj %}{% include "crm/components/page_header.html" with title="Edit lead source" subtitle=obj.name %}{% else %}{% include "crm/components/page_header.html" with title="Add lead source" %}{% endif %}{% endblock %}
+{% block content %}
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+  <form method="post" class="card xl:col-span-2" data-dirty-check>{% csrf_token %}{% idem %}
+    <div class="card-body grid grid-cols-1 gap-5 md:grid-cols-2">
+      {% include "crm/components/form_errors.html" %}
+      {% for f in form.visible_fields %}{% field f wrapper_class=f.name|yesno:"," %}{% endfor %}
+    </div>
+    <div class="flex justify-end gap-3 border-t border-gray-100 p-5 dark:border-gray-800"><a href="{% url 'crm:source_list' %}" class="btn btn-secondary">Cancel</a><button class="btn btn-primary" data-loading-text="Saving…">Save source</button></div>
+  </form>
+  {% if obj %}
+  <div class="card">
+    <div class="card-header"><h2 class="card-title">Inbound connection</h2></div>
+    <div class="card-body space-y-4 text-sm" x-data="{ reveal: false }">
+      <div><p class="dl-label">Inbound URL</p><p class="break-all font-mono text-gray-800 dark:text-white/90">{{ request.scheme }}://{{ request.get_host }}{% url 'crm:inbound_lead' obj.source_key %}</p></div>
+      <div><p class="dl-label">Secret</p>
+        <p class="font-mono break-all text-gray-800 dark:text-white/90" x-show="reveal" x-cloak>{{ obj.secret }}</p>
+        <p class="font-mono text-gray-500" x-show="!reveal">••••••••••••••••</p>
+        <button type="button" class="btn-link mt-1 text-sm" @click="reveal = !reveal" x-text="reveal ? 'Hide' : 'Reveal'">Reveal</button></div>
+      <p class="muted">Rotate the key from the sources list if it is ever exposed.</p>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

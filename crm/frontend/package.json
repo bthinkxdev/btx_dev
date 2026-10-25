@@ -1,0 +1,20 @@
+{
+  "name": "bthinkx-crm-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Builds crm/static/crm/css/crm.css from the TailAdmin design tokens (crmdashboardtemplate). Run `npm install && npm run build` after changing templates.",
+  "scripts": {
+    "build": "tailwindcss -i ./src/crm.css -o ../static/crm/css/crm.css --minify",
+    "watch": "tailwindcss -i ./src/crm.css -o ../static/crm/css/crm.css --watch",
+    "vendor": "node ./copy-vendor.js"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "4.1.14",
+    "@tailwindcss/forms": "0.5.10",
+    "tailwindcss": "4.1.14"
+  },
+  "dependencies": {
+    "alpinejs": "3.14.9",
+    "apexcharts": "4.7.0"
+  }
+}

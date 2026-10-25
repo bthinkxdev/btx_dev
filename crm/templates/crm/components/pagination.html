@@ -1,0 +1,20 @@
+{% load crm_tags %}
+{% if paginator.count %}
+<div class="flex flex-col items-center justify-between gap-3 border-t border-gray-100 px-5 py-4 sm:flex-row dark:border-gray-800">
+  <p class="text-theme-sm text-gray-500 dark:text-gray-400">
+    Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ paginator.count }}
+  </p>
+  <div class="flex items-center gap-2">
+    <form method="get" class="flex items-center gap-2">
+      {% for k, vals in request.GET.lists %}{% if k != 'per_page' and k != 'page' %}{% for v in vals %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}{% endif %}{% endfor %}
+      <label for="per-page" class="text-theme-sm text-gray-500 dark:text-gray-400">Rows</label>
+      <select id="per-page" name="per_page" class="form-select h-9 w-20 py-1 pr-8 pl-3" data-autosubmit>
+        {% for n in per_page_choices %}<option value="{{ n }}" {% if n == per_page %}selected{% endif %}>{{ n }}</option>{% endfor %}
+      </select>
+    </form>
+    {% if page_obj.has_previous %}<a class="btn btn-secondary btn-sm" href="{% qs page=page_obj.previous_page_number %}" aria-label="Previous page">{% icon 'chevron_left' 16 %}</a>{% endif %}
+    <span class="text-theme-sm text-gray-700 dark:text-gray-300">Page {{ page_obj.number }} of {{ paginator.num_pages }}</span>
+    {% if page_obj.has_next %}<a class="btn btn-secondary btn-sm" href="{% qs page=page_obj.next_page_number %}" aria-label="Next page">{% icon 'chevron_right' 16 %}</a>{% endif %}
+  </div>
+</div>
+{% endif %}

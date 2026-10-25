@@ -1,0 +1,133 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{% if is_new %}Add lead{% else %}Edit {{ lead }}{% endif %}{% endblock %}
+{% block page_header %}
+  {% url 'crm:lead_list' as list_url %}
+  {% if is_new %}{% include "crm/components/page_header.html" with title="Add lead" subtitle="Name, a phone or email, a service and a dated next follow-up are required." %}
+  {% else %}{% include "crm/components/page_header.html" with title="Edit lead" subtitle=lead.name %}{% endif %}
+{% endblock %}
+{% block content %}
+<form method="post" novalidate data-dirty-check class="space-y-6"
+      x-data="dupCheck('{% url 'crm:lead_duplicate_check' %}', '{{ lead.pk|default:'' }}')">{% csrf_token %}{% idem %}
+  {{ form.row_version }}
+  {% include "crm/components/form_errors.html" %}
+
+  {% if dup_form %}
+    <div class="alert alert-warning" role="alert" tabindex="-1" data-form-summary>
+      <span class="text-warning-500">{% icon 'alert' 22 %}</span>
+      <div class="flex-1 space-y-3">
+        <p class="text-sm font-semibold text-gray-800 dark:text-white/90">This looks like an existing lead</p>
+        <ul class="space-y-1 text-sm">
+          {% for d in duplicates %}<li>Existing lead: <a class="link" href="{% url 'crm:lead_detail' d.pk %}" target="_blank" rel="noopener">{{ d.name }}{% if d.company %} ({{ d.company }}){% endif %}</a>, owner {{ d.owner|uname }}, {{ d.get_stage_display }}</li>{% endfor %}
+        </ul>
+        <input type="hidden" name="target" value="{{ duplicates.0.pk }}">
+        <fieldset class="space-y-2">
+          <legend class="form-label">What should happen?</legend>
+          <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"><input type="radio" name="duplicate_action" value="attach" class="text-brand-500" checked> Add as an interaction to the existing lead (recommended)</label>
+          <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"><input type="radio" name="duplicate_action" value="create" class="text-brand-500"> Create anyway (flagged for merge review)</label>
+        </fieldset>
+        <div><label for="dup-reason" class="form-label">Reason, if creating anyway</label>
+          <input id="dup-reason" name="duplicate_reason" maxlength="300" class="form-input" value="{{ dup_form.duplicate_reason.value|default_if_none:'' }}">
+          {% for e in dup_form.duplicate_reason.errors %}<p class="form-error">{{ e }}</p>{% endfor %}</div>
+        <a href="{% url 'crm:lead_detail' duplicates.0.pk %}" class="btn btn-secondary btn-sm">Open existing lead</a>
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="card">
+    <div class="card-header"><h2 class="card-title">Contact</h2></div>
+    <div class="card-body grid grid-cols-1 gap-5 md:grid-cols-2">
+      {% field form.name %}
+      {% field form.company %}
+      <div>
+        {% field form.phone help="10-digit mobile, or with country code." %}
+      </div>
+      {% field form.email %}
+      <div class="md:col-span-2" x-show="dupes.length || checking" x-cloak>
+        <div class="alert alert-warning" role="status">
+          <span class="text-warning-500">{% icon 'alert' 20 %}</span>
+          <div class="text-sm text-gray-700 dark:text-gray-300">
+            <p x-show="checking">Checking for existing leads…</p>
+            <template x-for="d in dupes" :key="d.name + d.stage">
+              <p>Existing lead: <a :href="d.url" x-show="d.url" target="_blank" rel="noopener" class="link" x-text="d.name"></a><span x-show="!d.url" x-text="d.name"></span>
+                <span x-show="d.owner">, owner <span x-text="d.owner"></span></span> — <span x-text="d.stage"></span></p>
+            </template>
+          </div>
+        </div>
+      </div>
+      {% field form.website %}
+      {% field form.city %}
+      {% field form.state help="Needed later for GST place of supply." %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2 class="card-title">Interest and value</h2></div>
+    <div class="card-body grid grid-cols-1 gap-5 md:grid-cols-2">
+      <div class="md:col-span-2">
+        <p class="form-label">Service interested <span class="text-error-500">*</span></p>
+        <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {% for cb in form.services %}<label class="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-700 dark:border-gray-800 dark:text-gray-300">{{ cb.tag }} {{ cb.choice_label }}</label>{% empty %}<p class="muted">No active services. Add them in the service catalogue.</p>{% endfor %}
+        </div>
+        {% for e in form.services.errors %}<p class="form-error">{{ e }}</p>{% endfor %}
+      </div>
+      {% field form.budget_min prefix_text="₹" %}
+      {% field form.budget_max prefix_text="₹" %}
+      {% field form.value prefix_text="₹" %}
+      {% field form.expected_close_date help="Required from Qualified. Not in the past." %}
+      {% field form.decision_maker help="Who signs off? Required from Qualified." %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2 class="card-title">Ownership and next action</h2></div>
+    <div class="card-body grid grid-cols-1 gap-5 md:grid-cols-2">
+      {% field form.source %}
+      {% field form.campaign %}
+      {% field form.referrer help="If referred, who referred them." %}
+      {% if form.owner %}{% field form.owner %}{% endif %}
+      {% field form.priority %}
+      {% field form.next_follow_up_at %}
+      <div class="md:col-span-2">{% field form.notes help="Up to 2,000 characters." %}</div>
+      {% if form.tags.field.queryset.exists %}
+        <div class="md:col-span-2"><p class="form-label">Tags</p><div class="flex flex-wrap gap-2">{% for cb in form.tags %}<label class="chip chip-inactive">{{ cb.tag }} {{ cb.choice_label }}</label>{% endfor %}</div></div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="sticky bottom-0 z-9 -mx-4 flex flex-col-reverse justify-end gap-3 border-t border-gray-200 bg-white/95 px-4 py-4 backdrop-blur sm:flex-row md:-mx-6 md:px-6 dark:border-gray-800 dark:bg-gray-900/95">
+    <a href="{% if lead %}{% url 'crm:lead_detail' lead.pk %}{% else %}{% url 'crm:lead_list' %}{% endif %}" class="btn btn-secondary">Cancel</a>
+    {% if is_new %}<button name="another" value="1" class="btn btn-secondary" data-loading-text="Saving…">Save and add another</button>{% endif %}
+    <button class="btn btn-primary" data-loading-text="Saving…">Save lead</button>
+  </div>
+</form>
+{% endblock %}
+{% block extra_js %}
+<script>
+  document.addEventListener('alpine:init', function () {
+    Alpine.data('dupCheck', function (url, exclude) {
+      return {
+        dupes: [], checking: false,
+        init: function () {
+          var self = this;
+          ['id_phone', 'id_email'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) el.addEventListener('blur', function () { self.check(); });
+          });
+        },
+        check: function () {
+          var self = this;
+          var phone = (document.getElementById('id_phone') || {}).value || '';
+          var email = (document.getElementById('id_email') || {}).value || '';
+          if (phone.replace(/\D/g, '').length < 10 && email.indexOf('@') < 0) { self.dupes = []; return; }
+          self.checking = true;
+          fetch(url + '?' + new URLSearchParams({ phone: phone, email: email, exclude: exclude }), { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function (r) { return r.json(); })
+            .then(function (j) { self.dupes = j.duplicates || []; })
+            .catch(function () { self.dupes = []; })
+            .finally(function () { self.checking = false; });
+        }
+      };
+    });
+  });
+</script>
+{% endblock %}
