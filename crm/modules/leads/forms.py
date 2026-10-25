@@ -12,7 +12,7 @@ from crm.core import india, permissions
 from crm.core.forms import (CrmForm, CrmModelForm, DateInput, DateTimeInput, MoneyFormField, PhoneField,
                             SafeFileField, VersionedModelFormMixin, future_date, future_datetime)
 from crm.models import Campaign, Lead, LeadActivity, LeadSource, LeadTag, Service
-from crm.models.leads import LOST_REASONS, OPEN_STAGES, PRIORITIES, STAGES, STAGE_WON, STAGE_LOST
+from crm.models.leads import LOST_REASONS, PRIORITIES, STAGES, STAGE_WON, STAGE_LOST
 
 FOLLOW_UP_KINDS = [('call', 'Call'), ('meeting', 'Meeting'), ('email', 'Email'), ('whatsapp', 'WhatsApp')]
 POSTPONE_REASONS = [('customer_request', 'Customer asked to call later'), ('no_answer', 'Could not reach'),

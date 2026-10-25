@@ -564,7 +564,8 @@ def event_action(request, pk, action):
 
 @staff_required
 def settlement_list(request):
-    permissions.require(request.user, 'payments', 'view', request)
+    if not (permissions.has_perm(request.user, 'payments', 'view') or permissions.has_perm(request.user, 'banking', 'view')):
+        permissions.denied(request.user, 'banking', 'view', request)
     can_add = permissions.has_perm(request.user, 'accounting', 'create') or permissions.has_perm(request.user, 'payments', 'approve')
     form = SettlementForm(request.POST or None, prefix='st', initial={'settled_on': india.today()})
     unsettled = Payment.objects.filter(kind='gateway', settlement__isnull=True, status__in=['verified', 'partially_refunded', 'refunded']) \

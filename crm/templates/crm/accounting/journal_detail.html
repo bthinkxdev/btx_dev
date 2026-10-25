@@ -1,0 +1,39 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{{ je }}{% endblock %}
+{% block banners %}
+  {% if je.status == 'reversed' and reversed_by %}<div class="alert alert-info mb-5"><p class="text-sm">Reversed by <a class="link" href="{% url 'crm:journal_detail' reversed_by.pk %}">{{ reversed_by }}</a>. This entry is kept unchanged.</p></div>{% endif %}
+  {% if je.reversal_of %}<div class="alert alert-info mb-5"><p class="text-sm">This reverses <a class="link" href="{% url 'crm:journal_detail' je.reversal_of.pk %}">{{ je.reversal_of }}</a>.</p></div>{% endif %}
+  {% if je.status == 'pending_approval' %}<div class="alert alert-info mb-5"><p class="text-sm">Waiting for Accountant approval before posting.{% if pending %} <a class="link" href="{% url 'crm:approval_detail' pending.pk %}">View request</a>{% endif %}</p></div>{% endif %}
+{% endblock %}
+{% block content %}
+<div class="card mb-6">
+  <div class="flex flex-col gap-4 p-5 sm:p-6 lg:flex-row lg:items-start lg:justify-between">
+    <div><h1 class="text-xl font-semibold text-gray-800 dark:text-white/90">{{ je }} {% badge je.status je.get_status_display %}</h1>
+      <p class="muted">{{ je.entry_date|d }} · {% if je.is_manual %}Manual journal{% else %}{{ je.source_type }}{% if source_url %} · <a class="link" href="{{ source_url }}">open source</a>{% endif %}{% endif %}</p>
+      <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">{{ je.narration }}</p></div>
+    <div class="flex flex-wrap gap-2">
+      {% if je.status == 'draft' and can_reverse %}
+        <form method="post" action="{% url 'crm:journal_action' je.pk 'post' %}">{% csrf_token %}{% idem %}<button class="btn btn-primary btn-sm" data-loading-text="Posting…">Post journal</button></form>
+        <form method="post" action="{% url 'crm:journal_action' je.pk 'discard' %}" data-confirm="Discard this draft?" data-confirm-danger="1">{% csrf_token %}<button class="btn btn-danger-outline btn-sm">Discard draft</button></form>
+      {% endif %}
+      {% if je.status == 'pending_approval' and can_decide %}<a class="btn btn-primary btn-sm" href="{% url 'crm:approval_detail' pending.pk %}">Review and approve</a>{% endif %}
+      {% if je.status == 'posted' and can_reverse and not je.reversal_of %}<button type="button" class="btn btn-secondary btn-sm" @click="$store.modal.show('reverse')">{% icon 'undo' 16 %} Reverse entry</button>{% endif %}
+      <button type="button" class="btn btn-secondary btn-sm" onclick="window.print()">Print</button>
+    </div>
+  </div>
+</div>
+<div class="card mb-6">
+  <div class="table-wrap"><table class="data-table responsive-cards">
+    <thead><tr><th class="th">Account</th><th class="th">Description</th><th class="th">Dimensions</th><th class="th text-right">Debit</th><th class="th text-right">Credit</th></tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for l in lines %}<tr><td class="td" data-label="Account"><a class="link" href="{% url 'crm:general_ledger' %}?account={{ l.account_id }}">{{ l.account }}</a></td><td class="td" data-label="Description">{{ l.description }}</td><td class="td text-theme-xs" data-label="Dimensions">{% if l.client %}{{ l.client.display_name }}{% endif %}{% if l.project %} · {{ l.project }}{% endif %}{% if l.service %} · {{ l.service.name }}{% endif %}</td><td class="td text-right" data-label="Debit">{% if l.debit %}{{ l.debit|inr }}{% endif %}</td><td class="td text-right" data-label="Credit">{% if l.credit %}{{ l.credit|inr }}{% endif %}</td></tr>{% endfor %}</tbody>
+    <tfoot><tr class="border-t border-gray-200 font-semibold dark:border-gray-700"><td class="td" colspan="3">Total</td><td class="td text-right">{{ je.total_debit|inr }}</td><td class="td text-right">{{ je.total_credit|inr }}</td></tr></tfoot>
+  </table></div>
+</div>
+<div class="card"><div class="card-header"><h2 class="card-title">Audit</h2></div><ul class="divide-y divide-gray-100 dark:divide-gray-800">
+  <li class="px-5 py-3 text-sm">Created {{ je.created_at|dt }} by {{ je.created_by|uname|default:"system" }}{% if je.posted_at %} · posted {{ je.posted_at|dt }}{% if je.posted_by %} by {{ je.posted_by|uname }}{% endif %}{% endif %}</li>
+  {% for a in activity %}<li class="px-5 py-3 text-sm"><span class="font-medium">{{ a.action }}</span> <span class="muted">· {{ a.actor_name|default:a.actor_type }} · {{ a.created_at|dt }}</span>{% if a.reason %}<span class="block text-theme-xs text-gray-500">{{ a.reason }}</span>{% endif %}</li>{% endfor %}</ul></div>
+{% include "crm/components/modal_start.html" with id="reverse" title="Reverse journal" subtitle="Creates a new journal with every line flipped, linked to this one. Accountants reverse directly; others need approval. System journals are corrected from their documents." %}
+  <form method="post" action="{% url 'crm:journal_action' je.pk 'reverse' %}" novalidate>{% csrf_token %}{% idem %}
+    {% include "crm/components/modal_form.html" with form=form %}{% include "crm/components/modal_actions.html" with label="Reverse entry" loading="Reversing…" danger=True %}</form>
+{% include "crm/components/modal_end.html" %}
+{% endblock %}

@@ -9,7 +9,7 @@ from collections import defaultdict
 from decimal import Decimal
 
 from .money import ZERO, D
-from .posting import (AP, AR, BAD_DEBTS, CUSTOMER_ADVANCES, EMPLOYER_CONTRIB, GATEWAY_CLEARING, GATEWAY_FEES,
+from .posting import (AP, AR, BAD_DEBTS, CUSTOMER_ADVANCES, DEFERRED_REVENUE, EMPLOYER_CONTRIB, GATEWAY_CLEARING, GATEWAY_FEES,
                       GST_ON_FEES, INPUT_CGST, INPUT_IGST, INPUT_SGST, OUTPUT_CGST, OUTPUT_IGST, OUTPUT_SGST,
                       RECURRING_REVENUE, REIMBURSEMENTS_PAYABLE, ROUND_OFF, SALARIES_PAYABLE, SALARY_EXPENSE,
                       SERVICE_REVENUE, STATUTORY_PAYABLE, TDS_PAYABLE, TDS_RECEIVABLE, COMMISSION_EXPENSE, Line,
@@ -22,6 +22,38 @@ def _deposit_account(payment):
     return account(GATEWAY_CLEARING)
 
 
+def _defer(inv, ln) -> bool:
+    """Over-time services billed for a period longer than a month post to deferred revenue (Part 8.6)."""
+    from crm.core.india import add_months, month_start
+    from crm.models import DeferredRevenueSchedule
+    sched = inv.billing_schedule
+    if ln.service is None or ln.service.revenue_recognition != 'over_time' or sched is None:
+        return False
+    months = []
+    m = month_start(sched.period_start)
+    while m <= sched.period_end:
+        months.append(m)
+        m = add_months(m, 1)
+    if len(months) < 2:
+        return False
+    each = (ln.taxable_value / len(months)).quantize(Decimal('0.01'))
+    for i, m in enumerate(months):
+        amt = ln.taxable_value - each * (len(months) - 1) if i == len(months) - 1 else each
+        DeferredRevenueSchedule.objects.get_or_create(invoice_line=ln, period_start=m, defaults={'amount': amt})
+    return True
+
+
+def deferred_release(row):
+    from crm.models import DeferredRevenueSchedule
+    d = DeferredRevenueSchedule.objects.select_related('invoice_line__invoice').get(pk=row.source_id)
+    inv = d.invoice_line.invoice
+    return {'entry_date': max(d.period_start, inv.invoice_date), 'narration': f'Revenue release {inv.number} {d.period_start:%b-%Y}',
+            'event_key': 'released',
+            'lines': [Line(DEFERRED_REVENUE, debit=d.amount, client_id=inv.client_id, project_id=inv.project_id),
+                      Line(RECURRING_REVENUE, credit=d.amount, client_id=inv.client_id, service_id=d.invoice_line.service_id,
+                           project_id=inv.project_id)]}
+
+
 def invoice_issued(row):
     from crm.models import Invoice
     from .catalog_rules import revenue_account_for_line
@@ -30,7 +62,10 @@ def invoice_issued(row):
                   project_id=inv.project_id)]
     revenue = defaultdict(lambda: ZERO)
     for ln in inv.lines.all():
-        revenue[(revenue_account_for_line(ln), ln.service_id)] += ln.taxable_value
+        if _defer(inv, ln):
+            revenue[(account(DEFERRED_REVENUE), ln.service_id)] += ln.taxable_value
+        else:
+            revenue[(revenue_account_for_line(ln), ln.service_id)] += ln.taxable_value
     for (acc, service_id), amount in revenue.items():
         lines.append(Line(acc, credit=amount, description=f'Revenue {inv.number}', client_id=inv.client_id,
                           service_id=service_id, project_id=inv.project_id))
@@ -259,6 +294,7 @@ HANDLERS = {
     'invoice_cancelled': invoice_cancelled,
     'invoice_written_off': invoice_written_off,
     'tds_written_off': tds_written_off,
+    'deferred_release': deferred_release,
     'payment_received': payment_received,
     'advance_allocated': advance_allocated,
     'allocation_reversed': allocation_reversed,

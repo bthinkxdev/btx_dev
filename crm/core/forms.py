@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import mimetypes
 import os
-from datetime import datetime
 
 from django import forms
 from django.conf import settings

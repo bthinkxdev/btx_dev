@@ -1,0 +1,19 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Periods{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Accounting periods" subtitle="Open: anyone with permission posts. Soft-closed: accountants only. Closed: no posting; reopening needs the Owner." %}{% endblock %}
+{% block content %}
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+  <div class="card"><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for p in periods %}<li><a href="?year={{ p.year }}&month={{ p.month }}" class="flex items-center justify-between px-5 py-3 text-sm hover:bg-gray-50 dark:hover:bg-white/3 {% if p.pk == sel.pk %}bg-brand-25 font-semibold dark:bg-white/5{% endif %}"><span>{{ p }}</span>{% badge p.status p.get_status_display %}</a></li>{% endfor %}</ul></div>
+  <div class="card xl:col-span-2">
+    <div class="card-header"><h2 class="card-title">Close {{ sel }}</h2>{% badge sel.status sel.get_status_display %}</div>
+    <ul class="card-body space-y-3">{% for i in checklist %}<li class="flex items-start justify-between gap-3 text-sm"><span class="flex items-start gap-2">{% if i.ok %}<span class="text-success-600">{% icon 'check' 18 %}</span>{% else %}<span class="text-error-600">{% icon 'x' 18 %}</span>{% endif %}<span>{{ i.label }}{% if i.detail %} <span class="text-gray-500">({{ i.detail }})</span>{% endif %}</span></span>{% if not i.ok %}<a class="link shrink-0" href="{{ i.url }}">Fix</a>{% endif %}</li>{% endfor %}</ul>
+    {% if sel.closed_at %}<p class="px-5 pb-3 text-theme-sm text-gray-500">Last closed {{ sel.closed_at|dt }} by {{ sel.closed_by|uname }}{% if sel.reopened_at %} · reopened {{ sel.reopened_at|dt }} by {{ sel.reopened_by|uname }}: {{ sel.reason }}{% endif %}</p>{% endif %}
+    {% if pending %}<div class="alert alert-info mx-5 mb-4"><p class="text-sm">A request is waiting: <a class="link" href="{% url 'crm:approval_detail' pending.pk %}">{{ pending.title }}</a></p></div>{% endif %}
+    {% if can_close %}<div class="flex flex-wrap gap-2 border-t border-gray-100 p-5 dark:border-gray-800">
+      {% if sel.status == 'open' %}<form method="post" action="{% url 'crm:period_action' sel.pk 'soft_close' %}" data-confirm="Soft-close {{ sel }}?" data-confirm-body="Only accountants can post into it afterwards.">{% csrf_token %}<button class="btn btn-secondary">Soft-close</button></form>{% endif %}
+      {% if sel.status != 'closed' %}<form method="post" action="{% url 'crm:period_action' sel.pk 'close' %}" data-confirm="Close {{ sel }}?" data-confirm-body="No posting is possible afterwards. {% if not is_owner %}The Owner must approve.{% endif %}">{% csrf_token %}<button class="btn btn-primary" data-loading-text="Closing…">Close period</button></form>{% endif %}
+      {% if sel.status != 'open' %}<form method="post" action="{% url 'crm:period_action' sel.pk 'reopen' %}" data-confirm="Reopen {{ sel }}?" data-confirm-body="Reports for this month may change. A closed period needs Owner approval." data-confirm-reason="required" data-confirm-danger="1">{% csrf_token %}<button class="btn btn-danger-outline">Reopen</button></form>{% endif %}
+    </div>{% endif %}
+  </div>
+</div>
+{% endblock %}

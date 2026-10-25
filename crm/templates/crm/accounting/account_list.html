@@ -1,0 +1,23 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Chart of accounts{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-start justify-between gap-3">
+  <div><h1 class="page-title">Chart of accounts</h1><p class="muted mt-1">Balances at {{ as_of|d }}. System accounts drive the posting map and keep their mapping.</p></div>
+  {% if can_edit %}<a href="{% url 'crm:account_create' %}" class="btn btn-primary">{% icon 'plus' 18 %} Add account</a>{% endif %}
+</div>
+{% endblock %}
+{% block content %}
+<form method="get" class="card mb-6 flex flex-col gap-3 p-4 sm:flex-row sm:items-end">
+  <div class="w-full sm:max-w-xs"><label class="form-label" for="coa-q">Search</label><input id="coa-q" type="search" name="q" value="{{ q }}" class="form-input h-10" placeholder="Code, name or group"></div>
+  <div><label class="form-label" for="coa-d">Balance at</label><input id="coa-d" type="date" name="as_of" value="{{ as_of|date:'Y-m-d' }}" class="form-input h-10"></div>
+  <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" name="inactive" value="1" class="form-checkbox-box" {% if show_inactive %}checked{% endif %}> Show inactive</label>
+  <button class="btn btn-secondary">Apply</button>
+</form>
+{% for type, rows in groups.items %}
+<div class="card mb-6"><div class="card-header"><h2 class="card-title">{{ type }}</h2></div>
+  <div class="table-wrap"><table class="data-table responsive-cards"><thead><tr><th class="th">Code</th><th class="th">Account</th><th class="th">Group</th><th class="th">Mapping</th><th class="th text-right">Balance</th><th class="th"></th></tr></thead><tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+  {% for r in rows %}<tr class="{% if not r.acc.is_active %}opacity-50{% endif %}"><td class="td font-mono" data-label="Code">{{ r.acc.code }}</td><td class="td" data-label="Account"><a class="link" href="{% url 'crm:general_ledger' %}?account={{ r.acc.pk }}">{{ r.acc.name }}</a>{% if not r.acc.allow_manual %} <span class="badge badge-grey">system only</span>{% endif %}</td><td class="td" data-label="Group">{{ r.acc.group }}</td><td class="td font-mono text-theme-xs" data-label="Mapping">{{ r.acc.system_code|default:"—" }}</td><td class="td text-right whitespace-nowrap" data-label="Balance">{{ r.balance|inr }}</td>
+    <td class="td text-right" data-label="">{% if can_edit %}<a class="btn btn-secondary btn-sm" href="{% url 'crm:account_edit' r.acc.pk %}">Edit</a>{% endif %}</td></tr>{% endfor %}
+  </tbody></table></div></div>
+{% empty %}<div class="card">{% include "crm/components/empty_state.html" with title="No accounts match" icon="book" %}</div>{% endfor %}
+{% endblock %}

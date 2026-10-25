@@ -5,7 +5,6 @@ from django.contrib.auth import get_user_model
 
 from crm.core.forms import (CrmModelForm, DateInput, GSTINField, MoneyFormField, PANField, PhoneField,
                             VersionedModelFormMixin)
-from crm.core.gst import TAXABILITY_CHOICES
 from crm.models import Client, Contact, Service, ServiceTaxRule
 
 

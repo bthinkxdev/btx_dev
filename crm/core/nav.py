@@ -70,6 +70,7 @@ NAV = [
             ('Trial balance', 'crm:trial_balance', 'accounting', 'view'),
             ('Profit and loss', 'crm:profit_loss', 'accounting', 'view'),
             ('Balance sheet', 'crm:balance_sheet', 'accounting', 'view'),
+            ('Cash flow', 'crm:cash_flow', 'accounting', 'view'),
             ('GST and TDS reports', 'crm:tax_reports', 'accounting', 'view'),
             ('Periods', 'crm:period_list', 'accounting', 'view'),
         ]),

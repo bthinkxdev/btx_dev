@@ -5,7 +5,7 @@ from django.urls import URLPattern
 
 app_name = 'crm'
 
-MODULES = ['auth', 'common', 'leads', 'sales', 'clients', 'quotations', 'payments', 'billing']
+MODULES = ['auth', 'common', 'leads', 'sales', 'clients', 'quotations', 'payments', 'billing', 'accounting']
 
 urlpatterns = []
 for _m in MODULES:

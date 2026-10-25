@@ -15,7 +15,7 @@ from django.views.decorators.http import require_POST
 
 from crm.core import audit, crypto, india, permissions
 from crm.core.views import staff_required
-from crm.models import ImportBatch, Lead, LeadActivity, LeadSource, Service
+from crm.models import ImportBatch, Lead, LeadActivity, Service
 
 from . import services as svc
 from .forms import ImportOptionsForm, ImportUploadForm

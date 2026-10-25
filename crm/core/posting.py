@@ -113,7 +113,6 @@ def build_journal(*, entry_date: date, narration: str, source_type: str, source_
                   reversal_of=None):
     """Create a journal. Validates balance to the paisa; rejects if the period is closed."""
     from crm.models import JournalEntry, JournalLine
-    from . import numbering
     cleaned = []
     for ln in lines:
         # A negative debit is a credit and vice versa; a line carrying both is netted.
@@ -145,7 +144,7 @@ def build_journal(*, entry_date: date, narration: str, source_type: str, source_
             department_id=ln.department_id, entry_date=entry_date, posted=False,
         )
     if status == 'posted':
-        post_entry(entry, user)
+        entry = post_entry(entry, user)
     elif status == 'pending_approval':
         entry.status = 'pending_approval'
         entry.save(update_fields=['status'])
@@ -242,6 +241,9 @@ def process(outbox_id: int):
                     existing = JournalEntry.objects.filter(source_type=row.source_type, source_id=row.source_id,
                                                            event_key=spec['event_key'][:80]).first()
                     journal = existing or build_journal(source_type=row.source_type, source_id=row.source_id, **spec)
+                    if row.event_type == 'deferred_release':
+                        from crm.models import DeferredRevenueSchedule
+                        DeferredRevenueSchedule.objects.filter(pk=row.source_id).update(posted=True, journal=journal)
                     row.journal = journal
                     row.status = 'posted'
                     row.posted_at = timezone.now()

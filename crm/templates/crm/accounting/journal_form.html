@@ -1,0 +1,64 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}New journal{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="New manual journal" subtitle="Post is disabled until debits equal credits. Journals above the approval limit wait for an Accountant." %}{% endblock %}
+{% block content %}
+<form method="post" novalidate data-dirty-check id="jform">{% csrf_token %}{% idem %}
+  {% include "crm/components/form_errors.html" with form=header %}
+  {% if lines.non_form_errors %}<div class="alert alert-error mb-5" role="alert"><p class="text-sm">{{ lines.non_form_errors|join:" " }}</p></div>{% endif %}
+  <div class="card mb-6"><div class="card-body grid grid-cols-1 gap-5 md:grid-cols-3">{% field header.entry_date %}{% field header.narration wrapper_class="md:col-span-2" %}</div></div>
+  <div class="card mb-6">
+    <div class="card-header"><h2 class="card-title">Lines</h2><button type="button" class="btn btn-secondary btn-sm" data-add>{% icon 'plus' 16 %} Add line</button></div>
+    {{ lines.management_form }}
+    <div class="table-wrap border-t border-gray-100 dark:border-gray-800"><table class="w-full min-w-[1000px] text-left">
+      <thead><tr class="text-theme-xs text-gray-500"><th class="px-2 py-2">Account</th><th class="px-2 py-2 text-right">Debit</th><th class="px-2 py-2 text-right">Credit</th><th class="px-2 py-2">Note</th><th class="px-2 py-2">Client</th><th class="px-2 py-2">Project</th><th></th></tr></thead>
+      <tbody id="jrows" class="divide-y divide-gray-100 dark:divide-gray-800">{% for lf in lines %}{% include "crm/accounting/_jl_row.html" %}{% endfor %}</tbody>
+      <tfoot><tr class="border-t border-gray-200 text-sm font-semibold dark:border-gray-700"><td class="px-2 py-3">Totals</td><td class="px-2 py-3 text-right" id="tdr">0.00</td><td class="px-2 py-3 text-right" id="tcr">0.00</td><td class="px-2 py-3" colspan="4"><span id="tdiff" class="text-theme-sm"></span></td></tr></tfoot>
+    </table></div>
+    <template id="jtpl">{% with lf=lines.empty_form %}{% include "crm/accounting/_jl_row.html" %}{% endwith %}</template>
+  </div>
+  <div class="card mb-6"><div class="card-body">{% field header.message %}<p class="form-help -mt-2">Approval is needed above {{ limit|inr }}.</p></div></div>
+  <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+    <a href="{% url 'crm:journal_list' %}" class="btn btn-secondary">Cancel</a>
+    <button name="action" value="draft" class="btn btn-secondary" data-loading-text="Saving…">Save draft</button>
+    <button name="action" value="post" class="btn btn-primary" id="postbtn" data-loading-text="Posting…">Post journal</button>
+  </div>
+</form>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function () {
+  var form = document.getElementById('jform'), body = document.getElementById('jrows');
+  var total = form.querySelector('[name="lines-TOTAL_FORMS"]');
+  function paise(v) { if (!v) return 0; var neg = v.trim().charAt(0) === '-'; var p = v.replace('-', '').split('.'); var n = parseInt(p[0] || '0', 10) * 100 + parseInt(((p[1] || '') + '00').slice(0, 2), 10); return neg ? -n : n; }
+  function fmt(n) { return (n / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  function sum() {
+    var dr = 0, cr = 0;
+    body.querySelectorAll('[data-row]').forEach(function (r) { dr += paise(r.querySelector('[data-dr]').value); cr += paise(r.querySelector('[data-cr]').value); });
+    document.getElementById('tdr').textContent = fmt(dr); document.getElementById('tcr').textContent = fmt(cr);
+    var d = document.getElementById('tdiff'), ok = dr === cr && dr > 0;
+    d.textContent = ok ? 'Balanced' : 'Difference ' + fmt(Math.abs(dr - cr));
+    d.className = 'text-theme-sm ' + (ok ? 'text-success-600' : 'text-error-600');
+    document.getElementById('postbtn').disabled = !ok;
+  }
+  function reindex() {
+    var rows = body.querySelectorAll('[data-row]');
+    rows.forEach(function (r, i) { r.querySelectorAll('[name^="lines-"]').forEach(function (el) { el.name = el.name.replace(/^lines-\d+-/, 'lines-' + i + '-'); if (el.id) el.id = el.id.replace(/^id_lines-\d+-/, 'id_lines-' + i + '-'); }); });
+    total.value = rows.length;
+  }
+  function add() {
+    var tmp = document.createElement('tbody');
+    tmp.innerHTML = document.getElementById('jtpl').innerHTML.replace(/__prefix__/g, body.querySelectorAll('[data-row]').length).trim();
+    body.appendChild(tmp.firstElementChild); reindex(); sum();
+  }
+  form.querySelector('[data-add]').addEventListener('click', add);
+  body.addEventListener('click', function (e) { var b = e.target.closest('[data-remove]'); if (!b) return; if (body.querySelectorAll('[data-row]').length <= 2) return; b.closest('[data-row]').remove(); reindex(); sum(); });
+  body.addEventListener('input', function (e) {
+    if (e.target.matches('[data-dr]') && e.target.value) e.target.closest('[data-row]').querySelector('[data-cr]').value = '';
+    if (e.target.matches('[data-cr]') && e.target.value) e.target.closest('[data-row]').querySelector('[data-dr]').value = '';
+    sum();
+  });
+  while (body.querySelectorAll('[data-row]').length < 2) add();
+  sum();
+})();
+</script>
+{% endblock %}

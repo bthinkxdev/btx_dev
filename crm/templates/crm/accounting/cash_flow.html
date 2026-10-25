@@ -1,0 +1,15 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Cash flow{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Cash flow" subtitle="Direct view of bank, cash and gateway movements." %}{% endblock %}
+{% block content %}
+{% include "crm/accounting/_range.html" %}
+<div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+  <div class="card p-4"><p class="dl-label">Opening cash</p><p class="mt-1 text-xl font-semibold">{{ cf.opening|inr0 }}</p></div>
+  <div class="card p-4"><p class="dl-label">Money in</p><p class="mt-1 text-xl font-semibold text-success-600">{{ cf.inflow|inr0 }}</p></div>
+  <div class="card p-4"><p class="dl-label">Money out</p><p class="mt-1 text-xl font-semibold text-error-600">{{ cf.outflow|inr0 }}</p></div>
+  <div class="card p-4"><p class="dl-label">Closing cash</p><p class="mt-1 text-xl font-semibold">{{ cf.closing|inr0 }}</p></div>
+</div>
+<div class="card"><table class="data-table"><thead><tr><th class="th">Movement</th><th class="th text-right">Amount</th></tr></thead>
+  <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for r in cf.rows %}<tr><td class="td">{{ r.label }}</td><td class="td text-right {% if r.amount < 0 %}text-error-600{% else %}text-success-700{% endif %}">{{ r.amount|inr }}</td></tr>{% empty %}<tr><td class="td muted" colspan="2">No cash movements in this period.</td></tr>{% endfor %}</tbody>
+  <tfoot><tr class="border-t-2 border-gray-300 font-semibold dark:border-gray-600"><td class="td">Net change</td><td class="td text-right">{{ cf.net|inr }}</td></tr></tfoot></table></div>
+{% endblock %}

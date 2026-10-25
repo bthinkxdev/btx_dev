@@ -22,7 +22,7 @@ from django.utils import timezone
 
 from crm.core import approvals, audit, crypto, documents, gst, india, notify, numbering, pdf, permissions
 from crm.core.money import D, ZERO, q2
-from crm.models import CompanySettings, FollowUp, LeadActivity, Quotation, QuotationLine, QuotationMilestone
+from crm.models import CompanySettings, FollowUp, LeadActivity, Quotation
 from crm.models.quotations import (Q_ACCEPTED, Q_APPROVED, Q_AWAITING, Q_CONVERTED, Q_DRAFT, Q_EXPIRED, Q_REJECTED,
                                    Q_SENT, Q_SUPERSEDED, Q_VIEWED, Q_VOID)
 

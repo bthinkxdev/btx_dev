@@ -1,0 +1,103 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Bank reconciliation{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-start justify-between gap-3">
+  <div><h1 class="page-title">Bank reconciliation</h1><p class="muted mt-1">Import the statement, match lines to the books, then finalise to the statement balance.</p></div>
+  <form method="get"><label class="sr-only" for="rc-acc">Account</label><select id="rc-acc" name="account" class="form-select h-10 w-64" data-autosubmit>{% for a in accounts %}<option value="{{ a.pk }}" {% if a.pk == bank.pk %}selected{% endif %}>{{ a.name }}</option>{% endfor %}</select><noscript><button class="btn btn-secondary btn-sm">Go</button></noscript></form>
+</div>
+{% endblock %}
+{% block content %}
+<div class="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-3">
+  {% if can_edit %}
+  <form method="post" enctype="multipart/form-data" action="{% url 'crm:reconciliation_action' 'import' %}" class="card p-5" novalidate>{% csrf_token %}{% idem %}<input type="hidden" name="account" value="{{ bank.pk }}">
+    <h2 class="card-title mb-3">Import statement</h2>
+    {% field import_form.file help="CSV or Excel with Date, Description and Amount (or Debit/Credit) columns. Duplicate lines are skipped." %}
+    <div class="mt-3 flex flex-wrap gap-2"><button class="btn btn-primary btn-sm" data-loading-text="Importing…">{% icon 'upload' 16 %} Import</button></div>
+    {% if imports %}<p class="mt-3 text-theme-xs text-gray-500">Last: {{ imports.0.file_name }} · {{ imports.0.created_at|dt }} · {{ imports.0.line_count }} lines, {{ imports.0.duplicate_count }} duplicates</p>{% endif %}
+  </form>
+  {% endif %}
+  <div class="card p-5">
+    <h2 class="card-title mb-3">Status</h2>
+    <dl class="grid grid-cols-2 gap-3 text-sm">
+      <div><dt class="dl-label">Unmatched</dt><dd class="dl-value">{{ counts.unmatched|default:0 }}</dd></div>
+      <div><dt class="dl-label">Suggested</dt><dd class="dl-value">{{ counts.suggested|default:0 }}</dd></div>
+      <div><dt class="dl-label">Matched</dt><dd class="dl-value">{{ counts.matched|default:0 }}</dd></div>
+      <div><dt class="dl-label">Reconciled</dt><dd class="dl-value">{{ counts.reconciled|default:0 }}</dd></div>
+    </dl>
+    {% if can_edit %}<form method="post" action="{% url 'crm:reconciliation_action' 'auto' %}" class="mt-3">{% csrf_token %}<input type="hidden" name="account" value="{{ bank.pk }}"><button class="btn btn-secondary btn-sm" data-loading-text="Matching…">{% icon 'refresh' 16 %} Run auto-match</button></form>{% endif %}
+  </div>
+  <div class="card p-5">
+    <h2 class="card-title mb-3">Finalise</h2>
+    <form method="get" class="grid grid-cols-2 gap-3"><input type="hidden" name="account" value="{{ bank.pk }}">
+      <div><label class="form-label" for="fn-d">Statement date</label><input id="fn-d" type="date" name="as_of" value="{{ as_of|date:'Y-m-d' }}" class="form-input h-10"></div>
+      <div><label class="form-label" for="fn-b">Closing balance</label><input id="fn-b" type="number" step="0.01" name="statement_balance" value="{{ request.GET.statement_balance }}" class="form-input h-10"></div>
+      <button class="btn btn-secondary btn-sm col-span-2">Check</button></form>
+    {% if position %}
+      <dl class="mt-4 space-y-1 text-sm">
+        <div class="flex justify-between"><dt class="text-gray-500">Book balance</dt><dd>{{ position.book|inr }}</dd></div>
+        <div class="flex justify-between"><dt class="text-gray-500">Less: in books, not on statement</dt><dd>{{ position.outstanding|inr }}</dd></div>
+        <div class="flex justify-between"><dt class="text-gray-500">Add: on statement, not matched</dt><dd>{{ position.unmatched_total|inr }}</dd></div>
+        <div class="flex justify-between font-semibold"><dt>Expected statement balance</dt><dd>{{ position.expected_statement|inr }}</dd></div>
+        <div class="flex justify-between {% if position.difference %}text-error-600{% else %}text-success-600{% endif %}"><dt>Difference</dt><dd>{{ position.difference|inr }}</dd></div>
+      </dl>
+      {% if position.can_finalise and can_finalise %}<form method="post" action="{% url 'crm:reconciliation_finalise' %}" class="mt-3" data-confirm="Finalise reconciliation to {{ as_of|d }}?" data-confirm-body="Matched lines up to this date are locked.">{% csrf_token %}{% idem %}<input type="hidden" name="account" value="{{ bank.pk }}"><input type="hidden" name="as_of" value="{{ as_of|date:'Y-m-d' }}"><input type="hidden" name="statement_balance" value="{{ position.statement }}"><button class="btn btn-primary btn-sm w-full" data-loading-text="Finalising…">Finalise reconciliation</button></form>
+      {% elif not position.can_finalise %}<p class="mt-3 text-theme-xs text-warning-700">Match or ignore every line up to this date and clear the difference to finalise.</p>{% endif %}
+    {% endif %}
+  </div>
+</div>
+
+<div class="mb-3 flex flex-wrap gap-2">
+  <a href="?account={{ bank.pk }}&status=open" class="chip {% if status == 'open' %}chip-active{% else %}chip-inactive{% endif %}">To match</a>
+  <a href="?account={{ bank.pk }}&status=matched" class="chip {% if status == 'matched' %}chip-active{% else %}chip-inactive{% endif %}">Matched</a>
+  <a href="?account={{ bank.pk }}&status=reconciled" class="chip {% if status == 'reconciled' %}chip-active{% else %}chip-inactive{% endif %}">Reconciled</a>
+  <a href="?account={{ bank.pk }}&status=ignored" class="chip {% if status == 'ignored' %}chip-active{% else %}chip-inactive{% endif %}">Ignored</a>
+</div>
+<div class="grid grid-cols-1 gap-6 2xl:grid-cols-2">
+  <div class="card"><div class="card-header"><h2 class="card-title">Bank statement lines</h2></div>
+    <ul class="divide-y divide-gray-100 dark:divide-gray-800">
+    {% for t in txns %}
+      <li class="px-5 py-4" x-data="{ open: null }">
+        <div class="flex flex-wrap items-start justify-between gap-2">
+          <div class="min-w-0"><p class="text-sm font-medium text-gray-800 dark:text-white/90">{{ t.txn_date|d }} · <span class="{% if t.amount < 0 %}text-error-600{% else %}text-success-700{% endif %}">{{ t.amount|inr }}</span></p><p class="text-theme-sm break-words text-gray-600 dark:text-gray-400">{{ t.description }}{% if t.reference %} · {{ t.reference }}{% endif %}</p>
+            {% if t.status == 'suggested' %}<p class="mt-1 text-theme-xs text-blue-light-600">Suggested: {{ t.suggestion.label }}</p>{% endif %}
+            {% if t.ignore_reason %}<p class="mt-1 text-theme-xs text-gray-500">Ignored: {{ t.ignore_reason }}</p>{% endif %}
+            {% for m in t.matches.all %}<p class="mt-1 text-theme-xs text-gray-500">↔ <a class="link" href="{% url 'crm:journal_detail' m.journal_line.entry_id %}">{{ m.journal_line.entry.number }}</a> {{ m.amount|inr }} ({{ m.rule }})</p>{% endfor %}</div>
+          {% badge t.status t.get_status_display %}
+        </div>
+        {% if can_edit %}
+        <div class="mt-2 flex flex-wrap gap-2">
+          {% if t.status == 'suggested' %}<form method="post" action="{% url 'crm:reconciliation_action' 'confirm' %}">{% csrf_token %}<input type="hidden" name="account" value="{{ bank.pk }}"><input type="hidden" name="txn" value="{{ t.pk }}"><button class="btn btn-success btn-sm">Confirm match</button></form>{% endif %}
+          {% if t.status == 'unmatched' or t.status == 'suggested' %}
+            <button type="button" class="btn btn-secondary btn-sm" @click="open = open === 'm' ? null : 'm'">Match to books</button>
+            <button type="button" class="btn btn-secondary btn-sm" @click="open = open === 'c' ? null : 'c'">Create entry</button>
+            <form method="post" action="{% url 'crm:reconciliation_action' 'ignore' %}" data-confirm="Ignore this bank line?" data-confirm-reason="required">{% csrf_token %}<input type="hidden" name="account" value="{{ bank.pk }}"><input type="hidden" name="txn" value="{{ t.pk }}"><button class="btn btn-secondary btn-sm">Ignore</button></form>
+          {% elif t.status == 'matched' or t.status == 'ignored' %}
+            <form method="post" action="{% url 'crm:reconciliation_action' 'unmatch' %}" data-confirm="Remove this match?" data-confirm-reason="required" data-confirm-danger="1">{% csrf_token %}<input type="hidden" name="account" value="{{ bank.pk }}"><input type="hidden" name="txn" value="{{ t.pk }}"><button class="btn-link text-sm">Undo</button></form>
+          {% endif %}
+        </div>
+        {% if t.status == 'unmatched' or t.status == 'suggested' %}
+        <form method="post" action="{% url 'crm:reconciliation_action' 'match' %}" x-show="open === 'm'" x-cloak class="mt-3 space-y-2 rounded-lg border border-gray-100 p-3 dark:border-gray-800" novalidate>{% csrf_token %}{% idem %}<input type="hidden" name="account" value="{{ bank.pk }}"><input type="hidden" name="txn" value="{{ t.pk }}">
+          <p class="text-theme-xs text-gray-500">Tick the book items (same direction) that make up {{ t.amount|inr }}.</p>
+          <div class="max-h-56 space-y-1 overflow-y-auto">{% for ln in book %}<label class="flex items-center justify-between gap-2 text-sm"><span class="flex items-center gap-2"><input type="checkbox" name="lines" value="{{ ln.pk }}" class="form-checkbox-box">{{ ln.entry_date|d }} · {{ ln.entry.narration|truncatechars:50 }}</span><span>{% if ln.debit %}{{ ln.debit|inr }}{% else %}-{{ ln.credit|inr }}{% endif %}</span></label>{% empty %}<p class="muted text-sm">No open book items.</p>{% endfor %}</div>
+          <details class="text-sm"><summary class="cursor-pointer text-gray-600">Post a difference</summary><div class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2"><select name="adjustment_account" class="form-select h-10" aria-label="Adjustment account"><option value="">Adjustment account</option>{% for a in adjust_accounts %}<option value="{{ a.pk }}">{{ a }}</option>{% endfor %}</select><input name="reason" class="form-input h-10" placeholder="Reason" maxlength="200" aria-label="Reason"></div></details>
+          <button class="btn btn-primary btn-sm" data-loading-text="Matching…">Match selected</button>
+        </form>
+        <form method="post" action="{% url 'crm:reconciliation_action' 'create' %}" x-show="open === 'c'" x-cloak class="mt-3 grid grid-cols-1 gap-2 rounded-lg border border-gray-100 p-3 sm:grid-cols-3 dark:border-gray-800" novalidate>{% csrf_token %}{% idem %}<input type="hidden" name="account" value="{{ bank.pk }}"><input type="hidden" name="txn" value="{{ t.pk }}">
+          <select name="counter_account" class="form-select h-10 sm:col-span-2" aria-label="Other side" required><option value="">Bank charge, interest, drawings, transfer…</option>{% for a in create_form.fields.counter_account.queryset %}<option value="{{ a.pk }}">{{ a }}</option>{% endfor %}</select>
+          <input name="narration" class="form-input h-10" placeholder="Narration" maxlength="300" aria-label="Narration">
+          <button class="btn btn-primary btn-sm sm:col-span-3" data-loading-text="Posting…">Post and match</button>
+        </form>
+        {% endif %}
+        {% endif %}
+      </li>
+    {% empty %}<li class="muted px-5 py-6">Nothing here. {% if status == 'open' %}Import a statement to start.{% endif %}</li>{% endfor %}
+    </ul></div>
+  <div class="space-y-6">
+    <div class="card"><div class="card-header"><h2 class="card-title">Book items not on a statement yet</h2><span class="text-theme-sm text-gray-500">{{ book|length }}</span></div>
+      <ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for ln in book %}<li class="flex justify-between gap-2 px-5 py-3 text-sm"><span><a class="link" href="{% url 'crm:journal_detail' ln.entry_id %}">{{ ln.entry.number }}</a> · {{ ln.entry_date|d }}<span class="block text-theme-xs text-gray-500">{{ ln.entry.narration|truncatechars:60 }}</span></span><span class="whitespace-nowrap">{% if ln.debit %}{{ ln.debit|inr }}{% else %}-{{ ln.credit|inr }}{% endif %}</span></li>{% empty %}<li class="muted px-5 py-4">Everything in the books is matched.</li>{% endfor %}</ul></div>
+    <div class="card"><div class="card-header"><h2 class="card-title">Finalised reconciliations</h2></div>
+      <ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for r in history %}<li class="flex items-center justify-between gap-2 px-5 py-3 text-sm"><a class="link" href="{% url 'crm:reconciliation_report' r.pk %}">{{ r.statement_date|d }}</a><span>{{ r.statement_balance|inr }} · {{ r.finalised_by|uname }}</span>
+        {% if forloop.first and can_finalise %}<form method="post" action="{% url 'crm:reconciliation_undo' r.pk %}" data-confirm="Un-reconcile {{ r.statement_date|d }}?" data-confirm-reason="required" data-confirm-danger="1">{% csrf_token %}<button class="btn-link text-sm text-error-600">Un-reconcile</button></form>{% endif %}</li>{% empty %}<li class="muted px-5 py-4">None yet.</li>{% endfor %}</ul></div>
+  </div>
+</div>
+{% endblock %}

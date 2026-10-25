@@ -30,8 +30,8 @@ from crm.core.money import D
 from crm.models import (CompanySettings, DuplicateCandidate, FollowUp, Lead, LeadActivity, LeadAssignment, LeadInbox,
                         LeadSource, StageHistory, UserProfile)
 from crm.models.leads import (CLOSED_STAGES, DEFAULT_PROBABILITY, OPEN_STAGES, STAGE_CONTACTED, STAGE_LOST,
-                              STAGE_NEGOTIATION, STAGE_NEW, STAGE_NURTURING, STAGE_ORDER, STAGE_QUALIFIED,
-                              STAGE_QUOTE_PREPARED, STAGE_QUOTE_SENT, STAGE_WON, STAGES)
+                              STAGE_NEGOTIATION, STAGE_NEW, STAGE_NURTURING, STAGE_QUALIFIED, STAGE_QUOTE_PREPARED,
+                              STAGE_QUOTE_SENT, STAGE_WON, STAGES)
 
 logger = logging.getLogger('crm.leads')
 STAGE_LABELS = dict(STAGES)
@@ -96,7 +96,7 @@ def find_duplicates(phone: str = '', email: str = '', exclude_id: int | None = N
 
 
 def matching_clients(phone: str = '', email: str = '', gstin: str = '', name: str = ''):
-    from crm.models import Client, Contact
+    from crm.models import Client
     phone, email = normalize_contact(phone, email)
     q = Q()
     if phone:
@@ -889,7 +889,7 @@ MERGE_FIELDS = ['name', 'company', 'phone', 'email', 'website', 'city', 'state',
 
 def merge(primary: Lead, secondary: Lead, actor, choices: dict | None = None) -> Lead:
     """Move secondary's history into primary; secondary is archived with a pointer (never deleted)."""
-    from crm.models import PaymentLink, Quotation
+    from crm.models import Quotation
     if primary.pk == secondary.pk:
         raise LeadError('Choose two different leads.')
     choices = choices or {}

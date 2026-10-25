@@ -1,0 +1,29 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}General ledger{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-start justify-between gap-3">
+  <div><h1 class="page-title">General ledger</h1><p class="muted mt-1">Running balance with a link to every source document.</p></div>
+  {% if data %}<a class="btn btn-secondary" href="{% qs export='csv' %}">{% icon 'download' 18 %} Export CSV</a>{% endif %}
+</div>
+{% endblock %}
+{% block content %}
+<form method="get" class="card mb-4 flex flex-col gap-3 p-4 sm:flex-row sm:items-end">
+  <div class="w-full sm:max-w-md"><label class="form-label" for="gl-acc">Account</label><select id="gl-acc" name="account" class="form-select h-10" data-autosubmit><option value="">Choose an account</option>{% for a in accounts %}<option value="{{ a.pk }}" {% if acc.pk == a.pk %}selected{% endif %}>{{ a }}</option>{% endfor %}</select></div>
+  <input type="hidden" name="start" value="{{ start|date:'Y-m-d' }}"><input type="hidden" name="end" value="{{ end|date:'Y-m-d' }}">
+  <noscript><button class="btn btn-secondary">Show</button></noscript>
+</form>
+{% include "crm/accounting/_range.html" with dims_filter=True %}
+{% if data %}
+<div class="card">
+  <div class="card-header"><h2 class="card-title">{{ acc }}</h2><p class="text-sm">Opening {{ data.opening|inr }} · Closing <strong>{{ data.closing|inr }}</strong></p></div>
+  <div class="table-wrap"><table class="data-table responsive-cards">
+    <thead><tr><th class="th">Date</th><th class="th">Journal</th><th class="th">Narration</th><th class="th">Client</th><th class="th text-right">Debit</th><th class="th text-right">Credit</th><th class="th text-right">Balance</th></tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+      <tr class="bg-gray-50 dark:bg-white/3"><td class="td" colspan="6">Opening balance</td><td class="td text-right font-medium">{{ data.opening|inr }}</td></tr>
+      {% for r in data.rows %}<tr><td class="td whitespace-nowrap" data-label="Date">{{ r.line.entry_date|d }}</td><td class="td" data-label="Journal"><a class="link" href="{% url 'crm:journal_detail' r.line.entry_id %}">{{ r.line.entry.number }}</a></td><td class="td" data-label="Narration">{{ r.line.entry.narration|truncatechars:70 }}{% if r.line.description and r.line.description != r.line.entry.narration %}<span class="block text-theme-xs text-gray-500">{{ r.line.description|truncatechars:60 }}</span>{% endif %}</td><td class="td" data-label="Client">{{ r.line.client.display_name|default:"" }}</td><td class="td text-right" data-label="Debit">{% if r.line.debit %}{{ r.line.debit|inr }}{% endif %}</td><td class="td text-right" data-label="Credit">{% if r.line.credit %}{{ r.line.credit|inr }}{% endif %}</td><td class="td text-right font-medium whitespace-nowrap" data-label="Balance">{{ r.balance|inr }}</td></tr>{% endfor %}
+    </tbody>
+    <tfoot><tr class="border-t border-gray-200 font-semibold dark:border-gray-700"><td class="td" colspan="4">Period totals</td><td class="td text-right">{{ data.debit|inr }}</td><td class="td text-right">{{ data.credit|inr }}</td><td class="td text-right">{{ data.closing|inr }}</td></tr></tfoot>
+  </table></div>
+</div>
+{% else %}<div class="card">{% include "crm/components/empty_state.html" with title="Choose an account" text="Pick an account above to see its ledger." icon="book" %}</div>{% endif %}
+{% endblock %}

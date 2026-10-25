@@ -39,6 +39,8 @@ JOBS = {
     'projects.blockers': ('crm.modules.projects.jobs.escalate_blockers', 'frequent', 60),
     'tickets.sla': ('crm.modules.projects.jobs.ticket_sla', 'frequent', 15),
     'expenses.recurring': ('crm.modules.expenses.jobs.generate_recurring', 'daily', 1440),
+    'accounting.deferred_release': ('crm.modules.accounting.services.release_deferred', 'daily', 1440),
+    'accounting.posting_queue': ('crm.modules.accounting.services.posting_queue_alert', 'frequent', 15),
     'audit.checkpoint': ('crm.core.audit.write_checkpoint', 'daily', 1440),
     'integrity.nightly': ('crm.core.integrity.run_checks', 'daily', 1440),
     'housekeeping.idempotency': ('crm.core.jobs.purge_idempotency_keys', 'daily', 1440),

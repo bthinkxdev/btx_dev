@@ -1,0 +1,30 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Accounting{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Accounting" subtitle="Live from posted journals. Every business event posts once through the posting queue." %}{% endblock %}
+{% block banners %}
+  {% if failed_count %}<div class="alert alert-error mb-5" role="alert"><span class="text-error-500">{% icon 'alert' 20 %}</span><div class="text-sm text-gray-700 dark:text-gray-300"><p><strong>{{ failed_count }} posting(s) failed.</strong> Their business records exist but the ledger is behind.</p>{% if can_retry %}<form method="post" action="{% url 'crm:retry_postings' %}" class="mt-2">{% csrf_token %}<button class="btn btn-secondary btn-sm" data-loading-text="Retrying…">Retry failed postings</button></form>{% endif %}</div></div>{% endif %}
+  {% if not ar_tie.ok %}<div class="alert alert-warning mb-5"><p class="text-sm">Receivables control ({{ ar_tie.control|inr }}) differs from open invoice balances ({{ ar_tie.subledger|inr }}) by {{ ar_tie.difference|inr }}. Check failed postings.</p></div>{% endif %}
+{% endblock %}
+{% block content %}
+<div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4 xl:grid-cols-6">
+  <a href="{% url 'crm:bank_account_list' %}" class="card p-4"><p class="dl-label">Cash and bank</p><p class="mt-1 text-xl font-semibold text-gray-800 dark:text-white/90">{{ cash_total|inr0 }}</p></a>
+  <a href="{% url 'crm:receivables' %}" class="card p-4"><p class="dl-label">Receivables</p><p class="mt-1 text-xl font-semibold text-gray-800 dark:text-white/90">{{ ar|inr0 }}</p></a>
+  <a href="{% url 'crm:advances' %}" class="card p-4"><p class="dl-label">Customer advances</p><p class="mt-1 text-xl font-semibold text-gray-800 dark:text-white/90">{{ advances|inr0 }}</p></a>
+  <a href="{% url 'crm:expense_list' %}" class="card p-4"><p class="dl-label">Payables</p><p class="mt-1 text-xl font-semibold text-gray-800 dark:text-white/90">{{ ap|inr0 }}</p></a>
+  <a href="{% url 'crm:tax_reports' %}" class="card p-4"><p class="dl-label">GST position (net)</p><p class="mt-1 text-xl font-semibold {% if gst.net > 0 %}text-warning-700{% else %}text-gray-800 dark:text-white/90{% endif %}">{{ gst.net|inr0 }}</p></a>
+  <a href="{% url 'crm:tds_receivable' %}" class="card p-4"><p class="dl-label">TDS receivable / payable</p><p class="mt-1 text-lg font-semibold text-gray-800 dark:text-white/90">{{ tds_rec|inr0 }} / {{ tds_pay|inr0 }}</p></a>
+</div>
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+  <div class="card xl:col-span-2"><div class="card-header"><h2 class="card-title">Bank accounts</h2><a href="{% url 'crm:reconciliation' %}" class="link text-sm">Reconcile</a></div>
+    <div class="table-wrap"><table class="data-table responsive-cards"><thead><tr><th class="th">Account</th><th class="th text-right">Book balance</th><th class="th">Unmatched lines</th><th class="th">Last reconciled</th></tr></thead><tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+      {% for b in banks %}<tr><td class="td" data-label="Account"><a class="link" href="{% url 'crm:reconciliation' %}?account={{ b.acct.pk }}">{{ b.acct.name }}</a><span class="block text-theme-xs">{{ b.acct.get_kind_display }}</span></td><td class="td text-right" data-label="Balance">{{ b.balance|inr }}</td><td class="td" data-label="Unmatched">{% if b.unreconciled %}<span class="text-warning-700">{{ b.unreconciled }}</span>{% else %}0{% endif %}</td><td class="td" data-label="Reconciled">{{ b.last_rec.statement_date|d|default:"Never" }}</td></tr>{% endfor %}
+    </tbody></table></div></div>
+  <div class="space-y-6">
+    <div class="card"><div class="card-header"><h2 class="card-title">This month</h2><a href="{% url 'crm:profit_loss' %}?preset=month" class="link text-sm">P&amp;L</a></div>
+      <dl class="card-body space-y-2 text-sm"><div class="flex justify-between"><dt class="text-gray-500">Income</dt><dd>{{ pl.total_income|inr }}</dd></div><div class="flex justify-between"><dt class="text-gray-500">Direct costs</dt><dd>{{ pl.total_direct|inr }}</dd></div><div class="flex justify-between"><dt class="text-gray-500">Expenses</dt><dd>{{ pl.total_expense|inr }}</dd></div><div class="flex justify-between border-t border-gray-100 pt-2 font-semibold dark:border-gray-800"><dt>Net profit</dt><dd class="{% if pl.net_profit < 0 %}text-error-600{% endif %}">{{ pl.net_profit|inr }}</dd></div></dl></div>
+    <div class="card"><div class="card-header"><h2 class="card-title">Period</h2></div><div class="card-body text-sm"><p>{{ period }} {% badge period.status period.get_status_display %}</p><a href="{% url 'crm:period_list' %}" class="link mt-2 inline-block">Period closing checklist</a>{% if pending_journals %}<p class="mt-2"><a class="link" href="{% url 'crm:journal_list' %}?quick=pending">{{ pending_journals }} journal(s) waiting for approval</a></p>{% endif %}</div></div>
+    <div class="card"><div class="card-header"><h2 class="card-title">Posting queue</h2><span class="badge {% if queue_count %}badge-amber{% else %}badge-green{% endif %}">{{ queue_count }} waiting</span></div>
+      <ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for r in queue %}<li class="px-5 py-3 text-sm"><span class="font-medium">{{ r.event_type }}</span> · {{ r.source_type }} #{{ r.source_id }} {% badge r.status r.get_status_display %}{% if r.last_error %}<span class="block text-theme-xs text-error-600 break-words">{{ r.last_error|truncatechars:160 }}</span>{% endif %}</li>{% empty %}<li class="muted px-5 py-4">Everything is posted.</li>{% endfor %}</ul></div>
+  </div>
+</div>
+{% endblock %}

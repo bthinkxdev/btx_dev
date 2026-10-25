@@ -7,16 +7,16 @@ from decimal import Decimal
 from django import forms
 from django.contrib import messages
 from django.contrib.auth import get_user_model
-from django.db.models import Avg, Count, Q, Sum
-from django.shortcuts import get_object_or_404, redirect, render
+from django.db.models import Avg, Q, Sum
+from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from crm.core import audit, india, permissions
 from crm.core.forms import CrmModelForm, MoneyFormField
-from crm.core.money import ZERO, q2
+from crm.core.money import ZERO
 from crm.core.views import staff_required
-from crm.models import (Lead, LeadSource, Payment, PaymentLink, Quotation, SalesTarget, Service, Team)
+from crm.models import (Lead, LeadSource, Payment, PaymentLink, Quotation, SalesTarget, Service)
 from crm.models.leads import OPEN_STAGES, PIPELINE_STAGES, STAGES
 from crm.modules.leads.forms import assignable_users
 from crm.modules.leads.views import scoped_leads
@@ -133,7 +133,6 @@ def targets(request):
     # Funnel over the month's cohort
     scoped = scoped_leads(request)
     cohort = scoped.filter(created_at__date__gte=month, created_at__date__lt=nxt)
-    from crm.models import StageHistory
     reached = {}
     order = ['new', 'contacted', 'qualified', 'quotation_prepared', 'quotation_sent', 'negotiation', 'won']
     total = cohort.count()

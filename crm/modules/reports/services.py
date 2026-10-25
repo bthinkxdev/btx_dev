@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from django.db.models import F, Q, Sum
+from django.db.models import Sum
 
 from crm.core.money import ZERO, q2
 

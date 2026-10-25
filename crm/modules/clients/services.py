@@ -8,7 +8,7 @@ from django.db import transaction
 from django.db.models import Q, Sum
 from django.utils import timezone
 
-from crm.core import audit, india
+from crm.core import audit
 from crm.core.money import ZERO
 from crm.models import Client, Contact
 
@@ -160,7 +160,7 @@ def merge(primary: Client, secondary: Client, actor):
 
 
 def financial_summary(client) -> dict:
-    from crm.models import Invoice, Payment, PaymentAllocation, TdsReceivable
+    from crm.models import Invoice, Payment, TdsReceivable
     inv = Invoice.objects.filter(client=client, status__in=['issued', 'partially_paid', 'paid', 'credit_noted', 'written_off'])
     agg = inv.aggregate(billed=Sum('grand_total'), outstanding=Sum('balance'), credited=Sum('credit_noted'))
     pay = Payment.objects.filter(client=client, status__in=['verified', 'partially_refunded', 'refunded'])

@@ -1,15 +1,13 @@
 """Part 6.12 and 7.11 acceptance tests: payment links, webhooks, manual payments, allocation, credit notes, refunds."""
 from __future__ import annotations
 
-import json
 from decimal import Decimal
 
 from django.urls import reverse
 from django.utils import timezone
 
 from crm.core import posting
-from crm.models import (GatewayEvent, Invoice, JournalEntry, Payment, PaymentAllocation, PaymentLink, Refund, SecurityEvent,
-                        TdsReceivable)
+from crm.models import (GatewayEvent, JournalEntry, Payment, PaymentAllocation, Refund, SecurityEvent, TdsReceivable)
 from crm.modules.payments import gateway
 from crm.modules.payments import services as ps
 

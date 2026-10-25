@@ -7,7 +7,7 @@ from datetime import date, datetime, time, timedelta
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
-from django.db.models import Avg, Count, Q, Sum
+from django.db.models import Count, Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -18,7 +18,7 @@ from crm.core.money import ZERO
 from crm.core.views import Filter, ListPage, back, form_error_text, get_scoped, staff_required
 from crm.models import (ApprovalRequest, Campaign, DuplicateCandidate, FollowUp, Lead, LeadInbox, LeadSource,
                         Payment, PaymentLink, Quotation, SalesTarget)
-from crm.models.leads import CHANNELS, LOST_REASONS, OPEN_STAGES, STAGES
+from crm.models.leads import LOST_REASONS, OPEN_STAGES
 
 from . import services as svc
 from .forms import CampaignForm, PostponeForm, SourceForm

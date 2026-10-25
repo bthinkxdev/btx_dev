@@ -1,23 +1,20 @@
 """Quotation pages (Part 5.5-5.7): list, builder, detail with popups, PDF, compare, public share page."""
 from __future__ import annotations
 
-import json
 from datetime import timedelta
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.db.models import Q
 from django.http import Http404, HttpResponse, JsonResponse
-from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
+from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from crm.core import approvals, audit, documents, gst, india, pdf, permissions, ratelimit
+from crm.core import approvals, audit, gst, india, pdf, permissions, ratelimit
 from crm.core.middleware import client_ip
 from crm.core.money import D
-from crm.core.views import Filter, ListPage, back, form_error_text, get_scoped, staff_required
+from crm.core.views import Filter, ListPage, get_scoped, staff_required
 from crm.models import Client, CompanySettings, Lead, Quotation, QuotationLine, Service
 from crm.models.quotations import QUOTATION_STATUSES
 

@@ -1,0 +1,17 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{% if acc.pk %}Edit {{ acc }}{% else %}Add account{% endif %}{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title=acc.pk|yesno:"Edit account,Add account" %}{% endblock %}
+{% block content %}
+<form method="post" novalidate data-dirty-check class="card max-w-3xl">{% csrf_token %}{% idem %}
+  <div class="card-body space-y-5">
+    {% include "crm/components/form_errors.html" %}
+    {% if acc.is_system %}<div class="alert alert-info"><p class="text-sm">System account ({{ acc.system_code }}): used by the posting map. You can rename it; the mapping stays.</p></div>{% endif %}
+    <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">{% field form.code %}{% field form.name %}{% field form.account_type %}{% field form.group %}{% field form.parent %}{% field form.allow_manual %}{% field form.description wrapper_class="sm:col-span-2" %}</div>
+  </div>
+  <div class="flex flex-col-reverse gap-3 border-t border-gray-100 p-5 sm:flex-row sm:justify-between dark:border-gray-800">
+    <div>{% if acc.pk and acc.is_active and not acc.is_system %}<button type="submit" form="deact" class="btn btn-danger-outline">Deactivate</button>{% endif %}</div>
+    <div class="flex flex-col-reverse gap-3 sm:flex-row"><a href="{% url 'crm:account_list' %}" class="btn btn-secondary">Cancel</a><button class="btn btn-primary" data-loading-text="Saving…">Save account</button></div>
+  </div>
+</form>
+{% if acc.pk %}<form id="deact" method="post" action="{% url 'crm:account_deactivate' acc.pk %}" data-confirm="Deactivate {{ acc }}?" data-confirm-body="Only possible with a zero balance ({{ balance|inr }} now). It can no longer be used." data-confirm-danger="1">{% csrf_token %}</form>{% endif %}
+{% endblock %}

@@ -11,10 +11,8 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from crm.core import audit, permissions
-from crm.core.money import ZERO
-from crm.core.views import Filter, ListPage, back, form_error_text, get_scoped, staff_required
-from crm.models import (AuditLog, Attachment, Client, Contact, Contract, Invoice, Lead, LeadActivity, Payment,
-                        PaymentLink, Project, Quotation, Service, Ticket)
+from crm.core.views import Filter, ListPage, form_error_text, get_scoped, staff_required
+from crm.models import (AuditLog, Attachment, Client, Contact, LeadActivity, Service)
 from crm.models.clients import CLIENT_STATUSES
 
 from . import services as svc

@@ -7,7 +7,7 @@ from django.contrib import messages
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.db.models import Count, Exists, OuterRef, Q, Sum
+from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -15,7 +15,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from crm.core import approvals, audit, permissions
-from crm.core.views import Filter, ListPage, back, form_error_text, get_scoped, staff_required, wants_json
+from crm.core.views import Filter, ListPage, back, form_error_text, get_scoped, staff_required
 from crm.models import (Attachment, FollowUp, Lead, LeadActivity, LeadSource, LeadTag, Service)
 from crm.models.leads import CLOSED_STAGES, LOST_REASONS, OPEN_STAGES, PRIORITIES, STAGES
 
@@ -160,7 +160,6 @@ def lead_export_request(request):
     permissions.require(request.user, 'leads', 'export', request)
     rows = int(request.POST.get('rows') or 0)
     reason = request.POST.get('reason', '').strip()
-    from crm.models import UserProfile
     profile = request.user.crm_profile
     try:
         approvals.submit('lead_export', profile, title=f'Export {rows} leads ({request.user.get_full_name() or request.user})',

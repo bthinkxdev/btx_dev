@@ -1,0 +1,39 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}GST and TDS reports{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-start justify-between gap-3">
+  <div><h1 class="page-title">GST and TDS reports</h1><p class="muted mt-1">{{ start|d }} to {{ end|d }}. Data for GSTR-1 and GSTR-3B; your CA files the returns.</p></div>
+  <div class="flex flex-wrap gap-2">
+    <a class="btn btn-secondary btn-sm" href="{% qs export='gstr1_csv' %}">{% icon 'download' 16 %} GSTR-1 CSV</a>
+    <a class="btn btn-secondary btn-sm" href="{% qs export='gstr3b_json' %}">{% icon 'download' 16 %} GSTR-3B JSON</a>
+    <a class="btn btn-secondary btn-sm" href="{% qs export='itc_csv' %}">{% icon 'download' 16 %} ITC register</a>
+  </div>
+</div>
+{% endblock %}
+{% block content %}
+{% include "crm/accounting/_range.html" %}
+<div class="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
+  <div class="card"><div class="card-header"><h2 class="card-title">GSTR-3B summary</h2></div>
+    <table class="data-table"><thead><tr><th class="th"></th><th class="th text-right">IGST</th><th class="th text-right">CGST</th><th class="th text-right">SGST</th></tr></thead>
+      <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+        <tr><td class="td">Outward tax (net of credit notes)<span class="block text-theme-xs text-gray-500">Taxable {{ g3b.outward_taxable|inr }}</span></td><td class="td text-right">{{ g3b.outward.igst|inr }}</td><td class="td text-right">{{ g3b.outward.cgst|inr }}</td><td class="td text-right">{{ g3b.outward.sgst|inr }}</td></tr>
+        <tr><td class="td">Eligible ITC</td><td class="td text-right">{{ g3b.itc.igst|inr }}</td><td class="td text-right">{{ g3b.itc.cgst|inr }}</td><td class="td text-right">{{ g3b.itc.sgst|inr }}</td></tr>
+        <tr class="font-semibold"><td class="td">Net payable before set-off</td><td class="td text-right">{{ g3b.net.igst|inr }}</td><td class="td text-right">{{ g3b.net.cgst|inr }}</td><td class="td text-right">{{ g3b.net.sgst|inr }}</td></tr>
+      </tbody></table>
+    <p class="form-help px-5 pb-4">Exempt / nil / non-GST outward: {{ g3b.exempt|inr }}. Blocked ITC (not claimed): {{ itc.blocked|inr }}. GST on gateway fees booked: {{ itc.gateway_fee_gst|inr }}.</p></div>
+  <div class="card"><div class="card-header"><h2 class="card-title">Outward supplies by rate</h2></div>
+    <table class="data-table"><thead><tr><th class="th">Rate</th><th class="th text-right">Taxable</th><th class="th text-right">IGST</th><th class="th text-right">CGST</th><th class="th text-right">SGST</th></tr></thead>
+      <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for r in out.by_rate %}<tr><td class="td">{{ r.rate }}%</td><td class="td text-right">{{ r.taxable|inr }}</td><td class="td text-right">{{ r.igst|inr }}</td><td class="td text-right">{{ r.cgst|inr }}</td><td class="td text-right">{{ r.sgst|inr }}</td></tr>{% empty %}<tr><td class="td muted" colspan="5">No invoices in this period.</td></tr>{% endfor %}</tbody></table>
+    {% if out.credit_notes %}<p class="form-help px-5 pb-4">Credit notes: taxable {{ out.cn_taxable|inr }}, tax {{ out.cn_cgst|inr }} CGST · {{ out.cn_sgst|inr }} SGST · {{ out.cn_igst|inr }} IGST.</p>{% endif %}</div>
+</div>
+<div class="card mb-6"><div class="card-header"><h2 class="card-title">B2B invoices ({{ out.b2b|length }})</h2></div>
+  {% if out.b2b %}<div class="table-wrap"><table class="data-table responsive-cards"><thead><tr><th class="th">Invoice</th><th class="th">Date</th><th class="th">Customer GSTIN</th><th class="th">Place of supply</th><th class="th text-right">Taxable</th><th class="th text-right">Tax</th><th class="th text-right">Value</th></tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for i in out.b2b %}<tr><td class="td" data-label="Invoice"><a class="link" href="{% url 'crm:invoice_detail' i.pk %}">{{ i.number }}</a></td><td class="td" data-label="Date">{{ i.invoice_date|d }}</td><td class="td font-mono text-theme-xs" data-label="GSTIN">{{ i.customer_gstin }}</td><td class="td" data-label="POS">{{ i.place_of_supply|state_name }}</td><td class="td text-right" data-label="Taxable">{{ i.taxable_total|inr }}</td><td class="td text-right" data-label="Tax">{{ i.tax_total|inr }}</td><td class="td text-right" data-label="Value">{{ i.grand_total|inr }}</td></tr>{% endfor %}</tbody></table></div>{% else %}<p class="muted p-6">None.</p>{% endif %}</div>
+<div class="card mb-6"><div class="card-header"><h2 class="card-title">B2C summary by place of supply</h2></div>
+  {% if out.b2c %}<table class="data-table"><thead><tr><th class="th">Place of supply</th><th class="th">Rate</th><th class="th text-right">Taxable</th><th class="th text-right">IGST</th><th class="th text-right">CGST</th><th class="th text-right">SGST</th></tr></thead><tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for r in out.b2c %}<tr><td class="td">{{ r.pos|state_name }}</td><td class="td">{{ r.rate }}%</td><td class="td text-right">{{ r.taxable|inr }}</td><td class="td text-right">{{ r.igst|inr }}</td><td class="td text-right">{{ r.cgst|inr }}</td><td class="td text-right">{{ r.sgst|inr }}</td></tr>{% endfor %}</tbody></table>{% else %}<p class="muted p-6">None.</p>{% endif %}</div>
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+  <div class="card"><div class="card-header"><h2 class="card-title">TDS receivable (customers)</h2><p class="text-sm">{{ tds.receivable_balance|inr }}</p></div><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for r in tds.receivable %}<li class="flex justify-between px-5 py-3 text-sm"><span>{{ r.section|default:"—" }} · {{ r.status }}</span><span>{{ r.s|inr }}</span></li>{% empty %}<li class="muted px-5 py-4">None.</li>{% endfor %}</ul></div>
+  <div class="card"><div class="card-header"><h2 class="card-title">TDS deducted (vendors)</h2></div><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for r in tds.deducted %}<li class="flex justify-between px-5 py-3 text-sm"><span>{{ r.tds_section|default:"—" }}</span><span>{{ r.s|inr }}</span></li>{% empty %}<li class="muted px-5 py-4">None.</li>{% endfor %}</ul></div>
+  <div class="card"><div class="card-header"><h2 class="card-title">TDS remitted</h2><p class="text-sm">payable {{ tds.payable_balance|inr }}</p></div><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for r in tds.remitted %}<li class="flex justify-between px-5 py-3 text-sm"><span>{{ r.section }}</span><span>{{ r.s|inr }}</span></li>{% empty %}<li class="muted px-5 py-4">None.</li>{% endfor %}</ul></div>
+</div>
+{% endblock %}
