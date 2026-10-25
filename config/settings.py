@@ -51,7 +51,6 @@ INSTALLED_APPS = [
     'django.contrib.sitemaps',
     'django.contrib.humanize',
     'pages',
-    'crm',
 ]
 
 MIDDLEWARE = [
@@ -77,7 +76,6 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'crm.context_processors.crm_header',
                 'pages.context_processors.seo',
             ],
         },
@@ -116,15 +114,6 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# CRM (separate app; does not affect public site)
-LOGIN_URL = '/crm/login/'
-LOGIN_REDIRECT_URL = '/crm/'
-LOGOUT_REDIRECT_URL = '/crm/login/'
-
-# CRM Phase 3: Fernet key for ProjectCredential vault (urlsafe base64, 32 bytes).
-# Generate: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-CRM_CREDENTIALS_FERNET_KEY = os.environ.get('CRM_CREDENTIALS_FERNET_KEY', '').strip()
-
 # Email: SMTP (Zoho Mail for @bthinkx.com — see .env.example). Credentials in .env only.
 EMAIL_BACKEND = os.environ.get(
     'EMAIL_BACKEND',
@@ -143,18 +132,6 @@ EMAIL_TIMEOUT = int(os.environ.get('EMAIL_TIMEOUT', '30'))
 # Address to receive contact form submissions
 CONTACT_EMAIL_TO = os.environ.get('CONTACT_EMAIL_TO', 'hr@bthinkx.com')
 
-# CRM Phase 4: renewal reminder emails (management command + manual sends).
-RENEWAL_FROM_EMAIL = os.environ.get('RENEWAL_FROM_EMAIL', '').strip() or DEFAULT_FROM_EMAIL
-RENEWAL_INTERNAL_ALERT_EMAIL = os.environ.get(
-    'RENEWAL_INTERNAL_ALERT_EMAIL', CONTACT_EMAIL_TO
-)
-RENEWAL_REMINDER_DAYS = [30, 7, 1]
-
-# CRM Billing: receipt & invoice emails (From: hr@bthinkx.com)
-BILLING_FROM_EMAIL = (
-    os.environ.get('BILLING_FROM_EMAIL', 'hr@bthinkx.com').strip() or DEFAULT_FROM_EMAIL
-)
-
 # Public site URL (used in blog notification emails and unsubscribe links)
 SITE_BASE_URL = os.environ.get('SITE_BASE_URL', 'http://127.0.0.1:8000').rstrip('/')
 
@@ -163,67 +140,9 @@ NEWSLETTER_EMAIL_INTERVAL_SECONDS = float(
     os.environ.get('NEWSLETTER_EMAIL_INTERVAL_SECONDS', '2.0')
 )
 
-# CRM: if phone is 10 digits (local), prepend this country code for wa.me links (no +). Example: 91 (India), 1 (US).
-CRM_WHATSAPP_DEFAULT_COUNTRY_CODE = '91'
-
-# WhatsApp Cloud API webhook verification token.
-WHATSAPP_VERIFY_TOKEN = os.environ.get('WHATSAPP_VERIFY_TOKEN', 'bthinkx123').strip()
-
-# WhatsApp transport configuration.
-# We are migrating away from Meta Cloud API to a WhatsApp Web.js bridge.
-WHATSAPP_TRANSPORT = os.environ.get('WHATSAPP_TRANSPORT', 'webjs').strip()
-WHATSAPP_WEBJS_BRIDGE_URL = os.environ.get('WHATSAPP_WEBJS_BRIDGE_URL', '').strip()
-WHATSAPP_WEBJS_BRIDGE_TOKEN = os.environ.get('WHATSAPP_WEBJS_BRIDGE_TOKEN', '').strip()
-
-# Node -> Django API token (Bearer). If unset, we fall back to WHATSAPP_WEBJS_BRIDGE_TOKEN.
-DJANGO_API_TOKEN = os.environ.get('DJANGO_API_TOKEN', '').strip()
-
-# Deprecated Meta Cloud API settings (kept only to avoid breaking old envs).
-# They are no longer used when WHATSAPP_TRANSPORT=webjs.
-WHATSAPP_APP_SECRET = os.environ.get('WHATSAPP_APP_SECRET', '').strip()
-WHATSAPP_ACCESS_TOKEN = os.environ.get('WHATSAPP_ACCESS_TOKEN', '').strip()
-WHATSAPP_PHONE_NUMBER_ID = os.environ.get('WHATSAPP_PHONE_NUMBER_ID', '').strip()
-
-# Gemini AI WhatsApp qualification (human-like sales coordinator)
-GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '').strip()
-GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash').strip()
-GEMINI_AI_QUALIFICATION_ENABLED = os.environ.get(
-    'GEMINI_AI_QUALIFICATION_ENABLED', 'false'
-).lower() in ('1', 'true', 'yes')
-GEMINI_MAX_HISTORY_MESSAGES = int(os.environ.get('GEMINI_MAX_HISTORY_MESSAGES', '10'))
-GEMINI_REQUEST_TIMEOUT = int(os.environ.get('GEMINI_REQUEST_TIMEOUT', '60'))
-
-# Pause auto-replies after executive sends from phone; resume after this many minutes.
-WHATSAPP_HUMAN_TAKEOVER_COOLDOWN_MINUTES = int(
-    os.environ.get('WHATSAPP_HUMAN_TAKEOVER_COOLDOWN_MINUTES', '30')
-)
-
-# Google Places API (New) — business search for lead generation. Server-side only,
-# never sent to the frontend.
-GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY', '').strip()
-GOOGLE_PLACES_REQUEST_TIMEOUT = int(os.environ.get('GOOGLE_PLACES_REQUEST_TIMEOUT', '15'))
-
 # Google Analytics 4 (public site only — gtag.js is only injected when this is set,
 # so local/dev environments that leave it blank don't pollute real traffic data).
 GA_MEASUREMENT_ID = os.environ.get('GA_MEASUREMENT_ID', '').strip()
-
-# CRM Web Push (VAPID) — same keypair must be used everywhere a subscribed device
-# should keep receiving push, so copy these into production rather than
-# regenerating there (regenerating invalidates every existing subscription).
-VAPID_PUBLIC_KEY = os.environ.get('VAPID_PUBLIC_KEY', '').strip()
-VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', '').strip()
-VAPID_CLAIM_EMAIL = os.environ.get('VAPID_CLAIM_EMAIL', 'mailto:hr@bthinkx.com').strip()
-
-# CRM push notification tuning (all times are local/Asia-Kolkata, matching TIME_ZONE above).
-# Routine nudges (overdue, escalation) are suppressed inside this window; reminders tied to
-# an executive's own chosen appointment time (30/5-min) are exempt — see NotificationEvent.URGENT_KINDS.
-NOTIFICATION_QUIET_HOURS_START = int(os.environ.get('NOTIFICATION_QUIET_HOURS_START', '21'))  # 9 PM
-NOTIFICATION_QUIET_HOURS_END = int(os.environ.get('NOTIFICATION_QUIET_HOURS_END', '9'))  # 9 AM
-# How overdue (in minutes) a high_hope lead's pending work must be before the
-# sales team leads/admins get escalated to, on top of the owner's own reminder.
-NOTIFICATION_ESCALATION_SLA_MINUTES = int(os.environ.get('NOTIFICATION_ESCALATION_SLA_MINUTES', '120'))
-NOTIFICATION_LOGIN_REMINDER_HOUR = int(os.environ.get('NOTIFICATION_LOGIN_REMINDER_HOUR', '11'))
-NOTIFICATION_LOGOUT_REMINDER_HOUR = int(os.environ.get('NOTIFICATION_LOGOUT_REMINDER_HOUR', '21'))
 
 # Cashfree Payment Gateway — public-site offer landing pages (e.g. the Navaratri
 # offer). 'sandbox' hits sandbox.cashfree.com with test credentials; 'production'
@@ -232,28 +151,6 @@ NOTIFICATION_LOGOUT_REMINDER_HOUR = int(os.environ.get('NOTIFICATION_LOGOUT_REMI
 CASHFREE_APP_ID = os.environ.get('CASHFREE_APP_ID', '').strip()
 CASHFREE_SECRET_KEY = os.environ.get('CASHFREE_SECRET_KEY', '').strip()
 CASHFREE_ENV = os.environ.get('CASHFREE_ENV', 'sandbox').strip().lower()
-
-# WhatsApp Web.js reply buttons are DEPRECATED by Meta — often invisible on phones.
-# Keep false; use numbered text menus (reliable). Set true only if buttons work on your account.
-WHATSAPP_USE_REPLY_BUTTONS = os.environ.get('WHATSAPP_USE_REPLY_BUTTONS', 'false').lower() in (
-    '1',
-    'true',
-    'yes',
-)
-
-# Optional local voice transcription (pip install faster-whisper).
-# If false, voice notes use Gemini (recommended when GEMINI_API_KEY is set).
-WHISPER_LOCAL_ENABLED = os.environ.get('WHISPER_LOCAL_ENABLED', 'false').lower() in (
-    '1',
-    'true',
-    'yes',
-)
-WHISPER_MODEL_SIZE = os.environ.get('WHISPER_MODEL_SIZE', 'small').strip()
-HF_TOKEN = os.environ.get('HF_TOKEN', '').strip()
-if WHISPER_LOCAL_ENABLED:
-    os.environ.setdefault('HF_HUB_DISABLE_SYMLINKS_WARNING', '1')
-    if HF_TOKEN:
-        os.environ.setdefault('HF_TOKEN', HF_TOKEN)
 
 # Redis cache (recommended for webhook dedupe + rate limiting + multi-worker safety).
 # Set REDIS_URL like: redis://127.0.0.1:6379/1
@@ -275,13 +172,3 @@ CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', '').strip() or (REDIS_UR
 CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', '').strip() or (REDIS_URL or '')
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_ENABLE_UTC = True
-# Only takes effect where Celery beat + a worker are actually running (needs
-# REDIS_URL/CELERY_BROKER_URL set) — otherwise harmless to define. Where
-# Celery/Redis isn't deployed yet, a plain cron/Task Scheduler entry running
-# `python manage.py send_followup_reminders` every minute does the same job.
-CELERY_BEAT_SCHEDULE = {
-    'crm-send-followup-reminders': {
-        'task': 'crm.tasks.send_followup_reminders',
-        'schedule': 60.0,
-    },
-}

@@ -329,7 +329,6 @@ def robots_txt(request):
     lines = [
         'User-agent: *',
         'Disallow: /admin/',
-        'Disallow: /crm/',
         'Disallow: /contact/submit/',
         'Disallow: /careers/apply/',
         'Disallow: /newsletter/subscribe/',

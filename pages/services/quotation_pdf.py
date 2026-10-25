@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import io
 
-from crm.billing_constants import ASSETS, COMPANY
+from pages.company_constants import ASSETS, COMPANY
 
 PACKAGES = {
     'online-store': {
