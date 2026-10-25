@@ -143,6 +143,34 @@ def get_item(mapping, key):
 
 
 @register.filter
+def bf(form, name):
+    """form|bf:'field' - the bound field by name."""
+    try:
+        return form[name]
+    except KeyError:
+        return None
+
+
+@register.filter
+def change_text(value):
+    """An audit change [old, new] as 'old → new'; anything else as plain text."""
+    def show(v):
+        return '—' if v in (None, '', [], {}) else str(v)
+    if isinstance(value, (list, tuple)) and len(value) == 2:
+        return f'{show(value[0])} → {show(value[1])}'
+    return show(value)
+
+
+@register.filter
+def at(sequence, index):
+    """sequence|at:i - item by position, or None when out of range."""
+    try:
+        return sequence[int(index)]
+    except (IndexError, TypeError, ValueError):
+        return None
+
+
+@register.filter
 def attr(obj, name):
     return getattr(obj, name, '')
 

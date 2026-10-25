@@ -1,0 +1,22 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Company settings{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Company settings" subtitle="Used on every quotation, invoice, receipt and payslip. Legal, tax and bank changes need a reason and are audited." %}{% endblock %}
+{% block content %}
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+<form method="post" novalidate data-dirty-check class="space-y-6 xl:col-span-2">{% csrf_token %}{{ form.row_version }}
+  {% include "crm/components/form_errors.html" %}
+  <div class="card"><div class="card-header"><h2 class="card-title">Legal identity</h2></div>
+    <div class="card-body grid grid-cols-1 gap-4 sm:grid-cols-2">{% field form.legal_name %}{% field form.display_name %}{% field form.gstin help="15 characters; first two digits are the state code." %}{% field form.pan %}{% field form.state_code %}</div></div>
+  <div class="card"><div class="card-header"><h2 class="card-title">Address and contact</h2></div>
+    <div class="card-body grid grid-cols-1 gap-4 sm:grid-cols-2">{% field form.address_line1 %}{% field form.address_line2 %}{% field form.city %}{% field form.pincode %}{% field form.phone %}{% field form.email %}{% field form.website wrapper_class="sm:col-span-2" %}</div></div>
+  <div class="card"><div class="card-header"><h2 class="card-title">Bank details printed on invoices</h2></div>
+    <div class="card-body grid grid-cols-1 gap-4 sm:grid-cols-2">{% field form.bank_name %}{% field form.bank_account_name %}{% field form.bank_account_number %}{% field form.bank_ifsc %}{% field form.bank_branch %}{% field form.upi_id %}</div></div>
+  <div class="card"><div class="card-header"><h2 class="card-title">Documents</h2></div>
+    <div class="card-body grid grid-cols-1 gap-4 sm:grid-cols-2">{% field form.signatory_name %}{% field form.signatory_designation %}{% field form.quotation_validity_days suffix_text="days" %}{% field form.invoice_due_days suffix_text="days" %}
+      {% field form.quotation_terms wrapper_class="sm:col-span-2" %}{% field form.invoice_terms wrapper_class="sm:col-span-2" %}{% field form.refund_policy wrapper_class="sm:col-span-2" %}</div></div>
+  <div class="card"><div class="card-body">{% field form.reason help="Required when legal name, GSTIN, PAN, state or bank details change." %}</div>
+    <div class="flex justify-end border-t border-gray-100 p-5 dark:border-gray-800"><button class="btn btn-primary" data-loading-text="Saving…">Save company settings</button></div></div>
+</form>
+<div>{% include "crm/administration/_history.html" %}</div>
+</div>
+{% endblock %}

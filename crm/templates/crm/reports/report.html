@@ -1,0 +1,73 @@
+{% extends "crm/base.html" %}{% load static crm_tags %}
+{% block title %}{{ report.title }}{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-start justify-between gap-3">
+  <div>
+    <nav aria-label="Breadcrumb" class="mb-1"><ol class="flex items-center gap-1.5 text-sm text-gray-500"><li class="inline-flex items-center gap-1.5"><a href="{% url 'crm:report_index' %}" class="hover:text-gray-700">Reports</a>{% icon 'chevron_right' 14 %}</li></ol></nav>
+    <h1 class="page-title">{{ report.title }}</h1>
+    <p class="muted mt-1">{{ params.start|date:"d M Y" }} – {{ params.end|date:"d M Y" }}. Only records you can access are included.</p>
+  </div>
+  <div class="flex flex-wrap gap-2">
+    <a class="btn btn-secondary btn-sm" href="{{ prev_url }}">{% icon 'chevron_left' 16 %} Previous period ({{ prev_label }})</a>
+    {% if can_export %}<a class="btn btn-secondary btn-sm" href="{% qs export='csv' %}">{% icon 'download' 16 %} Export CSV</a>
+      <button type="button" class="btn btn-secondary btn-sm" @click="$store.modal.show('schedule')">{% icon 'mail' 16 %} Schedule</button>{% endif %}
+  </div>
+</div>
+{% endblock %}
+{% block content %}
+<div class="alert alert-info mb-5"><span class="text-blue-light-500">{% icon 'info' 20 %}</span><p class="text-sm text-gray-700 dark:text-gray-300"><strong>Definition.</strong> {{ report.definition }}</p></div>
+<form method="get" class="card mb-6 flex flex-col gap-3 p-4 lg:flex-row lg:flex-wrap lg:items-end">
+  <div><label class="form-label" for="r-from">From</label><input id="r-from" type="date" name="from" value="{{ params.start|date:'Y-m-d' }}" class="form-input h-10"></div>
+  <div><label class="form-label" for="r-to">To</label><input id="r-to" type="date" name="to" value="{{ params.end|date:'Y-m-d' }}" class="form-input h-10"></div>
+  {% for name, label, choices in filters %}
+    <div><label class="form-label" for="r-{{ name }}">{{ label }}</label><select id="r-{{ name }}" name="{{ name }}" class="form-select h-10 w-48">
+      {% if name != 'by' %}<option value="">All</option>{% endif %}{% for k, v in choices %}<option value="{{ k }}" {% if active|get_item:name == k %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></div>
+  {% endfor %}
+  <button class="btn btn-primary">Apply</button>
+  <div class="flex flex-wrap gap-2 lg:ml-auto">{% for label, s, e in presets %}<a class="chip chip-inactive" href="{% qs from=s|date:'Y-m-d' to=e|date:'Y-m-d' %}">{{ label }}</a>{% endfor %}</div>
+</form>
+{% if table.chart %}<div class="card mb-6"><div class="card-body"><div id="report-chart" class="min-h-64"></div></div></div>{{ table.chart|json_script:"report-chart-data" }}{% endif %}
+<div class="card">
+  <div class="table-wrap"><table class="data-table responsive-cards">
+    <thead class="border-b border-gray-100 dark:border-gray-800"><tr>{% for label, kind in table.columns %}<th class="th {% if kind != 'text' %}text-right{% endif %}">{{ label }}</th>{% endfor %}</tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+      {% for r in table.rows %}<tr class="hover:bg-gray-50 dark:hover:bg-white/3">
+        {% for v in r.cells %}{% with col=table.columns|at:forloop.counter0 %}
+          <td class="td {% if col.1 != 'text' %}text-right{% endif %}" data-label="{{ col.0 }}">{% if forloop.first and r.href %}<a class="td-strong hover:text-brand-500" href="{{ r.href }}">{{ v }}</a>{% else %}{% include "crm/reports/_cell.html" with v=v kind=col.1 %}{% endif %}</td>
+        {% endwith %}{% endfor %}</tr>
+      {% empty %}<tr><td class="td" colspan="{{ table.columns|length }}">{% include "crm/components/empty_state.html" with title="Nothing in this period" text="Try a wider date range or clear the filters." icon="chart" %}</td></tr>{% endfor %}
+    </tbody>
+    {% if table.totals and table.rows %}<tfoot class="border-t border-gray-200 dark:border-gray-700"><tr class="font-semibold">{% for v in table.totals %}{% with col=table.columns|at:forloop.counter0 %}<td class="td {% if col.1 != 'text' %}text-right{% endif %}" data-label="{{ col.0 }}">{% if forloop.first %}{{ v }}{% else %}{% include "crm/reports/_cell.html" with v=v kind=col.1 %}{% endif %}</td>{% endwith %}{% endfor %}</tr></tfoot>{% endif %}
+  </table></div>
+  {% if table.notes %}<ul class="space-y-1 border-t border-gray-100 px-5 py-4 text-theme-xs text-gray-500 dark:border-gray-800 dark:text-gray-400">{% for n in table.notes %}<li>{{ n }}</li>{% endfor %}</ul>{% endif %}
+</div>
+{% if can_export %}
+{% include "crm/components/modal_start.html" with id="schedule" title="Schedule this report" subtitle="A CSV is emailed to you with these filters, over a rolling window of the same length. It always contains only records you can access." %}
+<form method="post" action="{% url 'crm:report_schedule' report.slug %}">{% csrf_token %}<input type="hidden" name="querystring" value="{{ querystring }}">
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <div><label class="form-label" for="s-freq">Frequency</label><select id="s-freq" name="frequency" class="form-select">{% for k, v in frequencies %}<option value="{{ k }}" {% if k == 'weekly' %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></div>
+    <div><label class="form-label" for="s-hour">Send from (hour, 0–23)</label><input id="s-hour" type="number" name="hour" min="0" max="23" value="8" class="form-input"></div>
+  </div>
+  {% if schedules %}<p class="mt-4 text-sm text-gray-500">You already have {{ schedules|length }} schedule{{ schedules|length|pluralize }} for this report. Manage them on the <a class="link" href="{% url 'crm:report_index' %}">report catalogue</a>.</p>{% endif %}
+  {% include "crm/components/modal_actions.html" with label="Schedule" loading="Saving…" %}
+</form>
+{% include "crm/components/modal_end.html" %}
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+{% if table.chart %}
+<script src="{% static 'crm/vendor/apexcharts.min.js' %}"></script>
+<script>
+  (function () {
+    var d = JSON.parse(document.getElementById('report-chart-data').textContent);
+    if (!d.labels.length) { document.getElementById('report-chart').innerHTML = '<p class="muted">Nothing to chart for this period.</p>'; return; }
+    var dark = document.documentElement.classList.contains('dark');
+    new ApexCharts(document.getElementById('report-chart'), {
+      chart: { type: d.type || 'bar', height: 280, fontFamily: 'Outfit, sans-serif', toolbar: { show: false }, foreColor: dark ? '#98a2b3' : '#667085' },
+      series: d.series, xaxis: { categories: d.labels }, colors: ['#465fff', '#98a2b3'],
+      plotOptions: { bar: { borderRadius: 4, columnWidth: '45%' } }, dataLabels: { enabled: false }, legend: { position: 'top', horizontalAlign: 'left' }
+    }).render();
+  })();
+</script>
+{% endif %}
+{% endblock %}

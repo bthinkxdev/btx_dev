@@ -374,7 +374,7 @@ def ingest(item: LeadInbox) -> LeadInbox:
     """Process one stored inbox payload. Safe to retry: an already processed item is a no-op."""
     from crm.models import Campaign, Service
     with transaction.atomic():
-        item = LeadInbox.objects.select_for_update().select_related('source').get(pk=item.pk)
+        item = LeadInbox.objects.select_for_update(of=('self',)).select_related('source').get(pk=item.pk)
         if item.status in ('processed', 'duplicate', 'resolved', 'ignored'):
             return item
         if item.source.is_paused:
@@ -468,7 +468,7 @@ def schedule_follow_up(lead: Lead, *, kind: str, due_at: datetime, assignee, pur
 def complete_follow_up(fu: FollowUp, *, outcome: str, notes: str = '', next_due: datetime | None, next_kind: str = 'call',
                        next_purpose: str = '', actor=None) -> FollowUp | None:
     with transaction.atomic():
-        fu = FollowUp.objects.select_for_update().select_related('lead').get(pk=fu.pk)
+        fu = FollowUp.objects.select_for_update(of=('self',)).select_related('lead').get(pk=fu.pk)
         if fu.status != 'pending':
             raise LeadError('This follow-up is already closed.')
         lead = _lock(fu.lead)

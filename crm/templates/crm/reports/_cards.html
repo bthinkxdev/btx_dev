@@ -1,0 +1,3 @@
+<div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+  {% for c in cards %}{% include "crm/components/stat_card.html" with c=c %}{% empty %}<div class="card p-6 sm:col-span-2 xl:col-span-4"><p class="muted">All cards are hidden. Use Configure to show them again.</p></div>{% endfor %}
+</div>

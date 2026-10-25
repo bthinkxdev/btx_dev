@@ -1,0 +1,30 @@
+{% extends "crm/base.html" %}{% load static crm_tags %}
+{% block title %}{{ title }}{% endblock %}
+{% block page_header %}{% include "crm/reports/_dashboard_head.html" %}{% endblock %}
+{% block content %}
+{% include "crm/reports/_cards.html" %}
+{% if charts.trend %}
+<div class="card mb-6"><div class="card-header"><h2 class="card-title">Invoiced and collected, last 6 months</h2><a class="link text-sm" href="{% url 'crm:report_index' %}">All reports</a></div>
+  <div class="card-body"><div id="trend-chart" class="min-h-72"></div><p class="mt-2 text-theme-xs text-gray-500">Invoiced is billed value before tax; collected is cash received. Revenue (recognised) is on the profit and loss.</p></div></div>
+{{ charts.trend|json_script:"trend-data" }}
+{% endif %}
+{% include "crm/reports/_configure.html" %}
+{% endblock %}
+{% block extra_js %}
+{% if charts.trend %}
+<script src="{% static 'crm/vendor/apexcharts.min.js' %}"></script>
+<script>
+  (function () {
+    var d = JSON.parse(document.getElementById('trend-data').textContent);
+    var dark = document.documentElement.classList.contains('dark');
+    new ApexCharts(document.getElementById('trend-chart'), {
+      chart: { type: 'bar', height: 300, fontFamily: 'Outfit, sans-serif', toolbar: { show: false }, foreColor: dark ? '#98a2b3' : '#667085' },
+      series: d.series, xaxis: { categories: d.labels }, colors: ['#465fff', '#12b76a'],
+      plotOptions: { bar: { borderRadius: 4, columnWidth: '45%' } }, dataLabels: { enabled: false }, legend: { position: 'top', horizontalAlign: 'left' },
+      yaxis: { labels: { formatter: function (v) { return '₹' + Math.round(v).toLocaleString('en-IN'); } } },
+      tooltip: { y: { formatter: function (v) { return '₹' + v.toLocaleString('en-IN', { minimumFractionDigits: 2 }); } } }
+    }).render();
+  })();
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Message templates{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Message templates" subtitle="What customers receive by email. Every change is a new version; old versions are kept." %}{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="flex gap-6 overflow-x-auto px-5 sm:px-6" role="tablist">
+    <a href="?tab=templates" class="tab {% if tab == 'templates' %}tab-active{% else %}tab-inactive{% endif %}" role="tab">Templates</a>
+    <a href="?tab=log" class="tab {% if tab == 'log' %}tab-active{% else %}tab-inactive{% endif %}" role="tab">Delivery log</a>
+  </div>
+  {% if tab == 'log' %}
+    <form method="get" class="flex flex-col gap-3 border-t border-gray-100 px-5 py-4 lg:flex-row lg:items-center dark:border-gray-800"><input type="hidden" name="tab" value="log">
+      <div class="relative w-full lg:max-w-xs"><span class="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-gray-400">{% icon 'search' 18 %}</span><input type="search" name="q" value="{{ request.GET.q }}" placeholder="Recipient or subject" aria-label="Search" class="form-input pl-11" data-debounce-submit></div>
+      <label class="sr-only" for="dl-status">Status</label><select id="dl-status" name="status" class="form-select h-10 w-auto" data-autosubmit><option value="">Status: all</option>{% for k, v in statuses %}<option value="{{ k }}" {% if request.GET.status == k %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></form>
+    <div class="table-wrap"><table class="data-table responsive-cards"><thead><tr><th class="th">When</th><th class="th">To</th><th class="th">Subject</th><th class="th">Status</th><th class="th"></th></tr></thead>
+      <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for m in page_obj %}<tr>
+        <td class="td" data-label="When">{{ m.created_at|date:"d M Y H:i" }}</td><td class="td" data-label="To">{{ m.recipient }}{% if m.cc %}<span class="block text-theme-xs text-gray-500">cc {{ m.cc }}</span>{% endif %}</td>
+        <td class="td" data-label="Subject">{{ m.subject|truncatechars:70 }}{% if m.attachment_name %}<span class="block text-theme-xs text-gray-500">{% icon 'document' 12 %} {{ m.attachment_name }}</span>{% endif %}</td>
+        <td class="td" data-label="Status">{% badge m.status m.get_status_display %}{% if m.attempts > 1 %}<span class="block text-theme-xs text-gray-500">{{ m.attempts }} attempts</span>{% endif %}{% if m.error %}<span class="block text-theme-xs text-error-600 break-words">{{ m.error|truncatechars:120 }}</span>{% endif %}</td>
+        <td class="td text-right" data-label="">{% if m.status == 'failed' or m.status == 'bounced' %}<form method="post" action="{% url 'crm:delivery_retry' m.pk %}">{% csrf_token %}<button class="btn btn-secondary btn-sm" data-loading-text="Sending…">Retry</button></form>{% endif %}</td></tr>
+      {% empty %}<tr><td class="td" colspan="5">No messages.</td></tr>{% endfor %}</tbody></table></div>
+    {% include "crm/components/pagination.html" with paginator=page_obj.paginator %}
+  {% else %}
+    <div class="table-wrap border-t border-gray-100 dark:border-gray-800"><table class="data-table responsive-cards"><thead><tr><th class="th">Template</th><th class="th">Channel</th><th class="th">Live version</th><th class="th">Audience</th><th class="th"></th></tr></thead>
+      <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for t in templates %}<tr>
+        <td class="td" data-label="Template"><a class="td-strong hover:text-brand-500" href="{% url 'crm:template_edit' t.pk %}">{{ t.name }}</a><span class="block text-theme-xs text-gray-500">{{ t.subject|truncatechars:80 }}</span></td>
+        <td class="td" data-label="Channel">{{ t.get_channel_display }}</td><td class="td" data-label="Version">v{{ t.version }}{% if not t.is_active %} <span class="badge badge-amber">Not live</span>{% endif %}</td>
+        <td class="td" data-label="Audience">{% if t.customer_facing %}Customers{% else %}Internal{% endif %}</td>
+        <td class="td text-right" data-label=""><a class="btn btn-secondary btn-sm" href="{% url 'crm:template_edit' t.pk %}">Edit</a></td></tr>
+      {% empty %}<tr><td class="td" colspan="5">No templates. Run the bootstrap command to load the defaults.</td></tr>{% endfor %}</tbody></table></div>
+  {% endif %}
+</div>
+{% endblock %}

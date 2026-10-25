@@ -25,6 +25,7 @@ def _cats(request):
 
 
 class ExpenseList(ListPage):
+    date_fields = {'date': 'bill_date', 'due': 'due_date'}
     model = Expense
     module = 'expenses'
     template_name = 'crm/expenses/list.html'

@@ -1,0 +1,50 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Tax and numbering{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Tax and numbering" subtitle="GST behaviour, document number series and TDS rules. Every change needs a reason and is audited." %}{% endblock %}
+{% block content %}
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+  <div class="space-y-6 xl:col-span-2">
+    <form method="post" novalidate class="card">{% csrf_token %}{{ form.row_version }}
+      <div class="card-header"><h2 class="card-title">GST settings</h2></div>
+      <div class="card-body space-y-4">{% include "crm/components/form_errors.html" %}
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">{% field form.gst_registered %}{% field form.lut_enabled %}{% field form.tax_on_advance %}{% field form.advance_allocation_rule %}{% field form.round_off_quotation %}{% field form.round_off_invoice %}</div>
+        {% field form.reason %}</div>
+      <div class="flex justify-end border-t border-gray-100 p-5 dark:border-gray-800"><button class="btn btn-primary" data-loading-text="Saving…">Save GST settings</button></div>
+    </form>
+
+    <div class="card"><div class="card-header"><h2 class="card-title">Document numbering, FY {{ fy }}</h2></div>
+      <p class="px-5 pt-4 text-sm text-gray-500">Numbers are gap-free per series and financial year. Once a year's first number is issued, its format is fixed; a change then starts with the next financial year.</p>
+      <div class="table-wrap"><table class="data-table responsive-cards"><thead><tr><th class="th">Document</th><th class="th">Next number</th><th class="th">Prefix</th><th class="th">Digits</th><th class="th"></th></tr></thead>
+        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for row in series %}
+          <tr><td class="td" data-label="Document">{{ row.s.name }}<span class="block text-theme-xs text-gray-500">e.g. {{ row.sample }}</span></td>
+            <td class="td" data-label="Next">{% if row.current %}{{ row.current.next_number }}{% else %}1{% endif %}{% if row.issued %} <span class="badge badge-grey">In use</span>{% endif %}</td>
+            <td class="td" colspan="3" data-label="Format"><form method="post" action="{% url 'crm:settings_series' row.s.pk %}" class="flex flex-wrap items-center gap-2">{% csrf_token %}
+              <label class="sr-only" for="{{ row.form.prefix.id_for_label }}">Prefix</label>{{ row.form.prefix }}
+              <label class="sr-only" for="{{ row.form.padding.id_for_label }}">Digits</label>{{ row.form.padding }}
+              <button class="btn btn-secondary btn-sm" {% if row.issued %}data-confirm="Numbers are already issued this year. The new format will start next financial year. Continue?"{% endif %}>Save</button></form></td></tr>
+        {% endfor %}</tbody></table></div></div>
+
+    <div class="card"><div class="card-header"><h2 class="card-title">TDS on expenses (by category)</h2></div>
+      <div class="table-wrap"><table class="data-table responsive-cards"><thead><tr><th class="th">Category</th><th class="th">Rule</th><th class="th"></th></tr></thead>
+        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for c, f in categories %}
+          <tr><td class="td" data-label="Category">{{ c.name }}</td>
+            <td class="td" data-label="Rule">{% if c.tds_section %}{{ c.get_tds_section_display }} at {{ c.tds_rate }}% above {{ c.tds_threshold|inr0 }}{% else %}No TDS{% endif %} · ITC {{ c.get_itc_default_display|lower }}</td>
+            <td class="td text-right" data-label=""><button type="button" class="btn btn-secondary btn-sm" @click="$store.modal.show('cat-{{ c.pk }}')">Edit</button></td></tr>
+        {% endfor %}</tbody></table></div></div>
+
+    <div class="card"><div class="card-header"><h2 class="card-title">GST rates by service</h2>{% can 'services' 'configure' as can_svc %}{% if can_svc %}<a class="link text-sm" href="{% url 'crm:service_list' %}">Service catalogue</a>{% endif %}</div>
+      <p class="px-5 pt-4 text-sm text-gray-500">Rates are effective-dated on each service. Add a new dated rule on the service to change a rate; past documents keep their snapshot.</p>
+      <div class="table-wrap"><table class="data-table responsive-cards"><thead><tr><th class="th">Service</th><th class="th">SAC</th><th class="th">Current</th><th class="th">Dated rules</th></tr></thead>
+        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for s in services %}<tr><td class="td" data-label="Service">{{ s.name }}</td><td class="td" data-label="SAC">{{ s.sac_code|default:"—" }}</td><td class="td" data-label="Current">{{ s.get_taxability_display }} {{ s.tax_rate }}%</td><td class="td" data-label="Rules">{{ s.tax_rules.all|length }}</td></tr>{% empty %}<tr><td class="td" colspan="4">No services yet.</td></tr>{% endfor %}</tbody></table></div></div>
+  </div>
+  <div>{% include "crm/administration/_history.html" %}</div>
+</div>
+{% for c, f in categories %}{% with pid=c.pk|stringformat:"s" %}
+  {% include "crm/components/modal_start.html" with id="cat-"|add:pid title=c.name subtitle="Applies to bills entered after you save. Existing bills keep their TDS." %}
+  <form method="post" action="{% url 'crm:settings_category_tds' c.pk %}" novalidate>{% csrf_token %}
+    {% include "crm/components/modal_form.html" with form=f %}
+    {% include "crm/components/modal_actions.html" with label="Save rule" %}
+  </form>
+  {% include "crm/components/modal_end.html" %}
+{% endwith %}{% endfor %}
+{% endblock %}

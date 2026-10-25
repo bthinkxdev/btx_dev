@@ -1,0 +1,17 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Approval and SLA policy{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Approval and SLA policy" subtitle="Limits above which a second person must approve, and the response times leads are measured against. Changes apply to new requests." %}{% endblock %}
+{% block content %}
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+<form method="post" novalidate data-dirty-check class="space-y-6 xl:col-span-2">{% csrf_token %}{{ form.row_version }}
+  {% include "crm/components/form_errors.html" %}
+  {% for label, names in groups %}
+    <div class="card"><div class="card-header"><h2 class="card-title">{{ label }}</h2></div>
+      <div class="card-body grid grid-cols-1 gap-4 sm:grid-cols-2">{% for n in names %}{% with f=form|bf:n %}{% field f %}{% endwith %}{% endfor %}</div></div>
+  {% endfor %}
+  <div class="card"><div class="card-body">{% field form.reason %}</div>
+    <div class="flex justify-end border-t border-gray-100 p-5 dark:border-gray-800"><button class="btn btn-primary" data-loading-text="Saving…">Save policy</button></div></div>
+</form>
+<div>{% include "crm/administration/_history.html" %}</div>
+</div>
+{% endblock %}

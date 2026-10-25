@@ -1,0 +1,35 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Payment gateway{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Payment gateway" subtitle="Keys are write-only: stored encrypted and never shown again. Only the Owner can switch between test and live mode." %}{% endblock %}
+{% block banners %}
+  {% if company.gateway_live %}<div class="alert alert-success mb-5"><span class="text-success-500">{% icon 'check' 20 %}</span><p class="text-sm"><strong>Live mode.</strong> Customers pay real money through {{ company.get_gateway_provider_display }}.</p></div>
+  {% else %}<div class="alert alert-warning mb-5"><span class="text-warning-500">{% icon 'alert' 20 %}</span><p class="text-sm"><strong>Test mode.</strong> Payment pages show a test banner and no real money moves.</p></div>{% endif %}
+{% endblock %}
+{% block content %}
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+  <form method="post" novalidate class="card xl:col-span-2" autocomplete="off">{% csrf_token %}
+    <div class="card-header"><h2 class="card-title">Provider and keys</h2></div>
+    <div class="card-body space-y-4">{% include "crm/components/form_errors.html" %}
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">{% field form.provider %}{% field form.app_id %}
+        <div>{% field form.secret %}<p class="mt-1 text-theme-xs {% if has_secret %}text-success-600{% else %}text-gray-500{% endif %}">{% if has_secret %}A secret is stored{% if company.gateway_secret_rotated_at %} (set {{ company.gateway_secret_rotated_at|date:"d M Y" }}){% endif %}.{% else %}No secret stored; the server environment value is used if set.{% endif %}</p></div>
+        <div>{% field form.webhook_secret %}<p class="mt-1 text-theme-xs text-gray-500">{% if has_webhook_secret %}A webhook secret is stored.{% else %}Cashfree signs webhooks with the secret key.{% endif %}</p></div></div>
+      <fieldset><legend class="form-label">Payment methods offered</legend><div class="flex flex-wrap gap-4">{% for c in form.methods %}<label class="flex items-center gap-2 text-sm">{{ c.tag }} {{ c.choice_label }}</label>{% endfor %}</div></fieldset>
+      <div><p class="form-label">Webhook URL (paste into the provider dashboard)</p><div class="flex gap-2"><input class="form-input" readonly value="{{ webhook_url }}" aria-label="Webhook URL" onclick="this.select()"></div></div>
+      {% if is_owner %}{% field form.reason %}{% endif %}
+    </div>
+    <div class="flex flex-col-reverse gap-3 border-t border-gray-100 p-5 sm:flex-row sm:justify-between dark:border-gray-800">
+      <div class="flex flex-wrap gap-2">
+        <button name="action" value="test" class="btn btn-secondary" data-no-loading formnovalidate>Test connection</button>
+        {% if is_owner %}{% if company.gateway_live %}<button name="action" value="test_mode" class="btn btn-secondary" data-confirm="Switch to test mode? New payment links will not take real money.">Switch to test mode</button>
+          {% else %}<button name="action" value="live" class="btn btn-secondary" data-confirm="Switch to live mode? Customers will be charged real money. Test the connection first.">Switch to live mode</button>{% endif %}{% endif %}
+      </div>
+      <button name="action" value="save" class="btn btn-primary" data-loading-text="Saving…">Save</button>
+    </div>
+  </form>
+  <div class="space-y-6">
+    <div class="card"><div class="card-header"><h2 class="card-title">Recent gateway events</h2>{% can 'payments' 'approve' as can_ev %}{% if can_ev %}<a class="link text-sm" href="{% url 'crm:gateway_events' %}">All events</a>{% endif %}</div>
+      <ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for e in recent_events %}<li class="px-5 py-3 text-sm">{{ e.event_type|default:"event" }} · {{ e.received_at|date:"d M H:i" }} {% badge e.status e.get_status_display %}</li>{% empty %}<li class="muted px-5 py-4">No events received yet.</li>{% endfor %}</ul></div>
+    {% include "crm/administration/_history.html" %}
+  </div>
+</div>
+{% endblock %}

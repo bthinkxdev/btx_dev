@@ -12,12 +12,14 @@ from __future__ import annotations
 import csv
 import io
 import json
+from datetime import date
 from functools import wraps
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import redirect_to_login
 from django.core.paginator import EmptyPage, Paginator
+from django.db import models
 from django.db.models import Q
 from django.http import Http404, HttpResponse, JsonResponse, StreamingHttpResponse
 from django.shortcuts import redirect
@@ -152,6 +154,8 @@ class ListPage(PermissionMixin, View):
     export_columns: list = []         # [(header, callable(obj) or attr path)]
     export_name = 'export'
     title = ''
+    # Optional date range (?from=YYYY-MM-DD&to=YYYY-MM-DD&on=<key>); first key is the default field.
+    date_fields: dict = {}
 
     def base_queryset(self):
         qs = self.model._default_manager.all()
@@ -177,6 +181,7 @@ class ListPage(PermissionMixin, View):
             for f in self.search_fields:
                 q |= Q(**{f: term})
             qs = qs.filter(q)
+        qs = self.apply_date_range(qs)
         for flt in self.filters:
             value = request.GET.get(flt.name, '').strip()
             if value:
@@ -185,6 +190,32 @@ class ListPage(PermissionMixin, View):
                     self.active_filters[flt.name] = value
                 except (ValueError, TypeError):
                     pass
+        return qs
+
+    def apply_date_range(self, qs):
+        self.date_range = None
+        if not self.date_fields:
+            return qs
+        request = self.request
+        key = request.GET.get('on', '')
+        if key not in self.date_fields:
+            key = next(iter(self.date_fields))
+        field_name = self.date_fields[key]
+        try:
+            start = date.fromisoformat(request.GET['from']) if request.GET.get('from') else None
+            end = date.fromisoformat(request.GET['to']) if request.GET.get('to') else None
+        except ValueError:
+            return qs
+        if not start and not end:
+            return qs
+        field = self.model._meta.get_field(field_name) if '__' not in field_name else None
+        suffix = '__date' if isinstance(field, models.DateTimeField) else ''
+        if start:
+            qs = qs.filter(**{f'{field_name}{suffix}__gte': start})
+        if end:
+            qs = qs.filter(**{f'{field_name}{suffix}__lte': end})
+        self.date_range = {'start': start, 'end': end, 'on': key,
+                           'label': str(self.model._meta.get_field(field_name).verbose_name) if field else key}
         return qs
 
     def apply_sort(self, qs):
@@ -222,7 +253,8 @@ class ListPage(PermissionMixin, View):
             'filters': [(f, f.choices(request)) for f in self.filters], 'active_filters': self.active_filters,
             'quick_filters': [(k, v[0]) for k, v in self.quick_filters.items()], 'per_page': per_page,
             'per_page_choices': PER_PAGE_CHOICES, 'q': request.GET.get('q', ''),
-            'any_filter': bool(self.active_filters or request.GET.get('q') or request.GET.get('quick')),
+            'any_filter': bool(self.active_filters or request.GET.get('q') or request.GET.get('quick') or self.date_range),
+            'date_range': self.date_range,
             'can_export': permissions.has_perm(request.user, self.module, 'export') and bool(self.export_columns),
             'title': self.title, 'saved_filters': self.saved_filters(),
         }

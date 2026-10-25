@@ -226,6 +226,12 @@
           field.value = r.reason;
         }
         form.dataset.confirmed = '1';
+        // form.submit() drops the clicked button, so carry its name/value across.
+        if (submitter && submitter.name) {
+          var sv = form.querySelector('input[data-submitter]');
+          if (!sv) { sv = document.createElement('input'); sv.type = 'hidden'; sv.setAttribute('data-submitter', '1'); form.appendChild(sv); }
+          sv.name = submitter.name; sv.value = submitter.value;
+        }
         if (proceedSubmit(form, submitter)) {
           HTMLFormElement.prototype.submit.call(form);
         }

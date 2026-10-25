@@ -8,6 +8,7 @@
     <a href="?tab=requested" class="tab {% if tab == 'requested' %}tab-active{% else %}tab-inactive{% endif %}" role="tab">Requested by me</a>
     <a href="?tab=history" class="tab {% if tab == 'history' %}tab-active{% else %}tab-inactive{% endif %}" role="tab">Decided by me</a>
   </div>
+  {% if tab == 'mine' %}<div class="flex gap-2 border-t border-gray-100 px-5 py-3 dark:border-gray-800"><a href="?tab=mine" class="chip {% if not overdue %}chip-active{% else %}chip-inactive{% endif %}">All waiting</a><a href="?tab=mine&overdue=1" class="chip {% if overdue %}chip-active{% else %}chip-inactive{% endif %}">Waiting over 24 hours</a></div>{% endif %}
   <div class="table-wrap border-t border-gray-100 dark:border-gray-800">
     <table class="data-table responsive-cards">
       <thead class="border-b border-gray-100 dark:border-gray-800"><tr>

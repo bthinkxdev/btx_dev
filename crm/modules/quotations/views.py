@@ -24,6 +24,7 @@ from .forms import (AcceptForm, ApprovalRequestForm, GstOverrideForm, LineFormSe
 
 
 class QuotationList(ListPage):
+    date_fields = {'date': 'quotation_date', 'sent': 'sent_at', 'viewed': 'first_viewed_at', 'accepted': 'accepted_at'}
     model = Quotation
     module = 'quotations'
     template_name = 'crm/quotations/list.html'

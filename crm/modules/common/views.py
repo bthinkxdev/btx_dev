@@ -112,11 +112,11 @@ def approval_list(request):
     elif tab == 'history':
         qs = qs.filter(decided_by=request.user)
     else:
-        pending = qs.filter(status='pending').exclude(requested_by=request.user)
-        ids = [r.pk for r in pending if approvals.can_decide(request.user, r)[0]]
-        qs = qs.filter(pk__in=ids)
+        from crm.modules.reports.dashboards import pending_approvals_for
+        overdue = 24 if request.GET.get('overdue') == '1' else None
+        qs = qs.filter(pk__in=[r.pk for r in pending_approvals_for(request.user, overdue_hours=overdue)])
     page = Paginator(qs, 25).get_page(request.GET.get('page'))
-    return render(request, 'crm/common/approvals.html', {'page_obj': page, 'tab': tab})
+    return render(request, 'crm/common/approvals.html', {'page_obj': page, 'tab': tab, 'overdue': request.GET.get('overdue') == '1'})
 
 
 @staff_required

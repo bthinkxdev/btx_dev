@@ -1,0 +1,32 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Audit log{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-start justify-between gap-3">
+  <div><h1 class="page-title">Audit log <span class="ml-1 text-base font-normal text-gray-500">({{ page_obj.paginator.count }})</span></h1><p class="muted mt-1">Append-only. Rows cannot be edited or deleted, and daily hash checkpoints make tampering detectable. Viewing and exporting this log is itself logged.</p></div>
+  {% if can_export %}<a class="btn btn-secondary btn-sm" href="{% qs export='csv' %}">{% icon 'download' 16 %} Export CSV</a>{% endif %}
+</div>
+{% endblock %}
+{% block content %}
+<form method="get" class="card mb-6 grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-6 lg:items-end">
+  <div><label class="form-label" for="a-user">User</label><select id="a-user" name="user" class="form-select h-10"><option value="">Anyone</option>{% for u in users %}<option value="{{ u.pk }}" {% if f.user == u.pk|stringformat:'s' %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>{% endfor %}</select></div>
+  <div><label class="form-label" for="a-type">Object type</label><select id="a-type" name="object_type" class="form-select h-10"><option value="">Any</option>{% for t in object_types %}{% if t %}<option value="{{ t }}" {% if f.object_type == t %}selected{% endif %}>{{ t }}</option>{% endif %}{% endfor %}</select></div>
+  <div><label class="form-label" for="a-action">Action contains</label><input id="a-action" name="action" value="{{ f.action }}" class="form-input h-10" placeholder="e.g. payment."></div>
+  <div><label class="form-label" for="a-result">Result</label><select id="a-result" name="result" class="form-select h-10"><option value="">Any</option><option value="success" {% if f.result == 'success' %}selected{% endif %}>Success</option><option value="failure" {% if f.result == 'failure' %}selected{% endif %}>Failure</option><option value="denied" {% if f.result == 'denied' %}selected{% endif %}>Denied</option></select></div>
+  <div><label class="form-label" for="a-from">From</label><input id="a-from" type="date" name="from" value="{{ f.from }}" class="form-input h-10"></div>
+  <div><label class="form-label" for="a-to">To</label><input id="a-to" type="date" name="to" value="{{ f.to }}" class="form-input h-10"></div>
+  {% if f.object_id %}<input type="hidden" name="object_id" value="{{ f.object_id }}">{% endif %}
+  <div class="flex gap-2 lg:col-span-6"><button class="btn btn-primary">Apply</button><a class="btn btn-secondary" href="{{ request.path }}">Clear</a></div>
+</form>
+<div class="card"><div class="table-wrap"><table class="data-table responsive-cards">
+  <thead class="border-b border-gray-100 dark:border-gray-800"><tr><th class="th">When</th><th class="th">Who</th><th class="th">Action</th><th class="th">Record</th><th class="th">Details</th></tr></thead>
+  <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for a in page_obj %}<tr x-data="{ o: false }" class="align-top">
+    <td class="td whitespace-nowrap" data-label="When">{{ a.created_at|date:"d M Y H:i:s" }}</td>
+    <td class="td" data-label="Who">{{ a.actor_name|default:a.actor_type|capfirst }}{% if a.ip %}<span class="block text-theme-xs text-gray-500">{{ a.ip }} · {{ a.channel }}</span>{% endif %}</td>
+    <td class="td" data-label="Action"><code class="text-theme-xs">{{ a.action }}</code>{% if a.result != 'success' %} {% badge a.result a.result|capfirst 'red' %}{% endif %}</td>
+    <td class="td" data-label="Record">{% if a.object_type %}<a class="link" href="?object_type={{ a.object_type }}&object_id={{ a.object_id }}">{{ a.object_type }} {{ a.object_id }}</a><span class="block text-theme-xs text-gray-500">{{ a.object_repr|truncatechars:60 }}</span>{% else %}—{% endif %}</td>
+    <td class="td" data-label="Details">{% if a.reason %}<p class="text-theme-xs">“{{ a.reason|truncatechars:140 }}”</p>{% endif %}{% if a.changes %}<button type="button" class="btn-link text-theme-xs" @click="o = !o" x-text="o ? 'Hide changes' : 'Show changes'">Show changes</button>
+      <dl x-show="o" x-cloak class="mt-2 space-y-1 text-theme-xs">{% for k, v in a.changes.items %}<div><dt class="inline font-medium">{{ k }}:</dt> <dd class="inline break-words text-gray-600 dark:text-gray-400">{{ v|change_text|truncatechars:400 }}</dd></div>{% endfor %}</dl>{% endif %}{% if a.request_id %}<span class="block text-theme-xs text-gray-400">req {{ a.request_id }}</span>{% endif %}</td></tr>
+  {% empty %}<tr><td class="td" colspan="5">{% include "crm/components/empty_state.html" with title="No audit rows match" filtered=True %}</td></tr>{% endfor %}</tbody></table></div>
+  {% include "crm/components/pagination.html" with paginator=page_obj.paginator %}
+</div>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{{ title }}{% endblock %}
+{% block page_header %}{% include "crm/reports/_dashboard_head.html" %}{% endblock %}
+{% block content %}
+<div class="mb-6 flex flex-wrap gap-2">
+  <a class="btn btn-primary btn-sm" href="{% url 'crm:lead_list' %}?quick=overdue">{% icon 'alert' 16 %} Open overdue follow-ups</a>
+  {% if unassigned is not None %}<a class="btn btn-secondary btn-sm" href="{% url 'crm:lead_list' %}?quick=unassigned">{% icon 'users' 16 %} Assign leads{% if unassigned %} ({{ unassigned }}){% endif %}</a>{% endif %}
+  <a class="btn btn-secondary btn-sm" href="{% url 'crm:pipeline' %}">{% icon 'board' 16 %} Pipeline</a>
+</div>
+{% include "crm/reports/_cards.html" %}
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+  {% if charts.funnel %}
+  <div class="card xl:col-span-2"><div class="card-header"><h2 class="card-title">Funnel for leads created {{ rng.label }}</h2><a class="link text-sm" href="{% url 'crm:report_view' 'funnel' %}?from={{ rng.start|date:'Y-m-d' }}&to={{ rng.end|date:'Y-m-d' }}">Full report</a></div>
+    <ul class="card-body space-y-3">{% for f in charts.funnel %}
+      <li><div class="mb-1 flex justify-between text-sm"><span class="text-gray-700 dark:text-gray-300">{{ f.label }}</span><span class="text-gray-500">{{ f.count }}{% if f.conv is not None %} · {{ f.conv }}%{% endif %}</span></div>
+        <div class="h-2.5 rounded-full bg-gray-100 dark:bg-gray-800"><div class="bg-brand-500 h-2.5 rounded-full" style="width: {{ f.width }}%"></div></div></li>{% endfor %}</ul></div>
+  {% endif %}
+  {% if by_owner %}
+  <div class="card"><div class="card-header"><h2 class="card-title">Leads by owner</h2></div>
+    <ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for r in by_owner %}<li class="flex justify-between px-5 py-3 text-sm"><span>{{ r.owner__first_name|default:r.owner__username|default:"Unassigned" }} {{ r.owner__last_name }}</span><span class="text-gray-500">{{ r.n }} in · {{ r.won }} won</span></li>{% endfor %}</ul></div>
+  {% endif %}
+</div>
+{% include "crm/reports/_configure.html" %}
+{% endblock %}

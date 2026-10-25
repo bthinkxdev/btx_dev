@@ -193,7 +193,7 @@ def edit_row(row: BillingSchedule, actor, *, invoice_date: date, amount: Decimal
 def invoice_for_row(row: BillingSchedule, actor=None, *, issue: bool | None = None) -> Invoice:
     from crm.modules.billing import services as bs
     with transaction.atomic():
-        row = BillingSchedule.objects.select_for_update().select_related('contract_line__contract__client', 'contract_line__service').get(pk=row.pk)
+        row = BillingSchedule.objects.select_for_update(of=('self',)).select_related('contract_line__contract__client', 'contract_line__service').get(pk=row.pk)
         if row.status != 'scheduled' and row.status != 'failed':
             raise ContractError('This row was already invoiced or skipped.')
         ln = row.contract_line

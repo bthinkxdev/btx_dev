@@ -42,8 +42,9 @@ JOBS = {
     'accounting.deferred_release': ('crm.modules.accounting.services.release_deferred', 'daily', 1440),
     'accounting.posting_queue': ('crm.modules.accounting.services.posting_queue_alert', 'frequent', 15),
     'hr.exits': ('crm.modules.hr.jobs.exits_due', 'daily', 1440),
+    'reports.scheduled': ('crm.modules.reports.catalogue.run_schedules', 'frequent', 60),
     'audit.checkpoint': ('crm.core.audit.write_checkpoint', 'daily', 1440),
-    'integrity.nightly': ('crm.core.integrity.run_checks', 'daily', 1440),
+    'integrity.nightly': ('crm.core.integrity.nightly', 'daily', 1440),
     'housekeeping.idempotency': ('crm.core.jobs.purge_idempotency_keys', 'daily', 1440),
 }
 
@@ -69,10 +70,12 @@ def run_job(name: str, force: bool = False) -> dict:
         func = getattr(import_module(module_path), func_name)
         result = func()
         run.status = 'succeeded'
-        run.result = {'value': result if isinstance(result, (int, str, float, type(None))) else str(result)}
+        run.result = {'value': result if isinstance(result, (int, str, float, dict, list, type(None))) else str(result)}
     except Exception as exc:
         run.status = 'failed'
         run.error = ''.join(traceback.format_exception(exc))[-4000:]
+        if isinstance(getattr(exc, 'result', None), dict):
+            run.result = {'value': exc.result}
         logger.exception('Job %s failed', name)
     run.finished_at = timezone.now()
     run.save()

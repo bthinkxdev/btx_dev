@@ -1,0 +1,47 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Jobs and health{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Jobs and health" subtitle="Scheduled jobs run from cron (crm_run_jobs). Each run is keyed, so a retry never duplicates a financial record or message." %}{% endblock %}
+{% block content %}
+<div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4 xl:grid-cols-6">
+  {% can 'accounting' 'view' as can_acc %}
+  <a href="{% if can_acc %}{% url 'crm:accounting_dashboard' %}{% else %}#{% endif %}" class="card p-4"><p class="dl-label">Posting queue</p><p class="mt-1 text-xl font-semibold {% if health.posting_failed %}text-error-600{% else %}text-gray-800 dark:text-white/90{% endif %}">{{ health.posting_pending }} waiting · {{ health.posting_failed }} failed</p></a>
+  <div class="card p-4"><p class="dl-label">Failed gateway events</p><p class="mt-1 text-xl font-semibold {% if health.events_failed %}text-error-600{% else %}text-gray-800 dark:text-white/90{% endif %}">{{ health.events_failed }}</p></div>
+  <a href="{% url 'crm:template_list' %}?tab=log&status=failed" class="card p-4"><p class="dl-label">Failed emails (24 h)</p><p class="mt-1 text-xl font-semibold {% if health.email_failed %}text-warning-700{% else %}text-gray-800 dark:text-white/90{% endif %}">{{ health.email_failed }}</p></a>
+  <a href="?status=failed" class="card p-4"><p class="dl-label">Job runs (24 h)</p><p class="mt-1 text-xl font-semibold text-gray-800 dark:text-white/90">{{ health.runs_24h }}</p><p class="text-theme-xs {% if health.failed_24h %}text-error-600{% else %}text-gray-500{% endif %}">{{ health.failed_24h }} failed · {{ health.error_rate }}% error rate</p></a>
+  <div class="card p-4"><p class="dl-label">Audit checkpoint</p><p class="mt-1 text-sm font-semibold text-gray-800 dark:text-white/90">{{ health.last_checkpoint.created_at|date:"d M Y H:i"|default:"None yet" }}</p>{% if health.last_checkpoint %}<p class="text-theme-xs text-gray-500">rows to #{{ health.last_checkpoint.last_id }}</p>{% endif %}</div>
+  <div class="card p-4"><p class="dl-label">Last integrity check</p><p class="mt-1 text-sm font-semibold {% if health.last_integrity.status == 'failed' %}text-error-600{% elif health.last_integrity %}text-success-600{% else %}text-gray-800 dark:text-white/90{% endif %}">{% if health.last_integrity %}{{ health.last_integrity.get_status_display }} · {{ health.last_integrity.finished_at|date:"d M H:i" }}{% else %}Never run{% endif %}</p></div>
+</div>
+
+<div class="card mb-6" id="integrity"><div class="card-header"><h2 class="card-title">Integrity checks</h2>
+  {% if can_run %}<form method="post" action="{% url 'crm:job_action' 'integrity' %}">{% csrf_token %}<button class="btn btn-secondary btn-sm" data-loading-text="Checking…">Run checks now</button></form>{% endif %}</div>
+  {% if health.integrity %}<ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for c in health.integrity %}
+    <li class="flex items-start gap-3 px-5 py-3 text-sm"><span class="{% if c.ok %}text-success-500{% else %}text-error-500{% endif %} mt-0.5">{% if c.ok %}{% icon 'check' 18 %}{% else %}{% icon 'alert' 18 %}{% endif %}</span>
+      <div><p class="font-medium text-gray-800 dark:text-white/90">{{ c.label }}</p><p class="text-theme-xs text-gray-500">{{ c.detail }}</p>{% if c.items %}<ul class="mt-1 list-disc pl-5 text-theme-xs text-error-600">{% for i in c.items %}<li>{{ i }}</li>{% endfor %}</ul>{% endif %}</div></li>{% endfor %}</ul>
+  {% else %}<p class="muted px-5 py-4">No results yet. Checks run nightly; use Run checks now to run them immediately.</p>{% endif %}
+</div>
+
+<div class="card mb-6"><div class="card-header"><h2 class="card-title">Scheduled jobs</h2><span class="text-theme-xs text-gray-500">Backups run outside the app; see the deployment guide.</span></div>
+  <div class="table-wrap"><table class="data-table responsive-cards"><thead><tr><th class="th">Job</th><th class="th">Every</th><th class="th">Last run</th><th class="th">Status</th><th class="th"></th></tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for j in registry %}<tr>
+      <td class="td" data-label="Job"><a class="link" href="?job={{ j.name }}">{{ j.name }}</a></td>
+      <td class="td" data-label="Every">{% if j.minutes >= 1440 %}Daily{% elif j.minutes >= 60 %}{{ j.minutes|floatformat:0 }} min{% else %}{{ j.minutes }} min{% endif %}</td>
+      <td class="td" data-label="Last run">{{ j.last.started_at|date:"d M H:i"|default:"Never" }}</td>
+      <td class="td" data-label="Status">{% if j.last %}{% badge j.last.status j.last.get_status_display %}{% else %}—{% endif %}</td>
+      <td class="td text-right" data-label="">{% if can_run %}<form method="post" action="{% url 'crm:job_action' 'run' %}">{% csrf_token %}<input type="hidden" name="job" value="{{ j.name }}"><button class="btn btn-secondary btn-sm" data-loading-text="Running…" data-confirm="Run {{ j.name }} now?">Run now</button></form>{% endif %}</td></tr>{% endfor %}</tbody></table></div></div>
+
+<div class="card"><div class="card-header"><h2 class="card-title">Run history</h2>
+  <form method="get" class="flex gap-2"><label class="sr-only" for="j-status">Status</label><select id="j-status" name="status" class="form-select h-9 w-auto py-1 text-sm" data-autosubmit><option value="">All statuses</option>{% for k, v in statuses %}<option value="{{ k }}" {% if status == k %}selected{% endif %}>{{ v }}</option>{% endfor %}</select>
+    <label class="sr-only" for="j-job">Job</label><select id="j-job" name="job" class="form-select h-9 w-auto py-1 text-sm" data-autosubmit><option value="">All jobs</option>{% for n in job_names %}<option value="{{ n }}" {% if request.GET.job == n %}selected{% endif %}>{{ n }}</option>{% endfor %}</select></form></div>
+  <div class="table-wrap"><table class="data-table responsive-cards"><thead><tr><th class="th">Job</th><th class="th">Started</th><th class="th">Took</th><th class="th">Status</th><th class="th"></th></tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for r in page_obj %}<tr x-data="{ o: false }">
+      <td class="td" data-label="Job">{{ r.job }}{% if r.resolved_reason %}<span class="block text-theme-xs text-gray-500">{{ r.resolved_reason }}</span>{% endif %}</td>
+      <td class="td" data-label="Started">{{ r.started_at|date:"d M Y H:i:s" }}</td>
+      <td class="td" data-label="Took">{% if r.finished_at and r.started_at %}{{ r.started_at|timesince:r.finished_at }}{% else %}—{% endif %}</td>
+      <td class="td" data-label="Status">{% badge r.status r.get_status_display %}{% if r.error %}<button type="button" class="btn-link ml-2 text-theme-xs" @click="o = !o">Error</button><pre x-show="o" x-cloak class="mt-2 max-h-60 max-w-xl overflow-auto rounded-lg bg-gray-50 p-3 text-theme-xs whitespace-pre-wrap dark:bg-white/3">{{ r.error }}</pre>{% endif %}</td>
+      <td class="td text-right" data-label="">{% if can_run and r.status == 'failed' %}<div class="flex justify-end gap-2">
+        <form method="post" action="{% url 'crm:job_action' 'retry' %}">{% csrf_token %}<input type="hidden" name="pk" value="{{ r.pk }}"><button class="btn btn-secondary btn-sm" data-loading-text="Retrying…">Retry</button></form>
+        <form method="post" action="{% url 'crm:job_action' 'resolve' %}" data-confirm="Mark this failure resolved without retrying?" data-confirm-reason="required">{% csrf_token %}<input type="hidden" name="pk" value="{{ r.pk }}"><button class="btn btn-secondary btn-sm">Mark resolved</button></form></div>{% endif %}</td></tr>
+    {% empty %}<tr><td class="td" colspan="5">No runs recorded.</td></tr>{% endfor %}</tbody></table></div>
+  {% include "crm/components/pagination.html" with paginator=page_obj.paginator %}
+</div>
+{% endblock %}

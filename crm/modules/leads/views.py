@@ -54,6 +54,14 @@ def _now():
     return timezone.now()
 
 
+def _sla_breached(qs, request):
+    """First response slower than the SLA, or still waiting past it (Part 4.9)."""
+    from crm.models import CompanySettings
+    limit = CompanySettings.get().first_response_minutes
+    return qs.filter(Q(first_response_seconds__gt=limit * 60) |
+                     Q(stage__in=OPEN_STAGES, first_contacted_at__isnull=True, created_at__lt=_now() - timedelta(minutes=limit)))
+
+
 QUICK = {
     'mine': ('My leads', lambda qs, r: qs.filter(owner=r.user)),
     'unassigned': ('Unassigned', lambda qs, r: qs.filter(owner__isnull=True, stage__in=OPEN_STAGES)),
@@ -64,11 +72,14 @@ QUICK = {
     'new_24h': ('New in last 24 h', lambda qs, r: qs.filter(created_at__gte=_now() - timedelta(hours=24))),
     'hot': ('High priority', lambda qs, r: qs.filter(priority='hot', stage__in=OPEN_STAGES)),
     'open': ('Open', lambda qs, r: qs.filter(stage__in=OPEN_STAGES)),
+    'unworked': ('Not yet contacted', lambda qs, r: qs.filter(stage__in=OPEN_STAGES, first_contacted_at__isnull=True)),
+    'sla_breached': ('First-response SLA breached', _sla_breached),
     'archived': ('Archived', lambda qs, r: qs.filter(archived_at__isnull=False)),
 }
 
 
 class LeadList(ListPage):
+    date_fields = {'created': 'created_at', 'assigned': 'assigned_at', 'won': 'won_at', 'lost': 'lost_at', 'next': 'next_follow_up_at'}
     model = Lead
     module = 'leads'
     template_name = 'crm/leads/list.html'

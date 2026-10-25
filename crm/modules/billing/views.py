@@ -42,6 +42,7 @@ BUCKETS = {'1-30': (1, 31), '31-60': (31, 61), '61-90': (61, 91), '90+': (91, No
 
 
 class InvoiceList(ListPage):
+    date_fields = {'date': 'invoice_date', 'due': 'due_date'}
     model = Invoice
     module = 'invoices'
     template_name = 'crm/billing/invoice_list.html'

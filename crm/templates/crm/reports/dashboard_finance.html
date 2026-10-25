@@ -1,0 +1,18 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{{ title }}{% endblock %}
+{% block page_header %}{% include "crm/reports/_dashboard_head.html" %}{% endblock %}
+{% block content %}
+<div class="mb-6 flex flex-wrap gap-2">
+  {% can 'payments' 'approve' as can_verify %}{% if can_verify %}<a class="btn btn-primary btn-sm" href="{% url 'crm:payment_verify_queue' %}">{% icon 'check' 16 %} Verify payments</a>{% endif %}
+  {% can 'payments' 'create' as can_alloc %}{% if can_alloc %}<a class="btn btn-secondary btn-sm" href="{% url 'crm:allocation' %}">{% icon 'swap' 16 %} Allocate</a>{% endif %}
+  {% can 'banking' 'view' as can_bank %}{% if can_bank %}<a class="btn btn-secondary btn-sm" href="{% url 'crm:reconciliation' %}">{% icon 'bank' 16 %} Reconcile</a>{% endif %}
+</div>
+{% include "crm/reports/_cards.html" %}
+{% if ageing %}
+<div class="card"><div class="card-header"><h2 class="card-title">Receivables ageing</h2><a class="link text-sm" href="{% url 'crm:receivables' %}">Open ageing</a></div>
+  <div class="table-wrap"><table class="data-table responsive-cards"><thead><tr><th class="th">Bucket</th><th class="th text-right">Invoices</th><th class="th text-right">Balance</th></tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for b in ageing.buckets %}<tr><td class="td" data-label="Bucket"><a class="link" href="{{ b.href }}">{{ b.label }}</a></td><td class="td text-right" data-label="Invoices">{{ b.count }}</td><td class="td text-right" data-label="Balance">{{ b.amount|inr }}</td></tr>{% endfor %}</tbody>
+    <tfoot><tr class="font-semibold"><td class="td">Total</td><td class="td text-right">{{ ageing.count }}</td><td class="td text-right">{{ ageing.total|inr }}</td></tr></tfoot></table></div></div>
+{% endif %}
+{% include "crm/reports/_configure.html" %}
+{% endblock %}

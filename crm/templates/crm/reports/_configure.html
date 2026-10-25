@@ -1,0 +1,19 @@
+{% load crm_tags %}
+{% include "crm/components/modal_start.html" with id="configure" title="Configure dashboard" subtitle="Choose which cards to show and drag them into order. Only cards your role allows are listed." %}
+<form method="post" action="{% url 'crm:dashboard_configure' key %}" x-data="{ items: [{% for c in all_cards %}{ key: '{{ c.key }}', label: '{{ c.label|escapejs }}', show: {% if c.key in hidden %}false{% else %}true{% endif %} }{% if not forloop.last %}, {% endif %}{% endfor %}], move(i, d) { const j = i + d; if (j < 0 || j >= this.items.length) return; const t = this.items[i]; this.items[i] = this.items[j]; this.items[j] = t; } }">{% csrf_token %}
+  <ul class="divide-y divide-gray-100 rounded-xl border border-gray-200 dark:divide-gray-800 dark:border-gray-800">
+    <template x-for="(it, i) in items" :key="it.key">
+      <li class="flex items-center gap-3 px-4 py-2.5">
+        <input type="hidden" name="order" :value="it.key">
+        <label class="flex flex-1 items-center gap-3 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" name="show" :value="it.key" x-model="it.show" class="form-checkbox-box"><span x-text="it.label"></span></label>
+        <button type="button" class="btn-icon-sm" @click="move(i, -1)" :disabled="i === 0" aria-label="Move up">{% icon 'chevron_down' 16 'rotate-180' %}</button>
+        <button type="button" class="btn-icon-sm" @click="move(i, 1)" :disabled="i === items.length - 1" aria-label="Move down">{% icon 'chevron_down' 16 %}</button>
+      </li>
+    </template>
+  </ul>
+  <div class="mt-6 flex flex-col-reverse justify-between gap-3 sm:flex-row">
+    <button type="submit" name="reset" value="1" class="btn btn-secondary" data-no-loading>Reset to default</button>
+    <div class="flex flex-col-reverse gap-3 sm:flex-row"><button type="button" class="btn btn-secondary" @click="$store.modal.close()">Cancel</button><button type="submit" class="btn btn-primary" data-loading-text="Saving…">Save layout</button></div>
+  </div>
+</form>
+{% include "crm/components/modal_end.html" %}

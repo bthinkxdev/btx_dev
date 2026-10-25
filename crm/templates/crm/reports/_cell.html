@@ -1,0 +1,1 @@
+{% load crm_tags %}{% if v is None %}<span class="text-gray-400">—</span>{% elif kind == 'money' %}{{ v|inr }}{% elif kind == 'percent' %}{{ v }}%{% elif kind == 'hours' %}{{ v }} h{% else %}{{ v }}{% endif %}

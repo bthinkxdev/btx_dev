@@ -1,0 +1,30 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Security events{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-start justify-between gap-3">
+  <div><h1 class="page-title">Security events</h1><p class="muted mt-1">Sign-ins, lockouts, forbidden attempts, invalid webhook signatures and permission changes.</p></div>
+  {% if can_export %}<a class="btn btn-secondary btn-sm" href="{% qs export='csv' %}">{% icon 'download' 16 %} Export CSV</a>{% endif %}
+</div>
+{% endblock %}
+{% block content %}
+{% if summary %}<div class="mb-6 flex flex-wrap gap-2">{% for label, n, k in summary %}<a href="?kind={{ k }}" class="chip chip-inactive">{{ label }} <span class="ml-1 font-semibold">{{ n }}</span></a>{% endfor %}<span class="self-center text-theme-xs text-gray-500">last 24 hours</span></div>{% endif %}
+{% if locked %}<div class="card mb-6"><div class="card-header"><h2 class="card-title">Locked accounts</h2></div><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for p in locked %}
+  <li class="flex items-center justify-between px-5 py-3 text-sm"><span>{{ p.user.get_full_name|default:p.user.username }} <span class="text-gray-500">· until {{ p.locked_until|date:"H:i" }} · {{ p.failed_logins }} failed attempts</span></span>
+    {% can 'settings' 'configure' as can_unlock %}{% if can_unlock %}<form method="post" action="{% url 'crm:security_unlock' p.pk %}">{% csrf_token %}<button class="btn btn-secondary btn-sm" data-confirm="Unlock this account now?">Unlock</button></form>{% endif %}</li>{% endfor %}</ul></div>{% endif %}
+<form method="get" class="card mb-6 flex flex-col gap-3 p-4 lg:flex-row lg:items-end">
+  <div><label class="form-label" for="s-kind">Event</label><select id="s-kind" name="kind" class="form-select h-10 w-56"><option value="">All events</option>{% for k, v in kinds %}<option value="{{ k }}" {% if f.kind == k %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></div>
+  <div><label class="form-label" for="s-q">User, IP or detail</label><input id="s-q" name="q" value="{{ f.q }}" class="form-input h-10"></div>
+  <div><label class="form-label" for="s-from">From</label><input id="s-from" type="date" name="from" value="{{ f.from }}" class="form-input h-10"></div>
+  <div><label class="form-label" for="s-to">To</label><input id="s-to" type="date" name="to" value="{{ f.to }}" class="form-input h-10"></div>
+  <button class="btn btn-primary">Apply</button><a class="btn btn-secondary" href="{{ request.path }}">Clear</a>
+</form>
+<div class="card"><div class="table-wrap"><table class="data-table responsive-cards">
+  <thead class="border-b border-gray-100 dark:border-gray-800"><tr><th class="th">When</th><th class="th">Event</th><th class="th">User</th><th class="th">IP</th><th class="th">Detail</th></tr></thead>
+  <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for e in page_obj %}<tr>
+    <td class="td whitespace-nowrap" data-label="When">{{ e.created_at|date:"d M Y H:i:s" }}</td><td class="td" data-label="Event">{{ e.get_kind_display }}</td>
+    <td class="td" data-label="User">{{ e.username|default:"—" }}</td><td class="td" data-label="IP">{{ e.ip|default:"—" }}</td>
+    <td class="td break-words" data-label="Detail">{{ e.detail|default:"" }}{% if e.path %}<span class="block text-theme-xs text-gray-500">{{ e.path }}</span>{% endif %}</td></tr>
+  {% empty %}<tr><td class="td" colspan="5">No events match.</td></tr>{% endfor %}</tbody></table></div>
+  {% include "crm/components/pagination.html" with paginator=page_obj.paginator %}
+</div>
+{% endblock %}

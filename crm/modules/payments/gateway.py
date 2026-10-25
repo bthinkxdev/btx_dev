@@ -122,6 +122,20 @@ class CashfreeAdapter(BaseAdapter):
     def _base(self) -> str:
         return 'https://api.cashfree.com/pg' if self.live else 'https://sandbox.cashfree.com/pg'
 
+    def test_connection(self) -> tuple[bool, str]:
+        """Look up an order that cannot exist: 404 proves the keys are accepted, 401/403 means they are not."""
+        import requests
+        try:
+            resp = requests.get(f'{self._base()}/orders/crm-connection-test', headers=self._headers(), timeout=10)
+        except requests.RequestException as exc:
+            logger.warning('Cashfree connection test failed: %s', exc)
+            return False, 'Could not reach Cashfree. Check the server\'s internet access and try again.'
+        if resp.status_code in (401, 403):
+            return False, f'Cashfree rejected the App ID or secret ({self.mode} mode). Check that the keys match the mode.'
+        if resp.status_code in (200, 404):
+            return True, f'Connected to Cashfree {self.mode}. The keys were accepted.'
+        return False, f'Cashfree answered with status {resp.status_code}. Try again in a minute.'
+
     def _headers(self) -> dict:
         return {'x-client-id': self.app_id, 'x-client-secret': self.secret, 'x-api-version': self.API_VERSION,
                 'Content-Type': 'application/json'}

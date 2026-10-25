@@ -1,0 +1,6 @@
+{% load crm_tags %}
+<div class="card"><div class="card-header"><h2 class="card-title">Change history</h2>{% can 'audit' 'view' as can_audit %}{% if can_audit %}<a class="link text-sm" href="{% url 'crm:audit_log' %}?action=settings">Audit log</a>{% endif %}</div>
+  <ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for a in history %}
+    <li class="px-5 py-3 text-sm"><span class="font-medium text-gray-800 dark:text-white/90">{{ a.actor_name|default:"System" }}</span> <span class="text-gray-500">· {{ a.created_at|date:"d M Y H:i" }}</span>
+      <span class="block text-theme-xs text-gray-500">{% for k, v in a.changes.items %}{{ k|cut:"_"|capfirst }}{% if not forloop.last %}, {% endif %}{% endfor %}{% if a.reason %} — “{{ a.reason|truncatechars:120 }}”{% endif %}</span></li>
+  {% empty %}<li class="muted px-5 py-4">No changes recorded yet.</li>{% endfor %}</ul></div>

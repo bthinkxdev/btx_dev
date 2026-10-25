@@ -17,7 +17,7 @@ from crm.core.money import D, ZERO
 from crm.core.views import Filter, ListPage, get_scoped, staff_required
 from crm.models import (AuditLog, Client, CompanySettings, DeliveryLog, Dispute, GatewayEvent, Invoice, Payment,
                         PaymentLink, Quotation, Refund, Settlement)
-from crm.models.payments import GATEWAY_METHODS, LINK_STATUSES, METHODS, PAYMENT_STATUSES, PL_PAYABLE
+from crm.models.payments import GATEWAY_METHODS, LINK_STATUSES, METHODS, P_COUNTED, PAYMENT_STATUSES, PL_PAYABLE
 
 from . import gateway
 from . import services as svc
@@ -33,6 +33,7 @@ def _client_choices(request):
 # ---------------------------------------------------------------- payment links
 
 class LinkList(ListPage):
+    date_fields = {'created': 'created_at', 'paid': 'paid_at', 'opened': 'first_opened_at'}
     model = PaymentLink
     module = 'payment_links'
     template_name = 'crm/payments/link_list.html'
@@ -235,6 +236,7 @@ def link_action(request, pk, action):
 # ---------------------------------------------------------------- payments
 
 class PaymentList(ListPage):
+    date_fields = {'date': 'payment_date'}
     model = Payment
     module = 'payments'
     template_name = 'crm/payments/payment_list.html'
@@ -248,6 +250,7 @@ class PaymentList(ListPage):
                Filter('kind', 'Type', [('gateway', 'Gateway'), ('manual', 'Manual')]),
                Filter('client', 'Client', _client_choices, lookup='client_id')]
     quick_filters = {
+        'collected': ('Collected', lambda qs, r: qs.filter(status__in=P_COUNTED)),
         'pending': ('Pending verification', lambda qs, r: qs.filter(status='pending_verification')),
         'review': ('Review queue', lambda qs, r: qs.filter(status='review')),
         'unallocated': ('Unallocated', lambda qs, r: qs.filter(status__in=['verified', 'partially_refunded'],

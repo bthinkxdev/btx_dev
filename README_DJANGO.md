@@ -32,6 +32,19 @@ This folder contains a Django project that serves the BThinkX template and a wor
    ```
    Open http://127.0.0.1:8000/
 
+## BThinkX Business OS (`/crm/`)
+
+The internal business system (leads, quotations, payments, invoices, accounting, contracts, projects,
+expenses, HR, payroll, dashboards, reports and administration) is the `crm` app. Setup, environment
+variables, the scheduled-jobs cron line, backups and the deploy checklist are in
+[docs/crm/DEPLOYMENT.md](docs/crm/DEPLOYMENT.md).
+
+```bash
+python manage.py migrate && python manage.py crm_bootstrap
+python manage.py createsuperuser      # then sign in at /crm/login/
+python manage.py test crm             # full test suite
+```
+
 ## Project structure
 
 - **config/** — Django project settings, root URLs, WSGI/ASGI.

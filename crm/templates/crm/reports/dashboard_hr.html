@@ -1,0 +1,20 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{{ title }}{% endblock %}
+{% block page_header %}{% include "crm/reports/_dashboard_head.html" %}{% endblock %}
+{% block content %}
+<div class="mb-6 flex flex-wrap gap-2">
+  {% can 'leave' 'approve' as can_approve %}{% if can_approve %}<a class="btn btn-primary btn-sm" href="{% url 'crm:hr_approvals' %}">{% icon 'check' 16 %} Approve requests</a>{% endif %}
+  <a class="btn btn-secondary btn-sm" href="{% url 'crm:attendance' %}">{% icon 'calendar' 16 %} Attendance</a>
+  <a class="btn btn-secondary btn-sm" href="{% url 'crm:employee_list' %}">{% icon 'users' 16 %} Employees</a>
+</div>
+{% include "crm/reports/_cards.html" %}
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+  <div class="card"><div class="card-header"><h2 class="card-title">On leave today</h2></div>
+    <ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for r in on_leave %}<li class="px-5 py-3 text-sm">{{ r.employee.name }}<span class="block text-theme-xs text-gray-500">{{ r.leave_type.name }} · until {{ r.end_date|d }}</span></li>{% empty %}<li class="muted px-5 py-4">Everyone is available.</li>{% endfor %}</ul></div>
+  <div class="card"><div class="card-header"><h2 class="card-title">Upcoming joiners</h2></div>
+    <ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for e in joiners %}<li class="px-5 py-3 text-sm"><a class="td-strong hover:text-brand-500" href="{% url 'crm:employee_detail' e.pk %}">{{ e.name }}</a><span class="block text-theme-xs text-gray-500">{{ e.designation|default:"—" }} · joins {{ e.joining_date|d }}</span></li>{% empty %}<li class="muted px-5 py-4">No joiners in the next 30 days.</li>{% endfor %}</ul></div>
+  <div class="card"><div class="card-header"><h2 class="card-title">Exits in progress</h2></div>
+    <ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for e in exits %}<li class="px-5 py-3 text-sm"><a class="td-strong hover:text-brand-500" href="{% url 'crm:employee_detail' e.pk %}">{{ e.name }}</a><span class="block text-theme-xs text-gray-500">Last day {{ e.last_working_day|d|default:"not set" }}</span></li>{% empty %}<li class="muted px-5 py-4">No one is on notice.</li>{% endfor %}</ul></div>
+</div>
+{% include "crm/reports/_configure.html" %}
+{% endblock %}

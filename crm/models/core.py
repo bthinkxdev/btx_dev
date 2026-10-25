@@ -219,6 +219,7 @@ class UserProfile(Versioned):
     delegate_until = models.DateField(null=True, blank=True)
     notify_email = models.BooleanField(default=True)
     quiet_hours = models.BooleanField(default=True)
+    dashboard_prefs = models.JSONField(default=dict, blank=True, help_text='{dashboard: {"hidden": [...], "order": [...]}}')
 
     def __str__(self):
         return f'Profile of {self.user}'
@@ -280,6 +281,8 @@ class SecurityEvent(models.Model):
         ('logout', 'Logout'), ('forbidden', 'Forbidden attempt'), ('invalid_signature', 'Invalid signature'),
         ('password_changed', 'Password changed'), ('sessions_revoked', 'Signed out all devices'),
         ('two_factor', 'Two-factor event'), ('rate_limited', 'Rate limited'),
+        ('permission_change', 'Permission change'), ('account_deactivated', 'Account deactivated'),
+        ('access_reset', 'Access reset by administrator'), ('export', 'Data export'),
     ]
     created_at = models.DateTimeField(default=timezone.now, db_index=True)
     kind = models.CharField(max_length=30, choices=KINDS, db_index=True)
@@ -402,6 +405,11 @@ class ApprovalRequest(models.Model):
         ('contract', 'Contract'),
         ('change_request', 'Change request'),
         ('commission', 'Commission'),
+        ('invoice_issue', 'Invoice issue'),
+        ('tds_write_off', 'TDS write-off'),
+        ('project_close', 'Project close'),
+        ('template', 'Customer message template'),
+        ('tax_setting', 'Tax setting change'),
     ]
     STATUSES = [('pending', 'Awaiting approval'), ('approved', 'Approved'), ('rejected', 'Rejected'),
                 ('cancelled', 'Cancelled'), ('expired', 'Expired')]
@@ -555,6 +563,26 @@ class SavedFilter(models.Model):
     class Meta:
         ordering = ['name']
         constraints = [models.UniqueConstraint(fields=['user', 'module', 'name'], name='crm_saved_filter_unique')]
+
+
+class ReportSchedule(models.Model):
+    """A report emailed on a schedule (Part 13.2). It always runs as its owner, so the data stays in their scope."""
+    FREQUENCIES = [('daily', 'Daily'), ('weekly', 'Weekly (Monday)'), ('monthly', 'Monthly (1st)')]
+    user = models.ForeignKey(USER, on_delete=models.CASCADE, related_name='crm_report_schedules')
+    report = models.CharField(max_length=40)
+    querystring = models.CharField(max_length=1000, blank=True)
+    frequency = models.CharField(max_length=10, choices=FREQUENCIES, default='weekly')
+    hour = models.PositiveSmallIntegerField(default=8)
+    is_active = models.BooleanField(default=True)
+    last_sent_at = models.DateTimeField(null=True, blank=True)
+    last_error = models.CharField(max_length=300, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ['report', 'id']
+
+    def __str__(self):
+        return f'{self.report} ({self.get_frequency_display()})'
 
 
 class ImportBatch(TimeStamped):

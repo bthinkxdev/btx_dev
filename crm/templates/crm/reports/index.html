@@ -1,0 +1,28 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Reports{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Report catalogue" subtitle="Each report states its definition. Revenue is recognised in the ledger, invoicing is what was billed, collections are cash received and profit is revenue minus costs." %}{% endblock %}
+{% block content %}
+{% for group, items in groups.items %}
+  <h2 class="mb-3 text-sm font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">{{ group }}</h2>
+  <div class="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+    {% for r in items %}
+      <a href="{% url 'crm:report_view' r.slug %}" class="card group block p-5 hover:border-brand-300 dark:hover:border-brand-800">
+        <div class="flex items-start justify-between gap-3"><h3 class="font-semibold text-gray-800 dark:text-white/90">{{ r.title }}</h3><span class="text-gray-300 group-hover:text-brand-500">{% icon 'arrow_right' 18 %}</span></div>
+        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">{{ r.definition }}</p>
+      </a>
+    {% endfor %}
+  </div>
+{% empty %}
+  {% include "crm/components/empty_state.html" with title="No reports available" text="Your role does not include any reports. Ask an administrator if you need one." %}
+{% endfor %}
+{% if schedules %}
+<div class="card"><div class="card-header"><h2 class="card-title">My scheduled reports</h2></div>
+  <div class="table-wrap"><table class="data-table responsive-cards"><thead><tr><th class="th">Report</th><th class="th">Frequency</th><th class="th">Last sent</th><th class="th"></th></tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for s in schedules %}{% with r=by_slug|get_item:s.report %}
+      <tr><td class="td" data-label="Report"><a class="link" href="{% url 'crm:report_view' s.report %}?{{ s.querystring }}">{{ r.title|default:s.report }}</a></td>
+        <td class="td" data-label="Frequency">{{ s.get_frequency_display }} at {{ s.hour|stringformat:"02d" }}:00</td>
+        <td class="td" data-label="Last sent">{{ s.last_sent_at|date:"d M Y H:i"|default:"Not yet" }}{% if s.last_error %}<span class="block text-theme-xs text-error-600">{{ s.last_error }}</span>{% endif %}</td>
+        <td class="td text-right" data-label=""><form method="post" action="{% url 'crm:report_schedule_delete' s.pk %}">{% csrf_token %}<button class="btn btn-secondary btn-sm" data-confirm="Stop emailing this report?">Remove</button></form></td></tr>
+    {% endwith %}{% endfor %}</tbody></table></div></div>
+{% endif %}
+{% endblock %}

@@ -2,7 +2,7 @@
 from .core import (  # noqa: F401
     ApprovalRequest, Attachment, AuditCheckpoint, AuditLog, CompanySettings, DeliveryLog, Department,
     DocumentSequence, ExportLog, IdempotencyKey, ImportBatch, JobRun, MessageTemplate, Notification, Role,
-    SavedFilter, SecurityEvent, SequenceSeries, Team, UserProfile, UserSession,
+    ReportSchedule, SavedFilter, SecurityEvent, SequenceSeries, Team, UserProfile, UserSession,
 )
 from .catalog import Service, ServiceTaxRule  # noqa: F401
 from .clients import Client, Contact  # noqa: F401

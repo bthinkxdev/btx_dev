@@ -22,6 +22,7 @@ from .forms import AmendForm, ContractForm, ContractLineFormSet, RenewForm, Sche
 
 
 class ContractList(ListPage):
+    date_fields = {'end': 'end_date', 'start': 'start_date'}
     model = Contract
     module = 'contracts'
     template_name = 'crm/contracts/list.html'

@@ -171,6 +171,9 @@ def profile_view(request):
         if pw_form.is_valid():
             user = pw_form.save()
             update_session_auth_hash(request, user)
+            if profile.must_change_password:
+                profile.must_change_password = False
+                profile.save(update_fields=['must_change_password'])
             end_sessions(user, keep_key=request.session.session_key)
             audit.security_event('password_changed', user=user, request=request)
             messages.success(request, 'Password changed. Other devices were signed out.')

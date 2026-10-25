@@ -1,0 +1,42 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Teams and departments{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-start justify-between gap-3">
+  <div><h1 class="page-title">Teams and departments</h1><p class="muted mt-1">Team scope decides what managers see; sales teams receive auto-assigned leads.</p></div>
+  <div class="flex gap-2"><button type="button" class="btn btn-secondary btn-sm" @click="$store.modal.show('new-dept')">{% icon 'plus' 16 %} Department</button><button type="button" class="btn btn-primary btn-sm" @click="$store.modal.show('new-team')">{% icon 'plus' 16 %} Team</button></div>
+</div>
+{% endblock %}
+{% block content %}
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+  <div class="card"><div class="card-header"><h2 class="card-title">Departments</h2></div>
+    <ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for d, depth in tree %}
+      <li class="flex items-center justify-between gap-3 py-3 pr-5" style="padding-left: {{ depth|mul:24|plus:20 }}px">
+        <div>{% if depth %}<span class="text-gray-300">└ </span>{% endif %}<span class="font-medium text-gray-800 dark:text-white/90">{{ d.name }}</span>{% if not d.is_active %} <span class="badge badge-grey">Inactive</span>{% endif %}
+          <span class="block text-theme-xs text-gray-500">Head: {{ d.head.get_full_name|default:d.head|default:"not set" }} · {{ d.n }} member{{ d.n|pluralize }}</span></div>
+        <button type="button" class="btn btn-secondary btn-sm" @click="$store.modal.show('dept-{{ d.pk }}')">Edit</button></li>
+    {% empty %}<li class="muted px-5 py-4">No departments yet.</li>{% endfor %}</ul></div>
+  <div class="card"><div class="card-header"><h2 class="card-title">Teams</h2></div>
+    <ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for t in teams %}
+      <li class="flex items-center justify-between gap-3 px-5 py-3">
+        <div><span class="font-medium text-gray-800 dark:text-white/90">{{ t.name }}</span>{% if t.is_sales %} <span class="badge badge-blue">Sales</span>{% endif %}{% if not t.is_active %} <span class="badge badge-grey">Inactive</span>{% endif %}
+          <span class="block text-theme-xs text-gray-500">{{ t.department|default:"No department" }} · Manager: {{ t.manager.get_full_name|default:t.manager|default:"not set" }} · {{ t.n }} active member{{ t.n|pluralize }}</span></div>
+        <div class="flex gap-2"><button type="button" class="btn btn-secondary btn-sm" @click="$store.modal.show('team-{{ t.pk }}')">Edit</button></div></li>
+    {% empty %}<li class="muted px-5 py-4">No teams yet.</li>{% endfor %}</ul></div>
+</div>
+{% include "crm/components/modal_start.html" with id="new-team" title="New team" %}
+<form method="post" novalidate>{% csrf_token %}<input type="hidden" name="kind" value="team">{% include "crm/components/modal_form.html" with form=team_form %}{% include "crm/components/modal_actions.html" with label="Save team" %}</form>
+{% include "crm/components/modal_end.html" %}
+{% include "crm/components/modal_start.html" with id="new-dept" title="New department" %}
+<form method="post" novalidate>{% csrf_token %}<input type="hidden" name="kind" value="department">{% include "crm/components/modal_form.html" with form=dept_form %}{% include "crm/components/modal_actions.html" with label="Save department" %}</form>
+{% include "crm/components/modal_end.html" %}
+{% for pk, f in edit_teams.items %}{% with pid=pk|stringformat:"s" %}
+  {% include "crm/components/modal_start.html" with id="team-"|add:pid title="Edit team" %}
+  <form method="post" novalidate>{% csrf_token %}<input type="hidden" name="kind" value="team"><input type="hidden" name="pk" value="{{ pk }}">{% include "crm/components/modal_form.html" with form=f %}{% include "crm/components/modal_actions.html" with label="Save team" %}</form>
+  {% include "crm/components/modal_end.html" %}
+{% endwith %}{% endfor %}
+{% for pk, f in edit_depts.items %}{% with pid=pk|stringformat:"s" %}
+  {% include "crm/components/modal_start.html" with id="dept-"|add:pid title="Edit department" subtitle="Move it by choosing a different parent. A department cannot sit under itself or its sub-departments." %}
+  <form method="post" novalidate>{% csrf_token %}<input type="hidden" name="kind" value="department"><input type="hidden" name="pk" value="{{ pk }}">{% include "crm/components/modal_form.html" with form=f %}{% include "crm/components/modal_actions.html" with label="Save department" %}</form>
+  {% include "crm/components/modal_end.html" %}
+{% endwith %}{% endfor %}
+{% endblock %}

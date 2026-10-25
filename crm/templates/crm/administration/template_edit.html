@@ -1,0 +1,28 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{{ tpl.name }}{% endblock %}
+{% block page_header %}
+<div class="mb-6"><nav aria-label="Breadcrumb" class="mb-1"><ol class="flex items-center gap-1.5 text-sm text-gray-500"><li class="inline-flex items-center gap-1.5"><a href="{% url 'crm:template_list' %}" class="hover:text-gray-700">Message templates</a>{% icon 'chevron_right' 14 %}</li></ol></nav>
+  <h1 class="page-title">{{ tpl.name }} <span class="text-base font-normal text-gray-500">v{{ tpl.version }}{% if not tpl.is_active %} (not live){% endif %}</span></h1>
+  <p class="muted mt-1">Saving creates version {{ versions.0.version|add:1 }} and makes it live. Customers already sent a message keep what they received.</p></div>
+{% endblock %}
+{% block content %}
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+  <form method="post" novalidate class="card" data-dirty-check>{% csrf_token %}
+    <div class="card-body space-y-4">{% include "crm/components/form_errors.html" %}
+      {% field form.name %}{% field form.subject %}{% field form.body %}
+      <div class="rounded-xl bg-gray-50 p-4 text-theme-xs text-gray-600 dark:bg-white/3 dark:text-gray-400"><p class="mb-1 font-medium">Variables you can use</p><p>{% for k in sample %}<code class="mr-2">{% templatetag openvariable %} {{ k }} {% templatetag closevariable %}</code>{% endfor %}</p><p class="mt-1">Simple <code>{% templatetag openblock %} if link {% templatetag closeblock %}</code> blocks are allowed. Missing variables print as blank.</p></div>
+      {% field form.reason %}
+    </div>
+    <div class="flex flex-col-reverse gap-3 border-t border-gray-100 p-5 sm:flex-row sm:justify-end dark:border-gray-800">
+      <button name="action" value="preview" class="btn btn-secondary" data-no-loading>Preview with sample data</button>
+      <button name="action" value="save" class="btn btn-primary" data-loading-text="Saving…" data-confirm="Make this the live version for every new message?">Save and make live</button></div>
+  </form>
+  <div class="space-y-6">
+    <div class="card"><div class="card-header"><h2 class="card-title">Preview</h2><span class="text-theme-xs text-gray-500">Sample data</span></div>
+      <div class="card-body"><p class="mb-3 text-sm font-semibold text-gray-800 dark:text-white/90">{{ preview.subject }}</p><pre class="font-sans text-sm whitespace-pre-wrap text-gray-700 dark:text-gray-300">{{ preview.body }}</pre></div></div>
+    <div class="card"><div class="card-header"><h2 class="card-title">Versions</h2></div>
+      <ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for v in versions %}<li class="flex items-center justify-between gap-3 px-5 py-3 text-sm"><span>v{{ v.version }} {% if v.is_active %}<span class="badge badge-green">Live</span>{% endif %}<span class="block text-theme-xs text-gray-500">{{ v.created_at|date:"d M Y H:i" }} · {{ v.created_by.get_full_name|default:v.created_by|default:"System" }}</span></span>
+        {% if not v.is_active %}<a class="btn btn-secondary btn-sm" href="?restore={{ v.pk }}">Load</a>{% endif %}</li>{% endfor %}</ul></div>
+  </div>
+</div>
+{% endblock %}

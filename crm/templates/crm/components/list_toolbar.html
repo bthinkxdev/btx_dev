@@ -5,6 +5,7 @@
     {% if request.GET.quick %}<input type="hidden" name="quick" value="{{ request.GET.quick }}">{% endif %}
     {% if request.GET.view %}<input type="hidden" name="view" value="{{ request.GET.view }}">{% endif %}
     {% if request.GET.sort %}<input type="hidden" name="sort" value="{{ request.GET.sort }}">{% endif %}
+    {% if date_range %}{% if request.GET.from %}<input type="hidden" name="from" value="{{ request.GET.from }}">{% endif %}{% if request.GET.to %}<input type="hidden" name="to" value="{{ request.GET.to }}">{% endif %}{% if request.GET.on %}<input type="hidden" name="on" value="{{ request.GET.on }}">{% endif %}{% endif %}
     <div class="relative w-full lg:max-w-xs">
       <span class="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-gray-400">{% icon 'search' 18 %}</span>
       <input type="search" name="q" value="{{ q }}" placeholder="{{ search_placeholder|default:'Search…' }}" aria-label="Search" class="form-input pl-11" data-debounce-submit>
@@ -32,6 +33,10 @@
       {% endif %}
     </div>
   </form>
+  {% if date_range %}
+    <div class="flex flex-wrap items-center gap-2"><span class="chip chip-active">{{ date_range.label|capfirst }}: {{ date_range.start|date:"d-M-Y"|default:"…" }} – {{ date_range.end|date:"d-M-Y"|default:"…" }}
+      <a href="{% qs from='' to='' on='' %}" class="ml-1" aria-label="Remove date range">×</a></span></div>
+  {% endif %}
   {% if quick_filters or saved_filters %}
     <div class="flex flex-wrap items-center gap-2" role="group" aria-label="Quick filters">
       {% for key, label in quick_filters %}

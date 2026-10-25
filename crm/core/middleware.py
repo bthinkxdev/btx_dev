@@ -59,7 +59,7 @@ class CrmRequestMiddleware:
         })
         try:
             if request.path.startswith(CRM_PREFIX):
-                early = self._idle_timeout(request)
+                early = self._idle_timeout(request) or self._force_password_change(request)
                 if early is not None:
                     return early
                 idem = self._claim_idempotency(request)
@@ -119,6 +119,22 @@ class CrmRequestMiddleware:
         if not last or now.timestamp() - float(last) > 60:
             request.session['crm_last_activity'] = now.timestamp()
         return None
+
+    # ---------------------------------------------------------- forced password change
+    def _force_password_change(self, request):
+        """After an administrator resets access, the user must set their own password first."""
+        user = getattr(request, 'user', None)
+        if not (user and user.is_authenticated) or request.path.startswith(PUBLIC_PREFIXES):
+            return None
+        profile = getattr(user, 'crm_profile', None)
+        if profile is None or not profile.must_change_password:
+            return None
+        from django.urls import reverse
+        allowed = (reverse('crm:profile'), reverse('crm:logout'))
+        if request.path in allowed:
+            return None
+        messages.warning(request, 'Set a new password before you continue.')
+        return HttpResponseRedirect(reverse('crm:profile') + '#password')
 
     # ---------------------------------------------------------- idempotency
     def _claim_idempotency(self, request):

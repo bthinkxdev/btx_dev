@@ -38,7 +38,8 @@ class ProjectList(ListPage):
     filters = [Filter('status', 'Status', PROJECT_STATUSES)]
     quick_filters = {'active': ('Active', lambda qs, r: qs.filter(status='active')),
                      'mine': ('I manage', lambda qs, r: qs.filter(manager=r.user)),
-                     'late': ('Past due', lambda qs, r: qs.filter(status__in=['planned', 'active'], due_date__lt=india.today()))}
+                     'late': ('Past due', lambda qs, r: qs.filter(status__in=['planned', 'active'], due_date__lt=india.today())),
+                     'at_risk': ('At risk', lambda qs, r: qs.filter(pk__in=[p.pk for p in qs.filter(status__in=['planned', 'active']) if p.is_at_risk]))}
     export_name = 'projects'
     export_columns = [('Code', 'code'), ('Name', 'name'), ('Client', 'client'), ('PM', 'manager'), ('Status', lambda p: p.get_status_display()),
                       ('Start', 'start_date'), ('Due', 'due_date'), ('Budget hours', 'budget_hours'), ('Hours logged', 'hours_logged')]
@@ -289,6 +290,7 @@ def task_scope_q(user):
 
 
 class TaskList(ListPage):
+    date_fields = {'due': 'due_date', 'completed': 'completed_at'}
     model = Task
     module = 'tasks'
     template_name = 'crm/projects/task_list.html'
