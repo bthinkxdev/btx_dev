@@ -97,11 +97,11 @@ NAV = [
     ]),
     ('PEOPLE', [
         ('hr', 'HR', 'id', [
-            ('Employees', 'crm:employee_list', 'employees', 'view'),
-            ('Attendance', 'crm:attendance', 'attendance', 'view'),
-            ('Leave', 'crm:leave_list', 'leave', 'view'),
-            ('Holidays and shifts', 'crm:holiday_list', 'leave', 'configure'),
-            ('HR approvals', 'crm:hr_approvals', 'leave', 'approve'),
+            ('Employees', 'crm:employee_list', 'employees', 'view', 'company'),
+            ('Attendance', 'crm:attendance', 'attendance', 'view', 'company'),
+            ('Leave', 'crm:leave_list', 'leave', 'view', 'company'),
+            ('Holidays and shifts', 'crm:holiday_list', 'leave', 'configure', 'company'),
+            ('HR approvals', 'crm:hr_approvals', 'leave', 'approve', 'company'),
         ]),
         ('payroll', 'Payroll', 'payroll', [
             ('Payroll runs', 'crm:payroll_list', 'payroll', 'view'),

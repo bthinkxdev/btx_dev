@@ -124,7 +124,8 @@ def save_allocations(e: Expense, rows: list[dict], actor):
 # ---------------------------------------------------------------- workflow (11.1)
 
 def approval_level(e: Expense) -> str:
-    return 'manager' if e.total <= CompanySettings.get().expense_manager_limit else 'owner'
+    """Every expense, whatever the amount, needs the owner's confirmation."""
+    return 'owner'
 
 
 def submit(e: Expense, actor, message: str = ''):

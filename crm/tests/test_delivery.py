@@ -209,6 +209,14 @@ class ExpenseTests(CrmTestCase):
         self.assertEqual(posting.balance(bank.ledger_account), -Decimal('54000.00'))
         self.assertTrue(self.journal_balanced())
 
+    def test_every_expense_needs_the_owner(self):
+        e = self._expense(amount=Decimal('500'))  # small, below the old manager limit and the proof threshold
+        es.submit(e, self.u['finance'])
+        req = approvals.pending_for(e, 'expense')
+        self.assertEqual(req.required_level, 'owner')
+        self.assertFalse(approvals.can_decide(self.u['accountant'], req)[0])
+        self.assertTrue(approvals.can_decide(self.u['owner'], req)[0])
+
     def test_pages_render(self):
         e = self._expense()
         self.login('finance')

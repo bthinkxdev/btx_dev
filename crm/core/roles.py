@@ -59,7 +59,6 @@ ROLE_TEMPLATES = [
             quotations={'view': 'own', 'create': 'own', 'edit': 'own', 'cancel': 'own'},
             payment_links={'view': 'own', 'create': 'own', 'cancel': 'own'},
             payments={'view': 'own', 'create': 'own'},
-            refunds={'create': 'own'},
             invoices={'view': 'own'},
             clients={'view': 'own', 'create': 'own', 'edit': 'own'},
             services={'view': 'company'},
@@ -75,8 +74,8 @@ ROLE_TEMPLATES = [
         'code': 'telecaller', 'name': 'Telecaller / Lead Coordinator', 'home': 'crm:lead_list',
         'description': 'Create, import, qualify and assign leads.',
         'grants': _grant(
-            leads={'view': 'company', 'create': 'company', 'edit': 'company', 'assign': 'company', 'import': 'company'},
-            deals={'view': 'company'},
+            # Own leads plus the unassigned queue (anyone with 'assign' sees it); not other executives' leads.
+            leads={'view': 'own', 'create': 'own', 'edit': 'own', 'assign': 'company', 'import': 'company'},
             services={'view': 'company'},
             leave={'view': 'own', 'create': 'own'},
             attendance={'view': 'own', 'create': 'own'},
