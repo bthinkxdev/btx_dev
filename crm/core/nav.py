@@ -5,16 +5,16 @@ from django.urls import NoReverseMatch, reverse
 
 from . import permissions
 
-# (key, label, icon, [ (label, url_name, module, action) ... ])
+# (key, label, icon, [ (label, url_name, module, action[, minimum_scope]) ... ])
 NAV = [
     ('MENU', [
         ('home', 'My Day', 'sun', [('My Day', 'crm:my_day', None, None)]),
         ('dashboards', 'Dashboards', 'grid', [
-            ('Owner', 'crm:dashboard_owner', 'reports', 'view'),
+            ('Owner', 'crm:dashboard_owner', 'reports', 'view', 'company'),
             ('Sales', 'crm:dashboard_sales', 'leads', 'view'),
-            ('Finance', 'crm:dashboard_finance', 'invoices', 'view'),
+            ('Finance', 'crm:dashboard_finance', 'invoices', 'view', 'company'),
             ('Delivery', 'crm:dashboard_delivery', 'projects', 'view'),
-            ('HR', 'crm:hr_dashboard', 'employees', 'view'),
+            ('HR', 'crm:hr_dashboard', 'employees', 'view', 'company'),
         ]),
         ('approvals', 'Approvals', 'shield', [('Approvals', 'crm:approval_list', None, None)]),
     ]),
@@ -135,8 +135,10 @@ def build_nav(user, current_url_name: str) -> list:
         visible_items = []
         for key, label, icon, children in items:
             kids = []
-            for clabel, url_name, module, action in children:
+            for clabel, url_name, module, action, *rest in children:
                 if module and not permissions.has_perm(user, module, action):
+                    continue
+                if rest and not permissions.has_scope(user, module, action, rest[0]):
                     continue
                 try:
                     href = reverse(url_name)

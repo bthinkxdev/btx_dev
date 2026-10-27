@@ -161,6 +161,12 @@ def has_perm(user, module: str, action: str) -> bool:
     return get_scope(user, module, action) is not None
 
 
+def has_scope(user, module: str, action: str, minimum: str = 'company') -> bool:
+    """True when the user's scope on module.action is at least `minimum` (e.g. company-wide only)."""
+    scope = get_scope(user, module, action)
+    return scope is not None and SCOPE_RANK[scope] >= SCOPE_RANK[minimum]
+
+
 def has_any(user, module: str) -> bool:
     return bool(user and user.is_authenticated and _load(user)['grants'].get(module))
 

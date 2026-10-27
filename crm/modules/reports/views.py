@@ -26,6 +26,8 @@ def _export_log(user, module, filters, columns, rows):
 def _dashboard(request, key):
     title, func, (module, action) = dashboards.DASHBOARDS[key]
     permissions.require(request.user, module, action, request)
+    if not dashboards.can_open(request.user, key):
+        permissions.denied(request.user, module, action, request, detail=f'dashboard:{key} needs company-wide access')
     rng = dashboards.date_range(request)
     data = func(request, rng)
     shown, all_cards = dashboards.apply_prefs(request.user, key, data['cards'])
@@ -42,7 +44,7 @@ def _dashboard(request, key):
         resp['Content-Disposition'] = f'attachment; filename="{key}-dashboard-{rng.end:%Y%m%d}.csv"'
         return resp
     others = [(k, t, reverse(_URL[k])) for k, (t, _, (m, a)) in dashboards.DASHBOARDS.items()
-              if k != key and permissions.has_perm(request.user, m, a)]
+              if k != key and dashboards.can_open(request.user, k)]
     profile = getattr(request.user, 'crm_profile', None)
     prefs = (profile.dashboard_prefs or {}).get(key, {}) if profile else {}
     ctx = {**data, 'key': key, 'title': title, 'cards': shown, 'all_cards': all_cards, 'hidden': set(prefs.get('hidden', [])),
@@ -87,6 +89,8 @@ def dashboard_configure(request, key):
         raise Http404
     _, _, (module, action) = dashboards.DASHBOARDS[key]
     permissions.require(request.user, module, action, request)
+    if not dashboards.can_open(request.user, key):
+        raise Http404
     profile = request.user.crm_profile
     if request.POST.get('reset'):
         prefs = dict(profile.dashboard_prefs or {})

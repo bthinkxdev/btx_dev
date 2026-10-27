@@ -439,6 +439,17 @@ DASHBOARDS = {
 }
 
 
+# Dashboards that show company-wide figures: a narrower (own/team) scope may not open them.
+COMPANY_ONLY = {'owner', 'finance', 'hr'}
+
+
+def can_open(user, key: str) -> bool:
+    _, _, (module, action) = DASHBOARDS[key]
+    if key in COMPANY_ONLY:
+        return permissions.has_scope(user, module, action, 'company')
+    return permissions.has_perm(user, module, action)
+
+
 def apply_prefs(user, key: str, cards: list[Card]) -> tuple[list[Card], list[Card]]:
     """User-configured order and hidden cards, within the set the role allows (Part 13.1)."""
     profile = getattr(user, 'crm_profile', None)
