@@ -129,6 +129,41 @@ NAV = [
 ]
 
 
+# Phone bottom bar: (label, url_name, module, action, icon). First three the user may open, then "More".
+MOBILE_TABS = [
+    ('My Day', 'crm:my_day', None, None, 'sun'),
+    ('Leads', 'crm:lead_list', 'leads', 'view', 'users'),
+    ('Follow-ups', 'crm:followup_calendar', 'leads', 'view', 'calendar'),
+    ('Pipeline', 'crm:pipeline', 'deals', 'view', 'board'),
+    ('Dashboard', 'crm:dashboard_finance', 'invoices', 'view', 'grid'),
+    ('Projects', 'crm:project_list', 'projects', 'view', 'tasks'),
+    ('Tasks', 'crm:task_list', 'tasks', 'view', 'tasks'),
+    ('Approvals', 'crm:approval_list', None, None, 'shield'),
+]
+
+
+def mobile_tabs(user, current_url_name: str, limit: int = 4) -> list:
+    tabs = []
+    for label, url_name, module, action, icon in MOBILE_TABS:
+        if module and not permissions.has_perm(user, module, action):
+            continue
+        if url_name == 'crm:dashboard_finance':
+            from crm.modules.reports import dashboards
+            if not dashboards.can_open(user, 'finance'):
+                continue
+        try:
+            href = reverse(url_name)
+        except NoReverseMatch:
+            continue
+        stem = url_name.split(':', 1)[1].rsplit('_', 1)[0]
+        tabs.append({'label': label, 'href': href, 'icon': icon,
+                     'active': bool(current_url_name) and (current_url_name == url_name.split(':', 1)[1]
+                                                           or current_url_name.startswith(stem + '_'))})
+        if len(tabs) == limit:
+            break
+    return tabs
+
+
 def build_nav(user, current_url_name: str) -> list:
     groups = []
     for group_label, items in NAV:

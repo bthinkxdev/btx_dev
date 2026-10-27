@@ -12,7 +12,7 @@
   <div class="card mb-6">
     <div class="card-header"><h2 class="card-title">Lines</h2><button type="button" class="btn btn-secondary btn-sm" data-add-line>{% icon 'plus' 16 %} Add line</button></div>
     {{ lines.management_form }}
-    <div class="table-wrap border-t border-gray-100 dark:border-gray-800"><table class="w-full min-w-[1100px] text-left">
+    <div class="table-wrap border-t border-gray-100 dark:border-gray-800"><table class="line-table w-full min-w-[1100px] text-left">
       <thead><tr class="text-theme-xs text-gray-500"><th class="px-2 py-2">Service / description</th><th class="px-2 py-2">Qty</th><th class="px-2 py-2">Price per period (ex. tax)</th><th class="px-2 py-2">Billing</th><th class="px-2 py-2">Start / end</th><th class="px-2 py-2">GST</th><th class="px-2 py-2">SAC</th><th></th></tr></thead>
       <tbody id="line-rows" class="divide-y divide-gray-100 dark:divide-gray-800">{% for lf in lines %}{% include "crm/contracts/_line_row.html" %}{% endfor %}</tbody>
     </table></div>

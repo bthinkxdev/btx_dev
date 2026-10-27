@@ -33,7 +33,7 @@
         <div class="card-header"><h2 class="card-title">Line items</h2><button type="button" class="btn btn-secondary btn-sm" data-add-line>{% icon 'plus' 16 %} Add line</button></div>
         {{ lines.management_form }}
         <div class="table-wrap border-t border-gray-100 dark:border-gray-800">
-          <table class="w-full min-w-[980px] text-left">
+          <table class="line-table w-full min-w-[980px] text-left">
             <thead><tr class="text-theme-xs text-gray-500"><th class="px-2 py-2">#</th><th class="px-2 py-2">Service / description</th><th class="px-2 py-2">SAC</th><th class="px-2 py-2">Qty / unit</th><th class="px-2 py-2">Unit price</th><th class="px-2 py-2">Discount</th><th class="px-2 py-2">GST</th><th class="px-2 py-2 text-right">Line total</th><th></th></tr></thead>
             <tbody id="line-rows" class="divide-y divide-gray-100 dark:divide-gray-800">{% for lf in lines %}{% include "crm/quotations/_line_row.html" %}{% endfor %}</tbody>
           </table>

@@ -17,11 +17,12 @@ def crm(request):
     if user is None or not user.is_authenticated:
         return ctx
     from crm.models import Notification
-    from .nav import build_nav
+    from .nav import build_nav, mobile_tabs
     match = getattr(request, 'resolver_match', None)
     url_name = match.url_name if match else ''
     ctx['nav_groups'] = build_nav(user, url_name or '')
     ctx['nav_current'] = url_name
+    ctx['mobile_tabs'] = mobile_tabs(user, url_name or '')
     unread = Notification.objects.filter(user=user, read_at__isnull=True)
     ctx['unread_count'] = unread.count()
     ctx['recent_notifications'] = list(unread.order_by('-id')[:8])

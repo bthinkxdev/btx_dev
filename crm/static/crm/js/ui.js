@@ -11,6 +11,25 @@
     return (m && decodeURIComponent(m[1])) || (document.body && document.body.dataset.csrf) || '';
   };
 
+  /* ------------------------------------------------- line-table labels (mobile cards) */
+  function labelLineTable(table) {
+    var heads = Array.prototype.map.call(table.querySelectorAll('thead th'), function (th) { return th.textContent.trim(); });
+    table.querySelectorAll('tbody tr').forEach(function (tr) {
+      Array.prototype.forEach.call(tr.children, function (td, i) {
+        if (td.tagName === 'TD' && !td.hasAttribute('data-label') && heads[i]) td.setAttribute('data-label', heads[i]);
+      });
+    });
+  }
+  function wireLineTables() {
+    document.querySelectorAll('table.line-table').forEach(function (table) {
+      labelLineTable(table);
+      // rows added with "Add line" arrive later
+      new MutationObserver(function () { labelLineTable(table); }).observe(table.tBodies[0] || table, { childList: true });
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wireLineTables);
+  else wireLineTables();
+
   /* ------------------------------------------------------------ toasts (2.4) */
   function wireToast(el) {
     var sticky = el.dataset.sticky === '1';

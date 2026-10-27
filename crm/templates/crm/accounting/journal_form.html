@@ -9,7 +9,7 @@
   <div class="card mb-6">
     <div class="card-header"><h2 class="card-title">Lines</h2><button type="button" class="btn btn-secondary btn-sm" data-add>{% icon 'plus' 16 %} Add line</button></div>
     {{ lines.management_form }}
-    <div class="table-wrap border-t border-gray-100 dark:border-gray-800"><table class="w-full min-w-[1000px] text-left">
+    <div class="table-wrap border-t border-gray-100 dark:border-gray-800"><table class="line-table w-full min-w-[1000px] text-left">
       <thead><tr class="text-theme-xs text-gray-500"><th class="px-2 py-2">Account</th><th class="px-2 py-2 text-right">Debit</th><th class="px-2 py-2 text-right">Credit</th><th class="px-2 py-2">Note</th><th class="px-2 py-2">Client</th><th class="px-2 py-2">Project</th><th></th></tr></thead>
       <tbody id="jrows" class="divide-y divide-gray-100 dark:divide-gray-800">{% for lf in lines %}{% include "crm/accounting/_jl_row.html" %}{% endfor %}</tbody>
       <tfoot><tr class="border-t border-gray-200 text-sm font-semibold dark:border-gray-700"><td class="px-2 py-3">Totals</td><td class="px-2 py-3 text-right" id="tdr">0.00</td><td class="px-2 py-3 text-right" id="tcr">0.00</td><td class="px-2 py-3" colspan="4"><span id="tdiff" class="text-theme-sm"></span></td></tr></tfoot>

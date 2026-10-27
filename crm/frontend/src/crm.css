@@ -258,6 +258,63 @@
   }
 }
 
+/* Editable line-item tables (quotation, invoice, contract, journal) become one card per line on
+   phones: labels come from the header row (ui.js copies them into data-label). */
+@media (max-width: 767px) {
+  table.line-table {
+    min-width: 0 !important;
+    width: 100%;
+  }
+  table.line-table thead {
+    display: none;
+  }
+  table.line-table tbody tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.625rem 0.75rem;
+    padding: 0.875rem 1rem;
+  }
+  table.line-table td {
+    display: block;
+    min-width: 0;
+    padding: 0 !important;
+  }
+  table.line-table td:nth-child(2) {
+    grid-column: 1 / -1;
+  }
+  table.line-table td[data-label]:not([data-label=""])::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 12px;
+    color: var(--color-gray-500);
+  }
+  table.line-table input,
+  table.line-table select,
+  table.line-table textarea {
+    width: 100%;
+    font-size: 16px; /* stops iOS zooming on focus */
+  }
+}
+
+/* Bottom bar clearance: sticky form action bars sit above it, safe-area aware on notched phones. */
+.bottom-nav {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+@media (max-width: 1279px) {
+  .sticky.bottom-0 {
+    bottom: calc(3.5rem + env(safe-area-inset-bottom));
+  }
+}
+/* Inputs under 16px make iOS zoom the page on focus. */
+@media (max-width: 767px) {
+  input.form-input,
+  select.form-select,
+  textarea.form-input {
+    font-size: 16px;
+  }
+}
+
 @media print {
   aside.sidebar,
   header,

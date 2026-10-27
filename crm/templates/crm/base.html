@@ -55,7 +55,7 @@
       {% endif %}
 
       <main id="main" tabindex="-1">
-        <div class="mx-auto max-w-(--breakpoint-2xl) p-4 pb-24 md:p-6 md:pb-6">
+        <div class="mx-auto max-w-(--breakpoint-2xl) p-4 pb-24 md:p-6 md:pb-24 xl:pb-6">
           {% block banners %}{% endblock %}
           {% block page_header %}{% endblock %}
           {% block content %}{% endblock %}
@@ -64,6 +64,7 @@
     </div>
   </div>
 
+  {% include "crm/partials/bottom_nav.html" %}
   {% include "crm/partials/toasts.html" %}
   {% include "crm/partials/confirm.html" %}
   {% include "crm/partials/quick_create.html" %}

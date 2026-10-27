@@ -1,0 +1,20 @@
+{% load crm_tags %}
+{# Phone-only bottom bar (hidden from xl up, where the sidebar is always visible). main has pb-24 to clear it. #}
+<nav class="bottom-nav fixed inset-x-0 bottom-0 z-9 border-t border-gray-200 bg-white/95 backdrop-blur xl:hidden dark:border-gray-800 dark:bg-gray-900/95" aria-label="Quick navigation">
+  <ul class="mx-auto flex max-w-xl items-stretch justify-around">
+    {% for t in mobile_tabs %}
+      <li class="flex-1">
+        <a href="{{ t.href }}" {% if t.active %}aria-current="page"{% endif %}
+           class="flex min-h-14 flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-medium {% if t.active %}text-brand-500{% else %}text-gray-500 dark:text-gray-400{% endif %}">
+          {% icon t.icon 22 %}<span>{{ t.label }}</span>
+        </a>
+      </li>
+    {% endfor %}
+    <li class="flex-1">
+      <button type="button" @click.stop="sidebarToggle = true" aria-label="Open full menu"
+              class="flex min-h-14 w-full flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-medium text-gray-500 dark:text-gray-400">
+        {% icon 'menu' 22 %}<span>More</span>
+      </button>
+    </li>
+  </ul>
+</nav>
