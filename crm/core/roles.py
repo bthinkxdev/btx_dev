@@ -47,6 +47,8 @@ ROLE_TEMPLATES = [
             leave={'view': 'own', 'create': 'own'},
             attendance={'view': 'own', 'create': 'own'},
             expenses={'view': 'own', 'create': 'own'},
+            chats={'view': 'company'},
+            ai_analyst={'view': 'company'},
         ),
         'field_groups': ['internal_notes', 'cost_price'],
     },
@@ -195,7 +197,7 @@ ROLE_TEMPLATES = [
     {
         'code': 'auditor', 'name': 'Auditor', 'home': 'crm:dashboard_owner',
         'description': 'Read-only across approved modules, export reports.',
-        'grants': {m: {'view': 'company'} for m in MODULES if m not in ('payroll', 'employees', 'settings')}
+        'grants': {m: {'view': 'company'} for m in MODULES if m not in ('payroll', 'employees', 'settings', 'chats', 'ai_analyst')}
         | {'reports': {'view': 'company', 'export': 'company'}, 'audit': {'view': 'company', 'export': 'company'}},
         'field_groups': ['tax_ids'],
     },

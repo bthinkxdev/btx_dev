@@ -1,0 +1,44 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Chat with {{ session }}{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title=session subtitle="Website chat transcript" crumbs=crumbs %}{% endblock %}
+{% block content %}
+<div class="grid gap-6 lg:grid-cols-3">
+  <div class="card lg:col-span-2">
+    <div class="card-header"><h2 class="card-title">Conversation</h2><span class="text-theme-sm text-gray-500">{{ session.message_count }} messages</span></div>
+    <div class="space-y-3 p-5 sm:p-6">
+      {% for m in chat_messages %}
+        <div class="flex {% if m.role == 'visitor' %}justify-start{% else %}justify-end{% endif %}">
+          <div class="max-w-[85%] rounded-2xl px-4 py-2.5 text-sm whitespace-pre-line {% if m.role == 'visitor' %}bg-gray-100 text-gray-800 dark:bg-white/5 dark:text-white/90{% else %}bg-brand-500 text-white{% endif %}">
+            {{ m.content }}
+            <span class="mt-1 block text-[11px] opacity-70">{% if m.role == 'visitor' %}Visitor{% else %}Assistant{% endif %} · {{ m.created_at|date:"d M H:i" }}{% if m.engine and m.role == 'bot' %} · {{ m.engine }}{% endif %}</span>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="space-y-6">
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Visitor</h2></div>
+      <dl class="space-y-3 p-5 text-sm sm:p-6">
+        <div><dt class="text-gray-500">Name</dt><dd class="text-gray-800 dark:text-white/90">{{ session.visitor_name|default:"Not shared" }}</dd></div>
+        <div><dt class="text-gray-500">Phone</dt><dd class="text-gray-800 dark:text-white/90">{% if session.phone %}<a class="hover:text-brand-500" href="tel:{{ session.phone }}">{{ session.phone }}</a>{% else %}Not shared{% endif %}</dd></div>
+        <div><dt class="text-gray-500">Email</dt><dd class="text-gray-800 dark:text-white/90">{{ session.email|default:"Not shared" }}</dd></div>
+        <div><dt class="text-gray-500">Interested in</dt><dd class="text-gray-800 dark:text-white/90">{{ interest|default:"Not clear yet" }}</dd></div>
+        <div><dt class="text-gray-500">Started</dt><dd class="text-gray-800 dark:text-white/90">{{ session.started_at|date:"d M Y H:i" }}</dd></div>
+        <div><dt class="text-gray-500">Page</dt><dd class="break-all text-gray-800 dark:text-white/90">{{ session.page_url|default:"-" }}</dd></div>
+      </dl>
+    </div>
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">CRM lead</h2></div>
+      <div class="p-5 text-sm sm:p-6">
+        {% if session.lead %}
+          <p class="text-gray-700 dark:text-gray-300">Captured {{ session.lead_captured_at|date:"d M H:i" }}. Owner: {{ session.lead.owner|default:"Unassigned" }}. Stage: {{ session.lead.get_stage_display }}.</p>
+          <a class="btn btn-primary mt-4" href="{% url 'crm:lead_detail' session.lead.pk %}">Open lead</a>
+        {% else %}
+          <p class="text-gray-700 dark:text-gray-300">No contact details yet, so no lead was created.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

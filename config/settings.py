@@ -59,6 +59,7 @@ MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
+    'crm.core.csrf.NoStoreHtmlMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'crm.core.middleware.CrmRequestMiddleware',
@@ -224,6 +225,16 @@ VAPID_PUBLIC_KEY = os.environ.get('VAPID_PUBLIC_KEY', '').strip()
 VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', '').strip()
 VAPID_CLAIM_EMAIL = os.environ.get('VAPID_CLAIM_EMAIL', 'mailto:hr@bthinkx.com').strip()
 
+# Free AI for the website chatbot and the CRM sales analyst. Any OpenAI-compatible endpoint works;
+# the default is Groq's free tier (no card needed; key from https://console.groq.com/keys).
+# Without a key both assistants still work in a simpler built-in mode.
+CHATBOT_API_KEY = os.environ.get('CHATBOT_API_KEY', '').strip()
+CHATBOT_BASE_URL = os.environ.get('CHATBOT_BASE_URL', 'https://api.groq.com/openai/v1').strip().rstrip('/')
+CHATBOT_MODEL = os.environ.get('CHATBOT_MODEL', 'llama-3.3-70b-versatile').strip()
+CHATBOT_FALLBACK_MODEL = os.environ.get('CHATBOT_FALLBACK_MODEL', 'llama-3.1-8b-instant').strip()
+CHATBOT_DAILY_AI_LIMIT = int(os.environ.get('CHATBOT_DAILY_AI_LIMIT', '900'))  # stay inside the free quota
+CHATBOT_WHATSAPP_NUMBER = os.environ.get('CHATBOT_WHATSAPP_NUMBER', '917736094292').strip()
+
 # Upload limits (Part 15.1)
 CRM_MAX_UPLOAD_MB = int(os.environ.get('CRM_MAX_UPLOAD_MB', '10'))
 DATA_UPLOAD_MAX_MEMORY_SIZE = 12 * 1024 * 1024
@@ -235,6 +246,8 @@ DATA_UPLOAD_MAX_NUMBER_FIELDS = 5000
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'
 CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_AGE = 60 * 60 * 24 * 365  # outlive any session so an old tab still has a cookie
+CSRF_FAILURE_VIEW = 'crm.core.csrf.failure_view'
 X_FRAME_OPTIONS = 'DENY'
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = 'same-origin'

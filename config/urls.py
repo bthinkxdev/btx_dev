@@ -10,6 +10,7 @@ from pages.sitemaps import sitemaps
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('crm/', include('crm.urls')),
+    path('chat/', include('crm.modules.chatbot.public_urls')),
     path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='sitemap'),
     path('robots.txt', robots_txt, name='robots_txt'),
     path('llms.txt', llms_txt, name='llms_txt'),

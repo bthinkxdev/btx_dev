@@ -13,6 +13,8 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.views.decorators.cache import never_cache
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST
 
 from crm.core import audit, notify, permissions, totp
@@ -46,6 +48,8 @@ def _finish_login(request, user, nxt):
     return redirect(_safe_next(request, nxt))
 
 
+@never_cache
+@ensure_csrf_cookie
 def login_view(request):
     from crm.models import UserProfile
     if request.user.is_authenticated:
@@ -92,6 +96,8 @@ def login_view(request):
     return render(request, 'crm/auth/login.html', ctx)
 
 
+@never_cache
+@ensure_csrf_cookie
 def two_factor_view(request):
     User = get_user_model()
     uid = request.session.get('crm_2fa_user')

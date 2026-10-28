@@ -1,0 +1,75 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}AI sales analyst{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="AI sales analyst" subtitle="Ask about the performance of each sales executive and manager. Uses your live CRM numbers; no customer details are shared with the AI." %}{% endblock %}
+{% block content %}
+<div class="grid gap-6 lg:grid-cols-3" x-data="analyst()">
+  <div class="card lg:col-span-2 flex flex-col">
+    <div class="card-header">
+      <h2 class="card-title">Ask the analyst</h2>
+      <label class="sr-only" for="an-days">Period</label>
+      <select id="an-days" class="form-select h-10 w-auto" x-model="days" @change="location.search = '?days=' + days">
+        {% for k, v in periods.items %}<option value="{{ k }}" {% if k == days %}selected{% endif %}>{{ v }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="flex-1 space-y-3 overflow-y-auto p-5 sm:p-6" style="min-height:22rem;max-height:60vh" x-ref="log" aria-live="polite">
+      <template x-for="(m, i) in msgs" :key="i">
+        <div class="flex" :class="m.role === 'user' ? 'justify-end' : 'justify-start'">
+          <div class="max-w-[90%] rounded-2xl px-4 py-2.5 text-sm"
+               :class="m.role === 'user' ? 'bg-brand-500 text-white' : 'bg-gray-100 text-gray-800 dark:bg-white/5 dark:text-white/90'" x-html="fmt(m.text)"></div>
+        </div>
+      </template>
+      <div x-show="busy" x-cloak class="text-theme-sm text-gray-500">Analysing the numbers…</div>
+    </div>
+    <div class="border-t border-gray-100 p-4 dark:border-gray-800">
+      <div class="mb-3 flex flex-wrap gap-2">
+        {% for s in suggestions %}<button type="button" class="chip chip-inactive" @click="ask($el.textContent.trim())" :disabled="busy">{{ s }}</button>{% endfor %}
+      </div>
+      <form class="flex gap-2" @submit.prevent="ask(draft)">
+        <label class="sr-only" for="an-q">Your question</label>
+        <input id="an-q" x-model="draft" maxlength="500" class="form-input" placeholder="e.g. Why is Jenni's win rate lower than Lois's?" autocomplete="off">
+        <button class="btn btn-primary" :disabled="busy || !draft.trim()">Ask</button>
+      </form>
+      {% if not ai_on %}<p class="mt-3 text-theme-xs text-gray-500">The free AI is not connected yet, so answers use the built-in summary. Add CHATBOT_API_KEY in the server settings to chat in plain English.</p>{% endif %}
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><h2 class="card-title">At a glance</h2></div>
+    <div class="p-5 text-sm whitespace-pre-line text-gray-700 sm:p-6 dark:text-gray-300" x-html="fmt(summary)"></div>
+  </div>
+</div>
+{{ summary|json_script:"an-summary" }}
+<script>
+function analyst() {
+  const summary = JSON.parse(document.getElementById('an-summary').textContent);
+  return {
+    days: '{{ days }}', draft: '', busy: false, summary: summary,
+    msgs: [{ role: 'bot', text: 'Hi! Ask me how any salesperson is doing, who needs coaching, or what to focus on this week. The numbers shown are for the selected period.' }],
+    fmt(t) {
+      const esc = String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return esc.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/_(.+?)_/g, '<em>$1</em>').replace(/\n/g, '<br>');
+    },
+    async ask(q) {
+      q = (q || '').trim();
+      if (!q || this.busy) return;
+      const history = this.msgs.slice(1).map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', text: m.text }));
+      this.msgs.push({ role: 'user', text: q });
+      this.draft = ''; this.busy = true; this.scroll();
+      try {
+        const r = await fetch('{% url "crm:ai_analyst_ask" %}', {
+          method: 'POST', credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}', 'X-Requested-With': 'fetch' },
+          body: JSON.stringify({ question: q, days: this.days, history })
+        });
+        if (r.redirected || !(r.headers.get('Content-Type') || '').includes('json')) throw new Error('session');
+        const d = await r.json();
+        this.msgs.push({ role: 'bot', text: d.ok ? d.answer : (d.error || 'Something went wrong.') });
+      } catch (e) {
+        this.msgs.push({ role: 'bot', text: 'Your page had expired. Please refresh and try again.' });
+      }
+      this.busy = false; this.scroll();
+    },
+    scroll() { this.$nextTick(() => { const l = this.$refs.log; l.scrollTop = l.scrollHeight; }); }
+  };
+}
+</script>
+{% endblock %}

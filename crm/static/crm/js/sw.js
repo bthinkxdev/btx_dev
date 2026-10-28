@@ -10,7 +10,7 @@
  *
  * Bump CACHE_VERSION when shell assets change so old caches are dropped on activate.
  */
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const SHELL_CACHE = `crm-shell-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `crm-runtime-${CACHE_VERSION}`;
 const OFFLINE_URL = '/static/crm/offline.html';

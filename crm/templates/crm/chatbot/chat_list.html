@@ -1,0 +1,37 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Website chats{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Website chats" count=total subtitle="Every conversation visitors have with the website assistant. Visible to sales managers and owners only." %}{% endblock %}
+{% block content %}
+<div class="card">
+  <form method="get" class="flex flex-col gap-3 border-b border-gray-100 px-5 py-4 lg:flex-row lg:items-center dark:border-gray-800">
+    <div class="relative w-full lg:max-w-xs">
+      <span class="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-gray-500 dark:text-gray-400">{% icon 'search' 18 %}</span>
+      <input type="search" name="q" value="{{ q }}" placeholder="Name, phone, or something they said" aria-label="Search chats" class="form-input pl-11" data-debounce-submit>
+    </div>
+    <label class="sr-only" for="chat-status">Lead status</label>
+    <select id="chat-status" name="status" class="form-select h-10 w-auto" data-autosubmit>
+      <option value="">All chats</option>
+      <option value="lead" {% if status == 'lead' %}selected{% endif %}>Became a lead</option>
+      <option value="nolead" {% if status == 'nolead' %}selected{% endif %}>No contact details yet</option>
+    </select>
+    {% if not ai_on %}<span class="text-theme-xs text-gray-500 lg:ml-auto">Assistant is running in built-in mode. Add CHATBOT_API_KEY to enable the free AI.</span>{% endif %}
+  </form>
+  <div class="table-wrap"><table class="data-table responsive-cards">
+    <thead><tr><th class="th">Visitor</th><th class="th">Contact</th><th class="th">Interested in</th><th class="th">Messages</th><th class="th">Last message</th><th class="th">Lead</th></tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+    {% for s in page_obj %}
+      <tr data-href="{% url 'crm:chat_detail' s.pk %}">
+        <td class="td" data-label="Visitor"><a class="td-strong hover:text-brand-500" href="{% url 'crm:chat_detail' s.pk %}">{{ s }}</a><span class="block text-theme-xs text-gray-500">{{ s.started_at|date:"d M Y H:i" }}</span></td>
+        <td class="td" data-label="Contact">{% if s.phone %}{{ s.phone }}{% endif %}{% if s.email %}<span class="block text-theme-xs text-gray-500">{{ s.email }}</span>{% endif %}{% if not s.phone and not s.email %}<span class="text-gray-500">Not shared</span>{% endif %}</td>
+        <td class="td" data-label="Interested in">{% for slug, p in products.items %}{% if slug == s.interest %}{{ p.name }}{% endif %}{% endfor %}</td>
+        <td class="td" data-label="Messages">{{ s.message_count }}</td>
+        <td class="td" data-label="Last message">{{ s.last_message_at|timesince }} ago</td>
+        <td class="td" data-label="Lead">{% if s.lead %}<a class="badge badge-green" href="{% url 'crm:lead_detail' s.lead.pk %}">Lead{% if s.lead.owner %} · {{ s.lead.owner.first_name|default:s.lead.owner.username }}{% endif %}</a>{% else %}<span class="text-gray-500">None</span>{% endif %}</td>
+      </tr>
+    {% empty %}
+      <tr><td class="td" colspan="6">{% include "crm/components/empty_state.html" with title="No chats yet" text="When visitors talk to the website assistant, their conversations appear here." icon="users" %}</td></tr>
+    {% endfor %}
+    </tbody></table></div>
+  {% include "crm/components/pagination.html" with paginator=page_obj.paginator %}
+</div>
+{% endblock %}

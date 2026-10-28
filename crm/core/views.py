@@ -177,10 +177,18 @@ class ListPage(PermissionMixin, View):
             qs = self.quick_filters[quick][1](qs, request)
         term = request.GET.get('q', '').strip()
         if term and self.search_fields:
-            q = Q()
-            for f in self.search_fields:
-                q |= Q(**{f: term})
-            qs = qs.filter(q)
+            # Every word must match somewhere ("john acme" finds John at Acme); a phone field
+            # also matches the digits alone, so "+91 98765-43210" finds "9876543210".
+            phone_like = all(ch.isdigit() or ch in '+-() ' for ch in term)
+            words = [term] if phone_like else term.split()[:6]
+            for word in words:
+                digits = ''.join(ch for ch in word if ch.isdigit())
+                q = Q()
+                for f in self.search_fields:
+                    q |= Q(**{f: word})
+                    if 'phone' in f and len(digits) >= 3 and digits != word:
+                        q |= Q(**{f: digits}) | Q(**{f: digits[-10:]})
+                qs = qs.filter(q)
         qs = self.apply_date_range(qs)
         for flt in self.filters:
             value = request.GET.get(flt.name, '').strip()

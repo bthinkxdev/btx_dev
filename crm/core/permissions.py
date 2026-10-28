@@ -47,6 +47,8 @@ MODULES = {
     'automation': 'Automation and jobs',
     'settings': 'Settings',
     'audit': 'Audit log',
+    'chats': 'Website chat history',
+    'ai_analyst': 'AI sales analyst',
 }
 
 ACTIONS = {

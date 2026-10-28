@@ -28,6 +28,7 @@ NAV = [
             ('Stale and unassigned', 'crm:stale_leads', 'leads', 'assign'),
             ('Lost-lead analysis', 'crm:lost_analysis', 'leads', 'view'),
             ('Sources and campaigns', 'crm:source_list', 'leads', 'configure'),
+            ('Website chats', 'crm:chat_list', 'chats', 'view'),
         ]),
         ('pipeline', 'Pipeline', 'board', [
             ('Pipeline board', 'crm:pipeline', 'deals', 'view'),
@@ -111,7 +112,10 @@ NAV = [
         ]),
     ]),
     ('INSIGHTS', [
-        ('reports', 'Reports', 'chart', [('Report catalogue', 'crm:report_index', 'reports', 'view')]),
+        ('reports', 'Reports', 'chart', [
+            ('Report catalogue', 'crm:report_index', 'reports', 'view'),
+            ('AI sales analyst', 'crm:ai_analyst', 'ai_analyst', 'view'),
+        ]),
         ('admin', 'Administration', 'settings', [
             ('Company settings', 'crm:settings_company', 'settings', 'configure'),
             ('Users and roles', 'crm:user_list', 'settings', 'configure'),

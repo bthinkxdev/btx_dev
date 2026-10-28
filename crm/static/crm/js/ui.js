@@ -301,12 +301,66 @@
   });
 
   /* ------------------------------------------------------------ list helpers (2.7) */
-  var debounceTimer = null;
+  // Live search: fetch the filtered page in the background and swap only the page body, keeping
+  // the very same <input> element so typing, caret and focus are never interrupted by a reload.
+  // Older responses are aborted, so results always match the latest text. Falls back to a normal
+  // form submit if anything goes wrong.
+  var debounceTimer = null, searchCtl = null, searchSeq = 0, composing = false;
+  function liveSearch(input) {
+    var form = input.form;
+    if (!form) return;
+    var params = new URLSearchParams(new FormData(form));
+    params.delete('page');
+    var url = (form.getAttribute('action') || window.location.pathname) + '?' + params.toString();
+    var seq = ++searchSeq;
+    if (searchCtl) searchCtl.abort();
+    var fallback = function () { if (seq === searchSeq) { form.dataset.native = '1'; form.requestSubmit ? form.requestSubmit() : form.submit(); } };
+    if (!window.fetch || !window.AbortController || !window.DOMParser) return fallback();
+    searchCtl = new AbortController();
+    var box = document.querySelector('#main > div');
+    if (box) box.style.opacity = '.6';
+    fetch(url, { signal: searchCtl.signal, credentials: 'same-origin', headers: { 'X-Requested-With': 'fetch' } })
+      .then(function (r) {
+        if (!r.ok || (r.headers.get('Content-Type') || '').indexOf('text/html') !== 0 || r.redirected) throw new Error('bad');
+        return r.text();
+      })
+      .then(function (html) {
+        if (seq !== searchSeq) return;
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+        var next = doc.querySelector('#main > div');
+        var mine = document.querySelector('#main > div');
+        if (!next || !mine) throw new Error('shape');
+        var fresh = next.querySelector('input[data-debounce-submit][name="' + input.name + '"]');
+        if (!fresh || !input.isConnected) throw new Error('shape');
+        var hadFocus = document.activeElement === input, s = input.selectionStart, e = input.selectionEnd;
+        fresh.replaceWith(input);               // keep the live element the user is typing in
+        mine.replaceWith(next);
+        next.style.opacity = '';
+        if (hadFocus) { input.focus(); try { input.setSelectionRange(s, e); } catch (x) { /* search type */ } }
+        document.title = doc.title || document.title;
+        history.replaceState(null, '', url);
+        document.dispatchEvent(new CustomEvent('crm:content-replaced'));
+      })
+      .catch(function (err) {
+        if (err && err.name === 'AbortError') return;
+        if (box) box.style.opacity = '';
+        fallback();
+      });
+  }
+  document.addEventListener('compositionstart', function () { composing = true; });
+  document.addEventListener('compositionend', function (e) {
+    composing = false;
+    if (e.target.matches && e.target.matches('[data-debounce-submit]')) { clearTimeout(debounceTimer); debounceTimer = setTimeout(function () { liveSearch(e.target); }, 300); }
+  });
   document.addEventListener('input', function (e) {
-    if (!e.target.matches('[data-debounce-submit]')) return;
+    if (!e.target.matches('[data-debounce-submit]') || composing || e.isComposing) return;
     clearTimeout(debounceTimer);
-    var form = e.target.form;
-    debounceTimer = setTimeout(function () { if (form) form.requestSubmit ? form.requestSubmit() : form.submit(); }, 300);
+    var input = e.target;
+    debounceTimer = setTimeout(function () { liveSearch(input); }, 350);
+  });
+  document.addEventListener('submit', function (e) {   // Enter: search now, don't wait
+    var input = e.target.querySelector && e.target.querySelector('[data-debounce-submit]');
+    if (input && !e.target.dataset.native && e.target.method === 'get' && document.activeElement === input) { e.preventDefault(); clearTimeout(debounceTimer); liveSearch(input); }
   });
   document.addEventListener('change', function (e) {
     if (e.target.matches('[data-autosubmit]') && e.target.form) {

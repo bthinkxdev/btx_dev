@@ -332,6 +332,7 @@ def robots_txt(request):
         'Disallow: /contact/submit/',
         'Disallow: /careers/apply/',
         'Disallow: /newsletter/subscribe/',
+        'Disallow: /chat/',
         'Disallow: /services/quote/',
         '',
         f"Sitemap: {request.build_absolute_uri('/sitemap.xml')}",
