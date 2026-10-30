@@ -1,0 +1,13 @@
+{% load static %}
+{# Authorised signatory with company seal and signature. Include only on issued documents; needs `company`. #}
+<div class="mt-6 flex justify-end">
+  <div class="text-right text-sm text-gray-700 dark:text-gray-300">
+    <p>For {{ company.legal_name }}</p>
+    <div class="my-1 flex items-center justify-end gap-3">
+      <img src="{% static 'crm/images/companyseal.png' %}" alt="Company seal" class="h-20 w-auto" loading="lazy">
+      <img src="{% static 'crm/images/signature.png' %}" alt="Authorised signature" class="h-12 w-auto" loading="lazy">
+    </div>
+    <p class="font-medium text-gray-800 dark:text-white/90">{{ company.signatory_name }}</p>
+    <p class="text-theme-xs text-gray-500">{{ company.signatory_designation }}</p>
+  </div>
+</div>

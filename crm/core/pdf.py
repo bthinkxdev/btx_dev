@@ -180,8 +180,28 @@ def _bank_block(company):
               + (f'UPI: {company.upi_id}' if company.upi_id else ''), 'n')
 
 
-def _signature(company):
-    return _p(f'For {company.legal_name}\n\n\n{company.signatory_name}\n{company.signatory_designation}', 'r')
+def _stamp(filename, width):
+    """The company seal / signature scan, scaled to `width` keeping its proportions; None if the file is missing."""
+    from reportlab.lib.utils import ImageReader
+    path = settings.BASE_DIR / 'crm' / 'static' / 'crm' / 'images' / filename
+    if not path.exists():
+        return None
+    w, h = ImageReader(str(path)).getSize()
+    return Image(str(path), width=width, height=width * h / w)
+
+
+def _signature(company, signed=True):
+    """'For <company>' block. Seal and signature go on issued documents only; a draft keeps blank space to sign."""
+    seal, sign = (_stamp('companyseal.png', 24 * mm), _stamp('signature.png', 38 * mm)) if signed else (None, None)
+    if seal is None and sign is None:
+        return _p(f'For {company.legal_name}\n\n\n{company.signatory_name}\n{company.signatory_designation}', 'r')
+    pair = Table([[seal or '', sign or '']], colWidths=[28 * mm, 40 * mm],
+                 style=[('VALIGN', (0, 0), (-1, -1), 'MIDDLE'), ('LEFTPADDING', (0, 0), (-1, -1), 0), ('RIGHTPADDING', (0, 0), (-1, -1), 0)])
+    t = Table([[_p(f'For {company.legal_name}', 'r')], [pair], [_p(f'{company.signatory_name}\n{company.signatory_designation}', 'r')]],
+              colWidths=[70 * mm], hAlign='RIGHT')
+    t.setStyle(TableStyle([('LEFTPADDING', (0, 0), (-1, -1), 0), ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                           ('TOPPADDING', (0, 0), (-1, -1), 0), ('BOTTOMPADDING', (0, 0), (-1, -1), 0)]))
+    return t
 
 
 def _build(story, watermark, footer):
@@ -235,7 +255,7 @@ def quotation_pdf(q) -> bytes:
         if value:
             story.append(KeepTogether([_p(label, 'h'), _p(value), Spacer(1, 3 * mm)]))
     bank = _bank_block(company)
-    story.append(Table([[bank or Spacer(1, 1), _signature(company)]], colWidths=[110 * mm, 70 * mm],
+    story.append(Table([[bank or Spacer(1, 1), _signature(company, signed=not draft)]], colWidths=[110 * mm, 70 * mm],
                        style=[('VALIGN', (0, 0), (-1, -1), 'TOP'), ('LEFTPADDING', (0, 0), (-1, -1), 0)]))
     story += [Spacer(1, 4 * mm), _p('This is a quotation, not a tax invoice.', 'small')]
     return _build(story, 'DRAFT' if draft else '', f'{company.legal_name} · Quotation {q.display_number}')
@@ -274,7 +294,7 @@ def invoice_pdf(inv) -> bytes:
     if inv.terms:
         story += [_p('Terms', 'h'), _p(inv.terms), Spacer(1, 3 * mm)]
     bank = _bank_block(company)
-    story.append(Table([[bank or Spacer(1, 1), _signature(company)]], colWidths=[110 * mm, 70 * mm],
+    story.append(Table([[bank or Spacer(1, 1), _signature(company, signed=not draft)]], colWidths=[110 * mm, 70 * mm],
                        style=[('VALIGN', (0, 0), (-1, -1), 'TOP'), ('LEFTPADDING', (0, 0), (-1, -1), 0)]))
     if inv.irn:
         story += [_p(f'IRN: {inv.irn}', 'small')]
@@ -298,7 +318,7 @@ def credit_note_pdf(cn) -> bytes:
         rows.append(('IGST', cn.igst))
     rows.append(('Total credit', cn.total))
     t = Table([[_p(k, 'r'), _p(_money(v), 'rb' if k == 'Total credit' else 'r')] for k, v in rows], colWidths=[40 * mm, 35 * mm], hAlign='RIGHT')
-    story += [t, Spacer(1, 2 * mm), _p('Amount in words: ' + amount_in_words(cn.total), 'small'), Spacer(1, 10 * mm), _signature(company)]
+    story += [t, Spacer(1, 2 * mm), _p('Amount in words: ' + amount_in_words(cn.total), 'small'), Spacer(1, 10 * mm), _signature(company, signed=cn.status == 'issued')]
     return _build(story, '' if cn.status == 'issued' else 'DRAFT', f'{company.legal_name} · Credit note {cn.number}')
 
 

@@ -43,3 +43,4 @@
   {% if q.timeline %}<div><p class="dl-label">Timeline</p><p>{{ q.timeline }}</p></div>{% endif %}
   {% if q.terms %}<div class="md:col-span-2"><p class="dl-label">Terms</p><p class="whitespace-pre-line">{{ q.terms }}</p></div>{% endif %}
 </div>
+{% if q.number and q.status != "draft" and q.status != "awaiting_approval" %}{% include "crm/components/signature_block.html" %}{% endif %}

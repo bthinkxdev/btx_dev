@@ -329,6 +329,26 @@ def render_quote_pdf(package_slug: str, lead=None) -> bytes:
     c.setFillColor(gray)
     c.drawString(margin + 130, y, f'{package["maintenance"]} (first year support is included free)')
 
+    # Authorised signature + company seal, kept together at the end of the last page
+    block_h = 78
+    if y - 24 - block_h < bottom_limit:
+        y = new_page()
+    else:
+        y -= 24
+    from reportlab.lib.utils import ImageReader
+    c.setFont('Helvetica', 9)
+    c.setFillColor(gray)
+    c.drawRightString(right_x, y, f'For {COMPANY["legal_name"]}')
+    seal_w, sign_w = 24 * mm, 38 * mm
+    for key, w, x_right in (('signature', sign_w, right_x), ('seal', seal_w, right_x - sign_w - 6)):
+        path = ASSETS[key]
+        if path.exists():
+            iw, ih = ImageReader(str(path)).getSize()
+            h = w * ih / iw
+            c.drawImage(ImageReader(str(path)), x_right - w, y - 8 - h, width=w, height=h, mask='auto')
+    c.setFont('Helvetica', 8.5)
+    c.drawRightString(right_x, y - block_h + 2, 'Authorised Signatory')
+
     draw_footer()
     c.showPage()
     c.save()
