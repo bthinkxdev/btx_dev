@@ -139,3 +139,48 @@ class McpApiKeyTest(McpBusinessManagerFixture):
     def test_garbage_token_rejected(self):
         self.assertIsNone(auth.resolve_token('not-a-real-token'))
         self.assertIsNone(auth.resolve_token(''))
+
+
+class McpOwnerPictureTests(CrmTestCase):
+    """Employee, onboarding and client billing views the owner reads through Claude."""
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.bm = get_user_model().objects.get(username=MCP_SERVICE_ACCOUNT)
+
+    def test_employee_profile_with_onboarding_and_no_identity_fields(self):
+        from datetime import date
+
+        from crm.modules.hr import services as hr_svc
+        e = hr_svc.create_employee(self.u['hr'], code='E900', name='New Joiner', work_email='nj@example.test',
+                                   joining_date=date.today())
+        out = call('get_employee', self.bm, employee_id=e.pk)
+        self.assertEqual(out['status'], 'onboarding')
+        self.assertGreater(out['checklists']['onboarding']['total'], 0)
+        self.assertFalse(out['checklists']['onboarding']['complete'])
+        for secret in ('bank_account_number', 'bank_ifsc', 'pan', 'uan', 'date_of_birth', 'address'):
+            self.assertNotIn(secret, out)
+        rows = call('list_onboarding', self.bm)
+        self.assertIn('E900', [r['code'] for r in rows])
+        self.assertIn('onboarding_in_progress', call('hr_overview', self.bm))
+
+    def test_salary_only_when_field_group_granted(self):
+        from datetime import date
+
+        from crm.core import permissions
+        from crm.modules.hr import services as hr_svc
+        e = hr_svc.create_employee(self.u['hr'], code='E901', name='Paid Person', work_email='pp@example.test',
+                                   joining_date=date.today())
+        permissions.clear_cache(self.bm)
+        self.assertTrue(permissions.can_see(self.bm, 'salary'))
+        out = call('get_employee', self.bm, employee_id=e.pk)
+        self.assertNotIn('salary', out)   # granted: no "not available" stub
+
+    def test_client_overview_has_billing_and_status(self):
+        q = self.make_quotation()
+        out = call('get_client_overview', self.bm, client_id=self.client_obj.pk)
+        self.assertEqual(out['id'], self.client_obj.pk)
+        for key in ('contacts', 'invoices', 'payments', 'financial_summary', 'projects', 'contracts'):
+            self.assertIn(key, out)
+        self.assertIn('outstanding', out['financial_summary'])

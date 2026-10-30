@@ -315,6 +315,259 @@
   }
 }
 
+/* ---------- Filter bars: one control height, even gaps, tidy wrapping on every screen ---------- */
+.filter-group {
+  gap: 0.5rem;
+}
+.chip-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.chip-row > * {
+  flex-shrink: 0;
+}
+#main form[method="get"] :is(select.form-select, input.form-input:not([type="checkbox"], [type="radio"])) {
+  height: 2.5rem;
+  padding-top: 0.375rem;
+  padding-bottom: 0.375rem;
+}
+#main form[method="get"] :is(.btn, .btn-sm) {
+  min-height: 2.5rem;
+}
+#main form[method="get"] .btn.btn-sm {
+  padding-top: 0.375rem;
+  padding-bottom: 0.375rem;
+}
+/* Pagination "Rows" selector keeps its compact width. */
+#main form[method="get"] select#per-page {
+  height: 2.25rem;
+}
+@media (min-width: 640px) {
+  .chip-row {
+    flex-wrap: wrap;
+  }
+}
+@media (max-width: 639px) {
+  /* Quick-filter chips scroll sideways in one row instead of stacking into a ragged block. */
+  .chip-row {
+    overflow-x: auto;
+    margin-inline: -1.25rem;
+    padding-inline: 1.25rem;
+    padding-bottom: 0.25rem;
+    scrollbar-width: none;
+  }
+  .chip-row::-webkit-scrollbar {
+    display: none;
+  }
+  /* Ad-hoc filter forms: controls fill the row (two per line) rather than keeping desktop widths. */
+  #main form[method="get"]:not([data-filter-form]) {
+    align-items: stretch;
+  }
+  #main form[method="get"]:not([data-filter-form]) > :is(select.form-select, input.form-input, .btn, a.btn) {
+    flex: 1 1 9rem;
+    width: auto;
+    min-width: 0;
+  }
+  #main form[method="get"]:not([data-filter-form]) > div :is(select.form-select, input.form-input) {
+    width: 100%;
+    min-width: 0;
+  }
+  #main form[method="get"]:not([data-filter-form]) > div {
+    flex: 1 1 9rem;
+    min-width: 0;
+  }
+  #main form[method="get"] select#per-page {
+    width: 5rem;
+  }
+}
+
+/* ---------- Phone polish ---------- */
+@media (max-width: 639px) {
+  .btn-sm {
+    min-height: 2.5rem;
+  }
+  .card-header {
+    padding: 0.875rem 1rem;
+  }
+  .card-body {
+    padding: 1rem;
+  }
+  .th,
+  .td {
+    padding-inline: 1rem;
+  }
+  /* Responsive tables: each row is a tidy card; action cells lose their label and wrap. */
+  table.responsive-cards tbody {
+    display: block;
+    padding: 0.5rem;
+  }
+  table.responsive-cards tbody tr {
+    margin-bottom: 0.5rem;
+    border: 1px solid var(--color-gray-200);
+    border-radius: 0.875rem;
+    padding: 0.5rem 0;
+    background: var(--color-white);
+  }
+  .dark table.responsive-cards tbody tr {
+    border-color: var(--color-gray-800);
+    background: transparent;
+  }
+  table.responsive-cards {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+  table.responsive-cards td {
+    align-items: baseline;
+    text-align: right;
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  table.responsive-cards td > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+  /* Row action menus open towards the screen, not off the edge. */
+  table.responsive-cards td .absolute.right-0 {
+    right: auto;
+    left: 0;
+    max-width: calc(100vw - 3rem);
+  }
+  /* Quick-add button floats above the bottom bar, never over its last tab. */
+  .quick-create {
+    bottom: calc(4.25rem + env(safe-area-inset-bottom)) !important;
+  }
+  table.responsive-cards td[data-label]::before {
+    flex-shrink: 0;
+    text-align: left;
+  }
+  table.responsive-cards td[data-label=""]::before,
+  table.responsive-cards td[data-label="Actions"]::before,
+  table.responsive-cards td[data-label="Action"]::before {
+    display: none;
+  }
+  table.responsive-cards td[data-label=""],
+  table.responsive-cards td[data-label="Actions"],
+  table.responsive-cards td[data-label="Action"] {
+    justify-content: flex-start;
+    text-align: left;
+    padding-top: 0.5rem;
+  }
+  table.responsive-cards td[colspan] {
+    display: block;
+    text-align: center;
+  }
+  /* Dialogs become bottom sheets that thumbs can reach. */
+  [data-modal] {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+  .crm-modal-panel {
+    max-height: 92vh;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    padding: 1.25rem 1rem calc(1.25rem + env(safe-area-inset-bottom));
+  }
+  /* Page title rows: actions drop under the title and share the width. */
+  #main > div > .flex.flex-wrap.items-center.justify-between > .flex.flex-wrap,
+  #main > div > .flex.flex-wrap.items-start.justify-between > .flex.flex-wrap {
+    width: 100%;
+  }
+  #main > div > .flex.flex-wrap.items-center.justify-between > a.btn {
+    width: 100%;
+  }
+}
+
+/* ---------- Dark mode: readable text, clear surfaces, visible borders ----------
+   Unstyled text used to inherit the browser's black; muted greys were too close to the background. */
+html.dark body {
+  color: #d0d5dd;
+}
+body {
+  color: var(--color-gray-700);
+}
+.dark .text-gray-400,
+.dark .text-gray-500,
+.dark .dark\:text-gray-400 {
+  color: #a9b4c4;
+}
+.dark .text-gray-600,
+.dark .text-gray-700,
+.dark .dark\:text-gray-300 {
+  color: #d0d5dd;
+}
+.dark .text-gray-800,
+.dark .text-gray-900 {
+  color: #f2f4f7;
+}
+.dark .dark\:text-white\/90 {
+  color: #f9fafb;
+}
+.dark .text-error-600,
+.dark .text-error-700 { color: #f97066; }
+.dark .text-success-600,
+.dark .text-success-700 { color: #47cd89; }
+.dark .text-warning-600,
+.dark .text-warning-700 { color: #fdb022; }
+.dark ::placeholder {
+  color: #7d8aa0;
+}
+/* Surfaces: page < card < raised, each a visible step apart. */
+.dark .card {
+  background-color: #182234;
+  border-color: #2b3649;
+}
+.dark .dark\:border-gray-800,
+.dark .dark\:border-gray-700 {
+  border-color: #2b3649;
+}
+.dark .dark\:divide-gray-800 > :not(:last-child) {
+  border-color: #2b3649;
+}
+.dark .th {
+  color: #a9b4c4;
+  background-color: rgba(255, 255, 255, 0.03);
+}
+.dark .td {
+  color: #c4ccd8;
+}
+.dark .td-strong,
+.dark .page-title,
+.dark .card-title {
+  color: #f9fafb;
+}
+.dark .btn-secondary {
+  background-color: #222e44;
+  border-color: #3a475e;
+  color: #e4e7ec;
+}
+.dark .btn-secondary:hover {
+  background-color: #2b3a54;
+  color: #fff;
+}
+.dark .chip-inactive {
+  background-color: #182234;
+  border-color: #2b3649;
+  color: #c4ccd8;
+}
+.dark .chip-inactive:hover {
+  background-color: #222e44;
+}
+.dark .form-input,
+.dark .form-select,
+.dark .form-textarea,
+.dark .form-multiselect {
+  background-color: #111a2b;
+  border-color: #3a475e;
+  color: #f2f4f7;
+}
+.dark .btn-link,
+.dark a.link {
+  color: #9db2ff;
+}
+
 @media print {
   aside.sidebar,
   header,

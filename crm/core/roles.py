@@ -192,7 +192,7 @@ ROLE_TEMPLATES = [
             accounting={'view': 'company'}, banking={'view': 'company'}, payroll={'view': 'company'},
             refunds={'view': 'company'}, audit={'view': 'company'},
         ),
-        'field_groups': ['internal_notes', 'tax_ids', 'cost_price'],
+        'field_groups': ['internal_notes', 'tax_ids', 'cost_price', 'salary'],
     },
     {
         'code': 'auditor', 'name': 'Auditor', 'home': 'crm:dashboard_owner',

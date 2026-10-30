@@ -383,6 +383,15 @@ class JobApplication(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # Hiring pipeline, worked from the CRM's Careers > Applications list.
+    STATUS_NEW = 'new'
+    STATUS_CHOICES = [
+        ('new', 'New'), ('reviewing', 'Reviewing'), ('shortlisted', 'Shortlisted'),
+        ('interview', 'Interview'), ('hired', 'Hired'), ('rejected', 'Rejected'),
+    ]
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default=STATUS_NEW, db_index=True)
+    internal_notes = models.TextField(blank=True)
+
     class Meta:
         ordering = ['-created_at']
         verbose_name = 'Job application'

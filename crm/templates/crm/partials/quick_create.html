@@ -1,6 +1,6 @@
 {% load crm_tags %}
 {# Floating quick-create (Part 2.1): bottom-right on mobile. #}
-<div class="fixed right-4 bottom-4 z-9999 xl:hidden" x-data="{ open: false }" @click.outside="open = false">
+<div class="quick-create fixed right-4 bottom-4 z-9999 xl:hidden" x-data="{ open: false }" @click.outside="open = false">
   <div x-show="open" x-cloak class="shadow-theme-lg mb-3 flex w-56 flex-col rounded-2xl border border-gray-200 bg-white p-2 dark:border-gray-800 dark:bg-gray-900">
     {% can 'leads' 'create' as c1 %}{% if c1 %}<a class="menu-dropdown-item menu-dropdown-item-inactive" href="{% url 'crm:lead_create' %}">{% icon 'users' 18 %} Add lead</a>{% endif %}
     {% can 'tasks' 'create' as c2 %}{% if c2 %}<a class="menu-dropdown-item menu-dropdown-item-inactive" href="{% url 'crm:task_create' %}">{% icon 'tasks' 18 %} Add task</a>{% endif %}

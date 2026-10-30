@@ -1,0 +1,40 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Job openings{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+  <div><h1 class="page-title">Job openings</h1><p class="muted mt-1">Roles published here appear instantly on the website Careers page. Candidates apply there and land in <a class="btn-link" href="{% url 'crm:career_applications' %}">Job applications</a>.</p></div>
+  <div class="flex flex-wrap gap-2">
+    <a href="{% url 'crm:career_applications' %}" class="btn btn-secondary">Applications</a>
+    {% if can_edit %}<a href="{% url 'crm:career_create' %}" class="btn btn-primary">{% icon 'plus' 18 %} Post a job</a>{% endif %}
+  </div>
+</div>
+{% endblock %}
+{% block content %}
+<div class="card">
+  {% include "crm/components/list_toolbar.html" %}
+  <div class="table-wrap"><table class="data-table responsive-cards">
+    <thead class="border-b border-gray-100 dark:border-gray-800"><tr><th class="th">Role</th><th class="th">Department</th><th class="th">Location</th><th class="th">Type</th><th class="th text-right">Applicants</th><th class="th">Website</th><th class="th"><span class="sr-only">Actions</span></th></tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+    {% for j in object_list %}
+      <tr>
+        <td class="td" data-label="Role">{% if can_edit %}<a class="td-strong hover:text-brand-500" href="{% url 'crm:career_edit' j.pk %}">{{ j.title }}</a>{% else %}<span class="td-strong">{{ j.title }}</span>{% endif %}<span class="block text-theme-xs">{{ j.summary|truncatechars:80 }}</span></td>
+        <td class="td" data-label="Department">{{ j.department|default:"—" }}</td>
+        <td class="td" data-label="Location">{{ j.location }}</td>
+        <td class="td" data-label="Type">{{ j.get_employment_type_display }}</td>
+        <td class="td text-right" data-label="Applicants">{% if j.app_count %}<a class="btn-link" href="{% url 'crm:career_applications' %}?job={{ j.pk }}">{{ j.app_count }}</a>{% else %}0{% endif %}</td>
+        <td class="td" data-label="Website">{% if j.is_published %}{% badge 'active' 'Live' %}{% else %}{% badge 'draft' 'Draft' %}{% endif %}</td>
+        <td class="td" data-label="Actions">
+          {% if can_edit %}
+          <div class="flex flex-wrap items-center gap-2 sm:justify-end">
+            <form method="post" action="{% url 'crm:career_toggle' j.pk %}">{% csrf_token %}<button class="btn btn-secondary btn-sm">{% if j.is_published %}Unpublish{% else %}Publish{% endif %}</button></form>
+            <a href="{% url 'crm:career_edit' j.pk %}" class="btn btn-secondary btn-sm">Edit</a>
+            <form method="post" action="{% url 'crm:career_delete' j.pk %}" data-confirm="Delete “{{ j.title }}”?" data-confirm-body="It disappears from the website. Existing applications are kept." data-confirm-danger="1">{% csrf_token %}<button class="btn btn-danger btn-sm">Delete</button></form>
+          </div>
+          {% endif %}
+        </td>
+      </tr>
+    {% empty %}<tr><td colspan="7">{% include "crm/components/empty_state.html" with filtered=any_filter title="No job openings yet" text="Post your first role and it goes live on the website Careers page." icon="id" %}</td></tr>{% endfor %}
+    </tbody></table></div>
+  {% include "crm/components/pagination.html" %}
+</div>
+{% endblock %}

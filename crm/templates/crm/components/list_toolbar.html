@@ -1,26 +1,36 @@
 {% load crm_tags %}
 {# Search (debounced 300 ms), quick filters, filter selects, saved filters, export (Part 2.7). #}
 <div class="space-y-3 border-b border-gray-100 px-5 py-4 dark:border-gray-800">
-  <form method="get" class="flex flex-col gap-3 lg:flex-row lg:items-center" data-filter-form>
+  <form method="get" class="flex flex-col gap-3 lg:flex-row lg:items-center" data-filter-form x-data="{ f: {% if active_filters %}true{% else %}false{% endif %} }">
     {% if request.GET.quick %}<input type="hidden" name="quick" value="{{ request.GET.quick }}">{% endif %}
     {% if request.GET.view %}<input type="hidden" name="view" value="{{ request.GET.view }}">{% endif %}
     {% if request.GET.sort %}<input type="hidden" name="sort" value="{{ request.GET.sort }}">{% endif %}
+    {% if request.GET.per_page %}<input type="hidden" name="per_page" value="{{ request.GET.per_page }}">{% endif %}
     {% if date_range %}{% if request.GET.from %}<input type="hidden" name="from" value="{{ request.GET.from }}">{% endif %}{% if request.GET.to %}<input type="hidden" name="to" value="{{ request.GET.to }}">{% endif %}{% if request.GET.on %}<input type="hidden" name="on" value="{{ request.GET.on }}">{% endif %}{% endif %}
-    <div class="relative w-full lg:max-w-xs">
-      <span class="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-gray-500 dark:text-gray-400">{% icon 'search' 18 %}</span>
-      <input type="search" name="q" value="{{ q }}" placeholder="{{ search_placeholder|default:'Search…' }}" aria-label="Search" class="form-input pl-11" data-debounce-submit>
+    <div class="flex w-full items-center gap-2 lg:max-w-xs">
+      <div class="relative min-w-0 flex-1">
+        <span class="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-gray-500 dark:text-gray-400">{% icon 'search' 18 %}</span>
+        <input type="search" name="q" value="{{ q }}" placeholder="{{ search_placeholder|default:'Search…' }}" aria-label="Search" class="form-input pl-11" data-debounce-submit>
+      </div>
+      {% if filters %}
+      <button type="button" class="btn btn-secondary shrink-0 sm:hidden" @click="f = !f" :aria-expanded="f" aria-controls="filter-group">
+        {% icon 'filter' 16 %} Filters{% if active_filters %} <span class="badge badge-brand">{{ active_filters|length }}</span>{% endif %}
+      </button>
+      {% endif %}
     </div>
-    <div class="flex flex-wrap items-center gap-2">
+    {% if filters %}
+    <div id="filter-group" class="filter-group hidden sm:flex sm:flex-wrap sm:items-center" :class="f && 'max-sm:grid max-sm:grid-cols-2'">
       {% for flt, choices in filters %}
         <label class="sr-only" for="flt-{{ flt.name }}">{{ flt.label }}</label>
-        <select id="flt-{{ flt.name }}" name="{{ flt.name }}" class="form-select h-10 w-auto min-w-36 py-2 text-sm" data-autosubmit>
+        <select id="flt-{{ flt.name }}" name="{{ flt.name }}" class="form-select w-full sm:w-auto sm:min-w-36" data-autosubmit>
           <option value="">{{ flt.label }}: all</option>
           {% for value, label in choices %}<option value="{{ value }}" {% if active_filters|get_item:flt.name == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
         </select>
       {% endfor %}
       <noscript><button class="btn btn-secondary btn-sm">Apply</button></noscript>
     </div>
-    <div class="flex items-center gap-2 lg:ml-auto">
+    {% endif %}
+    <div class="flex flex-wrap items-center gap-2 lg:ml-auto">
       {% if any_filter %}<a href="{{ request.path }}{% if request.GET.view %}?view={{ request.GET.view }}{% endif %}" class="btn btn-secondary btn-sm">Clear all</a>{% endif %}
       {% if can_export and total %}
         <div class="relative" x-data="{ o: false }" @click.outside="o = false">
@@ -34,11 +44,11 @@
     </div>
   </form>
   {% if date_range %}
-    <div class="flex flex-wrap items-center gap-2"><span class="chip chip-active">{{ date_range.label|capfirst }}: {{ date_range.start|date:"d-M-Y"|default:"…" }} – {{ date_range.end|date:"d-M-Y"|default:"…" }}
+    <div class="chip-row"><span class="chip chip-active">{{ date_range.label|capfirst }}: {{ date_range.start|date:"d-M-Y"|default:"…" }} – {{ date_range.end|date:"d-M-Y"|default:"…" }}
       <a href="{% qs from='' to='' on='' %}" class="ml-1" aria-label="Remove date range">×</a></span></div>
   {% endif %}
   {% if quick_filters or saved_filters %}
-    <div class="flex flex-wrap items-center gap-2" role="group" aria-label="Quick filters">
+    <div class="chip-row" role="group" aria-label="Quick filters">
       {% for key, label in quick_filters %}
         <a href="{% if request.GET.quick == key %}{% qs quick='' %}{% else %}{% qs quick=key %}{% endif %}"
            class="chip {% if request.GET.quick == key %}chip-active{% else %}chip-inactive{% endif %}">{{ label }}</a>

@@ -1,0 +1,15 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{% if obj %}Edit job opening{% else %}Post a job{% endif %}{% endblock %}
+{% block page_header %}{% if obj %}{% include "crm/components/page_header.html" with title="Edit job opening" subtitle=obj.title %}{% else %}{% include "crm/components/page_header.html" with title="Post a job" subtitle="Published roles show on the website Careers page straight away." %}{% endif %}{% endblock %}
+{% block content %}
+<form method="post" class="card max-w-4xl" novalidate data-dirty-check>{% csrf_token %}{% idem %}
+  <div class="card-body grid grid-cols-1 gap-5 md:grid-cols-2">
+    {% include "crm/components/form_errors.html" %}
+    {% for f in form.visible_fields %}{% if f.name in 'title summary description is_published' %}{% field f wrapper_class="md:col-span-2" %}{% else %}{% field f %}{% endif %}{% endfor %}
+  </div>
+  <div class="flex flex-col-reverse justify-end gap-3 border-t border-gray-100 p-5 sm:flex-row dark:border-gray-800">
+    <a href="{% url 'crm:career_list' %}" class="btn btn-secondary">Cancel</a>
+    <button class="btn btn-primary" data-loading-text="Saving…">{% if obj %}Save changes{% else %}Post job{% endif %}</button>
+  </div>
+</form>
+{% endblock %}

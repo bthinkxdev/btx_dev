@@ -1,0 +1,37 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Job applications{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+  <div><h1 class="page-title">Job applications</h1><p class="muted mt-1">Candidates who applied from the website Careers page.</p></div>
+  <a href="{% url 'crm:career_list' %}" class="btn btn-secondary">Job openings</a>
+</div>
+{% endblock %}
+{% block content %}
+<div class="card">
+  {% include "crm/components/list_toolbar.html" %}
+  <div class="table-wrap"><table class="data-table responsive-cards">
+    <thead class="border-b border-gray-100 dark:border-gray-800"><tr><th class="th">Candidate</th><th class="th">Role</th><th class="th">Contact</th><th class="th">Applied</th><th class="th">Status</th><th class="th"><span class="sr-only">Actions</span></th></tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+    {% for a in object_list %}
+      <tr>
+        <td class="td" data-label="Candidate"><span class="td-strong">{{ a.full_name }}</span>{% if a.linkedin_url %}<a class="btn-link block text-theme-xs" href="{{ a.linkedin_url }}" target="_blank" rel="noopener noreferrer">LinkedIn</a>{% endif %}
+          {% if a.cover_message %}<details class="mt-1 text-theme-xs text-gray-500"><summary class="cursor-pointer">Cover note</summary><p class="mt-1 whitespace-pre-line">{{ a.cover_message }}</p></details>{% endif %}</td>
+        <td class="td" data-label="Role">{% if a.job %}{{ a.job.title }}{% else %}<span class="text-gray-500">General application</span>{% endif %}</td>
+        <td class="td" data-label="Contact"><a class="btn-link" href="mailto:{{ a.email }}">{{ a.email }}</a><span class="block text-theme-xs"><a href="tel:{{ a.phone }}">{{ a.phone }}</a></span></td>
+        <td class="td" data-label="Applied">{{ a.created_at|dt }}</td>
+        <td class="td" data-label="Status">
+          {% if can_edit %}
+          <form method="post" action="{% url 'crm:career_application_update' a.pk %}">{% csrf_token %}
+            <select name="status" class="form-select h-9 w-full min-w-32 py-1 text-sm" aria-label="Status for {{ a.full_name }}" data-autosubmit>
+              {% for v, l in statuses %}<option value="{{ v }}" {% if a.status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+            </select>
+          </form>
+          {% else %}{{ a.get_status_display }}{% endif %}
+        </td>
+        <td class="td" data-label="Actions"><div class="flex flex-wrap gap-2 sm:justify-end"><a href="{% url 'crm:career_application_resume' a.pk %}" class="btn btn-secondary btn-sm">{% icon 'download' 16 %} Resume</a></div></td>
+      </tr>
+    {% empty %}<tr><td colspan="6">{% include "crm/components/empty_state.html" with filtered=any_filter title="No applications yet" text="Applications submitted on the website Careers page appear here." icon="id" %}</td></tr>{% endfor %}
+    </tbody></table></div>
+  {% include "crm/components/pagination.html" %}
+</div>
+{% endblock %}

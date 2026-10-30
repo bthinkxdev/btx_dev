@@ -111,6 +111,12 @@
   {% endif %}
 </div>
 
+{% include "crm/components/modal_start.html" with id="complete_quick" title="Complete follow-up" subtitle="Record the outcome and schedule the next one so the lead keeps a dated next action." %}
+  <form method="post" id="complete-quick-form" action="" novalidate>{% csrf_token %}{% idem %}
+    {% include "crm/components/modal_form.html" with form=complete_form %}
+    {% include "crm/components/modal_actions.html" with label="Complete" %}
+  </form>
+{% include "crm/components/modal_end.html" %}
 {% include "crm/components/modal_start.html" with id="postpone_quick" title="Postpone follow-up" subtitle="Give a reason. More than 3 postponements flags the lead for review." %}
   <form method="post" id="postpone-quick-form" action="" novalidate>{% csrf_token %}{% idem %}
     {% include "crm/components/modal_form.html" with form=postpone_form %}

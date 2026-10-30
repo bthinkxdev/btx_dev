@@ -37,6 +37,35 @@ def register(mcp):
         return out
 
     @helpers.sync_tool(mcp)
+    def get_client_overview(client_id: int) -> dict:
+        """The whole story of one client in one call: profile and contacts, how they were onboarded (client
+        since, contracts, projects and their status), billing (every invoice with status, due date, paid and
+        balance), payments received and the outstanding/ageing position."""
+        from crm.models import Client, Contract, Invoice, Payment, Project
+        user = context.current_user()
+        client = helpers.get_scoped(user, Client, client_id, 'clients', 'view')
+        out = serialize.row(client, CLIENT_FIELDS + ('payment_terms_days', 'industry', 'website'))
+        out['contacts'] = serialize.rows(client.contacts.filter(archived_at__isnull=True),
+                                         ('name', 'email', 'phone', 'is_primary', 'is_billing'), limit=20)
+        out['client_since'] = client.created_at.date().isoformat()
+        if permissions.has_perm(user, 'contracts', 'view'):
+            out['contracts'] = serialize.rows(Contract.objects.filter(client=client).order_by('-id'),
+                                              ('number', 'status', 'start_date', 'end_date', 'owner'), limit=20)
+        if permissions.has_perm(user, 'projects', 'view'):
+            out['projects'] = serialize.rows(Project.objects.filter(client=client).order_by('-id'),
+                                             ('code', 'name', 'status', 'manager', 'start_date', 'due_date'), limit=20)
+        if permissions.has_perm(user, 'invoices', 'view'):
+            invs = Invoice.objects.filter(client=client).order_by('-invoice_date')
+            out['invoices'] = serialize.rows(invs, ('number', 'status', 'invoice_date', 'due_date', 'grand_total',
+                                                    'paid_amount', 'balance', 'disputed', 'paid_at'), limit=50)
+            out['invoice_status_counts'] = {s: invs.filter(status=s).count() for s in sorted(set(invs.values_list('status', flat=True)))}
+        if permissions.has_perm(user, 'payments', 'view'):
+            out['payments'] = serialize.rows(Payment.objects.filter(client=client).order_by('-id'),
+                                             ('receipt_number', 'status', 'amount', 'payment_date', 'reference_number'), limit=30)
+        out['financial_summary'] = serialize.deep(client_svc.financial_summary(client))
+        return out
+
+    @helpers.sync_tool(mcp)
     def create_client(legal_name: str, phone: str = '', email: str = '', billing_city: str = '',
                       billing_state: str = '', client_type: str = 'company') -> dict:
         """Create a client. Raises if a likely duplicate exists (same name/GSTIN/PAN/phone/email) -

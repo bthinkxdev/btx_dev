@@ -80,6 +80,17 @@ There is no way to recover a lost raw key — issue a new one and revoke the
 old. Treat it like any other production credential: share it over a secure
 channel, never paste it into chat history or a ticket.
 
+OWNER OVERVIEW TOOLS
+  get_employee(id)        profile, manager, onboarding checklist and progress, leave
+                          balances, 30-day attendance, salary structure and latest
+                          payslip. Bank account, PAN, UAN, date of birth and address
+                          are never returned.
+  list_onboarding()       who is being onboarded, steps done, overdue, next step/owner.
+  hr_overview()           headcount, onboarding in flight, pending leave, payroll status.
+  get_client_overview(id) client profile and contacts, contracts, projects and their
+                          status, every invoice with status/due/paid/balance, payments
+                          and the outstanding and ageing position.
+
 ================================================================================
 End of Business Manager (AI) manual.
 ================================================================================

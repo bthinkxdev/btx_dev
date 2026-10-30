@@ -16,6 +16,9 @@ from crm.models.leads import OPEN_STAGES
 from . import services as svc
 
 
+REMINDER_STAGES = (30, 5)   # minutes before a follow-up is due
+
+
 def _url(lead):
     return reverse('crm:lead_detail', args=[lead.pk])
 
@@ -65,14 +68,29 @@ def follow_up_reminders_and_escalation() -> int:
     c = CompanySettings.get()
     now = timezone.now()
     n = 0
-    # Reminder before due time.
-    for fu in FollowUp.objects.filter(status='pending', reminded_at__isnull=True, due_at__gt=now,
-                                      lead__archived_at__isnull=True).select_related('lead', 'assignee'):
-        if fu.due_at - timedelta(minutes=fu.reminder_minutes) <= now:
-            notify.notify([fu.assignee], f'{fu.get_kind_display()} with {fu.lead.name} at {timezone.localtime(fu.due_at):%H:%M}',
-                          body=fu.purpose, url=_url(fu.lead), event_type='follow_up_reminder', dedupe_key=f'remind:{fu.pk}:{fu.due_at:%s}')
-            FollowUp.objects.filter(pk=fu.pk).update(reminded_at=now)
-            n += 1
+    # Reminders 30 and 5 minutes before the due time, to the assignee and their manager. The dedupe key
+    # carries the due time, so a postponed follow-up is reminded again for its new time.
+    upcoming = FollowUp.objects.filter(status='pending', due_at__gt=now, due_at__lte=now + timedelta(minutes=REMINDER_STAGES[0]),
+                                       lead__archived_at__isnull=True).select_related('lead', 'assignee')
+    for fu in upcoming:
+        left = (fu.due_at - now).total_seconds() / 60
+        for stage in REMINDER_STAGES:
+            if left > stage:
+                continue
+            # A follow-up scheduled inside the 30-minute window skips straight to the 5-minute reminder.
+            if stage == REMINDER_STAGES[0] and left < REMINDER_STAGES[0] - 5:
+                continue
+            if stage == REMINDER_STAGES[0] and left <= REMINDER_STAGES[1]:
+                continue
+            mgr = notify.manager_of(fu.assignee)
+            when = timezone.localtime(fu.due_at)
+            created = notify.notify(
+                [fu.assignee, mgr], f'In {stage} min: {fu.get_kind_display().lower()} with {fu.lead.name} at {when:%H:%M}',
+                body=(fu.purpose or '') + ('' if fu.assignee is None else f' ({fu.assignee.get_full_name() or fu.assignee})'),
+                url=_url(fu.lead), event_type='follow_up_reminder', level='warning' if stage <= 5 else 'info',
+                dedupe_key=f'remind{stage}:{fu.pk}:{int(fu.due_at.timestamp())}')
+            n += bool(created)
+        FollowUp.objects.filter(pk=fu.pk, reminded_at__isnull=True).update(reminded_at=now)
     # Overdue: owner at due time, manager at +4h, company owner at +24h.
     for fu in FollowUp.objects.filter(status='pending', due_at__lte=now, lead__archived_at__isnull=True,
                                       escalation_level__lt=3).select_related('lead', 'assignee'):
@@ -80,19 +98,19 @@ def follow_up_reminders_and_escalation() -> int:
         level = fu.escalation_level
         if level < 1:
             notify.notify([fu.assignee], f'Overdue: {fu.get_kind_display().lower()} with {fu.lead.name}', url=_url(fu.lead),
-                          event_type='follow_up_overdue', level='warning', dedupe_key=f'overdue1:{fu.pk}:{fu.due_at:%s}')
+                          event_type='follow_up_overdue', level='warning', dedupe_key=f'overdue1:{fu.pk}:{int(fu.due_at.timestamp())}')
             level = 1
         if level < 2 and late >= timedelta(hours=c.overdue_manager_hours):
             mgr = notify.manager_of(fu.assignee)
             notify.notify([mgr] if mgr else notify.users_with_perm('leads', 'assign'),
                           f'Follow-up {int(late.total_seconds() // 3600)} h overdue: {fu.lead.name} ({fu.assignee.get_full_name()})',
                           url=_url(fu.lead), event_type='follow_up_overdue', level='warning',
-                          dedupe_key=f'overdue2:{fu.pk}:{fu.due_at:%s}')
+                          dedupe_key=f'overdue2:{fu.pk}:{int(fu.due_at.timestamp())}')
             level = 2
         if level < 3 and late >= timedelta(hours=c.overdue_owner_hours):
             notify.notify(notify.owners(), f'Follow-up over a day late: {fu.lead.name} ({fu.assignee.get_full_name()})',
                           url=_url(fu.lead), event_type='follow_up_overdue', level='critical',
-                          dedupe_key=f'overdue3:{fu.pk}:{fu.due_at:%s}')
+                          dedupe_key=f'overdue3:{fu.pk}:{int(fu.due_at.timestamp())}')
             level = 3
         if level != fu.escalation_level:
             FollowUp.objects.filter(pk=fu.pk).update(escalation_level=level)
@@ -109,7 +127,7 @@ def stale_and_aging() -> int:
         idle = (now - (lead.last_activity_at or lead.created_at)).days
         if lead.stale_alert_level < 1:
             notify.notify([lead.owner], f'Stale lead: no activity for {idle} days — {lead}', url=_url(lead),
-                          event_type='stale_lead', level='warning', dedupe_key=f'stale1:{lead.pk}:{lead.last_activity_at:%s}' if lead.last_activity_at else f'stale1:{lead.pk}')
+                          event_type='stale_lead', level='warning', dedupe_key=f'stale1:{lead.pk}:{int(lead.last_activity_at.timestamp())}' if lead.last_activity_at else f'stale1:{lead.pk}')
             Lead.objects.filter(pk=lead.pk).update(stale_alert_level=1)
             n += 1
         if lead.stale_alert_level < 2 and idle >= c.stale_escalate_days:

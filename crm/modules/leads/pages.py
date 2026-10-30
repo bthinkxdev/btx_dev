@@ -21,7 +21,7 @@ from crm.models import (ApprovalRequest, Campaign, DuplicateCandidate, FollowUp,
 from crm.models.leads import LOST_REASONS, OPEN_STAGES
 
 from . import services as svc
-from .forms import CampaignForm, PostponeForm, SourceForm
+from .forms import CampaignForm, CompleteFollowUpForm, PostponeForm, SourceForm
 from .views import lead_scope_extra, scoped_leads
 
 
@@ -45,6 +45,7 @@ def my_day(request):
             due = svc.sla_due(l.assigned_at or l.created_at)
             l.sla_seconds = int((due - now).total_seconds())
         ctx['postpone_form'] = PostponeForm(prefix='postpone')
+        ctx['complete_form'] = CompleteFollowUpForm(prefix='complete')
     if permissions.has_perm(u, 'quotations', 'view'):
         ctx['quotes_to_chase'] = list(Quotation.objects.filter(owner=u, status__in=['sent', 'viewed'])
                                       .select_related('client', 'lead').order_by('valid_until')[:20])
@@ -77,14 +78,27 @@ def follow_up_quick(request, pk, action):
     """Complete / postpone straight from My Day or the calendar."""
     fu = get_object_or_404(FollowUp.objects.select_related('lead'), pk=pk)
     get_scoped(request, Lead, fu.lead_id, 'leads', 'edit', extra_q=lead_scope_extra(request.user))
+    # The follow-up is identified by the URL, not by the form's hidden field (the quick modal is
+    # shared by every row, so that field is never filled in client-side).
+    data = request.POST.copy()
+    data[f'{action}-follow_up'] = str(fu.pk)
     try:
         if action == 'postpone':
-            form = PostponeForm(request.POST, prefix='postpone')
+            form = PostponeForm(data, prefix='postpone')
             if not form.is_valid():
                 raise ValidationError(form_error_text(form))
             reason = dict(form.fields['reason'].choices).get(form.cleaned_data['reason'])
             svc.postpone_follow_up(fu, new_due=form.cleaned_data['new_due'], reason=reason, actor=request.user)
             messages.success(request, 'Follow-up postponed.')
+        elif action == 'complete':
+            form = CompleteFollowUpForm(data, prefix='complete')
+            if not form.is_valid():
+                raise ValidationError(form_error_text(form))
+            c = form.cleaned_data
+            svc.complete_follow_up(fu, outcome=c['outcome'], notes=c.get('notes', ''), next_due=c.get('next_due'),
+                                   next_kind=c.get('next_kind') or 'call', next_purpose=c.get('next_purpose', ''),
+                                   actor=request.user)
+            messages.success(request, 'Follow-up completed.')
         else:
             raise ValidationError('Unknown action.')
     except ValidationError as exc:
@@ -104,7 +118,9 @@ def followup_calendar(request):
         current = date(year, month, 1)
     except (ValueError, TypeError):
         current = today.replace(day=1)
-    view = request.GET.get('view', 'month')
+    # Phones get the agenda-style week view by default: a 7-column month grid does not fit.
+    is_phone = 'Mobi' in request.META.get('HTTP_USER_AGENT', '')
+    view = request.GET.get('view', 'week' if is_phone else 'month')
     owner = request.GET.get('owner', '')
     leads = scoped_leads(request)
     qs = FollowUp.objects.filter(lead__in=leads, status='pending').select_related('lead', 'assignee')

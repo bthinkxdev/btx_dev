@@ -110,6 +110,8 @@ def navaratri_offer_submit(request):
         logger.error('Cashfree order created without payment_session_id: %s', order)
         return JsonResponse({'success': False, 'error': 'Could not start payment. Please try again.'}, status=502)
 
+    from .views import _to_crm
+    _to_crm('offer_signup', signup)
     return JsonResponse({
         'success': True,
         'order_id': order_id,
@@ -193,6 +195,8 @@ def navaratri_offer_webhook(request):
 
 
 def _notify_paid_signup(signup: OfferSignup):
+    from .views import _to_crm
+    _to_crm('offer_signup', signup, paid=True)
     to_email = getattr(settings, 'CONTACT_EMAIL_TO', 'hr@bthinkx.com')
     try:
         send_mail(

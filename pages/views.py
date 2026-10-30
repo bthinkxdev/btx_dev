@@ -24,6 +24,15 @@ from .static_blog import get_static_post, get_static_posts
 
 logger = logging.getLogger(__name__)
 
+
+def _to_crm(fn_name, *args, **kwargs):
+    """Hand a website submission to the CRM (lead + notifications). Never breaks the public form."""
+    try:
+        from crm.modules.leads import website
+        getattr(website, fn_name)(*args, **kwargs)
+    except Exception:
+        logger.exception('CRM hand-off %s failed', fn_name)
+
 def index(request):
     homepage_projects = (
         Project.objects.filter(show_on_homepage=True)
@@ -187,6 +196,7 @@ def career_apply(request):
     if form.is_valid():
         app = form.save()
         _send_career_notification(app, request)
+        _to_crm('career_application', app)
         return JsonResponse(
             {
                 'success': True,
@@ -238,7 +248,11 @@ def contact_submit(request):
     form = ContactForm(request.POST)
     if form.is_valid():
         submission = form.save()
-        _send_contact_notification(submission)
+        _to_crm('contact_form', submission)
+        try:
+            _send_contact_notification(submission)
+        except Exception:
+            logger.exception('Contact notification email failed')
         return JsonResponse({'success': True, 'message': 'Thank you. We will get back to you within 24 hours.'})
     errors = {k: v[0] for k, v in form.errors.items()}
     logger.warning('Contact form validation failed: %s', errors)
@@ -275,6 +289,7 @@ def quote_request(request):
     form = QuoteRequestForm(request.POST)
     if form.is_valid():
         lead = form.save()
+        _to_crm('quote_request', lead)
         _send_quote_notification(lead)
         return JsonResponse({
             'success': True,
