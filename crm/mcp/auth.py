@@ -34,31 +34,22 @@ def resolve_token(raw_token: str):
 
 
 class BearerAuthASGIMiddleware:
-    """Wraps the FastMCP Streamable HTTP app: every request must present
-    `Authorization: Bearer <key>` for a non-revoked McpApiKey, resolved to its
-    owning service-account User via crm.mcp.context.set_actor()."""
+    """Wraps the FastMCP app. A presented bearer token (OAuth access token or static key) is
+    resolved to its service-account User via crm.mcp.context.set_actor(). It never rejects a
+    request itself: the SDK's own auth layer answers /mcp without a valid token with a 401
+    carrying the OAuth discovery hint, and leaves the OAuth endpoints (/register, /authorize,
+    /token, /.well-known/*) reachable, which claude.ai needs before it has any token."""
 
     def __init__(self, app):
         self.app = app
 
     async def __call__(self, scope, receive, send):
-        if scope['type'] != 'http':
-            await self.app(scope, receive, send)
-            return
-        headers = dict(scope.get('headers') or [])
-        raw = headers.get(b'authorization', b'').decode('latin-1')
-        token = raw[7:] if raw.lower().startswith('bearer ') else ''
-        key = resolve_token(token) if token else None
-        if key is None:
-            await _unauthorized(send)
-            return
-        from . import context
-        context.set_actor(key.owner, key)
+        if scope['type'] == 'http':
+            from asgiref.sync import sync_to_async
+            from . import context, oauth
+            raw = dict(scope.get('headers') or []).get(b'authorization', b'').decode('latin-1')
+            token = raw[7:].strip() if raw.lower().startswith('bearer ') else ''
+            actor = await sync_to_async(oauth.resolve_actor, thread_sensitive=True)(token) if token else None
+            if actor is not None:
+                context.set_actor(*actor)
         await self.app(scope, receive, send)
-
-
-async def _unauthorized(send):
-    body = b'{"error":"invalid or missing bearer token"}'
-    await send({'type': 'http.response.start', 'status': 401,
-                'headers': [(b'content-type', b'application/json'), (b'www-authenticate', b'Bearer')]})
-    await send({'type': 'http.response.body', 'body': body})

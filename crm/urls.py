@@ -3,7 +3,7 @@ from importlib import import_module
 
 app_name = 'crm'
 
-MODULES = ['auth', 'common', 'leads', 'sales', 'clients', 'quotations', 'payments', 'billing', 'accounting', 'contracts', 'projects', 'expenses', 'hr', 'reports', 'chatbot', 'administration']
+MODULES = ['auth', 'common', 'leads', 'sales', 'clients', 'quotations', 'payments', 'billing', 'accounting', 'contracts', 'projects', 'expenses', 'hr', 'reports', 'chatbot', 'mcpconnect', 'administration']
 
 urlpatterns = []
 for _m in MODULES:

@@ -94,6 +94,9 @@ WSGI_APPLICATION = 'config.wsgi.application'
 MCP_HTTP_HOST = os.environ.get('MCP_HTTP_HOST', '127.0.0.1')
 MCP_HTTP_PORT = int(os.environ.get('MCP_HTTP_PORT', '8800'))
 MCP_HTTP_PATH = os.environ.get('MCP_HTTP_PATH', '/mcp')
+# Public HTTPS origin the connector is reached on (nginx -> MCP_HTTP_PORT). claude.ai discovers its OAuth
+# endpoints from here, so it must match the URL pasted into the connector, e.g. https://dev.bthinkx.com
+MCP_PUBLIC_BASE_URL = os.environ.get('MCP_PUBLIC_BASE_URL', 'http://127.0.0.1:%d' % MCP_HTTP_PORT).rstrip('/')
 
 # PostgreSQL is the production database (Business OS spec). Set DB_ENGINE=postgres and
 # DB_NAME / DB_USER / DB_PASSWORD / DB_HOST / DB_PORT in .env. SQLite remains the

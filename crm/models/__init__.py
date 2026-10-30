@@ -6,6 +6,7 @@ from .core import (  # noqa: F401
     UserSession,
 )
 from .chat import ChatMessage, ChatSession  # noqa: F401
+from .mcp_oauth import McpOAuthClient, McpOAuthRequest, McpOAuthToken  # noqa: F401
 from .catalog import Service, ServiceTaxRule  # noqa: F401
 from .clients import Client, Contact  # noqa: F401
 from .leads import (  # noqa: F401

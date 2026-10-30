@@ -1,0 +1,24 @@
+{% extends "crm/auth/auth_base.html" %}{% load crm_tags %}
+{% block title %}Connect an AI assistant{% endblock %}
+{% block form %}
+{% if expired %}
+<div class="mb-5 sm:mb-8">
+  <h1 class="text-title-sm sm:text-title-md mb-2 font-semibold text-gray-800 dark:text-white/90">Request expired</h1>
+  <p class="text-sm text-gray-500 dark:text-gray-400">This connection request has already been used or has timed out. Go back to the assistant and press Connect again.</p>
+</div>
+{% else %}
+<div class="mb-5 sm:mb-8">
+  <h1 class="text-title-sm sm:text-title-md mb-2 font-semibold text-gray-800 dark:text-white/90">Connect {{ client }}?</h1>
+  <p class="text-sm text-gray-500 dark:text-gray-400">You are signed in as <strong>{{ request.user.get_full_name|default:request.user.username }}</strong>.</p>
+</div>
+<div class="alert alert-warning mb-5" role="note">
+  <p class="text-sm text-gray-700 dark:text-gray-300">This lets <strong>{{ client }}</strong> read and change business records (leads, quotations, invoices, payments, projects, expenses and HR) as the <strong>Business Manager</strong> role. It cannot delete records, approve requests or change settings. Approve only if you started this connection yourself. You can cut access any time by revoking the connection.</p>
+</div>
+<form method="post">{% csrf_token %}
+  <div class="flex gap-3">
+    <button name="decision" value="deny" class="btn btn-secondary flex-1">Deny</button>
+    <button name="decision" value="approve" class="btn btn-primary flex-1">Approve</button>
+  </div>
+</form>
+{% endif %}
+{% endblock %}
