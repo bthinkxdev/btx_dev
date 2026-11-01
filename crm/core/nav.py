@@ -17,6 +17,7 @@ NAV = [
             ('HR', 'crm:hr_dashboard', 'employees', 'view', 'company'),
         ]),
         ('approvals', 'Approvals', 'shield', [('Approvals', 'crm:approval_list', None, None)]),
+        ('myexp', 'My expenses', 'receipt', [('My expenses', 'crm:expense_list', 'expenses', 'view')]),
     ]),
     ('SALES', [
         ('leads', 'Leads', 'users', [
@@ -170,11 +171,37 @@ def mobile_tabs(user, current_url_name: str, limit: int = 4) -> list:
     return tabs
 
 
+# Sidebar sections by team. The Money section is for the finance team only; everyone else files their own
+# expense claims through the "My expenses" shortcut. Sales users also never see People or Delivery.
+FINANCE_ROLES = ('finance_executive', 'accountant', 'auditor', 'business_manager')
+SALES_ROLES = ('sales_executive', 'sales_manager', 'telecaller')
+SALES_HIDDEN_GROUPS = {'PEOPLE', 'DELIVERY'}
+OVERRIDING_ROLES = ('owner', 'finance_executive', 'accountant', 'hr_manager', 'auditor', 'business_manager', 'project_manager')
+
+
+def is_finance_team(user) -> bool:
+    return bool(permissions.is_super_admin(user) or permissions.has_role(user, *FINANCE_ROLES))
+
+
+def is_sales_only(user) -> bool:
+    """Sales executives, managers and telecallers who hold no other role that needs People or Delivery."""
+    return bool(permissions.has_role(user, *SALES_ROLES)
+                and not permissions.is_super_admin(user) and not permissions.has_role(user, *OVERRIDING_ROLES))
+
+
 def build_nav(user, current_url_name: str) -> list:
     groups = []
+    finance = is_finance_team(user)
+    hide = set(SALES_HIDDEN_GROUPS) if is_sales_only(user) else set()
+    if not finance:
+        hide.add('MONEY')
     for group_label, items in NAV:
+        if group_label in hide:
+            continue
         visible_items = []
         for key, label, icon, children in items:
+            if key == 'myexp' and finance:
+                continue   # the finance team has the full Expenses section under Money
             kids = []
             for clabel, url_name, module, action, *rest in children:
                 if module and not permissions.has_perm(user, module, action):

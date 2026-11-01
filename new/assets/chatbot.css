@@ -62,6 +62,9 @@
   transition: opacity .22s ease, transform .22s ease, visibility .22s;
 }
 .btx-chat-panel.is-open { opacity: 1; transform: none; visibility: visible; pointer-events: auto; }
+/* opens out of the chat icon and is squeezed back into it on close (see aimAtLauncher in chatbot.js) */
+.btx-chat-panel.is-open { animation: btxSheetIn .45s cubic-bezier(.2, .9, .25, 1); }
+.btx-chat-panel.is-sucking { animation: btxSuck .5s cubic-bezier(.55, .05, .85, .45) forwards; pointer-events: none; }
 
 .btx-chat-head {
   display: flex; align-items: center; gap: 11px; padding: 14px 14px 14px 16px; flex: none;
@@ -139,7 +142,13 @@
 
 /* ---------- phones: full screen sheet ---------- */
 @media (max-width: 520px) {
-  .btx-chat-panel { right: 0; bottom: 0; left: 0; top: 0; width: 100%; height: 100dvh; max-height: none; border-radius: 0; border: 0; }
+  /* bottom sheet: 80% of the screen, rounded top corners; opens from / is sucked into the chat icon */
+  .btx-chat-panel {
+    right: 0; bottom: 0; left: 0; top: auto; width: 100%; height: 80dvh; max-height: calc(100dvh - 96px);
+    border-radius: 24px 24px 0 0; border-bottom: 0; transform: none; opacity: 1; transition: transform .25s ease;
+  }
+  .btx-chat-head { touch-action: none; position: relative; padding-top: 20px; }
+  .btx-chat-head::before { content: ""; position: absolute; top: 7px; left: 50%; width: 38px; height: 4px; margin-left: -19px; border-radius: 4px; background: rgba(255, 255, 255, .5); }
   .btx-chat-launcher { right: max(16px, env(safe-area-inset-right, 0px) + 10px); bottom: max(84px, env(safe-area-inset-bottom, 0px) + 74px); width: 54px; height: 54px; }
   .btx-chat-launcher svg { width: 38px; height: 38px; }
   .btx-chat-hello { right: max(80px, env(safe-area-inset-right, 0px) + 70px); bottom: max(94px, env(safe-area-inset-bottom, 0px) + 84px); }
@@ -159,3 +168,166 @@
   .btx-chat-panel, .btx-chat-hello { transition: none; }
   .btx-chat-body { scroll-behavior: auto; }
 }
+
+/* ---------- mascot bee (new/assets/bee.js) ---------- */
+.btx-bee-on .btx-chat-hello { display: none !important; }
+
+.btx-bee-fly {
+  position: fixed; top: 0; left: 0; width: 96px; height: 72px; z-index: 9986; cursor: pointer; touch-action: none;
+  will-change: transform, opacity; opacity: 0; transform: translate3d(-200px, 0, 0);
+}
+.btxb { width: 100%; height: 100%; display: block; overflow: visible; }
+.btxb-wing { transform-box: view-box; transform-origin: 73px 35px; animation: btxbFlap .07s linear infinite alternate; }
+.btxb-w2 { animation-delay: -.03s; opacity: .85; }
+.btxb-legs { transform-box: view-box; transform-origin: 76px 57px; animation: btxbLegs .5s ease-in-out infinite alternate; }
+.btxb-ant { transform-box: view-box; transform-origin: 98px 38px; animation: btxbAnt 1.1s ease-in-out infinite alternate; }
+.btx-bee-fly.is-landing .btxb-wing { animation-duration: .12s; }
+@keyframes btxbFlap { from { transform: rotate(16deg) scaleY(1); } to { transform: rotate(-30deg) scaleY(.7); } }
+@keyframes btxbLegs { from { transform: rotate(-4deg); } to { transform: rotate(5deg); } }
+@keyframes btxbAnt { from { transform: rotate(-3deg); } to { transform: rotate(4deg); } }
+
+/* front view: used while hovering and for the perched bee */
+.btx-bee-fly .btxb { position: absolute; inset: 0; transition: opacity .4s ease; }
+.btx-bee-fly .btxb-front { opacity: 0; }
+.btx-bee-fly.is-look .btxb-front { opacity: 1; }
+.btx-bee-fly.is-look .btxb-side { opacity: 0; }
+.btxf-wl, .btxf-wr { transform-box: view-box; animation: btxfFlapL .07s linear infinite alternate; }
+.btxf-wl { transform-origin: 48px 52px; }
+.btxf-wr { transform-origin: 72px 52px; animation-name: btxfFlapR; }
+.btxf-head { transform-box: view-box; transform-origin: 60px 40px; animation: btxfLook 2.6s ease-in-out infinite; }
+.btxf-eyes { transform-box: view-box; transform-origin: 60px 36px; animation: btxfBlink 3.4s infinite; }
+@keyframes btxfFlapL { from { transform: rotate(10deg) scaleY(1); } to { transform: rotate(-26deg) scaleY(.7); } }
+@keyframes btxfFlapR { from { transform: rotate(-10deg) scaleY(1); } to { transform: rotate(26deg) scaleY(.7); } }
+@keyframes btxfLook {
+  0%, 100% { transform: rotate(0) translateX(0); }
+  25% { transform: rotate(-9deg) translateX(-2px); }
+  55% { transform: rotate(9deg) translateX(2px); }
+  80% { transform: rotate(-3deg) translateX(0); }
+}
+@keyframes btxfBlink { 0%, 90%, 100% { transform: scaleY(1); } 94% { transform: scaleY(.08); } }
+
+/* perched on top of the launcher, looking at the visitor */
+.btx-bee-perch {
+  position: absolute; left: 1px; top: -36px; width: 58px; height: 43.5px; pointer-events: none;
+  visibility: hidden; animation: btxbSit 3.2s ease-in-out infinite;
+}
+.btx-bee-perch.is-visible { visibility: visible; }
+.btx-chat-launcher .btx-bee-perch .btxb { width: 100%; height: 100%; }
+.btx-bee-perch .btxf-wl, .btx-bee-perch .btxf-wr { animation: btxfRestL 6s ease-in-out infinite; }
+.btx-bee-perch .btxf-wr { animation-name: btxfRestR; }
+.btx-bee-perch.is-landed .btxf-wl { animation: btxfFlapL .09s linear infinite alternate; }
+.btx-bee-perch.is-landed .btxf-wr { animation: btxfFlapR .09s linear infinite alternate; }
+@keyframes btxbSit { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-1.6px) rotate(1.2deg); } }
+@keyframes btxfRestL {
+  0%, 78%, 100% { transform: rotate(-22deg) scaleY(.85); }
+  82% { transform: rotate(10deg) scaleY(1); } 86% { transform: rotate(-20deg) scaleY(.8); } 90% { transform: rotate(10deg) scaleY(1); }
+}
+@keyframes btxfRestR {
+  0%, 78%, 100% { transform: rotate(22deg) scaleY(.85); }
+  82% { transform: rotate(-10deg) scaleY(1); } 86% { transform: rotate(20deg) scaleY(.8); } 90% { transform: rotate(-10deg) scaleY(1); }
+}
+
+.btx-bee-bubble {
+  position: fixed; z-index: 9984;
+  right: max(92px, env(safe-area-inset-right, 0px) + 82px);
+  bottom: max(104px, env(safe-area-inset-bottom, 0px) + 94px);
+  max-width: min(250px, calc(100vw - 130px));
+  background: var(--bg-card, #131317); color: var(--text-primary, #f4f4f6);
+  border: 1px solid var(--accent-border, rgba(165, 164, 250, .3));
+  border-radius: 16px 16px 4px 16px; padding: 11px 32px 11px 14px;
+  font: 500 .9rem/1.35 var(--font-body, "Inter", system-ui, sans-serif); cursor: pointer;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .35);
+  opacity: 0; transform: translateY(8px) scale(.96); pointer-events: none;
+  transition: opacity .3s ease, transform .3s ease;
+}
+.btx-bee-bubble.is-on { opacity: 1; transform: none; pointer-events: auto; }
+.btx-bee-bubble b { color: #f5b81c; }
+.btx-bee-x {
+  position: absolute; top: 4px; right: 6px; width: 24px; height: 24px; border: 0; background: transparent;
+  color: var(--text-secondary, #9899a8); font-size: 18px; line-height: 1; cursor: pointer; border-radius: 50%;
+}
+.btx-bee-x:hover { color: var(--text-primary, #fff); }
+
+@media (max-width: 520px) {
+  .btx-bee-fly { width: 72px; height: 54px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .btxb-wing, .btxb-legs, .btxb-ant, .btxf-wl, .btxf-wr, .btxf-head, .btxf-eyes, .btx-bee-perch, .btx-bee-sheet .btxb { animation: none !important; }
+}
+
+/* once the bee has settled, the launcher's robot icon (only the icon, not the button) turns black and yellow */
+.btx-chat-launcher .bot-body, .btx-chat-launcher .bot-screen, .btx-chat-launcher .bot-accent,
+.btx-chat-launcher .bot-line, .btx-chat-launcher .bot-mouth { transition: fill .6s ease, stroke .6s ease; }
+.btx-chat-launcher.is-bee-seated .bot-body { fill: #ffc928; }
+.btx-chat-launcher.is-bee-seated .bot-screen { fill: #14100a; }
+.btx-chat-launcher.is-bee-seated .bot-accent { fill: #ffd84a; }
+.btx-chat-launcher.is-bee-seated .bot-line { stroke: #ffc928; }
+.btx-chat-launcher.is-bee-seated .bot-mouth { stroke: #ffd84a; }
+
+/* ---- easter egg: squash the bee ---- */
+.btxb-x { display: none; }
+.btx-bee-fly.is-dead .btxb-x { display: inline; }
+.btx-bee-fly.is-dead .btxb-eye { display: none; }
+.btx-bee-fly.is-dead .btxb-wing, .btx-bee-fly.is-dead .btxb-ant { animation-play-state: paused; }
+.btx-bee-fly.is-dead .btxb-legs { animation: none; transform: rotate(-35deg); }
+.btx-bee-fly.is-corpse, .btx-bee-fly.is-soul { pointer-events: none; cursor: default; }
+
+.btx-bee-splash { position: fixed; z-index: 9987; width: 0; height: 0; pointer-events: none; }
+.btx-bee-splash svg { position: absolute; left: -50px; top: -50px; width: 100px; height: 100px; animation: btxbSplat 1.6s ease-out forwards; }
+.btx-bee-splash i {
+  position: absolute; left: 0; top: 0; width: var(--s); height: var(--s); margin: calc(var(--s) / -2);
+  border-radius: 50%; background: #c1121f; animation: btxbDrop .75s cubic-bezier(.2, .7, .4, 1) forwards;
+}
+@keyframes btxbSplat { 0% { transform: scale(.2); opacity: 1; } 15% { transform: scale(1); opacity: 1; } 100% { transform: scale(1.1); opacity: 0; } }
+@keyframes btxbDrop { 0% { transform: translate(0, 0) scale(1); opacity: 1; } 70% { opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) scale(.4); opacity: 0; } }
+
+/* the soul: a pale, glowing bee with a halo (flying to the icon, then perched on it) */
+.btx-bee-fly.is-soul, .btx-bee-perch.is-soul { filter: drop-shadow(0 0 5px rgba(255, 236, 150, .9)) saturate(.6) brightness(1.25); }
+.btx-bee-perch.is-soul { opacity: .88; }
+.btx-bee-fly.is-soul::before, .btx-bee-perch.is-soul::before {
+  content: ""; position: absolute; left: 50%; top: -6%; width: 30%; height: 13%; transform: translateX(-50%);
+  border: 2px solid #ffe27a; border-radius: 50%; box-shadow: 0 0 6px #ffe27a;
+}
+
+@keyframes btxSheetIn {
+  0% { transform: scale(.04); opacity: .2; border-radius: 50px; }
+  65% { transform: scale(1.02, 1.01); opacity: 1; }
+  100% { transform: none; }
+}
+@keyframes btxSuck {
+  0% { transform: translateY(var(--dy, 0px)) scale(1); opacity: 1; }
+  35% { transform: translateY(calc(var(--dy, 0px) * .5)) scale(.52, .9); opacity: 1; border-radius: 40px; }
+  100% { transform: scale(.03); opacity: 0; border-radius: 50%; }
+}
+.btx-chat-launcher.is-gulp { animation: btxGulp .45s ease; }
+@keyframes btxGulp { 0% { transform: scale(1); } 35% { transform: scale(1.25); } 65% { transform: scale(.92); } 100% { transform: scale(1); } }
+
+/* the bee (or its soul) perched on the top edge of the chat box, wings buzzing, shaking in place */
+.btx-bee-sheet {
+  position: fixed; z-index: 9991; width: 66px; height: 49.5px; pointer-events: none;
+  /* centred above the desktop panel: panel right edge + half its 392px width - half the bee */
+  right: calc(max(22px, env(safe-area-inset-right, 0px) + 12px) + 163px);
+  bottom: calc(max(22px, env(safe-area-inset-bottom, 0px) + 12px) + min(640px, 100dvh - 44px) - 4px);
+  opacity: 0; visibility: hidden; transform: translateY(var(--sheet-dy, 0px));
+}
+.btx-chat-panel.is-open:not(.is-sucking) ~ .btx-bee-sheet.is-visible { visibility: visible; opacity: 1; transition: opacity .25s ease .3s; }
+.btx-bee-sheet .btxb { width: 100%; height: 100%; display: block; overflow: visible; animation: btxbShake .16s linear infinite alternate; }
+@media (max-width: 520px) {   /* phone: the chat is a full-width bottom sheet, so centre on the screen */
+  .btx-bee-sheet { right: auto; left: 50%; margin-left: -33px; bottom: calc(min(80dvh, 100dvh - 96px) - 4px); }
+}
+@keyframes btxbShake { from { transform: translate(-1px, .6px) rotate(-1.2deg); } to { transform: translate(1px, -.6px) rotate(1.2deg); } }
+.btx-bee-sheet.is-soul { filter: drop-shadow(0 0 5px rgba(255, 236, 150, .9)) saturate(.6) brightness(1.25); }
+.btx-bee-sheet.is-soul::before {
+  content: ""; position: absolute; left: 50%; top: -6%; width: 30%; height: 13%; transform: translateX(-50%);
+  border: 2px solid #ffe27a; border-radius: 50%; box-shadow: 0 0 6px #ffe27a;
+}
+
+/* Only animate what can be seen: the hidden view of the flying bee, the perch before it lands, the sheet bee while the chat is closed */
+.btx-bee-fly:not(.is-look) .btxf-wl, .btx-bee-fly:not(.is-look) .btxf-wr,
+.btx-bee-fly:not(.is-look) .btxf-head, .btx-bee-fly:not(.is-look) .btxf-eyes,
+.btx-bee-fly.is-look .btxb-wing, .btx-bee-fly.is-look .btxb-legs, .btx-bee-fly.is-look .btxb-ant,
+.btx-bee-perch:not(.is-visible), .btx-bee-perch:not(.is-visible) .btxf-wl, .btx-bee-perch:not(.is-visible) .btxf-wr,
+.btx-bee-perch:not(.is-visible) .btxf-head, .btx-bee-perch:not(.is-visible) .btxf-eyes,
+.btx-bee-sheet .btxb, .btx-bee-sheet .btxf-wl, .btx-bee-sheet .btxf-wr, .btx-bee-sheet .btxf-head, .btx-bee-sheet .btxf-eyes { animation-play-state: paused; }
+.btx-chat-panel.is-open ~ .btx-bee-sheet .btxb, .btx-chat-panel.is-open ~ .btx-bee-sheet .btxf-wl, .btx-chat-panel.is-open ~ .btx-bee-sheet .btxf-wr,
+.btx-chat-panel.is-open ~ .btx-bee-sheet .btxf-head, .btx-chat-panel.is-open ~ .btx-bee-sheet .btxf-eyes { animation-play-state: running; }

@@ -387,6 +387,66 @@
     if (e.target.matches('[data-bulk-all], [data-bulk-item]')) refreshBulk(scope);
   });
 
+  /* ------------------------------------------------------------ infinite scroll */
+  // Lists render page 1; the marker below the table (pagination.html) points at the next page. When it nears
+  // the viewport the next page is fetched in the background and its rows are appended, so the list simply
+  // keeps going. Filters, search and sort already live in the URL, so they carry over untouched. Pages
+  // without a table (or without JS) keep the classic pager.
+  var infinite = { io: null, busy: false };
+  function initInfinite() {
+    if (infinite.io) { infinite.io.disconnect(); infinite.io = null; }
+    var marker = document.querySelector('[data-infinite]');
+    if (!marker || !window.IntersectionObserver || !window.fetch || !window.DOMParser) return;
+    var tbody = marker.parentElement.querySelector('table.data-table > tbody');
+    if (!tbody) return;                       // not a table list: keep the classic pager
+    var classic = marker.parentElement.querySelector('[data-classic-pager]');
+    if (classic) classic.classList.add('hidden');
+    marker.classList.remove('hidden'); marker.classList.add('flex');
+    var label = marker.querySelector('[data-infinite-label]');
+    var spinner = marker.querySelector('[data-infinite-spinner]');
+    var retry = marker.querySelector('[data-infinite-retry]');
+    function summary() {
+      var total = parseInt(marker.dataset.total, 10) || 0, loaded = Math.min(parseInt(marker.dataset.loaded, 10) || 0, total);
+      label.textContent = marker.dataset.next ? 'Showing ' + loaded + ' of ' + total + ' · scroll for more'
+        : (total > 25 ? 'All ' + total + ' loaded' : '');
+      if (!marker.dataset.next && total <= 25) marker.classList.add('hidden'), marker.classList.remove('flex');
+    }
+    function load() {
+      var url = marker.dataset.next;
+      if (!url || infinite.busy) return;
+      infinite.busy = true; spinner.classList.remove('hidden'); retry.classList.add('hidden'); label.textContent = 'Loading more…';
+      fetch(url, { credentials: 'same-origin', headers: { 'X-Requested-With': 'fetch' } })
+        .then(function (r) {
+          if (!r.ok || (r.headers.get('Content-Type') || '').indexOf('text/html') !== 0 || r.redirected) throw new Error('bad');
+          return r.text();
+        })
+        .then(function (html) {
+          var doc = new DOMParser().parseFromString(html, 'text/html');
+          var rows = doc.querySelectorAll('table.data-table > tbody > tr');
+          var nextMarker = doc.querySelector('[data-infinite]');
+          if (!rows.length || !nextMarker) throw new Error('shape');
+          Array.prototype.forEach.call(rows, function (tr) { tbody.appendChild(document.importNode(tr, true)); });
+          marker.dataset.loaded = nextMarker.dataset.loaded;
+          if (nextMarker.dataset.next) marker.dataset.next = nextMarker.dataset.next; else delete marker.dataset.next;
+          infinite.busy = false; spinner.classList.add('hidden'); summary();
+          if (!marker.dataset.next) { infinite.io.disconnect(); return; }
+          infinite.io.unobserve(marker); infinite.io.observe(marker);   // re-check: the marker may still be on screen
+        })
+        .catch(function () {
+          infinite.busy = false; spinner.classList.add('hidden');
+          label.textContent = 'Could not load more.'; retry.classList.remove('hidden');
+        });
+    }
+    retry.onclick = load;
+    summary();
+    var root = document.getElementById('scroll-root');
+    infinite.io = new IntersectionObserver(function (entries) {
+      if (entries.some(function (e) { return e.isIntersecting; })) load();
+    }, { root: root || null, rootMargin: '0px 0px 600px 0px' });
+    if (marker.dataset.next) infinite.io.observe(marker);
+  }
+  document.addEventListener('crm:content-replaced', initInfinite);
+
   /* ------------------------------------------------------------ copy (2.10) */
   document.addEventListener('click', function (e) {
     var b = e.target.closest('[data-copy]');
@@ -484,6 +544,7 @@
 
   /* ------------------------------------------------------------ boot */
   function boot() {
+    initInfinite();
     Array.prototype.forEach.call(document.querySelectorAll('[data-href]'), function (el) {
       if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
     });

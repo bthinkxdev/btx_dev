@@ -1,7 +1,7 @@
 {% load crm_tags %}
 {# Search (debounced 300 ms), quick filters, filter selects, saved filters, export (Part 2.7). #}
 <div class="space-y-3 border-b border-gray-100 px-5 py-4 dark:border-gray-800">
-  <form method="get" class="flex flex-col gap-3 lg:flex-row lg:items-center" data-filter-form x-data="{ f: {% if active_filters %}true{% else %}false{% endif %} }">
+  <form method="get" class="flex flex-col gap-3 lg:flex-row lg:items-start" data-filter-form x-data="{ f: {% if active_filters %}true{% else %}false{% endif %} }">
     {% if request.GET.quick %}<input type="hidden" name="quick" value="{{ request.GET.quick }}">{% endif %}
     {% if request.GET.view %}<input type="hidden" name="view" value="{{ request.GET.view }}">{% endif %}
     {% if request.GET.sort %}<input type="hidden" name="sort" value="{{ request.GET.sort }}">{% endif %}
@@ -27,14 +27,14 @@
           {% for value, label in choices %}<option value="{{ value }}" {% if active_filters|get_item:flt.name == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
         </select>
       {% endfor %}
-      <noscript><button class="btn btn-secondary btn-sm">Apply</button></noscript>
+      <noscript><button class="btn btn-secondary">Apply</button></noscript>
     </div>
     {% endif %}
     <div class="flex flex-wrap items-center gap-2 lg:ml-auto">
-      {% if any_filter %}<a href="{{ request.path }}{% if request.GET.view %}?view={{ request.GET.view }}{% endif %}" class="btn btn-secondary btn-sm">Clear all</a>{% endif %}
+      {% if any_filter %}<a href="{{ request.path }}{% if request.GET.view %}?view={{ request.GET.view }}{% endif %}" class="btn btn-secondary">Clear all</a>{% endif %}
       {% if can_export and total %}
         <div class="relative" x-data="{ o: false }" @click.outside="o = false">
-          <button type="button" class="btn btn-secondary btn-sm" @click="o = !o">{% icon 'download' 16 %} Export</button>
+          <button type="button" class="btn btn-secondary" @click="o = !o">{% icon 'download' 16 %} Export</button>
           <div x-show="o" x-cloak class="shadow-theme-lg absolute right-0 z-99 mt-2 w-44 rounded-xl border border-gray-200 bg-white p-2 dark:border-gray-800 dark:bg-gray-900">
             <a class="menu-dropdown-item menu-dropdown-item-inactive" href="{% qs export='csv' %}">CSV ({{ total }} rows)</a>
             <a class="menu-dropdown-item menu-dropdown-item-inactive" href="{% qs export='xlsx' %}">Excel ({{ total }} rows)</a>

@@ -141,7 +141,8 @@ def followup_calendar(request):
         by_day = {d: [] for d in days}
         for fu in items:
             by_day.setdefault(timezone.localtime(fu.due_at).date(), []).append(fu)
-        ctx = {'view': 'week', 'week': [(d, by_day.get(d, [])) for d in days], 'prev_start': (start - timedelta(days=7)).isoformat(),
+        selected = today if days[0] <= today <= days[-1] else days[0]
+        ctx = {'view': 'week', 'selected_day': selected, 'week': [(d, by_day.get(d, [])) for d in days], 'prev_start': (start - timedelta(days=7)).isoformat(),
                'next_start': (start + timedelta(days=7)).isoformat(), 'start': start}
     else:
         cal = pycal.Calendar(firstweekday=0)
@@ -158,7 +159,7 @@ def followup_calendar(request):
     from .forms import assignable_users
     ctx.update({'today': today, 'owner': owner, 'owners': assignable_users(request.user)
                 if permissions.has_perm(request.user, 'leads', 'assign') else [], 'postpone_form': PostponeForm(prefix='postpone'),
-                'now': timezone.now()})
+                'complete_form': CompleteFollowUpForm(prefix='complete'), 'now': timezone.now()})
     return render(request, 'crm/leads/calendar.html', ctx)
 
 

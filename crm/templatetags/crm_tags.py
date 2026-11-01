@@ -339,3 +339,28 @@ def model_name(obj):
 @register.simple_tag
 def urlparams(**kwargs):
     return urlencode({k: v for k, v in kwargs.items() if v not in (None, '')})
+
+
+# ---------------------------------------------------------------- cache-busted static assets
+
+_asset_versions: dict = {}
+
+
+@register.simple_tag
+def asset(path):
+    """Static URL with the file's modification time as ?v=, so a changed CSS/JS file is fetched at once
+    instead of waiting for the service worker's stale-while-revalidate cache to refresh it."""
+    import os
+
+    from django.conf import settings
+    from django.contrib.staticfiles import finders
+    from django.templatetags.static import static
+    version = _asset_versions.get(path)
+    if version is None or settings.DEBUG:
+        found = finders.find(path)
+        try:
+            version = int(os.path.getmtime(found)) if isinstance(found, str) else 0
+        except OSError:
+            version = 0
+        _asset_versions[path] = version
+    return f'{static(path)}?v={version}'

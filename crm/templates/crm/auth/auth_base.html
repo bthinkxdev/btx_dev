@@ -5,7 +5,7 @@
   <title>{% block title %}Sign in{% endblock %} | BThinkX Business OS</title>
   <link rel="icon" href="{% static 'crm/images/icon-192.png' %}">
   <script>try{if(JSON.parse(localStorage.getItem('darkMode')))document.documentElement.classList.add('dark')}catch(e){}</script>
-  <link rel="stylesheet" href="{% static 'crm/css/crm.css' %}">
+  <link rel="stylesheet" href="{% asset 'crm/css/crm.css' %}">
 </head>
 <body class="bg-white dark:bg-gray-900">
   <div class="relative z-1 bg-white p-6 sm:p-0 dark:bg-gray-900">
@@ -29,7 +29,7 @@
       </div>
     </div>
   </div>
-  <script src="{% static 'crm/js/ui.js' %}"></script>
+  <script src="{% asset 'crm/js/ui.js' %}"></script>
   <script defer src="{% static 'crm/vendor/alpine.min.js' %}"></script>
 </body>
 </html>

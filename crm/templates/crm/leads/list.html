@@ -80,7 +80,7 @@
         <tr data-href="{% url 'crm:lead_detail' l.pk %}" class="hover:bg-gray-50 dark:hover:bg-white/3">
           {% if can_assign %}<td class="td mobile-hide"><input type="checkbox" class="form-checkbox-box" name="ids" value="{{ l.pk }}" form="bulk-form" data-bulk-item aria-label="Select {{ l.name }}"></td>{% endif %}
           <td class="td" data-label="Lead"><a href="{% url 'crm:lead_detail' l.pk %}" class="td-strong hover:text-brand-500">{{ l.name }}</a>{% if l.company %}<span class="block text-theme-xs text-gray-500">{{ l.company }}</span>{% endif %}</td>
-          <td class="td whitespace-nowrap" data-label="Phone">{% if l.phone %}<a href="tel:{{ l.phone }}" class="hover:text-brand-500">{{ l.phone|phone }}</a>{% else %}{{ l.email|default:"—" }}{% endif %}</td>
+          <td class="td whitespace-nowrap" data-label="Phone">{% if l.phone %}{{ l.phone|phone }}{% else %}{{ l.email|default:"—" }}{% endif %}</td>
           <td class="td" data-label="Service">{% for s in l.services.all %}{{ s.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
           <td class="td mobile-hide" data-label="Source">{{ l.source.name }}</td>
           <td class="td" data-label="Owner">{% if l.owner %}{{ l.owner|uname }}{% else %}{% badge 'overdue' 'Unassigned' %}{% endif %}</td>
@@ -96,7 +96,16 @@
           <td class="td whitespace-nowrap mobile-hide" data-label="Last interaction">{{ l.last_activity_at|ago }}</td>
           <td class="td whitespace-nowrap mobile-hide" data-label="Age">{{ l.age_days }} d</td>
           <td class="td text-right" data-label="">
-            <div class="relative inline-block text-left" x-data="{ o: false }" @click.outside="o = false">
+           <div class="flex w-full items-center gap-2 sm:w-auto">
+            {# Phone cards: the everyday actions sit right in the card; tapping anywhere else opens the lead. #}
+            <div class="grid min-w-0 flex-1 grid-cols-3 gap-2 sm:hidden">
+              {% if l.phone %}
+                <a href="tel:{{ l.phone }}" class="btn btn-secondary btn-sm min-w-0 px-2" aria-label="Call {{ l.name }}">{% icon 'phone' 16 %} Call</a>
+                <a href="https://wa.me/{{ l.phone|wa }}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm min-w-0 px-2 text-success-600" aria-label="WhatsApp {{ l.name }}">{% icon 'whatsapp' 16 %} Chat</a>
+              {% endif %}
+              <a href="{% url 'crm:lead_detail' l.pk %}?modal=schedule" class="btn btn-secondary btn-sm min-w-0 px-2 {% if not l.phone %}col-span-3{% endif %}" aria-label="Schedule follow-up for {{ l.name }}">{% icon 'calendar' 16 %} Follow-up</a>
+            </div>
+            <div class="relative inline-block shrink-0 text-left" x-data="{ o: false }" @click.outside="o = false">
               <button type="button" class="btn-icon-sm" @click="o = !o" aria-label="Actions for {{ l.name }}">{% icon 'kebab' 18 %}</button>
               <div x-show="o" x-cloak class="shadow-theme-lg absolute right-0 z-99 mt-1 w-48 rounded-xl border border-gray-200 bg-white p-2 text-left dark:border-gray-800 dark:bg-gray-900">
                 {% if l.phone %}<a class="menu-dropdown-item menu-dropdown-item-inactive" href="tel:{{ l.phone }}">{% icon 'phone' 16 %} Call</a>
@@ -107,6 +116,7 @@
                 <a class="menu-dropdown-item menu-dropdown-item-inactive" href="{% url 'crm:lead_detail' l.pk %}">{% icon 'arrow_right' 16 %} Open</a>
               </div>
             </div>
+           </div>
           </td>
         </tr>
       {% endfor %}

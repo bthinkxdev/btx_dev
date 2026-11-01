@@ -22,7 +22,7 @@
       } catch (e) {}
     })();
   </script>
-  <link rel="stylesheet" href="{% static 'crm/css/crm.css' %}">
+  <link rel="stylesheet" href="{% asset 'crm/css/crm.css' %}">
   {% block extra_head %}{% endblock %}
 </head>
 <body
@@ -69,8 +69,8 @@
   {% include "crm/partials/confirm.html" %}
   {% include "crm/partials/quick_create.html" %}
 
-  <script src="{% static 'crm/js/ui.js' %}"></script>
-  <script src="{% static 'crm/js/pwa.js' %}"></script>
+  <script src="{% asset 'crm/js/ui.js' %}"></script>
+  <script src="{% asset 'crm/js/pwa.js' %}"></script>
   {% block extra_js %}{% endblock %}
   <script defer src="{% static 'crm/vendor/alpine.min.js' %}"></script>
 </body>
