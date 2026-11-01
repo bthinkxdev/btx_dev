@@ -11,7 +11,6 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
-from django.core.files.base import ContentFile
 from django.db import transaction
 from django.db.models import Sum
 from django.urls import reverse
@@ -146,13 +145,8 @@ def issue(inv: Invoice, actor, request=None, approved: bool = False) -> Invoice:
         inv.balance = inv.grand_total
         inv.row_version += 1
         inv.save()
-        data = pdf.invoice_pdf(inv)
-        inv.pdf_sha256 = pdf.sha256(data)
-        inv.pdf_file.save(f'{inv.number.replace("/", "-")}.pdf', ContentFile(data), save=False)
-        inv.save(update_fields=['pdf_file', 'pdf_sha256'])
         posting.enqueue('invoice_issued', inv, 'issued', {'total': str(inv.grand_total)})
-        audit.log('invoice.issued', inv, actor=actor, changes={'number': inv.number, 'total': str(inv.grand_total),
-                                                               'pdf_sha256': inv.pdf_sha256})
+        audit.log('invoice.issued', inv, actor=actor, changes={'number': inv.number, 'total': str(inv.grand_total)})
         if inv.quotation_id:
             from crm.modules.quotations.services import mark_converted
             mark_converted(inv.quotation, actor, 'invoice')
@@ -161,8 +155,10 @@ def issue(inv: Invoice, actor, request=None, approved: bool = False) -> Invoice:
     return inv
 
 
-def regenerate_pdf(inv: Invoice) -> bytes:
-    """Status changes (paid/cancelled) never alter the stored issued PDF; this renders the current view."""
+def current_pdf(inv: Invoice) -> bytes:
+    """The invoice PDF is never stored: it is rendered from the live record every time, so it always shows
+    the current payments received and balance. An issued invoice's lines and totals are locked, so the
+    document itself never changes, only its payment status."""
     return pdf.invoice_pdf(inv)
 
 
@@ -170,9 +166,7 @@ def send(inv: Invoice, actor, *, to: str, cc=None, message: str = '', include_li
     from crm.models import MessageTemplate, PaymentLink
     if inv.status not in INV_OPEN + [INV_PAID]:
         raise BillingError('Only an issued invoice can be sent.')
-    inv.pdf_file.open('rb')
-    data = inv.pdf_file.read()
-    inv.pdf_file.close()
+    data = current_pdf(inv)
     link_url = ''
     if include_link:
         link = PaymentLink.objects.filter(invoice=inv, status__in=['active', 'partially_paid']).order_by('-id').first()

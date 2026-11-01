@@ -7,7 +7,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from crm.core import posting
-from crm.models import (GatewayEvent, JournalEntry, Payment, PaymentAllocation, Refund, SecurityEvent, TdsReceivable)
+from crm.models import (BankAccount, GatewayEvent, JournalEntry, Payment, PaymentAllocation, Refund, SecurityEvent, TdsReceivable)
 from crm.modules.payments import gateway
 from crm.modules.payments import services as ps
 
@@ -232,7 +232,6 @@ class InvoiceFlowTests(CrmTestCase):
         b = self.make_invoice()
         na, nb = int(a.number.rsplit('/', 1)[1]), int(b.number.rsplit('/', 1)[1])
         self.assertEqual(nb, na + 1)
-        self.assertTrue(a.pdf_sha256)
 
     def test_advance_then_invoice_adjustment(self):
         q = self.make_quotation()
@@ -308,4 +307,42 @@ class InvoiceFlowTests(CrmTestCase):
         r = self.client.get(reverse('crm:invoice_create') + f'?client={self.client_obj.pk}')
         self.assertEqual(r.status_code, 200)
         r = self.client.get(reverse('crm:invoice_pdf', args=[inv.pk]))
+        self.assertEqual(r['Content-Type'], 'application/pdf')
+
+
+class InvoicePdfAfterPaymentTests(CrmTestCase):
+    """The downloaded invoice must show payments received and the live balance, not the amount at issue."""
+
+    def test_invoice_pdf_reflects_verified_part_payment(self):
+        from unittest import mock
+
+        from crm.core import pdf
+        from crm.models import Invoice
+        from crm.modules.billing import services as bs
+        inv = self.make_invoice()
+        bank = BankAccount.objects.filter(kind='bank').first()
+        part = (inv.grand_total / 2).quantize(Decimal('0.01'))
+        p = ps.record_manual(self.u['finance'], client=self.client_obj, invoice=inv, amount=part,
+                             payment_date=inv.invoice_date, method='bank_transfer', reference_number='UTR-PART',
+                             deposit_account=bank)
+        with self.captureOnCommitCallbacks(execute=True):
+            ps.verify_manual(p, self.u['finance2'])
+        inv = Invoice.objects.get(pk=inv.pk)
+        self.assertEqual(inv.paid_amount, part)
+        self.assertEqual(inv.balance, inv.grand_total - part)
+        seen = {}
+        real = pdf._totals
+
+        def spy(doc, extra_rows=()):
+            seen['rows'] = dict(extra_rows)
+            return real(doc, extra_rows)
+        with mock.patch.object(pdf, '_totals', spy):
+            fresh = bs.current_pdf(inv)
+        self.assertTrue(fresh.startswith(b'%PDF'))
+        self.assertFalse(inv.pdf_file)               # nothing is stored on disk
+        self.assertEqual(seen['rows']['Payments received'], -part)
+        self.assertEqual(seen['rows']['Amount due'], inv.grand_total - part)
+        self.login('owner')
+        r = self.client.get(reverse('crm:invoice_pdf', args=[inv.pk]) + '?download=1')
+        self.assertEqual(r.status_code, 200)
         self.assertEqual(r['Content-Type'], 'application/pdf')

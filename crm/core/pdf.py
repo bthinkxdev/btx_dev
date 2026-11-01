@@ -281,7 +281,17 @@ def invoice_pdf(inv) -> bytes:
     extra = []
     if inv.advance_adjusted:
         extra.append(('Advance adjusted', -inv.advance_adjusted))
-    if inv.tds_expected:
+    if not draft:
+        # What has actually happened to the invoice since it was issued.
+        if inv.paid_amount:
+            extra.append(('Payments received', -inv.paid_amount))
+        if inv.tds_withheld:
+            extra.append(('TDS deducted by customer', -inv.tds_withheld))
+        if inv.credit_noted:
+            extra.append(('Credit notes', -inv.credit_noted))
+        if inv.written_off:
+            extra.append(('Written off', -inv.written_off))
+    if inv.tds_expected and (draft or inv.balance):
         extra.append(('TDS expected', -inv.tds_expected))
     if extra or inv.status != 'draft':
         extra.append(('Amount due', inv.balance if inv.status != 'draft' else inv.grand_total - inv.advance_adjusted - inv.tds_expected))
@@ -298,8 +308,8 @@ def invoice_pdf(inv) -> bytes:
                        style=[('VALIGN', (0, 0), (-1, -1), 'TOP'), ('LEFTPADDING', (0, 0), (-1, -1), 0)]))
     if inv.irn:
         story += [_p(f'IRN: {inv.irn}', 'small')]
-    return _build(story, 'DRAFT' if draft else ('CANCELLED' if inv.status == 'cancelled' else ''),
-                  f'{company.legal_name} · {title.title()} {inv.display_number}')
+    mark = 'DRAFT' if draft else ('CANCELLED' if inv.status == 'cancelled' else ('PAID' if inv.status == 'paid' else ''))
+    return _build(story, mark, f'{company.legal_name} · {title.title()} {inv.display_number}')
 
 
 def credit_note_pdf(cn) -> bytes:

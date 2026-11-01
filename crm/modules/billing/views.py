@@ -348,12 +348,7 @@ def invoice_action(request, pk, action):
 @staff_required
 def invoice_pdf_view(request, pk):
     inv = get_invoice(request, pk)
-    if inv.pdf_file:
-        inv.pdf_file.open('rb')
-        data = inv.pdf_file.read()
-        inv.pdf_file.close()
-    else:
-        data = pdf.invoice_pdf(inv)
+    data = svc.current_pdf(inv)
     resp = HttpResponse(data, content_type='application/pdf')
     disp = 'attachment' if request.GET.get('download') else 'inline'
     resp['Content-Disposition'] = f'{disp}; filename="{(inv.number or "draft-" + str(inv.pk)).replace("/", "-")}.pdf"'
