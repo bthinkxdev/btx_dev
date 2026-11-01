@@ -351,8 +351,11 @@ def payment_record(request):
         except ValidationError as exc:
             form.add_error(None, ' '.join(exc.messages))
         else:
-            messages.success(request, f'Payment of {pdf._money(p.amount)} recorded as Pending verification. '
-                                      'A different Finance user must verify it before it reduces the balance.')
+            if p.status == 'verified':
+                messages.success(request, f'Payment of {pdf._money(p.amount)} recorded and verified. Receipt {p.receipt_number} issued.')
+            else:
+                messages.success(request, f'Payment of {pdf._money(p.amount)} recorded as Pending verification. '
+                                          'A different Finance user must verify it before it reduces the balance.')
             return redirect('crm:payment_detail', pk=p.pk)
     elif request.method == 'POST':
         messages.error(request, 'Please fix the highlighted problems. Nothing was saved.')

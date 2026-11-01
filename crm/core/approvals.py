@@ -66,7 +66,7 @@ def approvers_for(req) -> list:
 def can_decide(user, req) -> tuple[bool, str]:
     if req.status != 'pending':
         return False, 'This request is no longer pending.'
-    if user.pk == req.requested_by_id:
+    if user.pk == req.requested_by_id and not permissions.is_super_admin(user):
         return False, 'You cannot approve your own request.'
     if _user_has_level(user, req.required_level, req.module):
         return True, ''

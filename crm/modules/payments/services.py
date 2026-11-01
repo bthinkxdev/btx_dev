@@ -745,6 +745,7 @@ def record_manual(actor, *, client, invoice=None, link=None, amount, payment_dat
             deposit_account=deposit_account, reference_number=reference_number).exclude(status=P_REJECTED).exists():
         raise PaymentError(f'A payment with reference {reference_number} is already recorded in this account.')
     posting.ensure_period_open(payment_date, actor)
+    self_verify = permissions.is_super_admin(actor)
     with transaction.atomic():
         p = Payment.objects.create(
             client=client, invoice=invoice, link=link, quotation=link.quotation if link and link.quotation_id else None,
@@ -757,16 +758,19 @@ def record_manual(actor, *, client, invoice=None, link=None, amount, payment_dat
         audit.log('payment.recorded', p, actor=actor, changes={'amount': str(amount), 'tds': str(tds_amount), 'method': method,
                                                                'reference': reference_number})
         url = payment_url(p)
-        transaction.on_commit(lambda: notify.notify(
-            [u for u in finance_users() if u.pk != actor.pk], f'Verify payment {pdf._money(amount)} from {client}', url=url,
-            event_type='payment_verify', level='warning'))
+        if not self_verify:
+            transaction.on_commit(lambda: notify.notify(
+                [u for u in finance_users() if u.pk != actor.pk], f'Verify payment {pdf._money(amount)} from {client}', url=url,
+                event_type='payment_verify', level='warning'))
+    if self_verify:
+        p = verify_manual(p, actor)   # a super admin's own entry is verified on the spot
     return p
 
 
 def verify_manual(payment: Payment, verifier, allocations=None) -> Payment:
     if not permissions.has_perm(verifier, 'payments', 'approve'):
         permissions.denied(verifier, 'payments', 'approve', detail='verify payment')
-    if payment.submitted_by_id == verifier.pk:
+    if payment.submitted_by_id == verifier.pk and not permissions.is_super_admin(verifier):
         audit.log('payment.verify_blocked', payment, actor=verifier, result='denied', reason='maker-checker')
         raise PaymentError('A different Finance user must verify a payment you recorded.')
     with transaction.atomic():

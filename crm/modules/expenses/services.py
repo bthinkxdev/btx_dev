@@ -140,10 +140,12 @@ def submit(e: Expense, actor, message: str = ''):
         e.status = 'submitted'
         e.submitted_at = timezone.now()
         e.save(update_fields=['status', 'submitted_at', 'total', 'payable_amount'])
-        approvals.submit('expense', e, title=f'{e.get_kind_display()} {posting_money(e.total)}: {e.description[:80]}', module='expenses',
-                         requested_by=actor, level=approval_level(e), amount=e.total,
-                         reasons=[f'{e.category} · {e.vendor or e.employee or ""}'], message=message)
+        req = approvals.submit('expense', e, title=f'{e.get_kind_display()} {posting_money(e.total)}: {e.description[:80]}',
+                               module='expenses', requested_by=actor, level=approval_level(e), amount=e.total,
+                               reasons=[f'{e.category} · {e.vendor or e.employee or ""}'], message=message)
         audit.log('expense.submitted', e, actor=actor, changes={'total': str(e.total)})
+        if permissions.is_super_admin(actor):
+            approvals.approve(req, actor, 'Auto-approved: submitted by a super admin.')
 
 
 def _approved(req, user):
@@ -151,7 +153,7 @@ def _approved(req, user):
         e = Expense.objects.select_for_update().get(pk=req.object_id)
         if e.status != 'submitted':
             return
-        if e.created_by_id == user.pk or e.employee_id == user.pk:
+        if (e.created_by_id == user.pk or e.employee_id == user.pk) and not permissions.is_super_admin(user):
             raise approvals.ApprovalError('You cannot approve your own expense.')
         posting.ensure_period_open(e.bill_date, user)
         e.number = e.number or numbering.allocate('EXP', e.bill_date)

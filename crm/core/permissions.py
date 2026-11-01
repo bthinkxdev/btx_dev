@@ -177,6 +177,12 @@ def has_role(user, *codes: str) -> bool:
     return bool(set(codes) & _load(user)['roles']) if user and user.is_authenticated else False
 
 
+def is_super_admin(user) -> bool:
+    """The business owner / Django superuser. May approve and verify their own entries (no second person is
+    available above them); every such action is still written to the audit log under their name."""
+    return bool(user and user.is_authenticated and (user.is_superuser or has_role(user, 'owner')))
+
+
 def can_see(user, field_group: str) -> bool:
     return bool(user and user.is_authenticated and field_group in _load(user)['groups'])
 

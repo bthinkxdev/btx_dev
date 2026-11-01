@@ -225,3 +225,47 @@ class ExpenseTests(CrmTestCase):
                     reverse('crm:recurring_expense_list'), reverse('crm:tds_payable'), reverse('crm:contract_list'),
                     reverse('crm:renewals'), reverse('crm:billing_schedule')]:
             self.assertEqual(self.client.get(url).status_code, 200, url)
+
+
+class SuperAdminSelfApprovalTests(CrmTestCase):
+    """The owner/super admin approves and verifies their own entries on the spot; everyone else still cannot."""
+
+    def _expense_for(self, user):
+        cat = ExpenseCategory.objects.get(name='Office and miscellaneous')
+        e = Expense(kind='expense', category=cat, description='Owner expense', bill_date=india.today(),
+                    amount_before_tax=Decimal('800'), cgst=Decimal('0'), sgst=Decimal('0'), itc_eligibility='na',
+                    created_by=user)
+        es.recompute(e)
+        e.save()
+        return e
+
+    def test_owner_expense_is_auto_approved(self):
+        e = self._expense_for(self.u['owner'])
+        with self.captureOnCommitCallbacks(execute=True):
+            es.submit(e, self.u['owner'])
+        e.refresh_from_db()
+        self.assertEqual(e.status, 'approved')
+        self.assertEqual(e.approved_by_id, self.u['owner'].pk)
+
+    def test_finance_expense_still_waits_for_owner(self):
+        e = self._expense_for(self.u['finance'])
+        es.submit(e, self.u['finance'])
+        e.refresh_from_db()
+        self.assertEqual(e.status, 'submitted')
+        req = approvals.pending_for(e, 'expense')
+        self.assertFalse(approvals.can_decide(self.u['finance'], req)[0])
+
+    def test_owner_payment_is_verified_on_creation_but_finance_is_not(self):
+        from crm.modules.payments import services as ps
+        bank = BankAccount.objects.filter(kind='bank').first()
+        with self.captureOnCommitCallbacks(execute=True):
+            mine = ps.record_manual(self.u['owner'], client=self.client_obj, amount=Decimal('1000'), payment_date=india.today(),
+                                    method='bank_transfer', reference_number='OWN-1', deposit_account=bank)
+            theirs = ps.record_manual(self.u['finance'], client=self.client_obj, amount=Decimal('1000'),
+                                      payment_date=india.today(), method='bank_transfer', reference_number='FIN-1',
+                                      deposit_account=bank)
+        mine.refresh_from_db()
+        theirs.refresh_from_db()
+        self.assertEqual(mine.status, 'verified')
+        self.assertTrue(mine.receipt_number)
+        self.assertEqual(theirs.status, 'pending_verification')
