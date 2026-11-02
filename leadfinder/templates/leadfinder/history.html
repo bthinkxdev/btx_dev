@@ -1,0 +1,35 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Lead Finder history{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-start justify-between gap-3">
+  <div><h1 class="page-title">Lead Finder history <span class="ml-1 text-base font-normal text-gray-500">({{ page_obj.paginator.count }})</span></h1>
+    <p class="muted mt-1">Every business ever collected. New searches skip anything listed here.</p></div>
+  <div class="flex gap-2">
+    <a class="btn btn-secondary btn-sm" href="{% url 'leadfinder:lf_index' %}">← Back to Lead Finder</a>
+    <a class="btn btn-secondary btn-sm" href="{% url 'leadfinder:lf_export_history' %}?format=xlsx{% if q %}&q={{ q|urlencode }}{% endif %}{% if only_qualified %}&qualified=1{% endif %}">{% icon 'download' 16 %} Excel</a>
+    <a class="btn btn-secondary btn-sm" href="{% url 'leadfinder:lf_export_history' %}?format=pdf{% if q %}&q={{ q|urlencode }}{% endif %}{% if only_qualified %}&qualified=1{% endif %}">{% icon 'download' 16 %} PDF</a>
+  </div>
+</div>
+{% endblock %}
+{% block content %}
+<form method="get" class="card mb-6 grid grid-cols-1 gap-3 p-4 sm:grid-cols-3 sm:items-end">
+  <div class="sm:col-span-2"><label class="form-label" for="h-q">Search</label><input id="h-q" name="q" value="{{ q }}" class="form-input h-10" placeholder="Name, phone, address, category or location"></div>
+  <div class="flex items-center gap-3"><label class="flex items-center gap-2 text-sm"><input type="checkbox" name="qualified" value="1" {% if only_qualified %}checked{% endif %}> Qualified only</label>
+    <button class="btn btn-primary">Apply</button><a class="btn btn-secondary" href="{{ request.path }}">Clear</a></div>
+</form>
+<div class="card"><div class="table-wrap"><table class="data-table">
+  <thead class="border-b border-gray-100 dark:border-gray-800"><tr><th class="th">Business</th><th class="th">Category / location</th><th class="th">Phone</th><th class="th">Website</th><th class="th">Rating</th><th class="th">Score</th><th class="th">Qualified</th><th class="th">Seen</th><th class="th">First found</th></tr></thead>
+  <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for b in page_obj %}<tr>
+    <td class="td">{% if b.maps_uri %}<a class="link" href="{{ b.maps_uri }}" target="_blank" rel="noopener">{{ b.name }}</a>{% else %}{{ b.name }}{% endif %}<span class="block text-theme-xs text-gray-500">{{ b.address|truncatechars:60 }}</span></td>
+    <td class="td">{{ b.category }}<span class="block text-theme-xs text-gray-500">{{ b.search_location }}</span></td>
+    <td class="td whitespace-nowrap">{{ b.phone|default:"—" }}</td>
+    <td class="td">{% if b.website %}<a class="link" href="{{ b.website }}" target="_blank" rel="noopener">{{ b.website|truncatechars:30 }}</a>{% else %}No website{% endif %}</td>
+    <td class="td">{% if b.rating %}{{ b.rating }} ({{ b.review_count|default:0 }}){% else %}—{% endif %}</td>
+    <td class="td">{{ b.overall_score|default_if_none:"—" }}</td>
+    <td class="td">{% if b.qualified %}{% badge 'yes' 'Qualified' 'green' %}{% else %}{% badge 'no' 'Rejected' 'amber' %}{% endif %}</td>
+    <td class="td">{{ b.times_seen }}×</td>
+    <td class="td whitespace-nowrap">{{ b.first_seen_at|date:"d M Y" }}{% if b.first_run_id %}<span class="block text-theme-xs text-gray-500">run #{{ b.first_run_id }}</span>{% endif %}</td>
+  </tr>{% empty %}<tr><td class="td" colspan="9">Nothing in history yet.</td></tr>{% endfor %}</tbody></table></div>
+  {% include "crm/components/pagination.html" with paginator=page_obj.paginator %}
+</div>
+{% endblock %}

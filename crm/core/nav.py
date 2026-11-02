@@ -220,6 +220,16 @@ def build_nav(user, current_url_name: str) -> list:
             visible_items.append({'key': key, 'label': label, 'icon': icon, 'children': kids,
                                   'single': len(children) == 1,
                                   'active': any(k['active'] for k in kids) or family})
+        if group_label == 'INSIGHTS' and permissions.is_super_admin(user):
+            visible_items.append(_lead_finder_item(current_url_name))
         if visible_items:
             groups.append({'label': group_label, 'items': visible_items})
     return groups
+
+
+def _lead_finder_item(current_url_name: str) -> dict:
+    """Admin-only entry for the standalone leadfinder app (its url names all start with lf_)."""
+    kids = [{'label': 'Lead Finder', 'href': reverse('leadfinder:lf_index'), 'active': current_url_name == 'lf_index'},
+            {'label': 'Search history', 'href': reverse('leadfinder:lf_history'), 'active': current_url_name == 'lf_history'}]
+    return {'key': 'leadfinder', 'label': 'Lead Finder', 'icon': 'search', 'children': kids, 'single': False,
+            'active': (current_url_name or '').startswith('lf_')}

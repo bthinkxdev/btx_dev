@@ -10,6 +10,7 @@ from pages.sitemaps import sitemaps
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('crm/', include('crm.urls')),
+    path('leadfinder/', include('leadfinder.urls')),
     path('chat/', include('crm.modules.chatbot.public_urls')),
     path('', include('crm.mcp.django_urls')),
     path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='sitemap'),

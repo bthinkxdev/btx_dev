@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'django.contrib.humanize',
     'pages',
     'crm',
+    'leadfinder',
 ]
 
 MIDDLEWARE = [
@@ -175,6 +176,9 @@ NEWSLETTER_EMAIL_INTERVAL_SECONDS = float(
 # Google Analytics 4 (public site only — gtag.js is only injected when this is set,
 # so local/dev environments that leave it blank don't pollute real traffic data).
 GA_MEASUREMENT_ID = os.environ.get('GA_MEASUREMENT_ID', '').strip()
+
+# Google Places API key — used only by the standalone leadfinder app.
+GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY', '').strip()
 
 # Cashfree Payment Gateway — public-site offer landing pages (e.g. the Navaratri
 # offer). 'sandbox' hits sandbox.cashfree.com with test credentials; 'production'

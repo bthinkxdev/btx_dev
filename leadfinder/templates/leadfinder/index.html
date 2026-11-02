@@ -1,0 +1,173 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Lead Finder{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Lead Finder" subtitle="Find businesses on Google Maps with a weak digital presence. Results are kept in history so the same business is never collected twice. Nothing here creates CRM leads." %}{% endblock %}
+{% block content %}
+{% if not configured %}<div class="alert alert-warning mb-5"><p class="text-sm"><strong>GOOGLE_MAPS_API_KEY is not set.</strong> Add it to .env and restart the server.</p></div>{% endif %}
+
+<div class="card mb-6"><div class="card-body">
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:items-end">
+    <div><label class="form-label" for="lf-location">Location</label><input id="lf-location" class="form-input h-10" placeholder="Thiruvananthapuram" autocomplete="off"></div>
+    <div><label class="form-label" for="lf-category">Category</label><input id="lf-category" class="form-input h-10" placeholder="Boutique" autocomplete="off"></div>
+    <div><label class="form-label" for="lf-target">New businesses to find</label><input id="lf-target" type="number" min="1" max="{{ max_target }}" value="{{ default_target }}" class="form-input h-10"></div>
+    <div class="flex gap-2">
+      <button type="button" id="lf-start" class="btn btn-primary">Start search</button>
+      <button type="button" id="lf-stop" class="btn btn-secondary" disabled>Stop</button>
+    </div>
+  </div>
+  <p id="lf-error" class="mt-3 text-sm font-semibold text-error-600" hidden></p>
+  <p class="muted mt-3 text-theme-xs">Stops once the target of <em>new</em> businesses is reached. Businesses already in history ({{ history_count }}) are skipped without spending Google API calls on their details.</p>
+  <div class="mt-3 flex items-center gap-2 text-sm"><span class="muted">Status:</span><span id="lf-status" class="badge badge-grey"><span>Idle</span></span></div>
+</div></div>
+
+<div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-5">
+  <div class="card p-4"><p class="dl-label">Discovered</p><p id="lf-c-discovered" class="mt-1 text-xl font-semibold text-gray-800 dark:text-white/90">0</p></div>
+  <div class="card p-4"><p class="dl-label">New</p><p id="lf-c-new" class="mt-1 text-xl font-semibold text-gray-800 dark:text-white/90">0</p></div>
+  <div class="card p-4"><p class="dl-label">Already in history</p><p id="lf-c-duplicates" class="mt-1 text-xl font-semibold text-gray-800 dark:text-white/90">0</p></div>
+  <div class="card p-4"><p class="dl-label">Rejected</p><p id="lf-c-rejected" class="mt-1 text-xl font-semibold text-gray-800 dark:text-white/90">0</p></div>
+  <div class="card p-4"><p class="dl-label">Invalid</p><p id="lf-c-invalid" class="mt-1 text-xl font-semibold text-gray-800 dark:text-white/90">0</p></div>
+</div>
+
+<div id="lf-viewing" class="mb-3 flex flex-wrap items-center gap-3 text-sm" hidden>
+  <span>Showing results for <strong id="lf-viewing-label"></strong></span>
+  <button type="button" id="lf-back" class="btn btn-secondary btn-sm">Back to current search</button>
+</div>
+
+<div class="card mb-8">
+  <div class="card-header flex flex-wrap items-center justify-between gap-2"><h2 class="card-title">Results</h2>
+    <div id="lf-export" class="flex gap-2" hidden>
+      <a id="lf-export-xlsx" class="btn btn-secondary btn-sm" href="#">{% icon 'download' 16 %} Excel</a>
+      <a id="lf-export-pdf" class="btn btn-secondary btn-sm" href="#">{% icon 'download' 16 %} PDF</a>
+    </div></div>
+  <div class="table-wrap"><table class="data-table">
+    <thead class="border-b border-gray-100 dark:border-gray-800"><tr>
+      <th class="th">Business</th><th class="th">Phone</th><th class="th">Website</th><th class="th">Social</th>
+      <th class="th">Rating</th><th class="th">Website opp.</th><th class="th">Meta opp.</th><th class="th">Score</th><th class="th">Outcome</th>
+    </tr></thead>
+    <tbody id="lf-body" class="divide-y divide-gray-100 dark:divide-gray-800"><tr><td class="td" colspan="9">Start a search to see results here.</td></tr></tbody>
+  </table></div>
+</div>
+
+<div class="flex flex-wrap items-center justify-between gap-3">
+  <h2 class="card-title">Recent searches</h2>
+  <a class="link text-sm" href="{% url 'leadfinder:lf_history' %}">Full history ({{ history_count }}) →</a>
+</div>
+<div class="card mt-3"><div class="table-wrap"><table class="data-table">
+  <thead class="border-b border-gray-100 dark:border-gray-800"><tr><th class="th">Run</th><th class="th">Location</th><th class="th">Category</th><th class="th">Status</th><th class="th">New</th><th class="th">Duplicates</th><th class="th">Rejected</th><th class="th">Started</th><th class="th">Export</th></tr></thead>
+  <tbody class="divide-y divide-gray-100 dark:divide-gray-800">{% for run in recent_runs %}<tr>
+    <td class="td"><a href="#" class="link lf-run-link" data-run-id="{{ run.pk }}" data-run-label="Run #{{ run.pk }} — {{ run.category }} in {{ run.location }}">#{{ run.pk }}</a></td>
+    <td class="td">{{ run.location }}</td><td class="td">{{ run.category }}</td><td class="td">{% badge run.status run.get_status_display %}</td>
+    <td class="td">{{ run.new_count }}</td><td class="td">{{ run.duplicate_count }}</td><td class="td">{{ run.rejected_count }}</td>
+    <td class="td whitespace-nowrap">{{ run.started_at|date:"d M Y H:i"|default:"—" }}</td>
+    <td class="td whitespace-nowrap"><a class="link" href="{% url 'leadfinder:lf_export_run' run.pk %}?format=xlsx">Excel</a> · <a class="link" href="{% url 'leadfinder:lf_export_run' run.pk %}?format=pdf">PDF</a></td>
+  </tr>{% empty %}<tr><td class="td" colspan="9">No searches yet.</td></tr>{% endfor %}</tbody></table></div></div>
+
+<input type="hidden" id="lf-csrf" value="{{ csrf_token }}">
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var startBtn = $('lf-start'), stopBtn = $('lf-stop'), body = $('lf-body');
+  var inputs = [$('lf-location'), $('lf-category'), $('lf-target')];
+  var activeRunId = null, viewingRunId = null, lastId = 0, timer = null;
+
+  function runUrl(kind, id, extra) { return '{% url "leadfinder:lf_index" %}runs/' + id + '/' + kind + '/' + (extra || ''); }
+  function showError(m) { $('lf-error').textContent = m || ''; $('lf-error').hidden = !m; }
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function link(url, label) { return url ? '<a class="link" href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(label) + '</a>' : ''; }
+
+  var STATUS = {idle: ['Idle', 'grey'], pending: ['Starting…', 'blue'], running: ['Running', 'blue'], stopping: ['Stopping…', 'amber'],
+                stopped: ['Stopped', 'grey'], completed: ['Completed', 'green'], failed: ['Failed', 'red']};
+  function setStatus(s) { var m = STATUS[s] || [s, 'grey']; var el = $('lf-status'); el.className = 'badge badge-' + m[1]; el.innerHTML = '<span>' + esc(m[0]) + '</span>'; }
+  function setCounters(d) {
+    $('lf-c-discovered').textContent = d.discovered; $('lf-c-new').textContent = d.newCount;
+    $('lf-c-duplicates').textContent = d.duplicates; $('lf-c-rejected').textContent = d.rejected; $('lf-c-invalid').textContent = d.invalid;
+  }
+  var OPP = {very_high: 'Very high', high: 'High', medium: 'Medium', low: 'Low', unknown: '—'};
+  var OUTCOME = {new: ['New', 'badge-green'], duplicate: ['In history', 'badge-grey'], rejected: ['Rejected', 'badge-amber'], invalid: ['Invalid', 'badge-red']};
+
+  function row(r) {
+    var o = OUTCOME[r.outcome] || [r.outcome, 'badge-grey'];
+    var social = [link(r.instagram, 'Instagram'), link(r.facebook, 'Facebook')].filter(Boolean).join(' · ') || 'None found';
+    var tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td class="td">' + (r.mapsUri ? link(r.mapsUri, r.name) : esc(r.name)) + (r.category ? '<span class="block text-theme-xs text-gray-500">' + esc(r.category) + '</span>' : '') + '</td>' +
+      '<td class="td whitespace-nowrap">' + esc(r.phone || '—') + '</td>' +
+      '<td class="td">' + (r.website ? link(r.website, r.website.replace(/^https?:\/\/(www\.)?/, '').slice(0, 30)) : 'No website') + '</td>' +
+      '<td class="td">' + social + '</td>' +
+      '<td class="td">' + (r.rating != null ? r.rating + ' (' + (r.reviews || 0) + ')' : 'Not rated') + '</td>' +
+      '<td class="td">' + (OPP[r.websiteOpportunity] || '—') + '</td><td class="td">' + (OPP[r.metaOpportunity] || '—') + '</td>' +
+      '<td class="td">' + (r.overallScore != null ? r.overallScore : '—') + '</td>' +
+      '<td class="td"><span class="badge ' + o[1] + '" title="' + esc(r.reason) + '"><span>' + o[0] + '</span></span></td>';
+    return tr;
+  }
+  function empty(msg) { body.innerHTML = '<tr><td class="td" colspan="9">' + esc(msg) + '</td></tr>'; }
+  function append(items) {
+    if (!items || !items.length) return;
+    if (!body.querySelector('[data-r]') && body.firstElementChild && !body.firstElementChild.querySelector('.badge')) body.innerHTML = '';
+    items.forEach(function (r) { var tr = row(r); tr.setAttribute('data-r', r.id); body.appendChild(tr); });
+  }
+  function setExport(id) {
+    $('lf-export').hidden = !id;
+    if (id) { $('lf-export-xlsx').href = runUrl('export', id, '?format=xlsx'); $('lf-export-pdf').href = runUrl('export', id, '?format=pdf'); }
+  }
+  function setRunning(on) { startBtn.disabled = on; stopBtn.disabled = !on; inputs.forEach(function (i) { i.disabled = on; }); }
+
+  function poll() {
+    fetch(runUrl('status', activeRunId, '?after=' + lastId), {headers: {'X-Requested-With': 'XMLHttpRequest'}})
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        (d.results || []).forEach(function (r) { lastId = Math.max(lastId, r.id); });
+        if (viewingRunId === activeRunId) {
+          setCounters(d); setStatus(d.status); append(d.results);
+          if (d.status === 'failed' && d.errorMessage) showError(d.errorMessage);
+        }
+        if (['running', 'pending', 'stopping'].indexOf(d.status) >= 0) timer = setTimeout(poll, 1500); else setRunning(false);
+      })
+      .catch(function () { timer = setTimeout(poll, 1500); });
+  }
+
+  function viewRun(id, label) {
+    showError(''); viewingRunId = id; setExport(id);
+    $('lf-viewing').hidden = (id === activeRunId);
+    if (id !== activeRunId) $('lf-viewing-label').textContent = label || ('Run #' + id);
+    fetch(runUrl('status', id, '?after=0')).then(function (r) { return r.json(); }).then(function (d) {
+      if (viewingRunId !== id) return;
+      setCounters(d); setStatus(d.status); body.innerHTML = '';
+      if (d.results && d.results.length) append(d.results); else empty('No businesses recorded for this run.');
+    }).catch(function () { showError('Could not load that run.'); });
+  }
+
+  document.querySelectorAll('.lf-run-link').forEach(function (a) {
+    a.addEventListener('click', function (e) { e.preventDefault(); viewRun(parseInt(a.dataset.runId, 10), a.dataset.runLabel); });
+  });
+  $('lf-back').addEventListener('click', function () {
+    if (activeRunId) return viewRun(activeRunId);
+    viewingRunId = null; $('lf-viewing').hidden = true; setExport(null); empty('Start a search to see results here.');
+    setCounters({discovered: 0, newCount: 0, duplicates: 0, rejected: 0, invalid: 0}); setStatus('idle');
+  });
+
+  startBtn.addEventListener('click', function () {
+    showError('');
+    var location = inputs[0].value.trim(), category = inputs[1].value.trim();
+    if (!location || !category) return showError('Enter both a location and a category.');
+    setRunning(true);
+    fetch('{% url "leadfinder:lf_run_start" %}', {
+      method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRFToken': $('lf-csrf').value},
+      body: JSON.stringify({location: location, category: category, target: parseInt(inputs[2].value, 10) || {{ default_target }}}),
+    }).then(function (r) { return r.json().then(function (d) { return {ok: r.ok, d: d}; }); })
+      .then(function (res) {
+        if (!res.ok) { showError(res.d.error || 'Could not start the search.'); setRunning(false); return; }
+        activeRunId = viewingRunId = res.d.id; lastId = 0;
+        $('lf-viewing').hidden = true; body.innerHTML = ''; empty('Searching…'); setExport(activeRunId);
+        setCounters(res.d); setStatus(res.d.status); poll();
+      }).catch(function () { showError('Could not start the search.'); setRunning(false); });
+  });
+
+  stopBtn.addEventListener('click', function () {
+    if (!activeRunId) return;
+    stopBtn.disabled = true;
+    if (viewingRunId === activeRunId) setStatus('stopping');
+    fetch(runUrl('stop', activeRunId), {method: 'POST', headers: {'X-CSRFToken': $('lf-csrf').value}}).catch(function () {});
+  });
+})();
+</script>
+{% endblock %}

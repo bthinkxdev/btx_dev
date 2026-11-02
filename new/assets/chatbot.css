@@ -11,7 +11,7 @@
   background: linear-gradient(145deg, #a5a4fa, #6f78d8);
   box-shadow: 0 10px 28px rgba(111, 120, 216, .45), 0 2px 6px rgba(0, 0, 0, .3);
   display: grid; place-items: center;
-  transition: transform .2s ease, box-shadow .2s ease;
+  transition: transform .2s ease, box-shadow .2s ease, opacity .2s ease .16s, scale .45s cubic-bezier(.34, 1.56, .64, 1) .16s;
   animation: btxChatFloat 4.5s ease-in-out infinite;
 }
 .btx-chat-launcher:hover { transform: scale(1.07); box-shadow: 0 14px 34px rgba(111, 120, 216, .55), 0 2px 8px rgba(0, 0, 0, .3); }
@@ -25,7 +25,11 @@
   position: absolute; top: 2px; right: 2px; width: 14px; height: 14px; border-radius: 50%;
   background: #22c55e; border: 2px solid #fff; animation: btxPulse 2s infinite;
 }
-.btx-chat-launcher[aria-expanded="true"] { display: none; }
+/* while the chat is open the icon shrinks away; when it closes it springs back as the panel arrives */
+.btx-chat-launcher[aria-expanded="true"] {
+  opacity: 0; scale: .5; visibility: hidden; pointer-events: none;
+  transition: transform .2s ease, box-shadow .2s ease, opacity .14s ease, scale .14s ease, visibility 0s .14s;
+}
 
 /* ---------- greeting bubble ---------- */
 .btx-chat-hello {
@@ -58,13 +62,13 @@
   display: flex; flex-direction: column; overflow: hidden;
   background: var(--bg-card, #131317); border: 1px solid var(--accent-border, rgba(165, 164, 250, .25)); border-radius: 20px;
   box-shadow: 0 24px 70px rgba(0, 0, 0, .5);
-  opacity: 0; transform: translateY(16px) scale(.97); visibility: hidden; pointer-events: none;
-  transition: opacity .22s ease, transform .22s ease, visibility .22s;
+  opacity: 0; visibility: hidden; pointer-events: none;
+  backface-visibility: hidden;   /* keeps text crisp while the layer is scaled */
 }
-.btx-chat-panel.is-open { opacity: 1; transform: none; visibility: visible; pointer-events: auto; }
-/* opens out of the chat icon and is squeezed back into it on close (see aimAtLauncher in chatbot.js) */
-.btx-chat-panel.is-open { animation: btxSheetIn .45s cubic-bezier(.2, .9, .25, 1); }
-.btx-chat-panel.is-sucking { animation: btxSuck .5s cubic-bezier(.55, .05, .85, .45) forwards; pointer-events: none; }
+.btx-chat-panel.is-open { opacity: 1; visibility: visible; pointer-events: auto; }
+/* opened / closed by the Web Animations API (see openChat / closeChat in chatbot.js): promote the layer only while it moves */
+.btx-chat-panel.is-animating { will-change: transform, opacity; }
+.btx-chat-panel.is-closing { pointer-events: none; }
 
 .btx-chat-head {
   display: flex; align-items: center; gap: 11px; padding: 14px 14px 14px 16px; flex: none;
@@ -145,7 +149,7 @@
   /* bottom sheet: 80% of the screen, rounded top corners; opens from / is sucked into the chat icon */
   .btx-chat-panel {
     right: 0; bottom: 0; left: 0; top: auto; width: 100%; height: 80dvh; max-height: calc(100dvh - 96px);
-    border-radius: 24px 24px 0 0; border-bottom: 0; transform: none; opacity: 1; transition: transform .25s ease;
+    border-radius: 24px 24px 0 0; border-bottom: 0;
   }
   .btx-chat-head { touch-action: none; position: relative; padding-top: 20px; }
   .btx-chat-head::before { content: ""; position: absolute; top: 7px; left: 50%; width: 38px; height: 4px; margin-left: -19px; border-radius: 4px; background: rgba(255, 255, 255, .5); }
@@ -165,7 +169,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .btx-chat-launcher, .btx-chat-launcher .bee-look, .btx-chat-launcher .bee-antenna, .btx-chat-dot, .btx-msg, .btx-typing i { animation: none !important; }
-  .btx-chat-panel, .btx-chat-hello { transition: none; }
+  .btx-chat-hello, .btx-chat-launcher { transition: none; }
   .btx-chat-body { scroll-behavior: auto; }
 }
 
@@ -289,18 +293,6 @@
   border: 2px solid #ffe27a; border-radius: 50%; box-shadow: 0 0 6px #ffe27a;
 }
 
-@keyframes btxSheetIn {
-  0% { transform: scale(.04); opacity: .2; border-radius: 50px; }
-  65% { transform: scale(1.02, 1.01); opacity: 1; }
-  100% { transform: none; }
-}
-@keyframes btxSuck {
-  0% { transform: translateY(var(--dy, 0px)) scale(1); opacity: 1; }
-  35% { transform: translateY(calc(var(--dy, 0px) * .5)) scale(.52, .9); opacity: 1; border-radius: 40px; }
-  100% { transform: scale(.03); opacity: 0; border-radius: 50%; }
-}
-.btx-chat-launcher.is-gulp { animation: btxGulp .45s ease; }
-@keyframes btxGulp { 0% { transform: scale(1); } 35% { transform: scale(1.25); } 65% { transform: scale(.92); } 100% { transform: scale(1); } }
 
 /* the bee (or its soul) perched on the top edge of the chat box, wings buzzing, shaking in place */
 .btx-bee-sheet {
@@ -310,7 +302,7 @@
   bottom: calc(max(22px, env(safe-area-inset-bottom, 0px) + 12px) + min(640px, 100dvh - 44px) - 4px);
   opacity: 0; visibility: hidden; transform: translateY(var(--sheet-dy, 0px));
 }
-.btx-chat-panel.is-open:not(.is-sucking) ~ .btx-bee-sheet.is-visible { visibility: visible; opacity: 1; transition: opacity .25s ease .3s; }
+.btx-chat-panel.is-open:not(.is-closing) ~ .btx-bee-sheet.is-visible { visibility: visible; opacity: 1; transition: opacity .25s ease .3s; }
 .btx-bee-sheet .btxb { width: 100%; height: 100%; display: block; overflow: visible; animation: btxbShake .16s linear infinite alternate; }
 @media (max-width: 520px) {   /* phone: the chat is a full-width bottom sheet, so centre on the screen */
   .btx-bee-sheet { right: auto; left: 50%; margin-left: -33px; bottom: calc(min(80dvh, 100dvh - 96px) - 4px); }
@@ -331,3 +323,6 @@
 .btx-bee-sheet .btxb, .btx-bee-sheet .btxf-wl, .btx-bee-sheet .btxf-wr, .btx-bee-sheet .btxf-head, .btx-bee-sheet .btxf-eyes { animation-play-state: paused; }
 .btx-chat-panel.is-open ~ .btx-bee-sheet .btxb, .btx-chat-panel.is-open ~ .btx-bee-sheet .btxf-wl, .btx-chat-panel.is-open ~ .btx-bee-sheet .btxf-wr,
 .btx-chat-panel.is-open ~ .btx-bee-sheet .btxf-head, .btx-chat-panel.is-open ~ .btx-bee-sheet .btxf-eyes { animation-play-state: running; }
+
+/* the bee on the phone sheet glides back with the sheet when a drag is released without dismissing */
+.btx-chat.is-settling .btx-chat-panel.is-open ~ .btx-bee-sheet.is-visible { transition: transform .36s cubic-bezier(.32, .72, 0, 1), opacity .25s ease .3s; }

@@ -226,78 +226,118 @@
       .then(function () { btn.disabled = false; btn.textContent = 'Request a call back'; });
   }
 
-  /* The panel pops out of the chat icon and is sucked back into it when closed (all screen sizes). On phones it
-   * is a bottom sheet that can also be dragged down by its header. */
+  /* ---------- opening / closing ----------
+   * One mechanism drives everything: the Web Animations API animating transform + opacity only (compositor work,
+   * no layout or paint per frame). The panel has no CSS transitions or keyframes, so nothing can fight the
+   * animation, and requests that arrive mid-animation are queued instead of overlapping. */
   var SHEET = window.matchMedia('(max-width: 520px)');
   var REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)');
+  var EASE_OUT = 'cubic-bezier(.32, .72, 0, 1)';    // iOS-style: quick start, long soft landing
+  var EASE_IN_OUT = 'cubic-bezier(.45, 0, .2, 1)';
+  var panelAnim = null;      // the running animation, if any
+  var queued = null;         // 'open' | 'close' asked for while an animation was running
+
   function aimAtLauncher() {
     // offsetLeft/Top are layout positions, so a running scale or a drag translate can't skew the origin
     var l = els.launcher.getBoundingClientRect(), p = els.panel;
     p.style.transformOrigin = (l.left + l.width / 2 - p.offsetLeft) + 'px ' + (l.top + l.height / 2 - p.offsetTop) + 'px';
   }
 
+  /* Plays one animation. `rest` puts the panel in its final resting state *before* the animation is cancelled,
+   * so there is never a frame where the panel falls back to a different state (that was the old flicker). */
+  function playPanel(keyframes, timing, rest) {
+    var p = els.panel;
+    p.classList.add('is-animating');
+    var anim = panelAnim = p.animate(keyframes, timing);
+    anim.onfinish = function () {
+      if (rest) rest();
+      anim.cancel();
+      panelAnim = null;
+      p.classList.remove('is-animating');
+      var next = queued; queued = null;
+      if (next === 'open') openChat(); else if (next === 'close') closeChat();
+    };
+  }
+
   function openChat() {
-    if (state.open) return;
+    if (state.open) { queued = null; return; }
+    if (panelAnim) { queued = 'open'; return; }
     state.open = true;
-    if (!REDUCED.matches) aimAtLauncher();   // measure while the icon is still visible
-    els.panel.classList.add('is-open'); els.launcher.setAttribute('aria-expanded', 'true');
+    var animate = !REDUCED.matches;
+    if (animate) aimAtLauncher();   // measure while the icon is still visible
+    els.panel.classList.add('is-open');
+    els.launcher.setAttribute('aria-expanded', 'true');
     els.hello.classList.remove('is-on'); seen(true);
     track('chatbot_open');
+    if (animate) {
+      playPanel([
+        { transform: 'translateY(0px) scale(.06, .06)', opacity: 0 },
+        { transform: 'translateY(0px) scale(1, 1)', opacity: 1 }
+      ], { duration: 480, easing: EASE_OUT, fill: 'backwards' });
+    }
+    if (!state.started) typing(true);   // something is already there while the first reply loads
     start().then(function () {
       scrollDown();
-      if (window.matchMedia('(min-width: 521px)').matches) els.input.focus();
+      if (!SHEET.matches && state.open) els.input.focus({ preventScroll: true });
     });
   }
+
+  /* `dragged` = how far (px) the sheet had already been pulled down, so the close continues from there. */
   function closeChat(dragged) {
-    if (!state.open) return;
+    if (!state.open) { if (queued === 'close') queued = null; return; }
+    if (panelAnim) { queued = 'close'; return; }
     state.open = false;
-    els.launcher.setAttribute('aria-expanded', 'false');   // shows the icon again, so it can be measured as the target
-    if (!REDUCED.matches) suckIntoLauncher(dragged || 0);
-    else els.panel.classList.remove('is-open');
+    els.launcher.setAttribute('aria-expanded', 'false');   // the icon fades back in as the panel arrives
     els.launcher.focus({ preventScroll: true });
-  }
-
-  function suckIntoLauncher(dy) {
     var p = els.panel;
+    p.classList.add('is-closing');
+    var rest = function () { p.classList.remove('is-open', 'is-closing'); };
+    if (REDUCED.matches) { rest(); return; }
     aimAtLauncher();
-    p.style.setProperty('--dy', dy + 'px');
-    p.style.transform = '';
-    p.classList.add('is-sucking');
-    p.addEventListener('animationend', function done(e) {
-      if (e.target !== p) return;
-      p.removeEventListener('animationend', done);
-      p.classList.remove('is-open', 'is-sucking');
-      els.launcher.classList.add('is-gulp');
-      setTimeout(function () { els.launcher.classList.remove('is-gulp'); }, 500);
-    });
+    var dy = dragged || 0;
+    playPanel([
+      { transform: 'translateY(' + dy + 'px) scale(1, 1)', opacity: 1 },
+      { transform: 'translateY(' + dy * 0.4 + 'px) scale(.62, .9)', opacity: 1, offset: 0.4 },   // the squeeze
+      { transform: 'translateY(0px) scale(.05, .05)', opacity: 0 }
+    ], { duration: 440, easing: EASE_IN_OUT, fill: 'forwards' }, rest);
   }
 
-  /* Drag the header down to dismiss: the sheet follows the finger, then either snaps back or is sucked away. */
+  /* Phones: drag the header down to dismiss. The sheet follows the finger (with resistance when pulled up),
+   * then either springs back or, if pulled far enough / flicked, is squeezed into the icon. */
   function initSheetDrag() {
     var head = els.panel.querySelector('.btx-chat-head');
-    var startY = 0, startT = 0, dy = 0, dragging = false;
+    var startY = 0, lastY = 0, lastT = 0, vel = 0, dy = 0, dragging = false;
     function follow(offset) {
-      els.panel.style.transform = offset ? 'translateY(' + offset + 'px)' : '';
-      els.root.style.setProperty('--sheet-dy', offset + 'px');   // the bee on top of the sheet rides along
+      els.panel.style.transform = offset ? 'translateY(' + offset.toFixed(1) + 'px)' : '';
+      els.root.style.setProperty('--sheet-dy', offset.toFixed(1) + 'px');   // the bee on top of the sheet rides along
     }
     head.addEventListener('pointerdown', function (e) {
-      if (!SHEET.matches || e.target.closest('a, button')) return;
-      dragging = true; dy = 0; startY = e.clientY; startT = e.timeStamp;
+      if (!SHEET.matches || panelAnim || !state.open || e.target.closest('a, button')) return;
+      dragging = true; dy = 0; vel = 0; startY = lastY = e.clientY; lastT = e.timeStamp;
       head.setPointerCapture(e.pointerId);
-      els.panel.style.transition = 'none';
     });
     head.addEventListener('pointermove', function (e) {
       if (!dragging) return;
-      dy = Math.max(0, e.clientY - startY);
+      var raw = e.clientY - startY;
+      dy = raw >= 0 ? raw : -Math.min(24, Math.sqrt(-raw) * 2.5);   // rubber band upwards
+      var dt = e.timeStamp - lastT;
+      if (dt > 0) vel = vel * 0.5 + ((e.clientY - lastY) / dt) * 0.5;   // px/ms, smoothed
+      lastY = e.clientY; lastT = e.timeStamp;
       follow(dy);
     });
-    function release(e) {
+    function release() {
       if (!dragging) return;
       dragging = false;
-      els.panel.style.transition = '';
-      var flick = dy / Math.max(1, e.timeStamp - startT) > 0.6;
-      if (dy > 90 || (dy > 30 && flick)) { els.root.style.setProperty('--sheet-dy', '0px'); closeChat(dy); }
-      else follow(0);
+      if (dy > 110 || (dy > 24 && vel > 0.5)) {
+        els.root.style.setProperty('--sheet-dy', '0px');
+        closeChat(dy);
+      } else {
+        var from = dy;
+        els.root.classList.add('is-settling');            // lets the bee glide back with the sheet
+        follow(0);
+        playPanel([{ transform: 'translateY(' + from + 'px)' }, { transform: 'translateY(0px)' }],
+          { duration: 360, easing: EASE_OUT, fill: 'backwards' }, function () { els.root.classList.remove('is-settling'); });
+      }
     }
     head.addEventListener('pointerup', release);
     head.addEventListener('pointercancel', release);
