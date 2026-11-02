@@ -64,10 +64,10 @@
     <td class="td whitespace-nowrap"><a class="link" href="{% url 'leadfinder:lf_export_run' run.pk %}?format=xlsx">Excel</a> · <a class="link" href="{% url 'leadfinder:lf_export_run' run.pk %}?format=pdf">PDF</a></td>
   </tr>{% empty %}<tr><td class="td" colspan="9">No searches yet.</td></tr>{% endfor %}</tbody></table></div></div>
 
-<div class="card mt-8"><div class="card-header"><h2 class="card-title">Excluded brands</h2></div><div class="card-body">
-  <p class="muted mb-3 text-theme-xs">Large chains and corporates to skip. A brand matches when its name appears as whole words in a business name (e.g. "Reliance" also skips "Reliance Trends – Kowdiar").</p>
+<div class="card mt-8"><div class="card-header"><h2 class="card-title">Excluded brands <span class="ml-1 text-base font-normal text-gray-500">({{ brands|length }})</span></h2></div><div class="card-body">
+  <p class="muted mb-3 text-theme-xs">Large chains and corporates to skip. Separate several brands with commas — each is saved and listed on its own. A brand matches when its name appears as whole words in a business name (e.g. "Reliance" also skips "Reliance Trends – Kowdiar").</p>
   <form method="post" action="{% url 'leadfinder:lf_brand_add' %}" class="mb-4 flex flex-wrap gap-2">{% csrf_token %}
-    <input name="name" class="form-input h-10 max-w-xs" placeholder="Brand name" maxlength="150" required>
+    <input name="name" class="form-input h-10 max-w-xs" placeholder="Reliance, Lulu, Pothys" maxlength="1000" required>
     <button class="btn btn-primary">Exclude brand</button></form>
   <div class="flex flex-wrap gap-2">{% for b in brands %}
     <form method="post" action="{% url 'leadfinder:lf_brand_remove' b.pk %}" class="inline">{% csrf_token %}<span class="badge badge-grey"><span>{{ b.name }}</span></span>

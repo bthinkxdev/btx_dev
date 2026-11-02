@@ -184,16 +184,26 @@ def export_history(request):
 @admin_only
 @require_http_methods(['POST'])
 def brand_add(request):
-    name = (request.POST.get('name') or '').strip()[:150]
-    key = extraction.name_key(name)
-    if not key:
-        messages.error(request, 'Enter a brand name.')
-    elif BlockedBrand.objects.filter(name_key=key).exists():
-        messages.info(request, f'"{name}" is already excluded.')
-    else:
-        BlockedBrand.objects.create(
-            name=name, name_key=key, added_by_name=request.user.get_full_name() or request.user.get_username())
-        messages.success(request, f'"{name}" will be skipped in future searches.')
+    """Accepts one brand or several separated by commas; each becomes its own excluded brand."""
+    who = request.user.get_full_name() or request.user.get_username()
+    added, existing, seen = [], [], set()
+    for raw in (request.POST.get('name') or '').split(','):
+        name = ' '.join(raw.split())[:150]
+        key = extraction.name_key(name)
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        if BlockedBrand.objects.filter(name_key=key).exists():
+            existing.append(name)
+        else:
+            BlockedBrand.objects.create(name=name, name_key=key, added_by_name=who)
+            added.append(name)
+    if added:
+        messages.success(request, f'Excluded {len(added)} brand{"s" if len(added) != 1 else ""}: {", ".join(added)}.')
+    if existing:
+        messages.info(request, f'Already excluded: {", ".join(existing)}.')
+    if not added and not existing:
+        messages.error(request, 'Enter at least one brand name.')
     return redirect('leadfinder:lf_index')
 
 
