@@ -16,13 +16,16 @@ from django.db import IntegrityError, close_old_connections, transaction
 from django.db.models import F
 from django.utils import timezone
 
-from ..models import Business, RunResult, SearchRun
+from ..models import BlockedBrand, Business, RunResult, SearchRun
 from . import google_places, lead_qualification, online_presence, website_check
 
 logger = logging.getLogger(__name__)
 
 # Hard ceiling on candidates scanned in one run, independent of the target.
 MAX_CANDIDATES_PER_RUN = 200
+
+# A brand seen at this many locations (in history, including this one) is treated as a chain.
+CHAIN_LOCATION_THRESHOLD = 3
 MAX_TARGET_COUNT = 200
 DEFAULT_TARGET_COUNT = 50
 
@@ -39,6 +42,9 @@ _QUERY_VARIATION_TEMPLATES = (
 )
 
 _NON_DIGITS = re.compile(r'\D')
+_BRANCH_SPLIT = re.compile(r'\s[-–—|:]\s|,|\(')   # "Pothys - Kowdiar" / "Lulu, Mall" / "Zudio (Trivandrum)"
+_NON_ALNUM = re.compile(r'[^a-z0-9]+')
+_BRANCH_WORDS = {'branch', 'showroom', 'store', 'outlet', 'shop', 'the'}
 
 
 def _query_variations(category: str, location: str) -> list[str]:
@@ -52,6 +58,24 @@ def _query_variations(category: str, location: str) -> list[str]:
     return queries
 
 
+def name_key(name: str) -> str:
+    """Brand-level key: lowercase, branch/location suffix and filler words removed."""
+    base = _BRANCH_SPLIT.split((name or '').lower(), maxsplit=1)[0]
+    words = [w for w in _NON_ALNUM.sub(' ', base).split() if w not in _BRANCH_WORDS]
+    return ' '.join(words)
+
+
+def _blocked_brand(key: str):
+    """The blocklisted brand whose words appear (as whole words) in this business name key, if any."""
+    if not key:
+        return None
+    padded = f' {key} '
+    for brand in BlockedBrand.objects.all():
+        if f' {brand.name_key} ' in padded:
+            return brand
+    return None
+
+
 def phone_key(phone: str) -> str:
     digits = _NON_DIGITS.sub('', phone or '')
     return digits[-10:] if len(digits) >= 7 else ''
@@ -61,14 +85,22 @@ def has_active_run() -> bool:
     return SearchRun.objects.filter(status__in=SearchRun.ACTIVE_STATUSES).exists()
 
 
-def start_run(*, location: str, category: str, target_count, user) -> SearchRun:
+def start_run(*, location: str, category: str, target_count, user, min_reviews=None, max_reviews=None) -> SearchRun:
     try:
         target = int(target_count) if target_count else DEFAULT_TARGET_COUNT
     except (TypeError, ValueError):
         target = DEFAULT_TARGET_COUNT
     target = max(1, min(target, MAX_TARGET_COUNT))
 
+    def _opt(v, default):
+        try:
+            return int(v) if v not in (None, '') else default
+        except (TypeError, ValueError):
+            return default
+
     run = SearchRun.objects.create(
+        min_reviews=max(_opt(min_reviews, 3), 0),
+        max_reviews=(_opt(max_reviews, 500) or None),   # 0 / blank-after-default means no ceiling
         location=(location or '').strip(), category=(category or '').strip(), target_count=target,
         created_by_id=getattr(user, 'pk', None),
         created_by_name=(user.get_full_name() or user.get_username()) if user else '',
@@ -124,7 +156,9 @@ def _save_business(run, candidate, details, website_result, social_result, evalu
     phone = details.get('nationalPhoneNumber') or details.get('internationalPhoneNumber') or ''
     fields = dict(
         phone_key=phone_key(phone), name=(details.get('name') or candidate.get('name') or 'Unnamed business')[:255],
-        category=run.category, search_location=run.location, address=(details.get('address') or '')[:500],
+        name_key=name_key(details.get('name') or candidate.get('name') or '')[:255],
+        category=run.category, search_location=run.location,
+        address=(details.get('address') or candidate.get('address') or '')[:500],
         phone=phone[:50], website=(details.get('website') or '')[:500], maps_uri=(details.get('mapsUri') or '')[:500],
         primary_type=(details.get('primaryType') or candidate.get('primaryType') or '')[:100],
         rating=details.get('rating'), review_count=details.get('userRatingCount'),
@@ -150,6 +184,15 @@ def _save_business(run, candidate, details, website_result, social_result, evalu
         return None  # another thread stored it first — treat as a duplicate
 
 
+def _reject(run, candidate, details, reason):
+    """Store a screened-out business in history (so it is never re-fetched) and record the rejection."""
+    evaluation = {'qualified': False, 'reason': reason}
+    business = _save_business(run, candidate, details, {}, {}, evaluation)
+    _record(run, RunResult.Outcome.REJECTED, name=(business.name if business else candidate.get('name', '')),
+            business=business, reason=reason)
+    _bump(run, 'discovered_count', 'rejected_count')
+
+
 def _process_candidate(run, candidate) -> None:
     place_id = (candidate.get('placeId') or '').strip()
     if not place_id:
@@ -163,6 +206,18 @@ def _process_candidate(run, candidate) -> None:
         _record(run, RunResult.Outcome.DUPLICATE, name=existing.name, business=existing, reason=reason)
         _bump(run, 'discovered_count', 'duplicate_count')
         return
+
+    # Size screening, before spending a details call: excluded brands, then chains.
+    key = name_key(candidate.get('name', ''))
+    brand = _blocked_brand(key)
+    if brand is not None:
+        _reject(run, candidate, {}, f'Excluded brand: {brand.name}.')
+        return
+    if key:
+        seen_locations = Business.objects.filter(name_key=key).count() + 1
+        if seen_locations >= CHAIN_LOCATION_THRESHOLD:
+            _reject(run, candidate, {}, f'Chain: "{key}" seen at {seen_locations} locations.')
+            return
 
     try:
         details = google_places.get_place_details(place_id)
@@ -181,6 +236,14 @@ def _process_candidate(run, candidate) -> None:
         _record(run, RunResult.Outcome.DUPLICATE, name=twin.name, business=twin,
                 reason='Same phone number as a business already in history.')
         _bump(run, 'discovered_count', 'duplicate_count')
+        return
+
+    reviews = details.get('userRatingCount') or 0
+    if run.max_reviews and reviews > run.max_reviews:
+        _reject(run, candidate, details, f'Too large: {reviews} reviews (limit {run.max_reviews}).')
+        return
+    if reviews < run.min_reviews:
+        _reject(run, candidate, details, f'Too few reviews: {reviews} (minimum {run.min_reviews}).')
         return
 
     website_result = website_check.check_website(details.get('website') or '')

@@ -10,13 +10,14 @@ from functools import wraps
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.http import Http404, HttpResponse, HttpResponseForbidden, JsonResponse
-from django.shortcuts import get_object_or_404, render
+from django.contrib import messages
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.text import slugify
 from django.views.decorators.http import require_http_methods
 
 from crm.core.permissions import is_super_admin
 
-from .models import Business, RunResult, SearchRun
+from .models import BlockedBrand, Business, RunResult, SearchRun
 from .services import export, extraction, google_places
 
 
@@ -57,7 +58,8 @@ def _run_json(run: SearchRun) -> dict:
         'id': run.pk, 'status': run.status, 'location': run.location, 'category': run.category,
         'discovered': run.discovered_count, 'newCount': run.new_count, 'duplicates': run.duplicate_count,
         'rejected': run.rejected_count, 'invalid': run.invalid_count, 'target': run.target_count,
-        'remaining': run.remaining_target, 'errorMessage': run.error_message,
+        'remaining': run.remaining_target, 'minReviews': run.min_reviews, 'maxReviews': run.max_reviews,
+        'errorMessage': run.error_message,
     }
 
 
@@ -69,6 +71,7 @@ def index(request):
         'max_target': extraction.MAX_TARGET_COUNT,
         'history_count': Business.objects.count(),
         'configured': google_places.is_configured(),
+        'brands': BlockedBrand.objects.all(),
     })
 
 
@@ -88,7 +91,8 @@ def run_start(request):
         return JsonResponse({'error': 'GOOGLE_MAPS_API_KEY is not configured.'}, status=503)
     if extraction.has_active_run():
         return JsonResponse({'error': 'A search is already in progress.'}, status=409)
-    run = extraction.start_run(location=location, category=category, target_count=target, user=request.user)
+    run = extraction.start_run(location=location, category=category, target_count=target, user=request.user,
+                               min_reviews=body.get('min_reviews'), max_reviews=body.get('max_reviews'))
     return JsonResponse(_run_json(run))
 
 
@@ -175,3 +179,28 @@ def export_history(request):
         businesses = businesses.filter(Q(name__icontains=q) | Q(phone__icontains=q) | Q(address__icontains=q)
                                        | Q(category__icontains=q) | Q(search_location__icontains=q))
     return _export_response(request, businesses.order_by('-id'), 'Lead Finder — full history', 'leadfinder-history')
+
+
+@admin_only
+@require_http_methods(['POST'])
+def brand_add(request):
+    name = (request.POST.get('name') or '').strip()[:150]
+    key = extraction.name_key(name)
+    if not key:
+        messages.error(request, 'Enter a brand name.')
+    elif BlockedBrand.objects.filter(name_key=key).exists():
+        messages.info(request, f'"{name}" is already excluded.')
+    else:
+        BlockedBrand.objects.create(
+            name=name, name_key=key, added_by_name=request.user.get_full_name() or request.user.get_username())
+        messages.success(request, f'"{name}" will be skipped in future searches.')
+    return redirect('leadfinder:lf_index')
+
+
+@admin_only
+@require_http_methods(['POST'])
+def brand_remove(request, pk):
+    brand = get_object_or_404(BlockedBrand, pk=pk)
+    brand.delete()
+    messages.success(request, f'"{brand.name}" removed from the excluded brands.')
+    return redirect('leadfinder:lf_index')

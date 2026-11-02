@@ -19,6 +19,9 @@ class SearchRun(models.Model):
     location = models.CharField(max_length=150)
     category = models.CharField(max_length=150)
     target_count = models.PositiveIntegerField(default=50)
+    min_reviews = models.PositiveIntegerField(default=3, help_text='Skip listings with fewer reviews (dead/new listings).')
+    max_reviews = models.PositiveIntegerField(null=True, blank=True, default=500,
+                                              help_text='Skip listings with more reviews (large businesses). Blank = no ceiling.')
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING, db_index=True)
     stop_requested = models.BooleanField(default=False)
 
@@ -61,6 +64,8 @@ class Business(models.Model):
     phone_key = models.CharField(max_length=15, blank=True, db_index=True,
                                  help_text='Last 10 digits of the phone number, used to catch the same business under a different place id.')
     name = models.CharField(max_length=255)
+    name_key = models.CharField(max_length=255, blank=True, db_index=True,
+                                help_text='Normalised name with branch suffixes removed; same key = same brand (chain detection).')
     category = models.CharField(max_length=150, blank=True)
     search_location = models.CharField(max_length=150, blank=True)
     address = models.CharField(max_length=500, blank=True)
@@ -119,3 +124,17 @@ class RunResult(models.Model):
 
     class Meta:
         ordering = ['id']
+
+
+class BlockedBrand(models.Model):
+    """Brands (large chains/corporates) the finder never collects. Matched against the business name."""
+    name = models.CharField(max_length=150)
+    name_key = models.CharField(max_length=150, unique=True)
+    added_by_name = models.CharField(max_length=150, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name

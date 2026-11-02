@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from .models import Business, RunResult, SearchRun
+from .models import BlockedBrand, Business, RunResult, SearchRun
 from .services import extraction
 
 DETAILS = {
@@ -84,3 +84,65 @@ class LeadFinderTests(TestCase):
         before = Lead.objects.count()
         self._run()
         self.assertEqual(Lead.objects.count(), before)
+
+
+def _d(pid, name, phone, reviews):
+    return {'placeId': pid, 'name': name, 'address': 'x', 'nationalPhoneNumber': phone, 'internationalPhoneNumber': '',
+            'rating': 4.2, 'userRatingCount': reviews, 'website': '', 'businessStatus': 'OPERATIONAL',
+            'primaryType': '', 'mapsUri': ''}
+
+
+class SizeScreeningTests(TestCase):
+    def _run(self, details, **kw):
+        def page(query, page_token=''):
+            return {'results': [{'placeId': k, 'name': v['name']} for k, v in details.items()], 'nextPageToken': ''}
+        fetch = mock.Mock(side_effect=lambda pid: details[pid])
+        run = SearchRun.objects.create(location='TVM', category='Shop', target_count=50, **kw)
+        with mock.patch('leadfinder.services.extraction.time.sleep'),                 mock.patch('leadfinder.services.google_places.search_text_page', side_effect=page),                 mock.patch('leadfinder.services.google_places.get_place_details', fetch):
+            extraction._run(run.pk)
+        run.refresh_from_db()
+        return run, fetch
+
+    def test_review_range(self):
+        run, _ = self._run({'a': _d('a', 'Small Shop', '9447000001', 40), 'b': _d('b', 'Giant Mart', '9447000002', 4200),
+                            'c': _d('c', 'Ghost Shop', '9447000003', 1)})
+        self.assertEqual((run.new_count, run.rejected_count), (1, 2))
+        self.assertIn('Too large', RunResult.objects.get(run=run, name='Giant Mart').reason)
+        self.assertIn('Too few', RunResult.objects.get(run=run, name='Ghost Shop').reason)
+
+    def test_no_ceiling_when_max_is_none(self):
+        run, _ = self._run({'b': _d('b', 'Giant Mart', '9447000002', 4200)}, max_reviews=None)
+        self.assertEqual(run.new_count, 1)
+
+    def test_blocked_brand_skips_details_call(self):
+        BlockedBrand.objects.create(name='Reliance', name_key='reliance')
+        run, fetch = self._run({'a': _d('a', 'Reliance Trends - Kowdiar', '9447000001', 40),
+                                'b': _d('b', 'Reliancer Tailors', '9447000002', 40)})
+        fetch.assert_called_once_with('b')   # whole-word match: "Reliancer" is not "Reliance"
+        self.assertEqual(run.new_count, 1)
+        self.assertIn('Excluded brand', RunResult.objects.get(run=run, name='Reliance Trends - Kowdiar').reason)
+
+    def test_chain_detected_at_third_location(self):
+        run, fetch = self._run({'a': _d('a', 'Zudio - Kowdiar', '9447000001', 40), 'b': _d('b', 'Zudio - Pattom', '9447000002', 40),
+                                'c': _d('c', 'Zudio (Technopark)', '9447000003', 40), 'd': _d('d', 'Zudio, Vellayambalam', '9447000004', 40)})
+        self.assertEqual(run.new_count, 2)
+        self.assertEqual(fetch.call_count, 2)
+        self.assertEqual(Business.objects.filter(name_key='zudio').count(), 4)
+        self.assertEqual(RunResult.objects.filter(run=run, reason__startswith='Chain').count(), 2)
+
+    def test_name_key(self):
+        self.assertEqual(extraction.name_key('The Pothys - Kowdiar Branch'), 'pothys')
+        self.assertEqual(extraction.name_key('Lulu Mall, Edappally'), 'lulu mall')
+
+    def test_brand_admin_views(self):
+        User = get_user_model()
+        admin = User.objects.create_superuser('boss2', 'b2@x.com', 'pw')
+        self.client.force_login(admin)
+        self.client.post(reverse('leadfinder:lf_brand_add'), {'name': 'Lulu Mall'})
+        brand = BlockedBrand.objects.get()
+        self.assertEqual(brand.name_key, 'lulu mall')
+        self.client.post(reverse('leadfinder:lf_brand_remove', args=[brand.pk]))
+        self.assertFalse(BlockedBrand.objects.exists())
+        staff = User.objects.create_user('st2', 's2@x.com', 'pw')
+        self.client.force_login(staff)
+        self.assertEqual(self.client.post(reverse('leadfinder:lf_brand_add'), {'name': 'X'}).status_code, 403)

@@ -11,5 +11,7 @@ urlpatterns = [
     path('runs/<int:run_id>/status/', views.run_status, name='lf_run_status'),
     path('runs/<int:run_id>/export/', views.export_run, name='lf_export_run'),
     path('history/', views.history, name='lf_history'),
+    path('brands/add/', views.brand_add, name='lf_brand_add'),
+    path('brands/<int:pk>/remove/', views.brand_remove, name='lf_brand_remove'),
     path('history/export/', views.export_history, name='lf_export_history'),
 ]
