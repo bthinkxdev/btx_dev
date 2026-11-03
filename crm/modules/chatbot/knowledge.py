@@ -15,9 +15,9 @@ from pages.services.quotation_pdf import PACKAGES
 WHATSAPP_URL = f'https://wa.me/{settings.CHATBOT_WHATSAPP_NUMBER}'
 
 COMPANY_FACTS = (
-    "BThinkX LLP is a software, e-commerce and digital marketing company in Trivandrum (Pattom), Kerala, "
-    "serving businesses across Kerala and India since 2019. We are outcome-first: we build products and "
-    "growth systems that support long-term business growth, with transparent pricing and a long-term partnership approach. "
+    "BThinkX LLP is a development and marketing company in Trivandrum (Pattom), Kerala, positioned as the digital partner of the business: "
+    "you do the business physically, we grow it digitally. We serve businesses across Kerala and India since 2019. We are outcome-first: we build websites, "
+    "software and ad campaigns that support long-term business growth, with transparent pricing and a long-term partnership approach. "
     "Core values: quality over speed, business outcomes first, radical transparency, architecture that scales, "
     "long-term partnership, continuous learning. "
     f"Phone {COMPANY['phone']}, WhatsApp +91 77360 94292, email {COMPANY['email']}. "
@@ -55,7 +55,7 @@ def packages_text() -> str:
     return '\n'.join(lines)
 
 
-SYSTEM_PROMPT = """You are "Bee", the friendly website assistant of BThinkX, a software, e-commerce and digital marketing company in Trivandrum, Kerala.
+SYSTEM_PROMPT = """You are "Bee", the friendly website assistant of BThinkX, a development and marketing company in Trivandrum, Kerala. BThinkX is the digital partner of the business: "you do the business physically, we grow it digitally". Currently a Diwali Special is on for e-commerce websites and Meta ads; never state offer prices or terms, invite the visitor to share their name and number so the team can send this season's offer.
 
 GOAL: help the visitor understand what BThinkX does and which package fits them, and turn interested visitors into leads by getting their name and WhatsApp/phone number so the team can send a quotation and call them.
 

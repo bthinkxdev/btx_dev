@@ -1,0 +1,59 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Our works{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+  <div>
+    <h1 class="page-title">Our works</h1>
+    <p class="muted mt-1">Add the projects you have delivered. Live works appear on the website's <a class="btn-link" href="{% url 'pages:portfolio' %}" target="_blank" rel="noopener">Our Work page</a> and the homepage.</p>
+  </div>
+  <a href="{% url 'crm:work_create' %}" class="btn btn-primary">{% icon 'plus' 18 %} Add a work</a>
+</div>
+{% endblock %}
+{% block content %}
+{% url 'crm:work_create' as work_create_url %}
+<div class="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+  <div class="card p-4"><p class="text-theme-xs text-gray-500 dark:text-gray-400">All works</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ stats.total }}</p></div>
+  <a href="?state=live" class="card hover:border-brand-300 p-4 transition"><p class="text-theme-xs text-gray-500 dark:text-gray-400">Live on website</p><p class="text-title-sm mt-1 font-bold text-success-600">{{ stats.live }}</p></a>
+  <a href="?state=hidden" class="card hover:border-brand-300 p-4 transition"><p class="text-theme-xs text-gray-500 dark:text-gray-400">Hidden</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ stats.hidden }}</p></a>
+  <a href="?quick=featured" class="card hover:border-brand-300 p-4 transition"><p class="text-theme-xs text-gray-500 dark:text-gray-400">Featured</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ stats.featured }}</p></a>
+</div>
+<div class="card">
+  {% include "crm/components/list_toolbar.html" %}
+  <div class="table-wrap"><table class="data-table responsive-cards">
+    <thead class="border-b border-gray-100 dark:border-gray-800"><tr><th class="th">Work</th><th class="th">Category</th><th class="th">Year</th><th class="th">Technologies</th><th class="th">Website</th><th class="th"><span class="sr-only">Actions</span></th></tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+    {% for w in object_list %}
+      <tr>
+        <td class="td" data-label="Work">
+          <div class="flex items-center gap-3">
+            {% if w.image %}<img src="{{ w.image.url }}" alt="" loading="lazy" class="h-14 w-24 shrink-0 rounded-lg border border-gray-200 object-cover dark:border-gray-800">
+            {% else %}<span class="flex h-14 w-24 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-theme-xs text-gray-500 dark:bg-gray-800">No image</span>{% endif %}
+            <div class="min-w-0">
+              <a class="td-strong hover:text-brand-500" href="{% url 'crm:work_edit' w.pk %}">{{ w.title }}</a>
+              <span class="block max-w-md text-theme-xs">{{ w.short_description|truncatechars:90 }}</span>
+            </div>
+          </div>
+        </td>
+        <td class="td" data-label="Category">{{ w.get_category_display }}</td>
+        <td class="td" data-label="Year">{{ w.year|default:"—" }}</td>
+        <td class="td" data-label="Technologies">{% for t in w.stack.all %}{{ t.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
+        <td class="td" data-label="Website">
+          <div class="flex flex-wrap gap-1.5">
+            {% if w.is_published %}{% badge 'live' 'Live' %}{% else %}{% badge 'hidden' 'Hidden' %}{% endif %}
+            {% if w.is_featured %}{% badge 'featured' 'Featured' 'purple' %}{% endif %}
+            {% if w.show_on_homepage and w.is_published %}{% badge 'homepage' 'Homepage' 'blue' %}{% endif %}
+          </div>
+        </td>
+        <td class="td" data-label="Actions">
+          <div class="flex flex-wrap items-center gap-2 sm:justify-end">
+            <form method="post" action="{% url 'crm:work_toggle' w.pk %}">{% csrf_token %}<button class="btn btn-secondary btn-sm">{% if w.is_published %}Hide{% else %}Publish{% endif %}</button></form>
+            <a href="{% url 'crm:work_edit' w.pk %}" class="btn btn-secondary btn-sm">Edit</a>
+            <form method="post" action="{% url 'crm:work_delete' w.pk %}" data-confirm="Delete “{{ w.title }}”?" data-confirm-body="It is removed from the website for good. To keep it but stop showing it, use Hide instead." data-confirm-danger="1">{% csrf_token %}<button class="btn btn-danger btn-sm">Delete</button></form>
+          </div>
+        </td>
+      </tr>
+    {% empty %}<tr><td colspan="6">{% include "crm/components/empty_state.html" with filtered=any_filter title="No works added yet" text="Add your first project with a cover image and it goes live on the website." icon="briefcase" action_url=work_create_url action_label="Add a work" %}</td></tr>{% endfor %}
+    </tbody></table></div>
+  {% include "crm/components/pagination.html" %}
+</div>
+{% endblock %}

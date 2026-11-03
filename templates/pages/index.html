@@ -1,10 +1,10 @@
 {% extends 'pages/base.html' %}
 {% load static %}
 
-{% block title %}Ecommerce Website & Digital Marketing Company in Kerala | BThinkX{% endblock %}
-{% block meta_description %}BThinkX builds high-converting e-commerce websites and runs Meta & Google ad campaigns for businesses in Trivandrum and across Kerala. Get a free quote.{% endblock %}
-{% block og_title %}Ecommerce Website Development & Digital Marketing Company in Kerala | BThinkX{% endblock %}
-{% block og_description %}High-converting e-commerce websites and performance marketing for businesses in Trivandrum and across Kerala. Get a free quote.{% endblock %}
+{% block title %}BThinkX | Development & Marketing Company in Kerala, Your Digital Partner{% endblock %}
+{% block meta_description %}You run the business physically, we grow it digitally. BThinkX is the development & marketing company that builds your e-commerce website and runs your Meta ads, in Trivandrum and across Kerala. {% if diwali_active %}Diwali Special on now.{% endif %}{% endblock %}
+{% block og_title %}BThinkX | The Digital Partner of Your Business, Development & Marketing Company{% endblock %}
+{% block og_description %}You run the business physically, we grow it digitally. E-commerce websites, software and Meta ads for businesses across Kerala. {% if diwali_active %}Diwali Special now on.{% endif %}{% endblock %}
 
 {% block extra_head %}
 <script type="application/ld+json">
@@ -13,7 +13,8 @@
   "@type": "FAQPage",
   "mainEntity": [
     {"@type": "Question", "name": "Which areas does BThinkX serve?", "acceptedAnswer": {"@type": "Answer", "text": "We're based in Trivandrum and work with businesses across Kerala, including Kochi, Thrissur, Kozhikode and Kollam, as well as clients elsewhere in India."}},
-    {"@type": "Question", "name": "What services does BThinkX offer?", "acceptedAnswer": {"@type": "Answer", "text": "Two focused service lines: ecommerce website development (online stores with payments, stock management and loyalty tools) and digital marketing (Facebook & Instagram ad campaigns), plus custom software engineering for businesses that need more than a website."}},
+    {"@type": "Question", "name": "What does BThinkX do?", "acceptedAnswer": {"@type": "Answer", "text": "BThinkX is the digital partner of your business. You run the business physically, and we grow it digitally. We are a development and marketing company with two focused service lines: ecommerce website development (online stores with payments, stock management and loyalty tools) and digital marketing (Facebook & Instagram ad campaigns), plus custom software engineering for businesses that need more than a website."}},
+    {% if diwali_active %}{"@type": "Question", "name": "What is the BThinkX Diwali Special?", "acceptedAnswer": {"@type": "Answer", "text": "Our festive season offer on e-commerce websites and Meta ad campaigns, so your business is online and ready for Diwali shoppers. Contact us for this season's offer details."}},{% endif %}
     {"@type": "Question", "name": "How do I get a quote for my project?", "acceptedAnswer": {"@type": "Answer", "text": "Fill out the contact form with a bit about your business and goals, and we'll get back to you within 24 hours with next steps and pricing."}},
     {"@type": "Question", "name": "Can I get an ecommerce website and digital marketing together?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. Our Online Store + Marketing and Complete Growth packages bundle a conversion-ready website with Meta ad tracking and automation, so your store and your ad campaigns work together from day one."}}
   ]
@@ -27,16 +28,29 @@
   <div class="container">
     <div class="hero-content">
       <div class="hero-left">
+        {% if diwali_active %}
+        <div class="diwali-note animate-up" role="note">
+          <button type="button" class="diwali-note__icon" aria-label="Light the diya" title="Light the diya">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c1.6 2 2.4 3.4 2.4 4.8A2.4 2.4 0 0 1 12 10.2a2.4 2.4 0 0 1-2.4-2.4C9.6 6.4 10.4 5 12 3z"/><path d="M3.5 13h17c0 3.9-3.8 7-8.5 7s-8.5-3.1-8.5-7z"/></svg>
+          </button>
+          <div class="diwali-note__text">
+            <strong>Diwali Offer: get your business online</strong>
+            <span>Festive pricing on e-commerce websites and Meta ad campaigns. Be live before the shoppers arrive.</span>
+            {% if diwali_days_left is not None %}<span class="diwali-count">{% if diwali_days_left == 0 %}Diwali is today{% elif diwali_days_left == 1 %}Diwali is tomorrow{% else %}{{ diwali_days_left }} days to Diwali{% endif %}</span>{% endif %}
+          </div>
+          <a href="{% url 'pages:contact' %}?offer=diwali" class="btn btn-primary btn-sm">Get the offer</a>
+        </div>
+        {% endif %}
         <div class="hero-eyebrow animate-up">
           <span class="hero-eyebrow-dot" aria-hidden="true"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.4h7.6l-6 4.6 2.3 7-6.3-4.6L12 21l-6.3-4.6 2.3-7-6-4.6h7.6L12 2z"/></svg></span>
-          Trivandrum's Leading Software Company
+          The Digital Partner of Your Business
         </div>
         <h1 class="animate-up delay-1">
-          Ecommerce Website Development &amp;<br>
-          <span class="hero-highlight">Digital Marketing</span> Company in Kerala
+          You Do the Business Physically.<br>
+          We <span class="hero-highlight">Grow It Digitally</span>
         </h1>
         <p class="hero-sub animate-up delay-2">
-          BThinkX builds high-converting e-commerce websites and runs Meta &amp; Google ad campaigns for businesses in Trivandrum and across Kerala, backed by custom software engineering when your growth needs more than an online store.
+          BThinkX is the development &amp; marketing company behind growing Kerala businesses. We build your e-commerce website and software, then run the Meta ad campaigns that fill it with customers, so you can focus on the shop, the stock and the service.
         </p>
         <div class="hero-actions animate-up delay-3">
           <a href="{% url 'pages:contact' %}" class="btn btn-primary btn-lg">Start Your Project</a>
@@ -58,6 +72,7 @@
         </div>
       </div>
       <div class="hero-right animate-up delay-2">
+        {% if diwali_active %}{% include 'pages/includes/diwali_game.html' %}{% endif %}
         <div class="hero-visual">
           <img src="{% static 'assets/images/DiXxGZkzHIAgH7qrHyIAOf2yXJIefe1.jpg' %}" alt="BThinkX Dev: Digital Dashboard" loading="eager">
           <div class="hero-visual-overlay"></div>
@@ -75,7 +90,7 @@
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4"/></svg>
             </div>
             <div class="hc-text">
-              <h5>Sucessfully Launched</h5>
+              <h5>Successfully Launched</h5>
               <span>95+ Stores</span>
             </div>
           </div>
@@ -91,7 +106,7 @@
 
 <div class="logos-section z-content">
   <div class="container">
-    <p class="logos-label">Technology Stack We Master</p>
+    <p class="logos-label">Technology Behind Your Digital Growth</p>
     <div class="logos-track">
       <div class="tech-logo"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg> Django</div>
       <div class="tech-logo"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg> React</div>
@@ -104,13 +119,32 @@
   </div>
 </div>
 
+<section class="z-content partner-section">
+  <div class="container">
+    <div class="section-header">
+      <div class="badge animate-up">Our Promise</div>
+      <h2 class="animate-up delay-1">The Digital Partner of Your Business</h2>
+      <p class="animate-up delay-2">Your shop, your stock and your customers are real. Your online presence should be too, and it should work as hard as you do.</p>
+    </div>
+    <div class="positioning-line animate-up delay-2">
+      <span>You do the business <em>physically.</em></span>
+      <span>We grow your business <em>digitally.</em></span>
+    </div>
+    <div class="services-grid">
+      <div class="service-card animate-up delay-1"><h3>We Develop</h3><p>E-commerce websites, custom software and web apps that take orders, manage stock and run your operations online.</p></div>
+      <div class="service-card animate-up delay-2"><h3>We Market</h3><p>Meta (Facebook &amp; Instagram) ad campaigns with ad spend, creatives and retargeting included, built to bring in orders.</p></div>
+      <div class="service-card animate-up delay-3"><h3>We Partner</h3><p>One team for build, launch and growth. We stay with you after go-live, so your digital side keeps growing with the business.</p></div>
+    </div>
+  </div>
+</section>
+
 <section class="z-content" id="services">
   <div class="container">
     <div class="services-intro">
       <div class="services-intro__copy">
         <div class="badge animate-up">What We Build</div>
-        <h2 class="animate-up delay-1">Services That Drive Growth</h2>
-        <p class="animate-up delay-2">From e-commerce to AI-powered automation, we deliver technology solutions that scale with your business.</p>
+        <h2 class="animate-up delay-1">Development &amp; Marketing That Drive Growth</h2>
+        <p class="animate-up delay-2">From the website that takes your orders to the ads that bring the customers, we are the digital team behind your business.</p>
       </div>
       <div class="services-intro__video animate-up delay-2">
         <div class="video-embed-wrap">
@@ -169,8 +203,8 @@
     <div class="metrics-inner">
       <div>
         <div class="badge animate-up" style="margin-bottom:18px">Why BThinkX Dev</div>
-        <h2 class="animate-up delay-1">We Build Technology That Supports Long-Term Business Growth</h2>
-        <p class="animate-up delay-2" style="margin-top:14px">Every product we build is architected for scale, clean code, modern stack, and proven engineering practices your business can depend on.</p>
+        <h2 class="animate-up delay-1">A Digital Partner That Grows When You Grow</h2>
+        <p class="animate-up delay-2" style="margin-top:14px">You focus on running the business. We build and market the digital side with clean code, a modern stack and campaigns tuned for orders, then stay on to keep it growing.</p>
         <div class="metrics-grid animate-up delay-2">
           <div class="metric-card">
             <div class="metric-num">50+</div>
@@ -217,8 +251,8 @@
   <div class="container">
     <div class="section-header">
       <div class="badge animate-up">Our Work</div>
-      <h2 class="animate-up delay-1">Products We've Shipped</h2>
-      <p class="animate-up delay-2">From enterprise platforms to intelligent SaaS systems, a sample of what we build.</p>
+      <h2 class="animate-up delay-1">Digital Businesses We've Built</h2>
+      <p class="animate-up delay-2">Online stores, software and growth systems we've built for businesses that run in the real world.</p>
     </div>
     <div class="portfolio-grid">
       {% if homepage_projects %}
@@ -313,8 +347,8 @@
   <div class="container">
     <div class="section-header">
       <div class="badge animate-up">How We Work</div>
-      <h2 class="animate-up delay-1">Our Process</h2>
-      <p class="animate-up delay-2">A structured, transparent process from strategy to launch, and beyond.</p>
+      <h2 class="animate-up delay-1">How We Become Your Digital Partner</h2>
+      <p class="animate-up delay-2">A transparent process from strategy to launch, and beyond. You never have to figure out the digital side alone.</p>
     </div>
     <div class="process-steps">
       <div class="process-step animate-up delay-1">
@@ -334,8 +368,8 @@
       </div>
       <div class="process-step animate-up delay-4">
         <div class="process-num">04</div>
-        <h3>Launch &amp; Growth</h3>
-        <p>Deployment, performance monitoring, and ongoing iteration to grow your product post-launch.</p>
+        <h3>Launch &amp; Grow</h3>
+        <p>Go-live, ad campaigns, performance monitoring and ongoing iteration, so your digital business keeps growing after launch.</p>
       </div>
     </div>
   </div>
@@ -353,8 +387,8 @@
         <div class="faq-answer">We're based in Trivandrum and work with businesses across Kerala, including Kochi, Thrissur, Kozhikode and Kollam, as well as clients elsewhere in India.</div>
       </div>
       <div class="faq-item animate-up delay-2">
-        <div class="faq-question">What services does BThinkX offer?<span class="faq-toggle">+</span></div>
-        <div class="faq-answer">Two focused service lines: <a href="{% url 'pages:service_ecommerce' %}">ecommerce website development</a> and <a href="{% url 'pages:service_digital_marketing' %}">digital marketing (Meta ads)</a>, plus custom software engineering for businesses that need more than a website.</div>
+        <div class="faq-question">What does BThinkX do?<span class="faq-toggle">+</span></div>
+        <div class="faq-answer">We are the digital partner of your business: you run the business physically, we grow it digitally. Two focused service lines: <a href="{% url 'pages:service_ecommerce' %}">ecommerce website development</a> and <a href="{% url 'pages:service_digital_marketing' %}">digital marketing (Meta ads)</a>, plus custom software engineering for businesses that need more than a website.</div>
       </div>
       <div class="faq-item animate-up delay-3">
         <div class="faq-question">How do I get a quote for my project?<span class="faq-toggle">+</span></div>
@@ -372,11 +406,11 @@
   <div class="cta-bg"></div>
   <div class="container">
     <div class="cta-inner animate-up">
-      <div class="badge" style="margin:0 auto 20px">Let's Work Together</div>
-      <h2>Ready to Build Something Powerful?</h2>
-      <p>Let's create technology that accelerates your business growth. Tell us about your project and we'll get back to you within 24 hours.</p>
+      <div class="badge" style="margin:0 auto 20px">{% if diwali_active %}Diwali Offer · {% endif %}Let's Work Together</div>
+      <h2>You Run the Business. We'll Grow It Digitally.</h2>
+      <p>{% if diwali_active %}Make this Diwali the start of your digital growth. Tell us about your business and we'll get back to you within 24 hours with your festive offer.{% else %}Tell us about your business and we'll get back to you within 24 hours with next steps and pricing.{% endif %}</p>
       <div class="cta-actions">
-        <a href="{% url 'pages:contact' %}" class="btn btn-primary btn-lg">Start Your Project</a>
+        {% if diwali_active %}<a href="{% url 'pages:contact' %}?offer=diwali" class="btn btn-primary btn-lg">Get the Diwali Offer</a>{% else %}<a href="{% url 'pages:contact' %}" class="btn btn-primary btn-lg">Start Your Project</a>{% endif %}
         <a href="{% url 'pages:contact' %}" class="btn btn-secondary btn-lg">Contact Us</a>
       </div>
     </div>

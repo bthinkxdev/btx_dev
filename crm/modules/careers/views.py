@@ -1,10 +1,13 @@
 """Careers: post and manage the job openings shown on the public website, and work the applications."""
 from __future__ import annotations
 
+from urllib.parse import urlsplit
+
 from django.contrib import messages
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from crm.core import audit, permissions
@@ -30,11 +33,17 @@ class CareerList(ListPage):
     ]
 
     def base_queryset(self):
-        return JobPosting.objects.annotate(app_count=Count('applications'))
+        return JobPosting.objects.annotate(
+            app_count=Count('applications'),
+            new_count=Count('applications', filter=Q(applications__status=JobApplication.STATUS_NEW)))
 
     def extra_context(self, qs):
+        jobs = JobPosting.objects.aggregate(live=Count('pk', filter=Q(is_published=True)),
+                                            draft=Count('pk', filter=Q(is_published=False)))
+        applicants = JobApplication.objects.aggregate(total=Count('pk'),
+                                                      new=Count('pk', filter=Q(status=JobApplication.STATUS_NEW)))
         return {'module_code': MODULE, 'can_edit': permissions.has_perm(self.request.user, MODULE, 'edit'),
-                'search_placeholder': 'Search roles…'}
+                'search_placeholder': 'Search roles…', 'stats': {**jobs, **applicants}}
 
 
 @staff_required
@@ -94,8 +103,23 @@ class ApplicationList(ListPage):
         return JobApplication.objects.select_related('job')
 
     def extra_context(self, qs):
+        counts = dict(JobApplication.objects.values_list('status').annotate(n=Count('pk')))
+        pipeline = [(v, label, counts.get(v, 0)) for v, label in JobApplication.STATUS_CHOICES
+                    if v not in ('rejected',)]
         return {'module_code': MODULE, 'can_edit': permissions.has_perm(self.request.user, MODULE, 'edit'),
-                'statuses': JobApplication.STATUS_CHOICES, 'search_placeholder': 'Search candidates…'}
+                'statuses': JobApplication.STATUS_CHOICES, 'search_placeholder': 'Search candidates…',
+                'pipeline': pipeline, 'total_applications': sum(counts.values())}
+
+
+@staff_required
+def application_detail(request, pk):
+    permissions.require(request.user, MODULE, 'view', request)
+    app = get_object_or_404(JobApplication.objects.select_related('job'), pk=pk)
+    ctx = {'app': app, 'statuses': JobApplication.STATUS_CHOICES,
+           'can_edit': permissions.has_perm(request.user, MODULE, 'edit'),
+           'resume_ext': app.resume.name.rsplit('.', 1)[-1].lower() if app.resume else '',
+           'wa_number': ''.join(c for c in app.phone if c.isdigit())}
+    return render(request, 'crm/careers/application_detail.html', ctx)
 
 
 @staff_required
@@ -103,14 +127,23 @@ class ApplicationList(ListPage):
 def application_update(request, pk):
     permissions.require(request.user, MODULE, 'edit', request)
     app = get_object_or_404(JobApplication, pk=pk)
+    old_status = app.status
     status = request.POST.get('status', '')
     if status in dict(JobApplication.STATUS_CHOICES):
         app.status = status
     if 'internal_notes' in request.POST:
-        app.internal_notes = request.POST['internal_notes'][:2000]
+        app.internal_notes = request.POST['internal_notes'].strip()[:2000]
     app.save(update_fields=['status', 'internal_notes'])
-    audit.log('career.application_updated', app, actor=request.user, changes={'status': app.status})
-    messages.success(request, f'{app.full_name}: {app.get_status_display()}.')
+    audit.log('career.application_updated', app, actor=request.user,
+              changes={'status': app.status, 'from': old_status})
+    if 'internal_notes' in request.POST and 'status' not in request.POST:
+        messages.success(request, f'Notes saved for {app.full_name}.')
+    else:
+        messages.success(request, f'{app.full_name}: {app.get_status_display()}.')
+    back = request.META.get('HTTP_REFERER', '')
+    if back and url_has_allowed_host_and_scheme(back, {request.get_host()}, request.is_secure()):
+        parts = urlsplit(back)
+        return redirect(parts.path + (f'?{parts.query}' if parts.query else ''))
     return redirect('crm:career_applications')
 
 
@@ -126,4 +159,5 @@ def application_resume(request, pk):
         raise Http404('Resume file is missing')
     ext = app.resume.name.rsplit('.', 1)[-1].lower()
     name = ''.join(c if c.isalnum() else '-' for c in app.full_name).strip('-') or 'candidate'
-    return FileResponse(fh, as_attachment=True, filename=f'{name}-resume.{ext}')
+    inline = request.GET.get('inline') == '1' and ext == 'pdf'
+    return FileResponse(fh, as_attachment=not inline, filename=f'{name}-resume.{ext}')

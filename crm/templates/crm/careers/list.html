@@ -4,12 +4,19 @@
 <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
   <div><h1 class="page-title">Job openings</h1><p class="muted mt-1">Roles published here appear instantly on the website Careers page. Candidates apply there and land in <a class="btn-link" href="{% url 'crm:career_applications' %}">Job applications</a>.</p></div>
   <div class="flex flex-wrap gap-2">
+    <a href="{% url 'pages:careers' %}" target="_blank" rel="noopener" class="btn btn-secondary">View on website</a>
     <a href="{% url 'crm:career_applications' %}" class="btn btn-secondary">Applications</a>
     {% if can_edit %}<a href="{% url 'crm:career_create' %}" class="btn btn-primary">{% icon 'plus' 18 %} Post a job</a>{% endif %}
   </div>
 </div>
 {% endblock %}
 {% block content %}
+<div class="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+  <a href="?state=live" class="card hover:border-brand-300 p-4 transition"><p class="text-theme-xs text-gray-500 dark:text-gray-400">Live roles</p><p class="text-title-sm mt-1 font-bold text-success-600">{{ stats.live }}</p></a>
+  <a href="?state=draft" class="card hover:border-brand-300 p-4 transition"><p class="text-theme-xs text-gray-500 dark:text-gray-400">Drafts</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ stats.draft }}</p></a>
+  <a href="{% url 'crm:career_applications' %}" class="card hover:border-brand-300 p-4 transition"><p class="text-theme-xs text-gray-500 dark:text-gray-400">Total applicants</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ stats.total }}</p></a>
+  <a href="{% url 'crm:career_applications' %}?status=new" class="card hover:border-brand-300 p-4 transition"><p class="text-theme-xs text-gray-500 dark:text-gray-400">New, to review</p><p class="text-title-sm mt-1 font-bold {% if stats.new %}text-brand-500{% else %}text-gray-800 dark:text-white/90{% endif %}">{{ stats.new }}</p></a>
+</div>
 <div class="card">
   {% include "crm/components/list_toolbar.html" %}
   <div class="table-wrap"><table class="data-table responsive-cards">
@@ -21,7 +28,7 @@
         <td class="td" data-label="Department">{{ j.department|default:"—" }}</td>
         <td class="td" data-label="Location">{{ j.location }}</td>
         <td class="td" data-label="Type">{{ j.get_employment_type_display }}</td>
-        <td class="td text-right" data-label="Applicants">{% if j.app_count %}<a class="btn-link" href="{% url 'crm:career_applications' %}?job={{ j.pk }}">{{ j.app_count }}</a>{% else %}0{% endif %}</td>
+        <td class="td text-right" data-label="Applicants">{% if j.app_count %}<a class="btn-link" href="{% url 'crm:career_applications' %}?job={{ j.pk }}">{{ j.app_count }}</a>{% if j.new_count %}<span class="block text-theme-xs text-brand-500">{{ j.new_count }} new</span>{% endif %}{% else %}0{% endif %}</td>
         <td class="td" data-label="Website">{% if j.is_published %}{% badge 'active' 'Live' %}{% else %}{% badge 'draft' 'Draft' %}{% endif %}</td>
         <td class="td" data-label="Actions">
           {% if can_edit %}

@@ -25,6 +25,8 @@ STATUS_COLORS = {
     'not_required': 'grey', 'planned': 'grey', 'todo': 'grey', 'cold': 'grey', 'closed': 'grey',
     'nurturing': 'grey', 'unmatched': 'grey', 'ended': 'grey', 'exited': 'grey', 'weekly_off': 'grey',
     'expected': 'grey', 'received': 'blue',
+    'reviewing': 'blue', 'shortlisted': 'purple', 'interview': 'amber', 'hired': 'green', 'live': 'green',
+    'hidden': 'grey',
     # in progress / pending
     'new': 'blue', 'contacted': 'blue', 'qualified': 'blue', 'quotation_prepared': 'blue', 'quotation_sent': 'blue',
     'negotiation': 'blue', 'active': 'blue', 'sent': 'blue', 'viewed': 'blue', 'awaiting_approval': 'blue',

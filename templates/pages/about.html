@@ -1,10 +1,10 @@
 {% extends 'pages/base.html' %}
 {% load static %}
 
-{% block title %}Best Software Company in Trivandrum, Kerala | About BThinkX{% endblock %}
-{% block meta_description %}BThinkX is a Trivandrum-based software development, ecommerce and digital marketing company serving businesses across Kerala and India since 2019. Here's who we are and how we work.{% endblock %}
-{% block og_title %}Best Software Company in Trivandrum, Kerala | About BThinkX{% endblock %}
-{% block og_description %}BThinkX is a Trivandrum-based software development, ecommerce and digital marketing company serving businesses across Kerala and India since 2019.{% endblock %}
+{% block title %}About BThinkX | Development & Marketing Company, Your Digital Partner in Kerala{% endblock %}
+{% block meta_description %}BThinkX is the digital partner of your business: a Trivandrum-based development and marketing company serving Kerala and India since 2019. You run the business physically, we grow it digitally.{% endblock %}
+{% block og_title %}About BThinkX | Development & Marketing Company, Your Digital Partner in Kerala{% endblock %}
+{% block og_description %}BThinkX is the digital partner of your business: a Trivandrum-based development and marketing company. You run the business physically, we grow it digitally.{% endblock %}
 
 {% block extra_head %}
 <script type="application/ld+json">
@@ -193,8 +193,8 @@
 <div class="page-hero">
   <div class="container">
     <div class="badge animate-up" style="margin: 0 auto 18px;">Our Story</div>
-    <h1 class="animate-up delay-1">Trivandrum's Leading Software Company, Built for the Digital Age</h1>
-    <p class="animate-up delay-2">We're BThinkX, a Trivandrum-based software development, ecommerce and digital marketing company serving businesses across Kerala and India since 2019.</p>
+    <h1 class="animate-up delay-1">The Digital Partner of Your Business</h1>
+    <p class="animate-up delay-2">We're BThinkX, a Trivandrum-based development and marketing company. You do the business physically, we grow it digitally. Serving businesses across Kerala and India since 2019.</p>
   </div>
 </div>
 
@@ -213,15 +213,15 @@
       </div>
       <div class="animate-up delay-2">
         <div class="badge" style="margin-bottom:18px;">Our Mission</div>
-        <h2 style="margin-bottom: 18px;">We Help Businesses Build Products That Last</h2>
+        <h2 style="margin-bottom: 18px;">We Take Your Business Online and Help It Grow</h2>
         <p style="margin-bottom: 16px;">
-          BThinkX Dev was founded with one mission: to make great software engineering accessible to e-commerce brands, startups, and businesses that need to move fast without compromising quality.
+          BThinkX was founded with one mission: to be the digital partner of real-world businesses. You run the shop, the stock and the service. We build and market the digital side, so you grow online without having to become a tech company.
         </p>
         <p style="margin-bottom: 16px;">
-          We've spent years building products across industries, from high-traffic marketplaces to AI-powered SaaS tools, and we understand what it takes to ship software that actually works in production.
+          We've spent years building websites, online stores and software, and running ad campaigns across industries, so we know what it takes to turn a physical business into a digital one that sells.
         </p>
         <p style="margin-bottom: 32px;">
-          Our approach is simple: understand your business deeply, architect the right solution, and build it with the standards and craftsmanship that your customers deserve.
+          Our approach is simple: understand your business deeply, build the right digital foundation, market it to the right customers, and stay with you as you grow.
         </p>
         <a href="{% url 'pages:contact' %}" class="btn btn-primary">Work with Us</a>
       </div>
@@ -277,8 +277,8 @@
   <div class="container">
     <div class="section-header">
       <div class="badge animate-up">{% if team_section %}{{ team_section.badge }}{% else %}The Team{% endif %}</div>
-      <h2 class="animate-up delay-1">{% if team_section %}{{ team_section.heading }}{% else %}People Behind the Products{% endif %}</h2>
-      <p class="animate-up delay-2">{% if team_section %}{{ team_section.subheading }}{% else %}A small, senior team of engineers, designers, and strategists who love building things that work.{% endif %}</p>
+      <h2 class="animate-up delay-1">{% if team_section %}{{ team_section.heading }}{% else %}The Team Behind Your Digital Growth{% endif %}</h2>
+      <p class="animate-up delay-2">{% if team_section %}{{ team_section.subheading }}{% else %}A small, senior team of developers, designers and marketers who grow businesses digitally.{% endif %}</p>
     </div>
     {% if team_members %}
     <div class="team-grid">
@@ -370,8 +370,8 @@
   <div class="container">
     <div class="cta-inner animate-up">
       <div class="badge" style="margin: 0 auto 20px;">Join Our Clients</div>
-      <h2>Build Your Next Product With Us</h2>
-      <p>We work with e-commerce brands, startups, and companies that need technology built right. Let's start with a conversation.</p>
+      <h2>Let Us Be Your Digital Partner</h2>
+      <p>You keep running the business. We'll handle the website, the software and the marketing. Let's start with a conversation.</p>
       <div class="cta-actions">
         <a href="{% url 'pages:contact' %}" class="btn btn-primary btn-lg">Start a Conversation</a>
         <a href="{% url 'pages:portfolio' %}" class="btn btn-secondary btn-lg">See Our Work</a>

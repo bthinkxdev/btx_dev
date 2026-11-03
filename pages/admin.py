@@ -5,12 +5,14 @@ from .models import (
     BlogPageSettings,
     BlogPost,
     ContactSubmission,
+    DiwaliLead,
     JobApplication,
     JobPosting,
     NewsletterSubscriber,
     OfferSignup,
     Project,
     QuoteRequest,
+    SiteSettings,
     TeamMember,
     TeamSection,
     TechTag,
@@ -49,11 +51,12 @@ class ProjectAdmin(admin.ModelAdmin):
         'year',
         'is_featured',
         'show_on_homepage',
+        'is_published',
         'sort_order',
     )
-    list_filter = ('category', 'is_featured', 'show_on_homepage', 'year')
+    list_filter = ('category', 'is_published', 'is_featured', 'show_on_homepage', 'year')
     search_fields = ('title', 'short_description')
-    list_editable = ('is_featured', 'show_on_homepage', 'sort_order')
+    list_editable = ('is_featured', 'show_on_homepage', 'is_published', 'sort_order')
     readonly_fields = ('image_preview',)
     prepopulated_fields = {'slug': ('title',)}
     filter_horizontal = ('stack',)
@@ -119,6 +122,27 @@ class TeamMemberAdmin(admin.ModelAdmin):
 class BlogPageSettingsAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
         return BlogPageSettings.objects.count() == 0
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(SiteSettings)
+class SiteSettingsAdmin(admin.ModelAdmin):
+    list_display = ('__str__', 'diwali_enabled', 'diwali_glitter_enabled', 'diwali_crackers_enabled', 'diwali_ends_on')
+    fieldsets = (
+        ('Diwali Special', {
+            'description': 'The master switch hides every Diwali element on the website when it is off.',
+            'fields': ('diwali_enabled', 'diwali_ends_on', 'diwali_date'),
+        }),
+        ('Festive effects', {
+            'description': 'Each effect can be switched off on its own. Visitors can also mute them with the button on the page.',
+            'fields': ('diwali_glitter_enabled', 'diwali_crackers_enabled'),
+        }),
+    )
+
+    def has_add_permission(self, request):
+        return SiteSettings.objects.count() == 0
 
     def has_delete_permission(self, request, obj=None):
         return False
@@ -249,6 +273,14 @@ class OfferSignupAdmin(admin.ModelAdmin):
     search_fields = ('business_name', 'name', 'phone', 'place', 'cashfree_order_id')
     readonly_fields = ('created_at', 'paid_at', 'cashfree_order_id', 'cashfree_payment_id')
     date_hierarchy = 'created_at'
+
+
+@admin.register(DiwaliLead)
+class DiwaliLeadAdmin(admin.ModelAdmin):
+    list_display = ('name', 'phone', 'business_name', 'crackers_lit', 'created_at')
+    search_fields = ('name', 'phone', 'business_name')
+    date_hierarchy = 'created_at'
+    readonly_fields = ('created_at',)
 
 
 @admin.register(NewsletterSubscriber)

@@ -76,6 +76,13 @@ def quote_request(lead) -> None:
         'campaign': 'Website pricing quotation', 'kind_label': 'Quotation download'})
 
 
+def diwali_lead(lead) -> None:
+    capture(f'diwali-{lead.pk}', {
+        'name': lead.name, 'phone': lead.phone, 'company': lead.business_name,
+        'message': f'Diwali crackers card: lit {lead.crackers_lit}/4 crackers and asked for the Diwali offer.',
+        'campaign': 'Diwali crackers 2026', 'kind_label': 'Diwali offer'})
+
+
 def offer_signup(signup, *, paid: bool = False) -> None:
     state = 'PAID' if paid else 'payment started'
     capture(f'offer-{signup.pk}-{"paid" if paid else "started"}', {
@@ -89,7 +96,8 @@ def career_application(app) -> None:
     try:
         role = app.job.title if app.job else 'General application'
         notify.notify(notify.users_with_perm('employees', 'edit'), f'New job application: {app.full_name}',
-                      body=role, url=reverse('crm:career_applications'), event_type='career_application',
-                      dedupe_key=f'career-app:{app.pk}')
+                      body=f'{role} · {app.phone} · {app.email}',
+                      url=reverse('crm:career_application_detail', args=[app.pk]), event_type='career_application',
+                      level='info', dedupe_key=f'career-app:{app.pk}', email=True)
     except Exception:
         logger.exception('Career application alert failed for %s', app.pk)

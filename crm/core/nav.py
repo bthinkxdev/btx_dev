@@ -121,6 +121,7 @@ NAV = [
         ]),
         ('admin', 'Administration', 'settings', [
             ('Company settings', 'crm:settings_company', 'settings', 'configure'),
+            ('Our works', 'crm:work_list', 'settings', 'configure'),
             ('Users and roles', 'crm:user_list', 'settings', 'configure'),
             ('Permission matrix', 'crm:role_list', 'settings', 'configure'),
             ('Teams and departments', 'crm:team_list', 'settings', 'configure'),
@@ -212,7 +213,8 @@ def build_nav(user, current_url_name: str) -> list:
                     href = reverse(url_name)
                 except NoReverseMatch:
                     continue
-                kids.append({'label': clabel, 'href': href, 'active': current_url_name == url_name.split(':', 1)[1]})
+                kids.append({'label': clabel, 'href': href, 'active': current_url_name == url_name.split(':', 1)[1],
+                             'badge': _nav_badge(url_name)})
             if not kids:
                 continue
             prefixes = {c[1].split(':', 1)[1].rsplit('_', 1)[0] + '_' for c in children}
@@ -225,6 +227,17 @@ def build_nav(user, current_url_name: str) -> list:
         if visible_items:
             groups.append({'label': group_label, 'items': visible_items})
     return groups
+
+
+def _nav_badge(url_name: str) -> int:
+    """Count shown beside a sidebar entry (new job applications waiting for HR)."""
+    if url_name != 'crm:career_applications':
+        return 0
+    try:
+        from pages.models import JobApplication
+        return JobApplication.objects.filter(status=JobApplication.STATUS_NEW).count()
+    except Exception:
+        return 0
 
 
 def _lead_finder_item(current_url_name: str) -> dict:

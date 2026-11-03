@@ -1,7 +1,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
 
-from .models import ContactSubmission, JobApplication, JobPosting, NewsletterSubscriber, OfferSignup, QuoteRequest
+from .models import ContactSubmission, DiwaliLead, JobApplication, JobPosting, NewsletterSubscriber, OfferSignup, QuoteRequest
 
 MAX_RESUME_BYTES = 5 * 1024 * 1024
 
@@ -75,6 +75,36 @@ class QuoteRequestForm(forms.ModelForm):
             'business_type': forms.Select(attrs={'id': 'btxQuoteBusinessType'}),
             'package': forms.HiddenInput(attrs={'id': 'btxQuotePackage'}),
         }
+
+
+class DiwaliLeadForm(forms.ModelForm):
+    """Diwali crackers card: name + Indian mobile number, nothing else required."""
+
+    # Honeypot: real visitors never see or fill this.
+    website = forms.CharField(required=False)
+
+    class Meta:
+        model = DiwaliLead
+        fields = ['name', 'phone', 'business_name', 'crackers_lit']
+
+    def clean_name(self):
+        name = ' '.join(self.cleaned_data['name'].split())
+        if len(name) < 2:
+            raise ValidationError('Please enter your name.')
+        return name
+
+    def clean_phone(self):
+        digits = ''.join(ch for ch in self.cleaned_data['phone'] if ch.isdigit())
+        if len(digits) == 12 and digits.startswith('91'):
+            digits = digits[2:]
+        elif len(digits) == 11 and digits.startswith('0'):
+            digits = digits[1:]
+        if len(digits) != 10 or digits[0] not in '6789':
+            raise ValidationError('Enter a valid 10-digit mobile number.')
+        return digits
+
+    def clean_crackers_lit(self):
+        return min(max(self.cleaned_data.get('crackers_lit') or 0, 0), 4)
 
 
 class NewsletterSubscribeForm(forms.ModelForm):

@@ -1,0 +1,33 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{% if obj %}Edit work{% else %}Add a work{% endif %}{% endblock %}
+{% block page_header %}{% if obj %}{% include "crm/components/page_header.html" with title="Edit work" subtitle=obj.title %}{% else %}{% include "crm/components/page_header.html" with title="Add a work" subtitle="Live works appear on the website's Our Work page straight away." %}{% endif %}{% endblock %}
+{% block content %}
+<form method="post" enctype="multipart/form-data" class="card max-w-4xl" novalidate data-dirty-check>{% csrf_token %}{% idem %}
+  <div class="card-body grid grid-cols-1 gap-5 md:grid-cols-2">
+    {% include "crm/components/form_errors.html" %}
+    {% field form.title wrapper_class="md:col-span-2" %}
+    {% field form.category %}
+    {% field form.year %}
+    {% field form.short_description wrapper_class="md:col-span-2" %}
+    <div class="md:col-span-2">
+      {% if obj and obj.image %}
+      <p class="form-label">Current cover image</p>
+      <img src="{{ obj.image.url }}" alt="Current cover image of {{ obj.title }}" class="mb-4 max-h-56 rounded-xl border border-gray-200 object-cover dark:border-gray-800">
+      {% endif %}
+      {% field form.image %}
+    </div>
+    {% field form.stack %}
+    {% field form.new_tags %}
+    {% field form.sort_order %}
+    <div class="flex flex-col justify-center gap-4">
+      {% field form.is_published %}
+      {% field form.show_on_homepage %}
+      {% field form.is_featured %}
+    </div>
+  </div>
+  <div class="flex flex-col-reverse justify-end gap-3 border-t border-gray-100 p-5 sm:flex-row dark:border-gray-800">
+    <a href="{% url 'crm:work_list' %}" class="btn btn-secondary">Cancel</a>
+    <button class="btn btn-primary" data-loading-text="Saving…">{% if obj %}Save changes{% else %}Add work{% endif %}</button>
+  </div>
+</form>
+{% endblock %}

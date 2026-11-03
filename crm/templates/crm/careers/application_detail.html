@@ -1,0 +1,95 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{{ app.full_name }} · Application{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-start justify-between gap-3">
+  <div>
+    <nav aria-label="Breadcrumb" class="mb-1"><ol class="flex flex-wrap items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
+      <li class="inline-flex items-center gap-1.5"><a href="{% url 'crm:career_applications' %}" class="hover:text-gray-700 dark:hover:text-gray-200">Job applications</a>{% icon 'chevron_right' 14 %}</li>
+      <li>{{ app.full_name }}</li>
+    </ol></nav>
+    <h1 class="page-title">{{ app.full_name }} <span class="ml-2 align-middle">{% status_badge app %}</span></h1>
+    <p class="muted mt-1">Applied {% if app.job %}for <strong>{{ app.job.title }}</strong>{% else %}as a <strong>general application</strong>{% endif %} on {{ app.created_at|dt }}.</p>
+  </div>
+  <a href="{% url 'crm:career_applications' %}" class="btn btn-secondary">Back to applications</a>
+</div>
+{% endblock %}
+{% block content %}
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+  <div class="flex flex-col gap-6 xl:col-span-2">
+    <section class="card" aria-labelledby="cand-h">
+      <div class="card-body">
+        <h2 id="cand-h" class="mb-4 text-base font-semibold text-gray-800 dark:text-white/90">Candidate</h2>
+        <dl class="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
+          <div><dt class="text-theme-xs text-gray-500 dark:text-gray-400">Email</dt><dd class="mt-0.5 text-sm break-words"><a class="btn-link" href="mailto:{{ app.email }}">{{ app.email }}</a></dd></div>
+          <div><dt class="text-theme-xs text-gray-500 dark:text-gray-400">Phone</dt><dd class="mt-0.5 text-sm"><a class="btn-link" href="tel:{{ app.phone }}">{{ app.phone }}</a></dd></div>
+          <div><dt class="text-theme-xs text-gray-500 dark:text-gray-400">Role applied for</dt><dd class="mt-0.5 text-sm">{% if app.job %}{{ app.job.title }}{% else %}General application{% endif %}</dd></div>
+          <div><dt class="text-theme-xs text-gray-500 dark:text-gray-400">LinkedIn</dt><dd class="mt-0.5 text-sm break-words">{% if app.linkedin_url %}<a class="btn-link" href="{{ app.linkedin_url }}" target="_blank" rel="noopener noreferrer">{{ app.linkedin_url }}</a>{% else %}Not provided{% endif %}</dd></div>
+        </dl>
+        <div class="mt-5 flex flex-wrap gap-2">
+          <a href="mailto:{{ app.email }}" class="btn btn-secondary btn-sm">{% icon 'mail' 16 %} Email</a>
+          <a href="tel:{{ app.phone }}" class="btn btn-secondary btn-sm">{% icon 'phone' 16 %} Call</a>
+          {% if wa_number %}<a href="https://wa.me/{% if wa_number|length == 10 %}91{% endif %}{{ wa_number }}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">{% icon 'whatsapp' 16 %} WhatsApp</a>{% endif %}
+        </div>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="cover-h">
+      <div class="card-body">
+        <h2 id="cover-h" class="mb-3 text-base font-semibold text-gray-800 dark:text-white/90">Cover note</h2>
+        {% if app.cover_message %}<p class="text-sm whitespace-pre-line text-gray-700 dark:text-gray-300">{{ app.cover_message }}</p>
+        {% else %}<p class="muted">The candidate did not add a cover note.</p>{% endif %}
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="resume-h">
+      <div class="card-body">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <h2 id="resume-h" class="text-base font-semibold text-gray-800 dark:text-white/90">Resume</h2>
+          {% if app.resume %}
+          <div class="flex flex-wrap gap-2">
+            {% if resume_ext == 'pdf' %}<a href="{% url 'crm:career_application_resume' app.pk %}?inline=1" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">{% icon 'eye' 16 %} Open</a>{% endif %}
+            <a href="{% url 'crm:career_application_resume' app.pk %}" class="btn btn-secondary btn-sm">{% icon 'download' 16 %} Download .{{ resume_ext }}</a>
+          </div>
+          {% endif %}
+        </div>
+        {% if not app.resume %}<p class="muted mt-3">No resume on file.</p>
+        {% elif resume_ext == 'pdf' %}
+        <iframe src="{% url 'crm:career_application_resume' app.pk %}?inline=1" title="Resume of {{ app.full_name }}" class="mt-4 h-[640px] w-full rounded-lg border border-gray-200 dark:border-gray-800"></iframe>
+        {% else %}<p class="muted mt-3">Word documents cannot be previewed here. Use Download to open it.</p>{% endif %}
+      </div>
+    </section>
+  </div>
+
+  <div class="flex flex-col gap-6">
+    <section class="card" aria-labelledby="status-h">
+      <div class="card-body">
+        <h2 id="status-h" class="mb-3 text-base font-semibold text-gray-800 dark:text-white/90">Hiring status</h2>
+        {% if can_edit %}
+        <form method="post" action="{% url 'crm:career_application_update' app.pk %}" class="flex flex-col gap-3">{% csrf_token %}
+          <label for="app-status" class="form-label">Move to</label>
+          <select id="app-status" name="status" class="form-select" data-autosubmit>
+            {% for v, l in statuses %}<option value="{{ v }}" {% if app.status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+          </select>
+          <noscript><button class="btn btn-primary btn-sm">Update</button></noscript>
+        </form>
+        {% else %}<p class="text-sm">{{ app.get_status_display }}</p>{% endif %}
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="notes-h">
+      <div class="card-body">
+        <h2 id="notes-h" class="mb-3 text-base font-semibold text-gray-800 dark:text-white/90">Internal notes</h2>
+        {% if can_edit %}
+        <form method="post" action="{% url 'crm:career_application_update' app.pk %}" class="flex flex-col gap-3" data-dirty-check>{% csrf_token %}
+          <label for="app-notes" class="sr-only">Internal notes</label>
+          <textarea id="app-notes" name="internal_notes" rows="7" maxlength="2000" class="form-textarea" placeholder="Interview feedback, salary expectations, next steps…">{{ app.internal_notes }}</textarea>
+          <p class="form-help">Only your team sees this. Candidates never do.</p>
+          <button class="btn btn-primary btn-sm self-start" data-loading-text="Saving…">Save notes</button>
+        </form>
+        {% elif app.internal_notes %}<p class="text-sm whitespace-pre-line">{{ app.internal_notes }}</p>
+        {% else %}<p class="muted">No notes yet.</p>{% endif %}
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

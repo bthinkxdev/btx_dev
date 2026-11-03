@@ -8,7 +8,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_GET, require_http_methods
 from django.views.decorators.csrf import ensure_csrf_cookie
 
-from .forms import ContactForm, JobApplicationForm, NewsletterSubscribeForm, QuoteRequestForm
+from .forms import ContactForm, DiwaliLeadForm, JobApplicationForm, NewsletterSubscribeForm, QuoteRequestForm
 from .models import (
     BlogPageSettings,
     BlogPost,
@@ -35,7 +35,7 @@ def _to_crm(fn_name, *args, **kwargs):
 
 def index(request):
     homepage_projects = (
-        Project.objects.filter(show_on_homepage=True)
+        Project.objects.filter(show_on_homepage=True, is_published=True)
         .filter(image__isnull=False)
         .exclude(image='')
         .order_by('sort_order', '-year', '-created_at')[:4]
@@ -54,7 +54,7 @@ def service_digital_marketing(request):
     return render(request, 'pages/service_digital_marketing.html')
 
 def portfolio(request):
-    with_image = Project.objects.filter(image__isnull=False).exclude(image='')
+    with_image = Project.objects.filter(is_published=True, image__isnull=False).exclude(image='')
     featured_project = (
         with_image.filter(is_featured=True)
         .order_by('sort_order', '-year', '-created_at')
@@ -228,7 +228,7 @@ def _send_career_notification(app: JobApplication, request):
         f"Submitted: {app.created_at.strftime('%Y-%m-%d %H:%M')} UTC\n\n"
         f"Cover note:\n{app.cover_message or '(none)'}\n\n"
         f"Resume (download): {resume_url}\n"
-        f"Admin: review in Django Admin → Job applications."
+        f"Review it in the CRM: {settings.SITE_BASE_URL}/crm/careers/applications/{app.pk}/"
     )
     try:
         send_mail(
@@ -297,6 +297,40 @@ def quote_request(request):
         })
     errors = {k: v[0] for k, v in form.errors.items()}
     logger.warning('Quote request validation failed: %s', errors)
+    return JsonResponse({'success': False, 'errors': errors}, status=400)
+
+
+@require_http_methods(['POST'])
+def diwali_lead(request):
+    """Lead from the Diwali crackers card. Saved here, then handed to the CRM (lead + alerts)."""
+    from crm.core import ratelimit
+    from crm.core.middleware import client_ip
+
+    from .models import SiteSettings
+
+    if not SiteSettings.current().diwali_active:
+        raise Http404
+    if not ratelimit.hit('diwali-lead', client_ip(request) or '', 6, 3600):
+        return JsonResponse({'success': False, 'errors': {'__all__': 'Too many tries. Please try again later.'}}, status=429)
+    form = DiwaliLeadForm(request.POST)
+    if form.is_valid():
+        if form.cleaned_data.get('website'):      # honeypot tripped: pretend it worked
+            return JsonResponse({'success': True})
+        lead = form.save()
+        _to_crm('diwali_lead', lead)
+        try:
+            send_mail(
+                subject=f'[BThinkX] Diwali lead: {lead.name} | {lead.phone}',
+                message=(f'New Diwali crackers lead.\n\nName: {lead.name}\nWhatsApp/phone: {lead.phone}\n'
+                         f'Business: {lead.business_name or "(not given)"}\nCrackers lit: {lead.crackers_lit}/4'),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[getattr(settings, 'CONTACT_EMAIL_TO', 'hr@bthinkx.com')],
+                fail_silently=False,
+            )
+        except Exception:
+            logger.exception('Diwali lead email failed')
+        return JsonResponse({'success': True})
+    errors = {k: v[0] for k, v in form.errors.items()}
     return JsonResponse({'success': False, 'errors': errors}, status=400)
 
 
@@ -371,12 +405,12 @@ def llms_txt(request):
     lines = [
         '# BThinkX',
         '',
-        '> BThinkX is a software development, ecommerce website development and digital '
-        'marketing company based in Trivandrum, Kerala, India, founded in 2019. We build '
-        'ecommerce websites, custom software and SaaS products, and run Meta (Facebook & '
-        'Instagram) ad campaigns for businesses across Kerala and India. BThinkX positions '
-        'itself as a leading software company in Trivandrum and Kerala, with 50+ projects '
-        'delivered, 10+ clients worldwide, and a 99% client satisfaction rate.',
+        '> BThinkX is a development and marketing company based in Trivandrum, Kerala, '
+        'India, founded in 2019, positioned as the digital partner of the business: you '
+        'run the business physically, we grow it digitally. We build ecommerce websites, '
+        'custom software and SaaS products, and run Meta (Facebook & Instagram) ad '
+        'campaigns for businesses across Kerala and India, with 50+ projects delivered, '
+        '10+ clients worldwide, and a 99% client satisfaction rate.',
         '',
         f"For the complete, detailed version of this document (full service package "
         f"breakdowns, every published blog post and portfolio project), see: "
@@ -428,12 +462,12 @@ def llms_full_txt(request):
     lines = [
         '# BThinkX — Full Reference',
         '',
-        '> BThinkX is a software development, ecommerce website development and digital '
-        'marketing company based in Trivandrum, Kerala, India, founded in 2019. We build '
-        'ecommerce websites, custom software and SaaS products, and run Meta (Facebook & '
-        'Instagram) ad campaigns for businesses across Kerala and India. BThinkX positions '
-        'itself as a leading software company in Trivandrum and Kerala, with 50+ projects '
-        'delivered, 10+ clients worldwide, and a 99% client satisfaction rate.',
+        '> BThinkX is a development and marketing company based in Trivandrum, Kerala, '
+        'India, founded in 2019, positioned as the digital partner of the business: you '
+        'run the business physically, we grow it digitally. We build ecommerce websites, '
+        'custom software and SaaS products, and run Meta (Facebook & Instagram) ad '
+        'campaigns for businesses across Kerala and India, with 50+ projects delivered, '
+        '10+ clients worldwide, and a 99% client satisfaction rate.',
         '',
         '## Contact',
         '- Address: 2nd Floor, Suffis Arcade, Pattom, Trivandrum, Kerala 695004, India',
@@ -475,7 +509,7 @@ def llms_full_txt(request):
     ]
 
     projects = (
-        Project.objects.filter(image__isnull=False)
+        Project.objects.filter(is_published=True, image__isnull=False)
         .exclude(image='')
         .order_by('sort_order', '-year', '-created_at')
     )

@@ -2625,3 +2625,138 @@ select.form-control{cursor:pointer}
   section{padding:32px 0}
   .footer{padding:20px 0}
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   DIWALI SPECIAL — built from the site's own components (badge, btn, form-control, cards).
+   Switched on/off from Django admin > Site settings. Effects: assets/diwali.js (WebGL).
+═══════════════════════════════════════════════════════════════ */
+.navbar-pill{max-width:960px}
+
+/* nav: a normal pill link with a small marker, a ghost button in the menus */
+.pill-links a.nav-offer{color:var(--accent);display:inline-flex;align-items:center;gap:7px}
+.pill-links a.nav-offer::before{
+  content:'';width:6px;height:6px;border-radius:50%;background:var(--accent);
+  animation:offerDot 2.4s ease-in-out infinite;
+}
+@keyframes offerDot{0%,100%{opacity:.35}50%{opacity:1}}
+.nav-offer-block{display:flex;justify-content:center;width:100%;margin-bottom:16px}
+
+/* announcement row in the hero */
+.diwali-note{
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  margin:0 0 28px;padding:14px 16px;
+  background:var(--bg-card);border:1px solid var(--accent-border);border-radius:var(--radius-md);
+}
+.diwali-note__icon{
+  flex:none;display:flex;align-items:center;justify-content:center;width:40px;height:40px;
+  background:var(--accent-dim);border:1px solid var(--accent-border);border-radius:var(--radius-md);
+  color:var(--accent);cursor:pointer;transition:border-color var(--t),background var(--t);
+}
+.diwali-note__icon:hover{background:var(--bg-card-hover);border-color:var(--accent)}
+.diwali-note__icon:focus-visible,.cracker:focus-visible,.diwali-mute:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.diwali-note__text{flex:1 1 220px;min-width:0}
+.diwali-note__text strong{display:block;font-family:var(--font-display);font-size:.98rem;color:var(--text-primary)}
+.diwali-note__text span{display:block;margin-top:2px;font-size:.84rem;line-height:1.5;color:var(--text-secondary)}
+.diwali-note__text .diwali-count{margin-top:6px;color:var(--accent);font-weight:600}
+.diwali-note .btn{flex:none}
+
+/* string of bulbs along the top of the page (scrolls away with the page) */
+.diwali-lights{position:absolute;top:0;left:0;right:0;height:22px;z-index:150;pointer-events:none;overflow:hidden}
+.diwali-lights::before,.diwali-lights::after{
+  content:'';position:absolute;inset:0;background-repeat:repeat-x;background-size:44px 22px;
+}
+.diwali-lights::before{
+  background-image:
+    linear-gradient(var(--border-hover),var(--border-hover)),
+    radial-gradient(circle at 11px 11px,#ffc857 0 3px,rgba(255,200,87,.28) 3.5px 6px,transparent 6.5px),
+    radial-gradient(circle at 33px 11px,#a5a4fa 0 3px,rgba(165,164,250,.28) 3.5px 6px,transparent 6.5px);
+  background-size:100% 1px,44px 22px,44px 22px;
+  background-repeat:repeat-x;background-position:0 4px,0 0,0 0;
+  animation:bulbs 2.4s ease-in-out infinite;
+}
+.diwali-lights::after{
+  background-position:22px 0;
+  background-image:
+    radial-gradient(circle at 11px 11px,#5eead4 0 3px,rgba(94,234,212,.26) 3.5px 6px,transparent 6.5px),
+    radial-gradient(circle at 33px 11px,#ff9f1c 0 3px,rgba(255,159,28,.26) 3.5px 6px,transparent 6.5px);
+  animation:bulbs 2.4s ease-in-out infinite 1.2s;
+}
+@keyframes bulbs{0%,100%{opacity:.45}50%{opacity:1}}
+
+/* effects layer (WebGL) + visitor switch + greeting */
+#diwali-fx{position:fixed;inset:0;z-index:140;pointer-events:none}
+.diwali-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.diwali-mute{
+  position:fixed;left:max(16px,env(safe-area-inset-left,0px) + 10px);
+  bottom:max(18px,env(safe-area-inset-bottom,0px) + 10px);z-index:9970;pointer-events:auto;
+  background:var(--bg-card);color:var(--text-secondary);border:1px solid var(--border);
+  padding:8px 14px;border-radius:var(--radius-full);font:600 .76rem/1 var(--font-body);cursor:pointer;
+  transition:border-color var(--t),color var(--t);
+}
+.diwali-mute:hover{border-color:var(--accent-border);color:var(--text-primary)}
+.diwali-toast{
+  position:fixed;left:50%;bottom:max(24px,env(safe-area-inset-bottom,0px) + 16px);z-index:9975;pointer-events:none;
+  max-width:min(92vw,360px);padding:12px 18px;text-align:center;
+  background:var(--bg-card);border:1px solid var(--accent-border);border-radius:var(--radius-md);
+  box-shadow:var(--shadow-md);transform:translate(-50%,16px);opacity:0;transition:transform .35s ease,opacity .3s ease;
+}
+.diwali-toast.is-in{transform:translate(-50%,0);opacity:1}
+.diwali-toast strong{display:block;font:700 .9rem/1.3 var(--font-display);color:var(--text-primary)}
+.diwali-toast small{display:block;margin-top:2px;font-size:.78rem;color:var(--text-secondary)}
+
+/* crackers + lead card */
+.diwali-game{
+  margin:0 0 22px;padding:24px;
+  background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);
+}
+.diwali-game__head h3{margin:12px 0 4px;font:700 1.25rem/1.3 var(--font-display);letter-spacing:-.01em;color:var(--text-primary)}
+.diwali-game__head p{margin:0;font-size:.88rem;line-height:1.6;color:var(--text-secondary)}
+.diwali-game__row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0 12px}
+.cracker{
+  display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 6px 12px;
+  background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:var(--radius-md);
+  color:var(--text-secondary);font:600 .76rem/1.2 var(--font-body);cursor:pointer;
+  transition:border-color var(--t),background var(--t),color var(--t),transform var(--t);
+  -webkit-tap-highlight-color:transparent;
+}
+.cracker svg{color:var(--accent)}
+.cracker:hover{border-color:var(--accent-border);background:var(--bg-card-hover);color:var(--text-primary);transform:translateY(-2px)}
+.cracker:active{transform:scale(.97)}
+.cracker.is-burning svg{animation:fuse .12s linear infinite}
+.cracker.is-lit{border-color:rgba(94,234,212,.35)}
+.cracker.is-lit svg{color:var(--teal)}
+@keyframes fuse{0%{transform:translateX(-1.5px) rotate(-3deg)}100%{transform:translateX(1.5px) rotate(3deg)}}
+.diwali-game__progress{display:flex;align-items:center;gap:12px;font-size:.78rem;color:var(--text-secondary)}
+.diwali-game__bar{flex:1;height:4px;border-radius:var(--radius-full);background:var(--border);overflow:hidden}
+.diwali-game__bar span{display:block;height:100%;width:0;border-radius:inherit;background:var(--accent);transition:width .45s ease}
+.diwali-game__progress b{color:var(--text-primary)}
+.diwali-game__form{margin-top:18px;padding-top:18px;border-top:1px solid var(--border)}
+.diwali-game__form.is-revealed{animation:gameReveal .4s ease}
+@keyframes gameReveal{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.diwali-game__gift{margin-bottom:12px;font:600 .92rem/1.3 var(--font-display);color:var(--text-primary)}
+.diwali-game__fields{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.diwali-game__fields .form-control{font-size:16px}
+.diwali-game__fields input[name="business_name"]{grid-column:1 / -1}
+.diwali-game__hp{position:absolute !important;left:-9999px;width:1px !important;height:1px !important;opacity:0}
+.diwali-game__error{margin:0 0 10px;font-size:.82rem;color:#ff8a98}
+.diwali-game__form .btn{width:100%;justify-content:center}
+.diwali-game__form .btn:disabled{opacity:.7;cursor:wait}
+.diwali-game__note{margin:10px 0 0;text-align:center;font-size:.76rem;color:var(--text-muted)}
+.diwali-game__thanks{margin-top:18px;padding:12px 0 2px;text-align:center;animation:gameReveal .4s ease}
+.diwali-game__thanks strong{display:block;font:700 1.05rem/1.3 var(--font-display);color:var(--text-primary)}
+.diwali-game__thanks p{margin:4px 0 0;font-size:.88rem;color:var(--text-secondary)}
+.diwali-game.is-done .diwali-game__row,.diwali-game.is-done .diwali-game__progress{display:none}
+.diwali-game.is-shaking{animation:gameShake .5s ease-in-out}
+@keyframes gameShake{10%,90%{transform:translate(-1px,1px)}30%,70%{transform:translate(-3px,1px)}50%{transform:translate(3px,-1px)}}
+
+@media(max-width:640px){
+  .diwali-game{padding:18px 16px}
+  .diwali-game__row{gap:8px}
+  .diwali-game__fields{grid-template-columns:1fr}
+  .diwali-note .btn{width:100%;justify-content:center}
+}
+@media(prefers-reduced-motion:reduce){
+  .diwali-lights::before,.diwali-lights::after,.pill-links a.nav-offer::before,.cracker.is-burning svg,.diwali-game.is-shaking,.diwali-game__form.is-revealed,.diwali-game__thanks{animation:none}
+  .diwali-toast{transition:none}
+}
+@media print{.diwali-lights,#diwali-fx,.diwali-mute,.diwali-note,.diwali-game{display:none}}

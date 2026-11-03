@@ -1,4 +1,5 @@
 import uuid
+from datetime import date
 
 from django.core.validators import FileExtensionValidator
 from django.db import models
@@ -132,6 +133,11 @@ class Project(models.Model):
         default=True,
         help_text="If true, project can appear in the homepage portfolio strip.",
     )
+    is_published = models.BooleanField(
+        default=True,
+        db_index=True,
+        help_text="Untick to hide this work from the website without deleting it.",
+    )
 
     sort_order = models.PositiveIntegerField(
         default=0,
@@ -232,6 +238,91 @@ class BlogPageSettings(models.Model):
 
     def __str__(self) -> str:
         return 'Blog page settings'
+
+
+class SiteSettings(models.Model):
+    """Single row: site-wide switches editable from the admin."""
+
+    diwali_enabled = models.BooleanField(
+        'Diwali Special on',
+        default=True,
+        help_text='Shows the Diwali chip in the navbar and the Diwali strip, lamps and CTA on the home page.',
+    )
+    diwali_ends_on = models.DateField(
+        'Diwali Special ends on',
+        null=True,
+        blank=True,
+        help_text='Optional. The Diwali Special switches itself off after this date.',
+    )
+    diwali_date = models.DateField(
+        'Diwali day',
+        null=True,
+        blank=True,
+        default=date(2026, 11, 8),
+        help_text='Drives the "days to Diwali" countdown on the home page. Leave empty to hide the countdown.',
+    )
+    diwali_glitter_enabled = models.BooleanField(
+        'Golden glitter',
+        default=True,
+        help_text='Floating golden glitter and the sparkle trail that follows the cursor.',
+    )
+    diwali_crackers_enabled = models.BooleanField(
+        'Crackers',
+        default=True,
+        help_text='Fireworks that burst when visitors click or tap, scroll, hover the offer button or send a form.',
+    )
+
+    class Meta:
+        verbose_name = 'Site settings'
+        verbose_name_plural = 'Site settings'
+
+    CACHE_KEY = 'pages:site-settings'
+    CACHE_SECONDS = 60
+
+    def __str__(self) -> str:
+        return 'Site settings'
+
+    @classmethod
+    def current(cls) -> 'SiteSettings':
+        """The settings row (or an unsaved default one), cached so public pages do not query it each time."""
+        from django.core.cache import cache
+        from django.db import DatabaseError
+
+        row = cache.get(cls.CACHE_KEY)
+        if row is None:
+            try:
+                row = cls.objects.first() or cls()
+            except DatabaseError:
+                return cls()
+            cache.set(cls.CACHE_KEY, row, cls.CACHE_SECONDS)
+        return row
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        from django.core.cache import cache
+        cache.delete(self.CACHE_KEY)
+
+    def delete(self, *args, **kwargs):
+        result = super().delete(*args, **kwargs)
+        from django.core.cache import cache
+        cache.delete(self.CACHE_KEY)
+        return result
+
+    @property
+    def diwali_active(self) -> bool:
+        from django.utils import timezone
+
+        if not self.diwali_enabled:
+            return False
+        return not (self.diwali_ends_on and timezone.localdate() > self.diwali_ends_on)
+
+    @property
+    def days_to_diwali(self):
+        """Days left until Diwali day, 0 on the day itself, None when unset or already past."""
+        if not self.diwali_date:
+            return None
+        days = (self.diwali_date - timezone.localdate()).days
+        return days if days >= 0 else None
 
 
 class BlogPost(models.Model):
@@ -400,6 +491,24 @@ class JobApplication(models.Model):
     def __str__(self) -> str:
         role = self.job.title if self.job else 'General'
         return f'{self.full_name} → {role} ({self.created_at:%Y-%m-%d})'
+
+
+class DiwaliLead(models.Model):
+    """A lead from the Diwali crackers card on the home page (name + WhatsApp number)."""
+
+    name = models.CharField(max_length=120)
+    phone = models.CharField(max_length=20)
+    business_name = models.CharField(max_length=150, blank=True)
+    crackers_lit = models.PositiveSmallIntegerField(default=0, help_text='How many crackers they lit before signing up.')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Diwali lead'
+        verbose_name_plural = 'Diwali leads'
+
+    def __str__(self) -> str:
+        return f'{self.name} ({self.phone})'
 
 
 class OfferSignup(models.Model):

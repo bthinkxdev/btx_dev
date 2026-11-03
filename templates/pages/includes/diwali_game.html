@@ -1,0 +1,45 @@
+{# Diwali crackers card: tap crackers, then leave a name + WhatsApp number for the Diwali offer. Logic in assets/diwali.js. #}
+<section class="diwali-game" id="diwaliGame" aria-labelledby="dgTitle"
+         data-lead-url="{% url 'pages:diwali_lead' %}" data-crackers="{{ diwali_crackers|yesno:'1,0' }}">
+  <div class="diwali-game__head">
+    <span class="badge">Diwali with BThinkX</span>
+    <h3 id="dgTitle">{% if diwali_crackers %}Tap a cracker to light it!{% else %}Get your Diwali offer{% endif %}</h3>
+    <p>{% if diwali_crackers %}Light a cracker, enjoy the show, then unlock your Diwali offer for your business.{% else %}Leave your number and we'll send you this season's Diwali offer for your business.{% endif %}</p>
+  </div>
+
+  {% if diwali_crackers %}
+  <div class="diwali-game__row" role="group" aria-label="Diwali crackers">
+    <button type="button" class="cracker" data-kind="rocket" aria-label="Light the rocket"><svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 3l4 6v11h-8V9z"/><path d="M12 14H9l3 6M20 14h3l-3 6"/><path d="M16 20v9"/><path d="M14 24h4"/></svg><span class="cracker__name">Rocket</span></button>
+    <button type="button" class="cracker" data-kind="anar" aria-label="Light the flower pot"><svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 29l2-13h8l2 13z"/><path d="M12 22h8"/><path d="M16 4v6M10 7l3 4M22 7l-3 4M7 13l4 1M25 13l-4 1"/></svg><span class="cracker__name">Flower pot</span></button>
+    <button type="button" class="cracker" data-kind="chakra" aria-label="Light the spinning wheel"><svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="16" cy="16" r="3"/><path d="M16 13c0-5 3-8 8-8-1 5-3 8-8 8z"/><path d="M19 16c5 0 8 3 8 8-5-1-8-3-8-8z"/><path d="M16 19c0 5-3 8-8 8 1-5 3-8 8-8z"/><path d="M13 16c-5 0-8-3-8-8 5 1 8 3 8 8z"/></svg><span class="cracker__name">Chakra</span></button>
+    <button type="button" class="cracker" data-kind="bomb" aria-label="Light the big cracker"><svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="12" width="14" height="16" rx="2"/><path d="M9 17h14M9 23h14"/><path d="M16 12c0-3 2-4 4-4"/><path d="M22 4l1.5 2M25 7l2-.5M20.5 3v2"/></svg><span class="cracker__name">Big boom</span></button>
+  </div>
+  <div class="diwali-game__progress" aria-live="polite">
+    <div class="diwali-game__bar"><span id="dgBar"></span></div>
+    <span><b id="dgCount">0</b> of 4 lit</span>
+  </div>
+  {% endif %}
+
+  <form class="diwali-game__form" id="diwaliLeadForm" novalidate{% if diwali_crackers %} hidden{% endif %}>
+    {% csrf_token %}
+    <input type="hidden" name="crackers_lit" id="dgLit" value="0">
+    <div class="diwali-game__gift">{% if diwali_crackers %}Your Diwali offer is unlocked.{% else %}Get this season's Diwali offer.{% endif %}</div>
+    <div class="diwali-game__fields">
+      <label class="visually-hidden" for="dgName">Your name</label>
+      <input type="text" class="form-control" id="dgName" name="name" placeholder="Your name" autocomplete="name" maxlength="120" required>
+      <label class="visually-hidden" for="dgPhone">WhatsApp number</label>
+      <input type="tel" class="form-control" id="dgPhone" name="phone" placeholder="WhatsApp number" autocomplete="tel" inputmode="tel" maxlength="20" required>
+      <label class="visually-hidden" for="dgBiz">Business name (optional)</label>
+      <input type="text" class="form-control" id="dgBiz" name="business_name" placeholder="Business name (optional)" autocomplete="organization" maxlength="150">
+      <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" class="diwali-game__hp">
+    </div>
+    <p class="diwali-game__error" id="dgError" role="alert" hidden></p>
+    <button type="submit" class="btn btn-primary" id="dgSubmit">Send me the Diwali offer</button>
+    <p class="diwali-game__note">We'll WhatsApp you within 24 hours. No spam.</p>
+  </form>
+
+  <div class="diwali-game__thanks" id="dgThanks" role="status" hidden>
+    <strong>Thank you, and Happy Diwali.</strong>
+    <p>We'll WhatsApp your Diwali offer within 24 hours.</p>
+  </div>
+</section>
