@@ -493,24 +493,6 @@ class JobApplication(models.Model):
         return f'{self.full_name} → {role} ({self.created_at:%Y-%m-%d})'
 
 
-class DiwaliLead(models.Model):
-    """A lead from the Diwali crackers card on the home page (name + WhatsApp number)."""
-
-    name = models.CharField(max_length=120)
-    phone = models.CharField(max_length=20)
-    business_name = models.CharField(max_length=150, blank=True)
-    crackers_lit = models.PositiveSmallIntegerField(default=0, help_text='How many crackers they lit before signing up.')
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ['-created_at']
-        verbose_name = 'Diwali lead'
-        verbose_name_plural = 'Diwali leads'
-
-    def __str__(self) -> str:
-        return f'{self.name} ({self.phone})'
-
-
 class OfferSignup(models.Model):
     """A paid signup from a limited-seats campaign landing page (e.g. the
     Navaratri offer). One row per attempt — a retried/abandoned payment just

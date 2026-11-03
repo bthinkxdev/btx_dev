@@ -8,7 +8,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_GET, require_http_methods
 from django.views.decorators.csrf import ensure_csrf_cookie
 
-from .forms import ContactForm, DiwaliLeadForm, JobApplicationForm, NewsletterSubscribeForm, QuoteRequestForm
+from .forms import ContactForm, JobApplicationForm, NewsletterSubscribeForm, QuoteRequestForm
 from .models import (
     BlogPageSettings,
     BlogPost,
@@ -297,40 +297,6 @@ def quote_request(request):
         })
     errors = {k: v[0] for k, v in form.errors.items()}
     logger.warning('Quote request validation failed: %s', errors)
-    return JsonResponse({'success': False, 'errors': errors}, status=400)
-
-
-@require_http_methods(['POST'])
-def diwali_lead(request):
-    """Lead from the Diwali crackers card. Saved here, then handed to the CRM (lead + alerts)."""
-    from crm.core import ratelimit
-    from crm.core.middleware import client_ip
-
-    from .models import SiteSettings
-
-    if not SiteSettings.current().diwali_active:
-        raise Http404
-    if not ratelimit.hit('diwali-lead', client_ip(request) or '', 6, 3600):
-        return JsonResponse({'success': False, 'errors': {'__all__': 'Too many tries. Please try again later.'}}, status=429)
-    form = DiwaliLeadForm(request.POST)
-    if form.is_valid():
-        if form.cleaned_data.get('website'):      # honeypot tripped: pretend it worked
-            return JsonResponse({'success': True})
-        lead = form.save()
-        _to_crm('diwali_lead', lead)
-        try:
-            send_mail(
-                subject=f'[BThinkX] Diwali lead: {lead.name} | {lead.phone}',
-                message=(f'New Diwali crackers lead.\n\nName: {lead.name}\nWhatsApp/phone: {lead.phone}\n'
-                         f'Business: {lead.business_name or "(not given)"}\nCrackers lit: {lead.crackers_lit}/4'),
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[getattr(settings, 'CONTACT_EMAIL_TO', 'hr@bthinkx.com')],
-                fail_silently=False,
-            )
-        except Exception:
-            logger.exception('Diwali lead email failed')
-        return JsonResponse({'success': True})
-    errors = {k: v[0] for k, v in form.errors.items()}
     return JsonResponse({'success': False, 'errors': errors}, status=400)
 
 

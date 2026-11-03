@@ -5,7 +5,6 @@ from .models import (
     BlogPageSettings,
     BlogPost,
     ContactSubmission,
-    DiwaliLead,
     JobApplication,
     JobPosting,
     NewsletterSubscriber,
@@ -136,7 +135,7 @@ class SiteSettingsAdmin(admin.ModelAdmin):
             'fields': ('diwali_enabled', 'diwali_ends_on', 'diwali_date'),
         }),
         ('Festive effects', {
-            'description': 'Each effect can be switched off on its own. Visitors can also mute them with the button on the page.',
+            'description': 'Each effect can be switched off on its own. Visitors are asked by the Bee whether to turn Diwali mode on, and can switch it off again with the button on the page.',
             'fields': ('diwali_glitter_enabled', 'diwali_crackers_enabled'),
         }),
     )
@@ -273,14 +272,6 @@ class OfferSignupAdmin(admin.ModelAdmin):
     search_fields = ('business_name', 'name', 'phone', 'place', 'cashfree_order_id')
     readonly_fields = ('created_at', 'paid_at', 'cashfree_order_id', 'cashfree_payment_id')
     date_hierarchy = 'created_at'
-
-
-@admin.register(DiwaliLead)
-class DiwaliLeadAdmin(admin.ModelAdmin):
-    list_display = ('name', 'phone', 'business_name', 'crackers_lit', 'created_at')
-    search_fields = ('name', 'phone', 'business_name')
-    date_hierarchy = 'created_at'
-    readonly_fields = ('created_at',)
 
 
 @admin.register(NewsletterSubscriber)

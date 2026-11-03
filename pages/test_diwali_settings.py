@@ -27,6 +27,9 @@ class DiwaliSettingsTests(TestCase):
         self.assertIn('nav-offer', html)
         self.assertIn('diwali-lights', html)
         self.assertIn('Light the diya', html)
+        self.assertIn('<html lang="en" data-diwali="1">', html)
+        self.assertIn("localStorage.getItem('btx_diwali_mode')", html)
+        self.assertNotIn('diwaliGame', html)           # the crackers card is gone
 
     def test_crackers_off_keeps_glitter(self):
         SiteSettings.objects.create(diwali_crackers_enabled=False)
@@ -45,7 +48,8 @@ class DiwaliSettingsTests(TestCase):
     def test_master_switch_removes_everything(self):
         SiteSettings.objects.create(diwali_enabled=False)
         html = self.home()
-        for needle in ('diwali-fx', 'diwali.js', 'nav-offer', 'diwali-note', 'diwali-lights', 'Get the Diwali Offer'):
+        for needle in ('diwali-fx', 'diwali.js', 'nav-offer', 'diwali-note', 'diwali-lights', 'btx_diwali_mode',
+                       'data-diwali', 'Get the Diwali Offer'):
             self.assertNotIn(needle, html, needle)
 
     def test_end_date_switches_it_off(self):
@@ -69,64 +73,6 @@ class DiwaliSettingsTests(TestCase):
         s.diwali_date = None
         s.save()
         self.assertNotIn('class="diwali-count"', self.home())
-
-
-@override_settings(ALLOWED_HOSTS=['testserver'])
-class DiwaliLeadTests(TestCase):
-    url = '/offers/diwali/lead/'
-
-    def setUp(self):
-        cache.clear()
-
-    def post(self, **extra):
-        data = {'name': 'Meera Joseph', 'phone': '+91 98470 12345', 'business_name': 'Meera Sarees', 'crackers_lit': '3'}
-        data.update(extra)
-        return self.client.post(self.url, data)
-
-    def test_card_renders_with_crackers_and_form_hidden(self):
-        html = self.client.get(reverse('pages:index')).content.decode()
-        self.assertIn('id="diwaliGame"', html)
-        self.assertEqual(html.count('class="cracker"'), 4)
-        self.assertIn('id="diwaliLeadForm" novalidate hidden', html)
-
-    def test_crackers_off_shows_plain_gift_form(self):
-        SiteSettings.objects.create(diwali_crackers_enabled=False)
-        html = self.client.get(reverse('pages:index')).content.decode()
-        self.assertIn('id="diwaliGame"', html)
-        self.assertNotIn('class="cracker"', html)
-        self.assertNotIn('id="diwaliLeadForm" novalidate hidden', html)
-        self.assertIn('assets/diwali.js', html)
-
-    def test_master_switch_removes_card_and_endpoint(self):
-        SiteSettings.objects.create(diwali_enabled=False)
-        self.assertNotIn('diwaliGame', self.client.get(reverse('pages:index')).content.decode())
-        self.assertEqual(self.post().status_code, 404)
-
-    def test_lead_is_saved_and_reaches_the_crm(self):
-        from crm.models import Lead
-        from .models import DiwaliLead
-        r = self.post()
-        self.assertEqual(r.status_code, 200, r.content)
-        lead = DiwaliLead.objects.get()
-        self.assertEqual((lead.phone, lead.crackers_lit), ('9847012345', 3))
-        crm_lead = Lead.objects.get(phone__endswith='9847012345')
-        self.assertEqual(crm_lead.company, 'Meera Sarees')
-        self.assertIn('Diwali', crm_lead.notes)
-
-    def test_bad_phone_and_name_rejected(self):
-        self.assertEqual(self.post(phone='12345').status_code, 400)
-        self.assertEqual(self.post(name='').status_code, 400)
-
-    def test_honeypot_saves_nothing(self):
-        from .models import DiwaliLead
-        r = self.post(website='http://spam.example')
-        self.assertEqual(r.status_code, 200)
-        self.assertFalse(DiwaliLead.objects.exists())
-
-    def test_crackers_lit_is_capped(self):
-        from .models import DiwaliLead
-        self.post(crackers_lit='99')
-        self.assertEqual(DiwaliLead.objects.get().crackers_lit, 4)
 
 
 @override_settings(ALLOWED_HOSTS=['testserver'])

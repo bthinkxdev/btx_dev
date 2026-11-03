@@ -76,13 +76,6 @@ def quote_request(lead) -> None:
         'campaign': 'Website pricing quotation', 'kind_label': 'Quotation download'})
 
 
-def diwali_lead(lead) -> None:
-    capture(f'diwali-{lead.pk}', {
-        'name': lead.name, 'phone': lead.phone, 'company': lead.business_name,
-        'message': f'Diwali crackers card: lit {lead.crackers_lit}/4 crackers and asked for the Diwali offer.',
-        'campaign': 'Diwali crackers 2026', 'kind_label': 'Diwali offer'})
-
-
 def offer_signup(signup, *, paid: bool = False) -> None:
     state = 'PAID' if paid else 'payment started'
     capture(f'offer-{signup.pk}-{"paid" if paid else "started"}', {

@@ -91,11 +91,13 @@
       '<path d="M56 48Q60 51.5 64 48" fill="none" stroke="#f7d46a" stroke-width="1.4" stroke-linecap="round"/>' +
     '</g></svg>';
 
+  window.btxBeeFace = function () { return FRONT; };
+
   var SPLAT = '<svg viewBox="0 0 68 68" aria-hidden="true" focusable="false"><path d="M34 6c6 0 7 8 12 9s12-3 14 4-6 9-4 14 10 6 6 12-10 2-13 7-1 12-9 12-7-9-13-10-14 4-16-3 6-9 5-14S2 30 8 24s11 0 14-6 6-12 12-12z" fill="#b3121a"/>' +
     '<circle cx="26" cy="26" r="5" fill="#d9232c" opacity=".8"/><circle cx="43" cy="40" r="3.4" fill="#7d0a11" opacity=".7"/></svg>';
 
-  var MSG_HELLO = 'Hi! I am <b>Bee</b>, your assistant from <b>BTX</b> <span aria-hidden="true">&#128029;</span>';
-  var MSG_KILLED = 'You killed me, right? <span aria-hidden="true">&#128565;</span> No worries, my soul will always assist you <span aria-hidden="true">&#128123;</span>';
+  var MSG_HELLO = 'Hi! I am <b>Bee</b>, your assistant from <b>BTX</b>';
+  var MSG_KILLED = 'You killed me, right? No worries, my soul will always assist you';
 
   var els = {};
   var flight = null;      // whatever is animating right now: { raf, timer, node }
@@ -189,6 +191,8 @@
     els.sheet.classList.toggle('is-soul', !!soul);
     els.sheet.classList.add('is-visible');
     launcher.classList.add('is-bee-seated');
+    window.__btxBeeSeated = true;
+    document.dispatchEvent(new CustomEvent('btx:bee-seated'));
     if (!greet) return;
     els.perch.classList.add('is-landed');
     setTimeout(function () { els.perch.classList.remove('is-landed'); }, 1800);

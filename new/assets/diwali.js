@@ -1,7 +1,12 @@
-/* BThinkX Diwali: WebGL glitter and crackers that react to what the visitor does, plus the lead card.
+/* BThinkX Diwali mode.
  *
- * Switched on and off from Django admin (Site settings). The server renders #diwali-fx only when
- * glitter or crackers is enabled, and sets data-glitter / data-crackers per effect.
+ * The site decides whether the Diwali Special runs (Django admin > Site settings). Each visitor then decides
+ * whether to see it: the Bee asks once, in an iOS-style alert, "Turn on Diwali mode?". The answer is kept in
+ * localStorage (btx_diwali_mode = on | off) and can be changed with the switch at the bottom-left.
+ *
+ *   Diwali mode on   a string of bulbs hanging from a wavy wire across the top of the page, and, when the
+ *                    admin allows them, WebGL glitter and crackers.
+ *   Diwali mode off  none of that; the offer text and links stay as normal page content.
  *
  * Human events -> crackers
  *   tap / click          a burst where the finger or cursor is (every 3rd one is a bigger flower)
@@ -10,30 +15,192 @@
  *   hover the offer      a sparkler fizzes from the button; pressing it fires a salvo
  *   moving the mouse     a light trail of glitter
  *   sending a form       a celebration over the form
- *   lighting the diya    the diya button in the offer note
+ *   the diya button      lights up a burst (or asks to turn Diwali mode on)
  *
- * Rendering: one WebGL canvas, every particle is a GL point drawn additively in a single draw call.
- * It is created lazily after the page is idle, sleeps when nothing is moving or the tab is hidden, and
- * does nothing for visitors who prefer reduced motion or whose browser has no WebGL.
- * Visitors can switch the effects off with the button at the bottom-left (kept in localStorage).
+ * Rendering: one WebGL canvas, every particle a GL point drawn additively in a single draw call. It is created
+ * lazily after the page is idle, sleeps when nothing moves or the tab is hidden, and does nothing for visitors
+ * who prefer reduced motion or whose browser has no WebGL.
  */
 (function () {
   'use strict';
 
+  var KEY = 'btx_diwali_mode';
+  var root = document.documentElement;
   var host = document.getElementById('diwali-fx');
   var glitterOn = !!host && host.getAttribute('data-glitter') === '1';
   var crackersOn = !!host && host.getAttribute('data-crackers') === '1';
   var reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  var coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
 
-  if (host && (glitterOn || crackersOn) && !reduceMotion) initEffects(host, glitterOn, crackersOn);
-  initLeadCard();
+  /* ====================================================================== visitor mode */
+  var mode = '';
+  try { mode = localStorage.getItem(KEY) || ''; } catch (e) { /* private mode: asked again next visit */ }
+  var switchBtn = null;
 
-  /* ====================================================================== effects */
-  function initEffects(host, glitterOn, crackersOn) {
-    var STORE_KEY = 'btx_diwali_fx';
+  function isOn() { return mode === 'on'; }
+
+  function setMode(value) {
+    mode = value;
+    try { localStorage.setItem(KEY, value); } catch (e) { /* ignore */ }
+    root.classList.toggle('btx-diwali-on', isOn());
+    paintSwitch();
+    document.dispatchEvent(new CustomEvent('btx:diwali-mode', { detail: { on: isOn() } }));
+  }
+
+  function paintSwitch() {
+    if (!switchBtn) return;
+    switchBtn.setAttribute('aria-pressed', isOn() ? 'true' : 'false');
+    switchBtn.textContent = isOn() ? 'Diwali mode: on' : 'Diwali mode: off';
+    switchBtn.title = isOn() ? 'Turn Diwali mode off' : 'Turn Diwali mode on';
+  }
+
+  function buildSwitch() {
+    switchBtn = document.createElement('button');
+    switchBtn.type = 'button';
+    switchBtn.className = 'diwali-mute';
+    switchBtn.addEventListener('click', function () { setMode(isOn() ? 'off' : 'on'); });
+    document.body.appendChild(switchBtn);
+    paintSwitch();
+  }
+
+  function toast(title, sub) {
+    var el = document.createElement('div');
+    el.className = 'diwali-toast';
+    el.setAttribute('role', 'status');
+    el.innerHTML = '<strong></strong><small></small>';
+    el.firstChild.textContent = title;
+    el.lastChild.textContent = sub;
+    document.body.appendChild(el);
+    requestAnimationFrame(function () { el.classList.add('is-in'); });
+    setTimeout(function () {
+      el.classList.remove('is-in');
+      setTimeout(function () { el.remove(); }, 450);
+    }, 4600);
+  }
+
+  /* ---------- string of bulbs: a wavy wire with bulbs hanging from it, at most 10% of the screen tall ---------- */
+  var BULB_COLOURS = ['#ffc857', '#a5a4fa', '#5eead4', '#ff9f1c'];
+  var lightsTimer = 0;
+
+  function buildLights() {
+    var el = document.querySelector('.diwali-lights');
+    if (!el || !isOn()) return;
+    var W = window.innerWidth, H = window.innerHeight;
+    var avail = Math.round(Math.max(56, Math.min(H * 0.10, 120)));      // the 10% of the screen it may use
+    el.style.height = avail + 'px';
+    var CORD = 7, BULB = 14;                                            // cord length, bulb height
+    var low = avail - CORD - BULB - 4;                                  // lowest the wire may sag to
+    var swags = W < 640 ? 1.7 : W < 1100 ? 2.7 : 3.6;                   // how many loops across the width
+
+    // an uneven, hand-hung curve: two sines of different length plus a slow drift, always inside [0, 1]
+    function f(x) {
+      var u = x / W;
+      var v = 0.5 + 0.27 * Math.sin(6.2832 * swags * u - 1.3) + 0.15 * Math.sin(6.2832 * swags * 1.85 * u + 0.8) +
+              0.06 * Math.sin(6.2832 * 0.7 * u + 2.1);
+      return Math.max(0, Math.min(1, v));
+    }
+    function y(x) { return 4 + (low - 4) * f(x); }
+
+    var d = '';
+    for (var x = -10; x <= W + 10; x += 6) d += (d ? 'L' : 'M') + x + ' ' + y(x).toFixed(1);
+
+    var gap = W < 640 ? 26 : 32;
+    var n = Math.max(6, Math.floor(W / gap));
+    var bulbs = '';
+    for (var i = 0; i < n; i++) {
+      var bx = (i + 0.5) * W / n, by = y(bx), c = BULB_COLOURS[i % 4];
+      bulbs += '<g class="b' + (i % 4) + '">' +
+        '<circle cx="' + bx.toFixed(1) + '" cy="' + (by + CORD + 6.5).toFixed(1) + '" r="11" fill="' + c + '" opacity=".22"/>' +
+        '<ellipse cx="' + bx.toFixed(1) + '" cy="' + (by + CORD + 7).toFixed(1) + '" rx="4.4" ry="6.4" fill="' + c + '"/></g>' +
+        '<path class="wire" d="M' + bx.toFixed(1) + ' ' + by.toFixed(1) + 'v' + CORD + '"/>' +
+        '<rect class="cap" x="' + (bx - 1.8).toFixed(1) + '" y="' + (by + CORD - 1).toFixed(1) + '" width="3.6" height="3" rx="1"/>';
+    }
+    el.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + avail + '" preserveAspectRatio="none" aria-hidden="true" focusable="false">' +
+      '<path class="wire" d="' + d + '"/>' + bulbs + '</svg>';
+  }
+
+  window.addEventListener('resize', function () {
+    clearTimeout(lightsTimer);
+    lightsTimer = setTimeout(buildLights, 150);
+  });
+  document.addEventListener('btx:diwali-mode', buildLights);
+
+  /* ---------- the Bee asks (iOS-style alert) ---------- */
+  var asking = false;
+
+  function openAsk() {
+    if (asking) return;
+    asking = true;
+    var opener = document.activeElement;
+    var face = window.btxBeeFace ? window.btxBeeFace() : '';
+    var wrap = document.createElement('div');
+    wrap.className = 'diwali-ask';
+    wrap.innerHTML =
+      '<div class="diwali-ask__box" role="alertdialog" aria-modal="true" aria-labelledby="dAskT" aria-describedby="dAskD">' +
+        '<div class="diwali-ask__body">' +
+          (face ? '<div class="diwali-ask__bee" aria-hidden="true">' + face + '</div>' : '') +
+          '<h2 id="dAskT">Turn on Diwali mode?</h2>' +
+          '<p id="dAskD">Hi, I am Bee. Want to see BThinkX in festive mode? You get string lights, golden glitter and crackers that pop when you tap.</p>' +
+        '</div>' +
+        '<div class="diwali-ask__actions">' +
+          '<button type="button" data-act="no">Not now</button>' +
+          '<button type="button" data-act="yes" class="is-primary">Turn On</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(wrap);
+    var yes = wrap.querySelector('[data-act="yes"]');
+    var no = wrap.querySelector('[data-act="no"]');
+    requestAnimationFrame(function () { wrap.classList.add('is-in'); yes.focus(); });
+
+    function close(answer) {
+      document.removeEventListener('keydown', onKey, true);
+      wrap.classList.remove('is-in');
+      setTimeout(function () { wrap.remove(); }, 260);
+      asking = false;
+      if (opener && opener.focus) { try { opener.focus(); } catch (e) { /* ignore */ } }
+      setMode(answer);
+      if (answer === 'on') toast('Diwali mode is on', crackersOn ? (coarse ? 'Tap' : 'Click') + ' anywhere for crackers.' : 'Happy Diwali from BThinkX.');
+    }
+    function onKey(e) {
+      if (e.key === 'Escape') { e.preventDefault(); close('off'); }
+      else if (e.key === 'Tab') {                       // keep focus inside the alert
+        e.preventDefault();
+        (document.activeElement === yes ? no : yes).focus();
+      }
+    }
+    document.addEventListener('keydown', onKey, true);
+    yes.addEventListener('click', function () { close('on'); });
+    no.addEventListener('click', function () { close('off'); });
+  }
+
+  // The Bee asks once it has landed on the chat icon (bee.js sets the flag / fires the event);
+  // without a Bee on the page it asks a little after the page has loaded.
+  function scheduleAsk() {
+    if (mode) return;
+    var done = false;
+    function go(delay) {
+      if (done) return;
+      done = true;
+      setTimeout(function () { if (!mode) openAsk(); }, delay);
+    }
+    if (window.__btxBeeSeated) { go(1200); return; }
+    document.addEventListener('btx:bee-seated', function () { go(1400); }, { once: true });
+    setTimeout(function () { go(0); }, document.querySelector('.btx-chat-launcher') ? 16000 : 2500);
+  }
+
+  document.addEventListener('click', function (e) {
+    var diya = e.target.closest && e.target.closest('.diwali-note__icon');
+    if (!diya) return;
+    if (!isOn()) { openAsk(); return; }
+    var fx = window.btxDiwali;
+    var r = diya.getBoundingClientRect();
+    if (fx) fx.burst(r.left + r.width / 2, r.top, { count: 36, power: 3.4, gold: true, flower: true });
+  });
+
+  /* ====================================================================== WebGL effects */
+  function initEffects(host) {
     var MAX_PARTICLES = 640;
     var FLOATS = 9;                         // x, y, size, r, g, b, a, kind, (pad)
-    var coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
 
     function rgb(hex) {
       var n = parseInt(hex.slice(1), 16);
@@ -44,10 +211,7 @@
     var FIREWORK = palette(['#ffd166', '#ff5d73', '#ff9f1c', '#5eead4', '#a5a4fa', '#ffffff', '#7bf1a8']);
     var WHITE = rgb('#ffffff');
 
-    var muted = false;
-    try { muted = localStorage.getItem(STORE_KEY) === 'off'; } catch (e) { /* private mode */ }
-    var override = 0;                       // >0 while a cracker the visitor lit by hand is playing
-
+    var muted = !isOn();
     var canvas = null, gl = null, program = null, buffer = null, loc = null;
     var data = new Float32Array(MAX_PARTICLES * FLOATS + 120 * FLOATS);
     var failed = false;
@@ -57,7 +221,7 @@
 
     function rand(a, b) { return a + Math.random() * (b - a); }
     function pick(list) { return list[Math.floor(Math.random() * list.length)]; }
-    function blocked() { return !crackersOn || (muted && !override) || failed; }
+    function blocked() { return !crackersOn || muted || failed; }
 
     /* ---------- WebGL setup (lazy) ---------- */
     var VERT = 'attribute vec2 a_pos;attribute float a_size;attribute vec4 a_color;attribute float a_kind;' +
@@ -156,7 +320,7 @@
       if (blocked()) return;
       opts = opts || {};
       var n = opts.count || (coarse ? 26 : 38);
-      var colours = opts.palette || [pick(FIREWORK), pick(FIREWORK), WHITE];
+      var colours = opts.gold ? GOLD : [pick(FIREWORK), pick(FIREWORK), WHITE];
       var power = opts.power || rand(2.2, 4.2);
       for (var i = 0; i < n; i++) {
         var a = (i / n) * Math.PI * 2 + rand(-0.05, 0.05);
@@ -167,9 +331,9 @@
       start();
     }
 
-    function launchRocket(x, targetY, fromY) {
+    function launchRocket(x, targetY) {
       if (blocked()) return;
-      rockets.push({ x: x, y: fromY === undefined ? H + 10 : fromY, vy: -rand(8, 11), targetY: targetY, vx: rand(-0.4, 0.4) });
+      rockets.push({ x: x, y: H + 10, vy: -rand(8, 11), targetY: targetY, vx: rand(-0.4, 0.4) });
       start();
     }
 
@@ -199,53 +363,6 @@
         if (performance.now() < until) requestAnimationFrame(tick);
       })();
     }
-
-    /* ---------- the crackers on the hero card ---------- */
-    function keepOn(ms) { override++; setTimeout(function () { override--; }, ms); }
-    function centre(el) {
-      var r = el.getBoundingClientRect();
-      return { x: r.left + r.width / 2, y: r.top + r.height / 2, top: r.top };
-    }
-    function timed(ms, every, fn) {
-      var end = performance.now() + ms;
-      var id = setInterval(function () { if (performance.now() > end) { clearInterval(id); return; } fn(); }, every);
-    }
-
-    function fire(kind, el) {
-      if (!crackersOn || failed) return;
-      var c = centre(el);
-      keepOn(3200);
-      if (kind === 'rocket') {
-        launchRocket(c.x, Math.max(80, c.top - rand(160, 260)), c.y);
-        setTimeout(function () { launchRocket(c.x + rand(-60, 60), Math.max(80, c.top - rand(200, 320)), c.y); }, 350);
-      } else if (kind === 'anar') {                         // flower pot: a fountain
-        timed(1900, 28, function () {
-          for (var i = 0; i < 3; i++) {
-            spark(c.x + rand(-6, 6), c.y - 6, rand(-1.6, 1.6), -rand(4, 8), rand(40, 70),
-                  pick(GOLD.concat([WHITE])), rand(1.4, 2.6), 0.1);
-          }
-          start();
-        });
-      } else if (kind === 'chakra') {                       // spinning wheel
-        var ang = 0;
-        timed(1700, 24, function () {
-          ang += 0.55;
-          for (var j = 0; j < 4; j++) {
-            var a = ang + j * 1.5708;
-            spark(c.x + Math.cos(a) * 18, c.y + Math.sin(a) * 18, Math.cos(a + 1.57) * 3.2 + rand(-0.4, 0.4),
-                  Math.sin(a + 1.57) * 3.2 + rand(-0.4, 0.4), rand(24, 40), pick([GOLD[0], FIREWORK[3], FIREWORK[1], WHITE]),
-                  rand(1.4, 2.4), 0.03);
-          }
-          start();
-        });
-      } else {                                              // big boom
-        burst(c.x, c.y - 30, { count: coarse ? 60 : 90, power: 6.5, palette: [GOLD[0], FIREWORK[1], WHITE] });
-        setTimeout(function () { burst(c.x - 60, c.y - 90, { count: 40, power: 4.2, flower: true }); }, 160);
-        setTimeout(function () { burst(c.x + 60, c.y - 90, { count: 40, power: 4.2, flower: true }); }, 280);
-      }
-    }
-
-    function celebrate() { keepOn(1600); finale(); }
 
     /* ---------- render loop ---------- */
     function start() {
@@ -306,22 +423,20 @@
       }
 
       var alive = particles.length || rockets.length || (glitterOn && !muted && ambient.length);
-      if (alive && !document.hidden) {
-        requestAnimationFrame(frame);
-      } else {
-        running = false;
-      }
+      if (alive && !document.hidden) requestAnimationFrame(frame); else running = false;
     }
 
     /* ---------- human events ---------- */
     function isFormField(el) {
       return !!(el && el.closest && el.closest('input, textarea, select, [contenteditable="true"]'));
     }
+    function inUi(el) {
+      return !!(el && el.closest && el.closest('.diwali-mute, .diwali-ask'));
+    }
 
     var clicks = 0, lastBurst = 0;
     document.addEventListener('pointerdown', function (e) {
-      if (blocked() || e.button > 0 || isFormField(e.target)) return;
-      if (e.target.closest && e.target.closest('.diwali-mute')) return;
+      if (blocked() || e.button > 0 || isFormField(e.target) || inUi(e.target)) return;
       var now = performance.now();
       if (now - lastBurst < 110) return;
       lastBurst = now;
@@ -334,7 +449,7 @@
     }, { passive: true });
 
     document.addEventListener('dblclick', function (e) {
-      if (blocked() || isFormField(e.target)) return;
+      if (blocked() || isFormField(e.target) || inUi(e.target)) return;
       finale(e.clientX, e.clientY);
     });
 
@@ -369,14 +484,6 @@
       sparkler(el, 650);
     });
 
-    document.addEventListener('click', function (e) {
-      var diya = e.target.closest && e.target.closest('.diwali-note__icon');
-      if (!diya) return;
-      var r = diya.getBoundingClientRect();
-      keepOn(2000);
-      burst(r.left + r.width / 2, r.top, { count: 36, power: 3.4, palette: GOLD, flower: true });
-    });
-
     document.addEventListener('submit', function (e) {
       var form = e.target;
       if (blocked() || !form || (form.matches && form.matches('[data-no-fx]'))) return;
@@ -387,60 +494,26 @@
 
     document.addEventListener('btx:celebrate', function () { finale(); });
 
-    /* ---------- visitor switch ---------- */
-    var btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'diwali-mute';
-    host.appendChild(btn);
-
-    function paintButton() {
-      btn.setAttribute('aria-pressed', muted ? 'true' : 'false');
-      btn.textContent = muted ? 'Diwali effects: off' : 'Diwali effects: on';
-      btn.title = muted ? 'Turn the Diwali effects on' : 'Turn the Diwali effects off';
-    }
-    paintButton();
-
-    btn.addEventListener('click', function () {
-      muted = !muted;
-      try { localStorage.setItem(STORE_KEY, muted ? 'off' : 'on'); } catch (e) { /* ignore */ }
-      paintButton();
+    // The visitor turns Diwali mode on or off.
+    document.addEventListener('btx:diwali-mode', function (e) {
+      muted = !e.detail.on;
       particles.length = 0;
       rockets.length = 0;
       seedAmbient();
-      if (!muted) { start(); burst(W / 2, H / 2, { flower: true, power: 4 }); }
+      if (!muted) { start(); setTimeout(function () { launchRocket(W * 0.5, H * 0.3); }, 350); }
     });
-
-    /* ---------- greeting, once per session ---------- */
-    function greet() {
-      var key = 'btx_diwali_greeted';
-      try { if (sessionStorage.getItem(key)) return; sessionStorage.setItem(key, '1'); } catch (e) { /* ignore */ }
-      if (blocked()) return;
-      var toast = document.createElement('div');
-      toast.className = 'diwali-toast';
-      toast.setAttribute('role', 'status');
-      toast.innerHTML = '<strong>Happy Diwali from BThinkX</strong><small>' + (coarse ? 'Tap' : 'Click') +
-        ' anywhere for crackers.</small>';
-      host.appendChild(toast);
-      requestAnimationFrame(function () { toast.classList.add('is-in'); });
-      setTimeout(function () {
-        toast.classList.remove('is-in');
-        setTimeout(function () { toast.remove(); }, 450);
-      }, 5200);
-      setTimeout(function () { launchRocket(W * 0.5, H * 0.3); }, 900);
-    }
 
     var resizeTimer = 0;
     window.addEventListener('resize', function () { clearTimeout(resizeTimer); resizeTimer = setTimeout(resize, 150); });
     document.addEventListener('visibilitychange', function () { if (!document.hidden) start(); });
 
-    window.btxDiwali = { burst: burst, finale: finale, celebrate: celebrate, rocket: launchRocket, fire: fire };
+    window.btxDiwali = { burst: burst, finale: finale, rocket: launchRocket };
 
     // Nothing touches WebGL until the page has finished loading and the browser is idle.
     function whenIdle() {
       idleReady = true;
       seedAmbient();
       if (glitterOn && !muted) start();
-      setTimeout(greet, 600);
     }
     function afterLoad() {
       if (window.requestIdleCallback) window.requestIdleCallback(whenIdle, { timeout: 2500 });
@@ -450,90 +523,10 @@
     else window.addEventListener('load', afterLoad, { once: true });
   }
 
-  /* ====================================================================== lead card */
-  function initLeadCard() {
-    var card = document.getElementById('diwaliGame');
-    if (!card) return;
-    var form = document.getElementById('diwaliLeadForm');
-    var thanks = document.getElementById('dgThanks');
-    var errorEl = document.getElementById('dgError');
-    var submit = document.getElementById('dgSubmit');
-    var countEl = document.getElementById('dgCount');
-    var barEl = document.getElementById('dgBar');
-    var litField = document.getElementById('dgLit');
-    var crackers = card.querySelectorAll('.cracker');
-    var lit = {};
-    var litCount = 0;
-
-    function fx() { return window.btxDiwali; }
-
-    Array.prototype.forEach.call(crackers, function (btn) {
-      btn.addEventListener('click', function () {
-        var kind = btn.getAttribute('data-kind');
-        if (btn.classList.contains('is-burning')) return;
-        btn.classList.add('is-burning');
-        setTimeout(function () {
-          btn.classList.remove('is-burning');
-          btn.classList.add('is-lit');
-          if (fx()) fx().fire(kind, btn);
-          if (kind === 'bomb') {
-            card.classList.add('is-shaking');
-            setTimeout(function () { card.classList.remove('is-shaking'); }, 500);
-          }
-        }, 480);
-        if (!lit[kind]) {
-          lit[kind] = true;
-          litCount++;
-          if (countEl) countEl.textContent = litCount;
-          if (barEl) barEl.style.width = (litCount * 25) + '%';
-          if (litField) litField.value = litCount;
-          if (form.hidden) {
-            form.hidden = false;
-            form.classList.add('is-revealed');
-          }
-          if (litCount === 4 && fx()) setTimeout(function () { fx().celebrate(); }, 1400);
-        }
-      });
-    });
-
-    function showError(msg) {
-      errorEl.textContent = msg;
-      errorEl.hidden = false;
-    }
-
-    form.addEventListener('submit', function (e) {
-      e.preventDefault();
-      errorEl.hidden = true;
-      var name = form.elements.name.value.trim();
-      var phone = form.elements.phone.value.replace(/\D/g, '');
-      if (name.length < 2) { showError('Please enter your name.'); form.elements.name.focus(); return; }
-      if (phone.length < 10) { showError('Enter a valid 10-digit WhatsApp number.'); form.elements.phone.focus(); return; }
-      submit.disabled = true;
-      var label = submit.textContent;
-      submit.textContent = 'Sending...';
-      fetch(card.getAttribute('data-lead-url'), {
-        method: 'POST', body: new FormData(form), credentials: 'same-origin',
-        headers: { 'X-Requested-With': 'XMLHttpRequest' }
-      }).then(function (r) {
-        return r.json().then(function (data) { return { ok: r.ok, data: data }; });
-      }).then(function (res) {
-        if (res.ok && res.data.success) {
-          form.hidden = true;
-          thanks.hidden = false;
-          card.classList.add('is-done');
-          if (fx()) fx().celebrate();
-        } else {
-          var errs = res.data && res.data.errors;
-          showError(errs ? (errs.__all__ || errs.phone || errs.name || errs[Object.keys(errs)[0]])
-                         : 'Something went wrong. Please try again.');
-          submit.disabled = false;
-          submit.textContent = label;
-        }
-      }).catch(function () {
-        showError('Network error. Please try again.');
-        submit.disabled = false;
-        submit.textContent = label;
-      });
-    });
-  }
+  /* ====================================================================== start */
+  root.classList.toggle('btx-diwali-on', isOn());
+  buildSwitch();
+  buildLights();
+  if (host && (glitterOn || crackersOn) && !reduceMotion) initEffects(host);
+  scheduleAsk();
 })();
