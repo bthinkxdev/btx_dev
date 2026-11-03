@@ -340,6 +340,19 @@ def page_404(request, exception=None):
     return render(request, 'pages/404.html', status=404)
 
 
+def favicon(request):
+    """/favicon.ico at the site root: crawlers (Google search results) look for it there first."""
+    from django.contrib.staticfiles import finders
+    from django.http import FileResponse
+
+    path = finders.find('assets/images/favicon/favicon.ico')
+    if not path:
+        raise Http404
+    response = FileResponse(open(path, 'rb'), content_type='image/x-icon')
+    response['Cache-Control'] = 'public, max-age=86400'
+    return response
+
+
 def robots_txt(request):
     lines = [
         'User-agent: *',

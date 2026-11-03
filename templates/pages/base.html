@@ -24,7 +24,11 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>{% block title %}BThinkX | The Digital Partner of Your Business: Development & Marketing, Kerala{% endblock %}</title>
-  <link rel="icon" href="{% static 'assets/images/logo.jpg' %}" type="image/jpeg" sizes="any">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="48x48" href="{% static 'assets/images/favicon/favicon-48.png' %}">
+  <link rel="icon" type="image/png" sizes="96x96" href="{% static 'assets/images/favicon/favicon-96.png' %}">
+  <link rel="icon" type="image/png" sizes="192x192" href="{% static 'assets/images/favicon/favicon-192.png' %}">
+  <link rel="apple-touch-icon" sizes="180x180" href="{% static 'assets/images/favicon/apple-touch-icon.png' %}">
   <meta name="description" content="{% block meta_description %}You run the business physically, we grow it digitally. BThinkX is the development & marketing company (websites, e-commerce, software, Meta ads) in Trivandrum, Kerala.{% endblock %}">
   <meta name="robots" content="{% block meta_robots %}index, follow{% endblock %}">
   <link rel="canonical" href="{% block canonical_url %}{{ canonical_url }}{% endblock %}">
@@ -59,7 +63,7 @@
     "description": "BThinkX is the digital partner of your business: a development and marketing company in Trivandrum, Kerala. You run the business physically, we grow it digitally, with e-commerce websites, custom software and Meta ad campaigns.",
     "slogan": "You run the business physically. We grow it digitally.",
     "url": "{{ request.scheme }}://{{ request.get_host }}/",
-    "logo": "{{ request.scheme }}://{{ request.get_host }}{% static 'assets/images/logo.jpg' %}",
+    "logo": "{{ request.scheme }}://{{ request.get_host }}{% static 'assets/images/pwa/icon-512.png' %}",
     "image": "{{ request.scheme }}://{{ request.get_host }}{% static 'assets/images/logo.jpg' %}",
     "telephone": "+91 95441 96763",
     "priceRange": "₹₹",

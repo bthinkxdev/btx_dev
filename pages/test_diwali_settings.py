@@ -95,3 +95,28 @@ class NoEmojiTests(TestCase):
         row.diwali_enabled = True
         row.save()
         self.assertTrue(SiteSettings.current().diwali_enabled)
+
+
+@override_settings(ALLOWED_HOSTS=['testserver'])
+class FaviconTests(TestCase):
+    """Google shows the site icon in search results from /favicon.ico or the <link rel=icon> tags."""
+
+    def test_root_favicon_is_served(self):
+        r = self.client.get('/favicon.ico')
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r['Content-Type'], 'image/x-icon')
+        self.assertEqual(b''.join(r.streaming_content)[:4], b'\x00\x00\x01\x00')     # ICO header
+
+    def test_pages_link_square_png_and_ico_icons(self):
+        cache.clear()
+        html = self.client.get(reverse('pages:index')).content.decode()
+        self.assertIn('<link rel="icon" href="/favicon.ico" sizes="any">', html)
+        for size in ('48x48', '96x96', '192x192'):
+            self.assertIn(f'sizes="{size}"', html)
+        self.assertIn('apple-touch-icon', html)
+        self.assertNotIn('logo.jpg" type="image/jpeg"', html)
+
+    def test_icons_are_not_blocked_for_crawlers(self):
+        robots = self.client.get('/robots.txt').content.decode()
+        self.assertNotIn('Disallow: /static', robots)
+        self.assertNotIn('Disallow: /favicon', robots)
