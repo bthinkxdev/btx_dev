@@ -26,6 +26,7 @@ urlpatterns = [
     path('services/quote/<slug:package>/pdf/', views.quote_pdf, name='quote_pdf'),
     path('careers/', views.careers, name='careers'),
     path('careers/apply/', views.career_apply, name='career_apply'),
+    path('careers/<slug:slug>/', views.career_detail, name='career_detail'),
 
     path('offers/navaratri/', offer_views.navaratri_offer, name='navaratri_offer'),
     path('offers/navaratri/submit/', offer_views.navaratri_offer_submit, name='navaratri_offer_submit'),

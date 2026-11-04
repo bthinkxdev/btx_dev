@@ -33,6 +33,61 @@
       </div>
     </section>
 
+    <section class="card" aria-labelledby="iv-h">
+      <div class="card-body">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h2 id="iv-h" class="text-base font-semibold text-gray-800 dark:text-white/90">Interviews</h2>
+          {% if can_edit and app.status != 'rejected' and app.status != 'hired' %}<a href="{% url 'crm:career_interview_create' app.pk %}" class="btn btn-primary btn-sm">{% icon 'calendar' 16 %} Schedule an interview</a>{% endif %}
+        </div>
+        {% for iv in interviews %}
+        <article class="{% if not forloop.first %}mt-4 {% endif %}rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+          <div class="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <p class="text-sm font-semibold text-gray-800 dark:text-white/90">{{ iv.round_name }}</p>
+              <p class="text-sm text-gray-600 dark:text-gray-400">{{ iv.scheduled_at|dt }} IST, {{ iv.duration_minutes }} min, {{ iv.get_mode_display }}</p>
+            </div>
+            {% status_badge iv %}
+          </div>
+          <dl class="mt-3 grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+            {% if iv.meeting_link %}<div class="sm:col-span-2"><dt class="text-theme-xs text-gray-500 dark:text-gray-400">Meeting link</dt><dd class="break-all"><a class="btn-link" href="{{ iv.meeting_link }}" target="_blank" rel="noopener noreferrer">{{ iv.meeting_link }}</a></dd></div>{% endif %}
+            {% if iv.location %}<div class="sm:col-span-2"><dt class="text-theme-xs text-gray-500 dark:text-gray-400">{% if iv.mode == 'phone' %}Phone{% else %}Address{% endif %}</dt><dd>{{ iv.location }}</dd></div>{% endif %}
+            <div><dt class="text-theme-xs text-gray-500 dark:text-gray-400">Interviewers</dt><dd>{% for u in iv.interviewers.all %}{{ u.get_full_name|default:u.get_username }}{% if not forloop.last %}, {% endif %}{% empty %}Not assigned{% endfor %}</dd></div>
+            <div><dt class="text-theme-xs text-gray-500 dark:text-gray-400">Candidate emailed</dt><dd>{% if iv.candidate_notified_at %}{{ iv.candidate_notified_at|dt }}{% else %}Not yet{% endif %}</dd></div>
+            {% if iv.feedback %}<div class="sm:col-span-2"><dt class="text-theme-xs text-gray-500 dark:text-gray-400">Feedback</dt><dd class="whitespace-pre-line">{{ iv.feedback }}</dd></div>{% endif %}
+          </dl>
+          {% if iv.status == 'scheduled' and can_edit %}
+          <div class="mt-4 flex flex-wrap items-start gap-2">
+            {% if iv.meeting_link %}<a href="{{ iv.meeting_link }}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">Join</a>{% endif %}
+            <a href="{% url 'crm:career_interview_edit' iv.pk %}" class="btn btn-secondary btn-sm">Reschedule or edit</a>
+            <details class="group w-full sm:w-auto">
+              <summary class="btn btn-secondary btn-sm cursor-pointer list-none">Mark completed</summary>
+              <form method="post" action="{% url 'crm:career_interview_outcome' iv.pk %}" class="mt-2 flex w-full flex-col gap-2 sm:w-80">{% csrf_token %}
+                <input type="hidden" name="action" value="complete">
+                <label class="sr-only" for="fb-{{ iv.pk }}">Feedback</label>
+                <textarea id="fb-{{ iv.pk }}" name="note" rows="3" maxlength="2000" class="form-textarea" placeholder="Feedback and next steps (internal only)"></textarea>
+                <button class="btn btn-primary btn-sm self-start">Save as completed</button>
+              </form>
+            </details>
+            <form method="post" action="{% url 'crm:career_interview_outcome' iv.pk %}" data-confirm="Mark as no-show?" data-confirm-body="{{ app.full_name }} did not join this interview.">{% csrf_token %}<input type="hidden" name="action" value="no_show"><button class="btn btn-secondary btn-sm">No-show</button></form>
+            <details class="group w-full sm:w-auto">
+              <summary class="btn btn-danger btn-sm cursor-pointer list-none">Cancel</summary>
+              <form method="post" action="{% url 'crm:career_interview_outcome' iv.pk %}" class="mt-2 flex w-full flex-col gap-2 sm:w-80">{% csrf_token %}
+                <input type="hidden" name="action" value="cancel">
+                <label class="sr-only" for="cr-{{ iv.pk }}">Reason</label>
+                <textarea id="cr-{{ iv.pk }}" name="note" rows="3" maxlength="1000" class="form-textarea" placeholder="Reason, shown to the candidate (optional)"></textarea>
+                {% if iv.candidate_notified_at %}<label class="flex items-center gap-2 text-sm"><input type="checkbox" name="send_email" value="1" checked class="form-checkbox-box"> Email the candidate</label>{% endif %}
+                <button class="btn btn-danger btn-sm self-start">Cancel the interview</button>
+              </form>
+            </details>
+          </div>
+          {% endif %}
+        </article>
+        {% empty %}
+        <p class="muted">No interviews yet. Shortlist the candidate, then schedule an interview and they get the date, time and meeting link by email.</p>
+        {% endfor %}
+      </div>
+    </section>
+
     <section class="card" aria-labelledby="cover-h">
       <div class="card-body">
         <h2 id="cover-h" class="mb-3 text-base font-semibold text-gray-800 dark:text-white/90">Cover note</h2>
@@ -63,16 +118,52 @@
   <div class="flex flex-col gap-6">
     <section class="card" aria-labelledby="status-h">
       <div class="card-body">
-        <h2 id="status-h" class="mb-3 text-base font-semibold text-gray-800 dark:text-white/90">Hiring status</h2>
+        <h2 id="status-h" class="mb-1 text-base font-semibold text-gray-800 dark:text-white/90">Hiring status</h2>
+        <p class="mb-4 text-sm text-gray-600 dark:text-gray-400">Currently <strong>{{ app.get_status_display }}</strong>.</p>
         {% if can_edit %}
-        <form method="post" action="{% url 'crm:career_application_update' app.pk %}" class="flex flex-col gap-3">{% csrf_token %}
-          <label for="app-status" class="form-label">Move to</label>
-          <select id="app-status" name="status" class="form-select" data-autosubmit>
-            {% for v, l in statuses %}<option value="{{ v }}" {% if app.status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
-          </select>
-          <noscript><button class="btn btn-primary btn-sm">Update</button></noscript>
-        </form>
-        {% else %}<p class="text-sm">{{ app.get_status_display }}</p>{% endif %}
+        <div class="flex flex-col gap-3">
+          {% if app.status == 'new' %}
+          <form method="post" action="{% url 'crm:career_application_action' app.pk %}">{% csrf_token %}<input type="hidden" name="action" value="review"><button class="btn btn-secondary btn-sm w-full justify-center">Start reviewing</button></form>
+          {% endif %}
+
+          {% if app.status == 'new' or app.status == 'reviewing' %}
+          <details class="rounded-xl border border-gray-200 dark:border-gray-800">
+            <summary class="cursor-pointer list-none px-4 py-2.5 text-sm font-semibold text-gray-800 dark:text-white/90">Shortlist this candidate</summary>
+            <form method="post" action="{% url 'crm:career_application_action' app.pk %}" class="flex flex-col gap-3 border-t border-gray-200 p-4 dark:border-gray-800">{% csrf_token %}
+              <input type="hidden" name="action" value="shortlist">
+              <label class="sr-only" for="sl-note">Note to the candidate</label>
+              <textarea id="sl-note" name="note" rows="3" maxlength="1000" class="form-textarea" placeholder="Optional personal note for the candidate"></textarea>
+              <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="send_email" value="1" checked class="form-checkbox-box"> Email the candidate that they are shortlisted</label>
+              <button class="btn btn-primary btn-sm self-start">Shortlist</button>
+            </form>
+          </details>
+          {% endif %}
+
+          {% if app.status != 'rejected' and app.status != 'hired' %}
+          <a href="{% url 'crm:career_interview_create' app.pk %}" class="btn btn-primary btn-sm w-full justify-center">{% icon 'calendar' 16 %} Schedule an interview</a>
+          {% endif %}
+
+          {% if app.status == 'shortlisted' or app.status == 'interview' %}
+          <form method="post" action="{% url 'crm:career_application_action' app.pk %}" data-confirm="Mark {{ app.full_name }} as hired?" data-confirm-body="No email is sent. Reach out to them with the offer.">{% csrf_token %}<input type="hidden" name="action" value="hire"><button class="btn btn-secondary btn-sm w-full justify-center">Mark as hired</button></form>
+          {% endif %}
+
+          {% if app.status != 'rejected' and app.status != 'hired' %}
+          <details class="rounded-xl border border-gray-200 dark:border-gray-800">
+            <summary class="cursor-pointer list-none px-4 py-2.5 text-sm font-semibold text-error-600">Reject</summary>
+            <form method="post" action="{% url 'crm:career_application_action' app.pk %}" class="flex flex-col gap-3 border-t border-gray-200 p-4 dark:border-gray-800">{% csrf_token %}
+              <input type="hidden" name="action" value="reject">
+              <label class="sr-only" for="rj-note">Note to the candidate</label>
+              <textarea id="rj-note" name="note" rows="3" maxlength="1000" class="form-textarea" placeholder="Optional kind note for the candidate"></textarea>
+              <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="send_email" value="1" checked class="form-checkbox-box"> Email the candidate a polite update</label>
+              <p class="form-help">Any interview still scheduled is cancelled.</p>
+              <button class="btn btn-danger btn-sm self-start">Reject</button>
+            </form>
+          </details>
+          {% else %}
+          <form method="post" action="{% url 'crm:career_application_action' app.pk %}">{% csrf_token %}<input type="hidden" name="action" value="review"><button class="btn btn-secondary btn-sm w-full justify-center">Reopen for review</button></form>
+          {% endif %}
+        </div>
+        {% endif %}
       </div>
     </section>
 
@@ -88,6 +179,20 @@
         </form>
         {% elif app.internal_notes %}<p class="text-sm whitespace-pre-line">{{ app.internal_notes }}</p>
         {% else %}<p class="muted">No notes yet.</p>{% endif %}
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="mail-h">
+      <div class="card-body">
+        <h2 id="mail-h" class="mb-3 text-base font-semibold text-gray-800 dark:text-white/90">Emails to the candidate</h2>
+        <ul class="flex flex-col gap-3">
+          {% for m in emails %}
+          <li class="text-sm">
+            <p class="font-medium text-gray-800 dark:text-white/90">{{ m.subject }}</p>
+            <p class="text-theme-xs text-gray-500 dark:text-gray-400">{{ m.created_at|dt }} · {% status_badge m %}</p>
+          </li>
+          {% empty %}<li class="muted">Nothing sent yet. The thank-you email goes out automatically when the application arrives.</li>{% endfor %}
+        </ul>
       </div>
     </section>
   </div>

@@ -6,7 +6,7 @@ from datetime import timedelta
 from typing import Iterable
 
 from django.conf import settings
-from django.core.mail import EmailMessage
+from django.core.mail import EmailMultiAlternatives
 from django.db import IntegrityError, transaction
 from django.template import Context, Template
 from django.utils import timezone
@@ -157,12 +157,12 @@ def deliver(log_id: int, attachments=None, html: str = ''):
     log = DeliveryLog.objects.get(pk=log_id)
     log.attempts += 1
     try:
-        msg = EmailMessage(subject=log.subject, body=log.body, from_email=settings.DEFAULT_FROM_EMAIL,
-                           to=[log.recipient], cc=[c.strip() for c in log.cc.split(',') if c.strip()])
+        msg = EmailMultiAlternatives(subject=log.subject, body=log.body, from_email=settings.DEFAULT_FROM_EMAIL,
+                                     to=[log.recipient], cc=[c.strip() for c in log.cc.split(',') if c.strip()])
+        if html:
+            msg.attach_alternative(html, 'text/html')     # plain text stays the fallback part
         for name, content, mime in (attachments or []):
             msg.attach(name, content, mime)
-        if html:
-            msg.content_subtype = 'plain'
         msg.send(fail_silently=False)
         log.status = 'sent'
         log.error = ''

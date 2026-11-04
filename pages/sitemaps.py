@@ -1,7 +1,7 @@
 from django.contrib.sitemaps import Sitemap
 from django.urls import reverse
 
-from .models import BlogPost
+from .models import BlogPost, JobPosting
 from .static_blog import get_static_posts
 
 
@@ -31,6 +31,20 @@ class StaticViewSitemap(Sitemap):
 
     def priority(self, item):
         return self.PRIORITIES.get(item, 0.5)
+
+
+class JobPostingSitemap(Sitemap):
+    changefreq = 'weekly'
+    priority = 0.5
+
+    def items(self):
+        return JobPosting.objects.filter(is_published=True).order_by('sort_order', '-created_at')
+
+    def lastmod(self, obj):
+        return obj.updated_at
+
+    def location(self, obj):
+        return reverse('pages:career_detail', args=[obj.slug])
 
 
 class BlogPostSitemap(Sitemap):
@@ -63,6 +77,7 @@ class StaticBlogSitemap(Sitemap):
 
 sitemaps = {
     'static': StaticViewSitemap,
+    'careers': JobPostingSitemap,
     'blog': BlogPostSitemap,
     'static-blog': StaticBlogSitemap,
 }

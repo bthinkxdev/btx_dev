@@ -1,0 +1,94 @@
+{% load static %}
+<section class="career-apply-section z-content" id="apply" data-career-apply>
+  <div class="container">
+    <div class="career-apply-grid">
+      <div class="career-apply-intro animate-up">
+        <h2>Apply in minutes</h2>
+        <p>Tell us who you are, attach your resume (PDF or Word, up to 5MB), and optionally add a short note. Our team reviews applications regularly.</p>
+        <ul class="career-apply-list">
+          <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> We never sell your data or spam you.</li>
+          <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Expect a reply within a few business days if there's a fit.</li>
+          <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> LinkedIn URL optional but recommended.</li>
+        </ul>
+      </div>
+      <div class="career-form-wrap animate-up delay-1">
+        <div id="careerFormPanel">
+          <h3>Submit your application</h3>
+          <p class="sub" id="careerFormHelp">{% if job %}You are applying for <strong>{{ job.title }}</strong>. {% endif %}All fields marked * are required.</p>
+          <form id="careerApplyForm" method="post" aria-describedby="careerFormHelp" action="{% url 'pages:career_apply' %}" enctype="multipart/form-data" novalidate>
+            {% csrf_token %}
+            <input type="text" name="company_website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;">
+            {% if job %}
+            <input type="hidden" name="job" value="{{ job.pk }}">
+            <div class="form-group">
+              <span class="form-label">Position</span>
+              <div class="form-control" style="cursor:default;">{{ job.title }}</div>
+            </div>
+            {% else %}
+            <div class="form-group">
+              <label class="form-label" for="careerJob">Position</label>
+              <select class="form-control" id="careerJob" name="job">
+                <option value="">General application (no specific role)</option>
+                {% for j in jobs %}
+                <option value="{{ j.pk }}">{{ j.title }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            {% endif %}
+            <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+              <div class="form-group">
+                <label class="form-label" for="careerName">Full name *</label>
+                <input class="form-control" type="text" id="careerName" name="full_name" placeholder="Your name" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="careerEmail">Email *</label>
+                <input class="form-control" type="email" id="careerEmail" name="email" placeholder="you@email.com" required>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="careerPhone">Phone *</label>
+              <input class="form-control" type="tel" id="careerPhone" name="phone" placeholder="+91 …" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="careerLinkedin">LinkedIn (optional)</label>
+              <input class="form-control" type="url" id="careerLinkedin" name="linkedin_url" placeholder="https://linkedin.com/in/…">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="careerCover">Cover note (optional)</label>
+              <textarea class="form-control" id="careerCover" name="cover_message" rows="4" placeholder="Why BThinkX? What excites you about this work?"></textarea>
+            </div>
+            <div class="form-group">
+              <span class="form-label" id="careerResumeLabel">Resume *</span>
+              <div class="career-file-upload" id="careerFileUpload">
+                <input class="career-file-input" type="file" id="careerResume" name="resume" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required aria-labelledby="careerResumeLabel careerResumeHint">
+                <label for="careerResume" class="career-file-label">
+                  <span class="career-file-icon" aria-hidden="true">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  </span>
+                  <span class="career-file-main">
+                    <strong class="career-file-action">Choose file or drop here</strong>
+                    <span class="career-file-filename" id="careerResumeHint">PDF, Word · max 5MB</span>
+                  </span>
+                  <span class="career-file-badge">.pdf · .doc · .docx</span>
+                </label>
+              </div>
+              <p class="career-file-hint">We only store your resume for hiring. You can replace the file by choosing again before submit.</p>
+            </div>
+            <div class="form-submit" style="margin-top:8px;">
+              <button type="submit" class="btn btn-primary btn-lg" id="careerSubmitBtn">
+                Submit application
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              </button>
+            </div>
+          </form>
+        </div>
+        <div class="career-form-success" id="careerFormSuccess">
+          <div class="ok-icon" aria-hidden="true"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <h3>Application received</h3>
+          <p style="color:var(--text-secondary);font-size:.95rem;">Thank you. We have emailed a confirmation to <strong id="careerSentTo">your inbox</strong>. If your profile matches what we need, our team will contact you to shortlist you and schedule an interview.</p>
+          <p style="color:var(--text-muted);font-size:.85rem;margin-top:10px;">Do not see it? Check your spam folder.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

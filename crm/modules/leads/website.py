@@ -85,7 +85,12 @@ def offer_signup(signup, *, paid: bool = False) -> None:
 
 
 def career_application(app) -> None:
-    """Job applications are not sales leads: alert HR in-app instead."""
+    """Job applications are not sales leads: thank the candidate and alert HR in-app instead."""
+    try:
+        from crm.modules.careers import mail
+        mail.send_received(app)
+    except Exception:
+        logger.exception('Career application thank-you email failed for %s', app.pk)
     try:
         role = app.job.title if app.job else 'General application'
         notify.notify(notify.users_with_perm('employees', 'edit'), f'New job application: {app.full_name}',

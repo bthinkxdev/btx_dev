@@ -189,9 +189,44 @@ def careers(request):
     return render(request, 'pages/careers.html', {'jobs': jobs})
 
 
+@ensure_csrf_cookie
+def career_detail(request, slug):
+    """One open role with its full description and an apply form for exactly that role."""
+    import json
+
+    job = get_object_or_404(JobPosting, slug=slug, is_published=True)
+    schema = {
+        '@context': 'https://schema.org', '@type': 'JobPosting', 'title': job.title,
+        'description': job.description.replace('\n', '<br>'),
+        'datePosted': job.created_at.date().isoformat(),
+        'employmentType': {'full_time': 'FULL_TIME', 'part_time': 'PART_TIME', 'contract': 'CONTRACTOR',
+                           'internship': 'INTERN'}.get(job.employment_type, 'FULL_TIME'),
+        'hiringOrganization': {'@type': 'Organization', 'name': 'BThinkX', 'sameAs': request.build_absolute_uri('/'),
+                               'logo': request.build_absolute_uri('/static/assets/images/pwa/icon-512.png')},
+        'jobLocation': {'@type': 'Place', 'address': {
+            '@type': 'PostalAddress', 'streetAddress': '2nd Floor, Suffis Arcade, Pattom', 'addressLocality': 'Trivandrum',
+            'addressRegion': 'Kerala', 'postalCode': '695004', 'addressCountry': 'IN'}},
+        'directApply': True,
+    }
+    if 'remote' in job.location.lower():
+        schema['jobLocationType'] = 'TELECOMMUTE'
+        schema['applicantLocationRequirements'] = {'@type': 'Country', 'name': 'IN'}
+    # </ would end the script tag early
+    return render(request, 'pages/career_detail.html', {
+        'job': job, 'job_schema': json.dumps(schema).replace('</', '<\\/')})
+
+
 @require_http_methods(['POST'])
 def career_apply(request):
     """Multipart application + resume; returns JSON for AJAX."""
+    from crm.core import ratelimit
+    from crm.core.middleware import client_ip
+
+    if request.POST.get('company_website'):          # honeypot: real visitors never fill it
+        return JsonResponse({'success': True})
+    if not ratelimit.hit('career-apply', client_ip(request) or '', 8, 3600):
+        return JsonResponse({'success': False, 'errors': {'__all__': 'Too many applications from this connection. '
+                                                                    'Please try again in an hour.'}}, status=429)
     form = JobApplicationForm(request.POST, request.FILES)
     if form.is_valid():
         app = form.save()
@@ -200,7 +235,7 @@ def career_apply(request):
         return JsonResponse(
             {
                 'success': True,
-                'message': 'Thanks! We received your application and will review it soon.',
+                'message': 'Thanks! We received your application. A confirmation is on its way to your email.',
             }
         )
     errors = {}

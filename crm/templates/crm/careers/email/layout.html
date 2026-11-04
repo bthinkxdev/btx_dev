@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>{{ subject }}</title>
+</head>
+<body style="margin:0;padding:0;background:#f3f4f8;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1d2130;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#f3f4f8;">{{ preheader }}</div>
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f3f4f8;">
+<tr><td align="center" style="padding:28px 14px;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e4e6ef;">
+    <tr><td style="background:#0f0f12;padding:20px 28px;">
+      <table role="presentation" cellspacing="0" cellpadding="0"><tr>
+        <td style="vertical-align:middle;"><img src="{{ logo_url }}" width="36" height="36" alt="" style="display:block;border-radius:8px;"></td>
+        <td style="vertical-align:middle;padding-left:12px;font-size:18px;font-weight:700;color:#ffffff;letter-spacing:-0.2px;">{{ brand }}</td>
+      </tr></table>
+    </td></tr>
+    <tr><td style="padding:32px 28px 8px 28px;">
+      <h1 style="margin:0 0 18px 0;font-size:22px;line-height:1.3;color:#1d2130;font-weight:700;">{{ heading }}</h1>
+      <p style="margin:0 0 16px 0;font-size:15px;line-height:1.65;color:#2b3046;">{{ greeting }}</p>
+      {% for b in blocks %}
+        {% if b.type == 'p' %}
+          <p style="margin:0 0 16px 0;font-size:15px;line-height:1.65;color:#2b3046;">{{ b.text }}</p>
+        {% elif b.type == 'quote' %}
+          <div style="margin:0 0 18px 0;padding:12px 16px;border-left:3px solid #6f78d8;background:#f6f7fd;border-radius:0 8px 8px 0;font-size:15px;line-height:1.6;color:#2b3046;white-space:pre-line;">{{ b.text }}</div>
+        {% elif b.type == 'details' %}
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 20px 0;border:1px solid #e4e6ef;border-radius:10px;border-collapse:separate;">
+            {% for label, value in b.rows %}
+            <tr>
+              <td style="padding:10px 14px;font-size:13px;color:#6a7088;width:34%;vertical-align:top;{% if not forloop.last %}border-bottom:1px solid #eef0f6;{% endif %}">{{ label }}</td>
+              <td style="padding:10px 14px;font-size:14px;color:#1d2130;font-weight:600;vertical-align:top;word-break:break-word;{% if not forloop.last %}border-bottom:1px solid #eef0f6;{% endif %}">{{ value }}</td>
+            </tr>
+            {% endfor %}
+          </table>
+        {% elif b.type == 'list' %}
+          {% if b.title %}<p style="margin:0 0 8px 0;font-size:15px;font-weight:700;color:#1d2130;">{{ b.title }}</p>{% endif %}
+          {% if b.numbered %}<ol style="margin:0 0 18px 0;padding-left:20px;">{% else %}<ul style="margin:0 0 18px 0;padding-left:20px;">{% endif %}
+          {% for item in b.items %}<li style="margin:0 0 8px 0;font-size:15px;line-height:1.6;color:#2b3046;">{{ item }}</li>{% endfor %}
+          {% if b.numbered %}</ol>{% else %}</ul>{% endif %}
+        {% elif b.type == 'button' %}
+          <table role="presentation" cellspacing="0" cellpadding="0" style="margin:6px 0 22px 0;"><tr>
+            <td style="background:#6f78d8;border-radius:999px;"><a href="{{ b.url }}" style="display:inline-block;padding:12px 26px;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;">{{ b.label }}</a></td>
+          </tr></table>
+        {% endif %}
+      {% endfor %}
+      <p style="margin:8px 0 28px 0;font-size:15px;line-height:1.7;color:#2b3046;">{% for line in signature %}{{ line }}{% if not forloop.last %}<br>{% endif %}{% endfor %}</p>
+    </td></tr>
+    <tr><td style="padding:18px 28px 24px 28px;background:#f6f7fb;border-top:1px solid #e4e6ef;font-size:12px;line-height:1.6;color:#7a8096;">
+      {% for line in footer %}{{ line }}{% if not forloop.last %}<br>{% endif %}{% endfor %}
+      <br>You received this email because you applied for a role at {{ brand }}. You can reply to this message to reach our HR team.
+    </td></tr>
+  </table>
+</td></tr>
+</table>
+</body>
+</html>

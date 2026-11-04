@@ -1,6 +1,7 @@
 import uuid
-from datetime import date
+from datetime import date, timedelta
 
+from django.conf import settings
 from django.core.validators import FileExtensionValidator
 from django.db import models
 from django.utils import timezone
@@ -482,6 +483,8 @@ class JobApplication(models.Model):
     ]
     status = models.CharField(max_length=12, choices=STATUS_CHOICES, default=STATUS_NEW, db_index=True)
     internal_notes = models.TextField(blank=True)
+    acknowledged_at = models.DateTimeField(
+        null=True, blank=True, help_text='When the automatic thank-you email was queued for the candidate.')
 
     class Meta:
         ordering = ['-created_at']
@@ -491,6 +494,76 @@ class JobApplication(models.Model):
     def __str__(self) -> str:
         role = self.job.title if self.job else 'General'
         return f'{self.full_name} → {role} ({self.created_at:%Y-%m-%d})'
+
+
+def _new_uid() -> str:
+    return uuid.uuid4().hex
+
+
+class Interview(models.Model):
+    """An interview HR schedules for a job application from the CRM (candidate is emailed the details)."""
+
+    MODE_MEET = 'google_meet'
+    MODE_ZOOM = 'zoom'
+    MODE_TEAMS = 'teams'
+    MODE_PHONE = 'phone'
+    MODE_IN_PERSON = 'in_person'
+    MODE_CHOICES = [
+        (MODE_MEET, 'Google Meet'),
+        (MODE_ZOOM, 'Zoom'),
+        (MODE_TEAMS, 'Microsoft Teams'),
+        (MODE_PHONE, 'Phone call'),
+        (MODE_IN_PERSON, 'In person at our office'),
+    ]
+    ONLINE_MODES = (MODE_MEET, MODE_ZOOM, MODE_TEAMS)
+
+    STATUS_SCHEDULED = 'scheduled'
+    STATUS_CHOICES = [
+        ('scheduled', 'Scheduled'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled'),
+        ('no_show', 'No show'),
+    ]
+
+    application = models.ForeignKey(JobApplication, on_delete=models.CASCADE, related_name='interviews')
+    round_name = models.CharField(max_length=80, default='First interview')
+    scheduled_at = models.DateTimeField(db_index=True)
+    duration_minutes = models.PositiveSmallIntegerField(default=30)
+    mode = models.CharField(max_length=12, choices=MODE_CHOICES, default=MODE_MEET)
+    meeting_link = models.URLField(max_length=500, blank=True)
+    location = models.CharField(max_length=300, blank=True, help_text='Office address, or the number we will call.')
+    interviewers = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name='career_interviews')
+    message = models.TextField(blank=True, help_text='Personal note included in the email to the candidate.')
+    feedback = models.TextField(blank=True, help_text='Internal notes after the interview. The candidate never sees this.')
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=STATUS_SCHEDULED, db_index=True)
+    uid = models.CharField(max_length=40, unique=True, default=_new_uid, editable=False)
+    sequence = models.PositiveSmallIntegerField(default=0, editable=False, help_text='Calendar invite revision.')
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    candidate_notified_at = models.DateTimeField(null=True, blank=True)
+    reminder_sent_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['scheduled_at']
+        verbose_name = 'Interview'
+        verbose_name_plural = 'Interviews'
+
+    def __str__(self) -> str:
+        return f'{self.round_name}: {self.application.full_name} on {timezone.localtime(self.scheduled_at):%d %b %Y %H:%M}'
+
+    @property
+    def ends_at(self):
+        return self.scheduled_at + timedelta(minutes=self.duration_minutes)
+
+    @property
+    def is_online(self) -> bool:
+        return self.mode in self.ONLINE_MODES
+
+    @property
+    def is_upcoming(self) -> bool:
+        return self.status == self.STATUS_SCHEDULED and self.scheduled_at >= timezone.now()
 
 
 class OfferSignup(models.Model):

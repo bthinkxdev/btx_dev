@@ -4,17 +4,19 @@ from __future__ import annotations
 from urllib.parse import urlsplit
 
 from django.contrib import messages
-from django.db.models import Count, Q
+from django.db.models import Count, Min, Q
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from crm.core import audit, permissions
 from crm.core.views import Filter, ListPage, staff_required
-from pages.models import JobApplication, JobPosting
+from pages.models import Interview, JobApplication, JobPosting
 
-from .forms import JobPostingForm
+from . import services
+from .forms import ApplicationActionForm, InterviewForm, InterviewOutcomeForm, JobPostingForm
 
 MODULE = 'employees'
 
@@ -100,7 +102,9 @@ class ApplicationList(ListPage):
     date_fields = {'created': 'created_at'}
 
     def base_queryset(self):
-        return JobApplication.objects.select_related('job')
+        return JobApplication.objects.select_related('job').annotate(
+            next_interview=Min('interviews__scheduled_at', filter=Q(interviews__status='scheduled',
+                                                                    interviews__scheduled_at__gte=timezone.now())))
 
     def extra_context(self, qs):
         counts = dict(JobApplication.objects.values_list('status').annotate(n=Count('pk')))
@@ -114,8 +118,11 @@ class ApplicationList(ListPage):
 @staff_required
 def application_detail(request, pk):
     permissions.require(request.user, MODULE, 'view', request)
+    from crm.models import DeliveryLog
     app = get_object_or_404(JobApplication.objects.select_related('job'), pk=pk)
     ctx = {'app': app, 'statuses': JobApplication.STATUS_CHOICES,
+           'interviews': app.interviews.prefetch_related('interviewers').order_by('-scheduled_at'),
+           'emails': DeliveryLog.objects.filter(object_type='jobapplication', object_id=str(app.pk))[:20],
            'can_edit': permissions.has_perm(request.user, MODULE, 'edit'),
            'resume_ext': app.resume.name.rsplit('.', 1)[-1].lower() if app.resume else '',
            'wa_number': ''.join(c for c in app.phone if c.isdigit())}
@@ -138,6 +145,9 @@ def application_update(request, pk):
               changes={'status': app.status, 'from': old_status})
     if 'internal_notes' in request.POST and 'status' not in request.POST:
         messages.success(request, f'Notes saved for {app.full_name}.')
+    elif app.status in ('shortlisted', 'rejected') and app.status != old_status:
+        messages.success(request, f'{app.full_name}: {app.get_status_display()}. No email was sent. '
+                                  'Open the application to email the candidate.')
     else:
         messages.success(request, f'{app.full_name}: {app.get_status_display()}.')
     back = request.META.get('HTTP_REFERER', '')
@@ -161,3 +171,96 @@ def application_resume(request, pk):
     name = ''.join(c if c.isalnum() else '-' for c in app.full_name).strip('-') or 'candidate'
     inline = request.GET.get('inline') == '1' and ext == 'pdf'
     return FileResponse(fh, as_attachment=not inline, filename=f'{name}-resume.{ext}')
+
+
+# ---------------------------------------------------------------- candidate actions and interviews
+
+@staff_required
+@require_POST
+def application_action(request, pk):
+    """Review / shortlist / reject / hire from the application page, with an optional email to the candidate."""
+    permissions.require(request.user, MODULE, 'edit', request)
+    app = get_object_or_404(JobApplication.objects.select_related('job'), pk=pk)
+    form = ApplicationActionForm(request.POST)
+    if not form.is_valid():
+        messages.error(request, 'That action is not available.')
+        return redirect('crm:career_application_detail', pk=app.pk)
+    d = form.cleaned_data
+    result = services.apply_action(app, d['action'], actor=request.user, send_email=d['send_email'], note=d['note'])
+    label = app.get_status_display()
+    wanted_email = d['send_email'] and d['action'] in ('shortlist', 'reject')
+    if wanted_email:
+        text = f'{app.full_name}: {label}. ' + ('The candidate was emailed.' if result['emailed']
+                                                else 'The email could not be queued, please check the delivery log.')
+    else:
+        text = f'{app.full_name}: {label}.'
+    (messages.success if result['emailed'] or not wanted_email else messages.warning)(request, text)
+    return redirect('crm:career_application_detail', pk=app.pk)
+
+
+@staff_required
+def interview_form(request, app_pk=None, pk=None):
+    """Schedule a new interview for an application, or change an existing one."""
+    permissions.require(request.user, MODULE, 'edit', request)
+    interview = (get_object_or_404(Interview.objects.select_related('application', 'application__job'), pk=pk)
+                 if pk else None)
+    app = interview.application if interview else get_object_or_404(
+        JobApplication.objects.select_related('job'), pk=app_pk)
+    if interview and interview.status != Interview.STATUS_SCHEDULED:
+        messages.error(request, 'Only a scheduled interview can be changed.')
+        return redirect('crm:career_application_detail', pk=app.pk)
+    if not interview and app.status in ('rejected', 'hired'):
+        messages.error(request, f'{app.full_name} is already {app.get_status_display().lower()}. '
+                                'Change the status first to schedule an interview.')
+        return redirect('crm:career_application_detail', pk=app.pk)
+    form = InterviewForm(request.POST or None, instance=interview)
+    if request.method == 'POST' and form.is_valid():
+        iv = services.save_interview(form, app, actor=request.user)
+        verb = 'scheduled' if interview is None else 'updated'
+        extra = (' The candidate was emailed.' if getattr(iv, '_emailed', False)
+                 else ' No email was sent to the candidate.')
+        messages.success(request, f'Interview {verb} for {app.full_name}.' + extra)
+        return redirect('crm:career_application_detail', pk=app.pk)
+    return render(request, 'crm/careers/interview_form.html', {'form': form, 'app': app, 'obj': interview})
+
+
+@staff_required
+@require_POST
+def interview_outcome(request, pk):
+    """Mark an interview completed / no-show, or cancel it (optionally telling the candidate)."""
+    permissions.require(request.user, MODULE, 'edit', request)
+    iv = get_object_or_404(Interview.objects.select_related('application', 'application__job'), pk=pk)
+    form = InterviewOutcomeForm(request.POST)
+    if not form.is_valid() or iv.status != Interview.STATUS_SCHEDULED:
+        messages.error(request, 'That interview can no longer be changed.')
+        return redirect('crm:career_application_detail', pk=iv.application_id)
+    d = form.cleaned_data
+    emailed = services.close_interview(iv, d['action'], actor=request.user, note=d['note'], send_email=d['send_email'])
+    done = {'complete': 'marked as completed', 'no_show': 'marked as a no-show', 'cancel': 'cancelled'}[d['action']]
+    messages.success(request, f'Interview {done}.' + (' The candidate was emailed.' if emailed else ''))
+    return redirect('crm:career_application_detail', pk=iv.application_id)
+
+
+class InterviewList(ListPage):
+    model = Interview
+    module = MODULE
+    template_name = 'crm/careers/interviews.html'
+    title = 'Interviews'
+    search_fields = ('application__full_name__icontains', 'application__email__icontains',
+                     'application__job__title__icontains', 'round_name__icontains')
+    default_sort = 'scheduled_at'
+    quick_filters = {
+        'upcoming': ('Upcoming', lambda qs, r: qs.filter(status='scheduled', scheduled_at__gte=timezone.now())),
+        'today': ('Today', lambda qs, r: qs.filter(status='scheduled', scheduled_at__date=timezone.localdate())),
+    }
+    filters = [Filter('status', 'Status', Interview.STATUS_CHOICES),
+               Filter('mode', 'Format', Interview.MODE_CHOICES)]
+
+    def base_queryset(self):
+        return Interview.objects.select_related('application', 'application__job').prefetch_related('interviewers')
+
+    def extra_context(self, qs):
+        now = timezone.now()
+        return {'module_code': MODULE, 'can_edit': permissions.has_perm(self.request.user, MODULE, 'edit'),
+                'search_placeholder': 'Search candidates or roles...', 'now': now,
+                'upcoming_count': Interview.objects.filter(status='scheduled', scheduled_at__gte=now).count()}

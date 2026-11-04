@@ -106,6 +106,7 @@ NAV = [
             ('HR approvals', 'crm:hr_approvals', 'leave', 'approve', 'company'),
             ('Job openings', 'crm:career_list', 'employees', 'view', 'company'),
             ('Job applications', 'crm:career_applications', 'employees', 'view', 'company'),
+            ('Interviews', 'crm:career_interviews', 'employees', 'view', 'company'),
         ]),
         ('payroll', 'Payroll', 'payroll', [
             ('Payroll runs', 'crm:payroll_list', 'payroll', 'view'),

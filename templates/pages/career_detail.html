@@ -1,0 +1,50 @@
+{% extends 'pages/base.html' %}
+{% load static %}
+
+{% block title %}{{ job.title }}, {{ job.location }} | Careers at BThinkX{% endblock %}
+{% block meta_description %}{{ job.title }} at BThinkX, Trivandrum. {{ job.summary }} Apply online in minutes.{% endblock %}
+{% block og_title %}{{ job.title }} | Careers at BThinkX{% endblock %}
+{% block og_description %}{{ job.summary }}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'assets/careers.css' %}">
+<script type="application/ld+json">{{ job_schema|safe }}</script>
+{% endblock %}
+
+{% block content %}
+<div class="career-detail-head z-content">
+  <div class="container">
+    <nav aria-label="Breadcrumb" class="breadcrumbs animate-up">
+      <ol>
+        <li><a href="{% url 'pages:careers' %}">Careers</a></li>
+        <li aria-current="page">{{ job.title }}</li>
+      </ol>
+    </nav>
+    <div class="badge animate-up">{% if job.department %}{{ job.department }}{% else %}Open role{% endif %}</div>
+    <h1 class="animate-up delay-1">{{ job.title }}</h1>
+    <div class="career-detail-meta animate-up delay-2">
+      <span>{{ job.get_employment_type_display }}</span>
+      <span>{{ job.location }}</span>
+    </div>
+  </div>
+</div>
+
+<section class="z-content" style="padding-top:0;">
+  <div class="container">
+    <div class="career-detail-body animate-up">
+      <p class="career-job-summary" style="font-size:1.1rem;color:var(--text-primary);margin-bottom:20px;">{{ job.summary }}</p>
+      <div class="job-desc">{{ job.description|linebreaks }}</div>
+      <div class="career-detail-cta">
+        <a href="#apply" class="btn btn-primary btn-lg">Apply for this role</a>
+        <a href="{% url 'pages:careers' %}" class="btn btn-secondary btn-lg">See all openings</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% include 'pages/includes/career_apply.html' with jobs=None job=job %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'assets/careers.js' %}" defer></script>
+{% endblock %}

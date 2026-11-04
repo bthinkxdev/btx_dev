@@ -1,0 +1,40 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{% if obj %}Reschedule interview{% else %}Schedule an interview{% endif %}{% endblock %}
+{% block page_header %}{% if obj %}{% include "crm/components/page_header.html" with title="Reschedule or edit the interview" subtitle=app.full_name %}{% else %}{% include "crm/components/page_header.html" with title="Schedule an interview" subtitle=app.full_name %}{% endif %}{% endblock %}
+{% block content %}
+<form method="post" class="card max-w-4xl" novalidate data-dirty-check
+      x-data="{ mode: '{{ form.mode.value|default:'google_meet'|escapejs }}' }" @change="if ($event.target.name === 'mode') mode = $event.target.value">{% csrf_token %}{% idem %}
+  <div class="card-body grid grid-cols-1 gap-5 md:grid-cols-2">
+    {% include "crm/components/form_errors.html" %}
+    <div class="rounded-xl bg-gray-50 p-4 text-sm md:col-span-2 dark:bg-white/[0.03]">
+      <p><strong>{{ app.full_name }}</strong>{% if app.job %} for <strong>{{ app.job.title }}</strong>{% endif %}</p>
+      <p class="muted">{{ app.email }} · {{ app.phone }}</p>
+    </div>
+
+    {% field form.round_name %}
+    {% field form.duration_minutes %}
+    {% field form.scheduled_at %}
+    {% field form.mode %}
+
+    <div class="md:col-span-2" x-show="['google_meet','zoom','teams'].includes(mode)">
+      {% field form.meeting_link %}
+      <p class="mt-2 text-sm">
+        <a href="https://meet.google.com/new" target="_blank" rel="noopener noreferrer" class="btn-link">Create a Google Meet link</a>
+        <span class="muted"> opens Google Meet in a new tab. Copy the link it shows and paste it above.</span>
+      </p>
+    </div>
+    <div class="md:col-span-2" x-show="!['google_meet','zoom','teams'].includes(mode)" x-cloak>
+      {% field form.location %}
+    </div>
+
+    {% field form.interviewers wrapper_class="md:col-span-2" %}
+    {% field form.message wrapper_class="md:col-span-2" %}
+    <div class="md:col-span-2">{% field form.notify_candidate %}</div>
+    <p class="form-help md:col-span-2">The email has the date, time, joining details, preparation tips and a calendar file. You can see it afterwards under the candidate's emails.</p>
+  </div>
+  <div class="flex flex-col-reverse justify-end gap-3 border-t border-gray-100 p-5 sm:flex-row dark:border-gray-800">
+    <a href="{% url 'crm:career_application_detail' app.pk %}" class="btn btn-secondary">Cancel</a>
+    <button class="btn btn-primary" data-loading-text="Saving…">{% if obj %}Save changes{% else %}Schedule interview{% endif %}</button>
+  </div>
+</form>
+{% endblock %}

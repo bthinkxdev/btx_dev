@@ -3,7 +3,7 @@
 {% block page_header %}
 <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
   <div><h1 class="page-title">Job applications</h1><p class="muted mt-1">Candidates who applied from the website Careers page.</p></div>
-  <a href="{% url 'crm:career_list' %}" class="btn btn-secondary">Job openings</a>
+  <div class="flex flex-wrap gap-2"><a href="{% url 'crm:career_interviews' %}" class="btn btn-secondary">Interviews</a><a href="{% url 'crm:career_list' %}" class="btn btn-secondary">Job openings</a></div>
 </div>
 {% endblock %}
 {% block content %}
@@ -16,7 +16,7 @@
 <div class="card">
   {% include "crm/components/list_toolbar.html" %}
   <div class="table-wrap"><table class="data-table responsive-cards">
-    <thead class="border-b border-gray-100 dark:border-gray-800"><tr><th class="th">Candidate</th><th class="th">Role</th><th class="th">Contact</th><th class="th">Applied</th><th class="th">Status</th><th class="th"><span class="sr-only">Actions</span></th></tr></thead>
+    <thead class="border-b border-gray-100 dark:border-gray-800"><tr><th class="th">Candidate</th><th class="th">Role</th><th class="th">Contact</th><th class="th">Applied</th><th class="th">Next interview</th><th class="th">Status</th><th class="th"><span class="sr-only">Actions</span></th></tr></thead>
     <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
     {% for a in object_list %}
       <tr>
@@ -25,6 +25,7 @@
         <td class="td" data-label="Role">{% if a.job %}{{ a.job.title }}{% else %}<span class="text-gray-500">General application</span>{% endif %}</td>
         <td class="td" data-label="Contact"><a class="btn-link" href="mailto:{{ a.email }}">{{ a.email }}</a><span class="block text-theme-xs"><a href="tel:{{ a.phone }}">{{ a.phone }}</a></span></td>
         <td class="td" data-label="Applied">{{ a.created_at|dt }}</td>
+        <td class="td" data-label="Next interview">{% if a.next_interview %}<span class="td-strong">{{ a.next_interview|dt }}</span>{% else %}<span class="text-gray-500">None</span>{% endif %}</td>
         <td class="td" data-label="Status">
           {% if can_edit %}
           <form method="post" action="{% url 'crm:career_application_update' a.pk %}">{% csrf_token %}
@@ -36,7 +37,7 @@
         </td>
         <td class="td" data-label="Actions"><div class="flex flex-wrap gap-2 sm:justify-end"><a href="{% url 'crm:career_application_detail' a.pk %}" class="btn btn-secondary btn-sm">View</a><a href="{% url 'crm:career_application_resume' a.pk %}" class="btn btn-secondary btn-sm" aria-label="Download resume of {{ a.full_name }}">{% icon 'download' 16 %} Resume</a></div></td>
       </tr>
-    {% empty %}<tr><td colspan="6">{% include "crm/components/empty_state.html" with filtered=any_filter title="No applications yet" text="Applications submitted on the website Careers page appear here." icon="id" %}</td></tr>{% endfor %}
+    {% empty %}<tr><td colspan="7">{% include "crm/components/empty_state.html" with filtered=any_filter title="No applications yet" text="Applications submitted on the website Careers page appear here." icon="id" %}</td></tr>{% endfor %}
     </tbody></table></div>
   {% include "crm/components/pagination.html" %}
 </div>

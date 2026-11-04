@@ -1,0 +1,38 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Interviews{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+  <div><h1 class="page-title">Interviews</h1><p class="muted mt-1">Every interview you have scheduled. To schedule a new one, open a candidate in <a class="btn-link" href="{% url 'crm:career_applications' %}">Job applications</a>.</p></div>
+  <div class="flex flex-wrap gap-2">
+    <a href="{% url 'crm:career_applications' %}" class="btn btn-secondary">Applications</a>
+    <a href="{% url 'crm:career_list' %}" class="btn btn-secondary">Job openings</a>
+  </div>
+</div>
+{% endblock %}
+{% block content %}
+<div class="card">
+  {% include "crm/components/list_toolbar.html" %}
+  <div class="table-wrap"><table class="data-table responsive-cards">
+    <thead class="border-b border-gray-100 dark:border-gray-800"><tr><th class="th">When (IST)</th><th class="th">Candidate</th><th class="th">Role and round</th><th class="th">Format</th><th class="th">Interviewers</th><th class="th">Status</th><th class="th"><span class="sr-only">Actions</span></th></tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+    {% for iv in object_list %}
+      <tr>
+        <td class="td" data-label="When"><span class="td-strong">{{ iv.scheduled_at|dt }}</span><span class="block text-theme-xs">{{ iv.duration_minutes }} min{% if iv.status == 'scheduled' and iv.scheduled_at < now %} · overdue{% endif %}</span></td>
+        <td class="td" data-label="Candidate"><a class="td-strong hover:text-brand-500" href="{% url 'crm:career_application_detail' iv.application_id %}">{{ iv.application.full_name }}</a><span class="block text-theme-xs">{{ iv.application.phone }}</span></td>
+        <td class="td" data-label="Role">{% if iv.application.job %}{{ iv.application.job.title }}{% else %}General application{% endif %}<span class="block text-theme-xs">{{ iv.round_name }}</span></td>
+        <td class="td" data-label="Format">{{ iv.get_mode_display }}</td>
+        <td class="td" data-label="Interviewers">{% for u in iv.interviewers.all %}{{ u.get_full_name|default:u.get_username }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="text-gray-500">Not assigned</span>{% endfor %}</td>
+        <td class="td" data-label="Status">{% status_badge iv %}</td>
+        <td class="td" data-label="Actions">
+          <div class="flex flex-wrap gap-2 sm:justify-end">
+            {% if iv.status == 'scheduled' and iv.meeting_link %}<a href="{{ iv.meeting_link }}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">Join</a>{% endif %}
+            {% if can_edit and iv.status == 'scheduled' %}<a href="{% url 'crm:career_interview_edit' iv.pk %}" class="btn btn-secondary btn-sm">Reschedule</a>{% endif %}
+            <a href="{% url 'crm:career_application_detail' iv.application_id %}" class="btn btn-secondary btn-sm">Open</a>
+          </div>
+        </td>
+      </tr>
+    {% empty %}<tr><td colspan="7">{% include "crm/components/empty_state.html" with filtered=any_filter title="No interviews scheduled" text="Shortlist a candidate and schedule an interview. They get the date, time and meeting link by email." icon="calendar" %}</td></tr>{% endfor %}
+    </tbody></table></div>
+  {% include "crm/components/pagination.html" %}
+</div>
+{% endblock %}

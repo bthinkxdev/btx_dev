@@ -42,6 +42,7 @@ JOBS = {
     'accounting.deferred_release': ('crm.modules.accounting.services.release_deferred', 'daily', 1440),
     'accounting.posting_queue': ('crm.modules.accounting.services.posting_queue_alert', 'frequent', 15),
     'hr.exits': ('crm.modules.hr.jobs.exits_due', 'daily', 1440),
+    'careers.interview_reminders': ('crm.modules.careers.jobs.interview_reminders', 'frequent', 15),
     'reports.scheduled': ('crm.modules.reports.catalogue.run_schedules', 'frequent', 60),
     'audit.checkpoint': ('crm.core.audit.write_checkpoint', 'daily', 1440),
     'integrity.nightly': ('crm.core.integrity.nightly', 'daily', 1440),

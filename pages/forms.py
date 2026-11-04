@@ -55,6 +55,21 @@ class JobApplicationForm(forms.ModelForm):
         self.fields['linkedin_url'].required = False
         self.fields['cover_message'].required = False
 
+    def clean_full_name(self):
+        name = ' '.join(self.cleaned_data['full_name'].split())
+        if len(name) < 2:
+            raise ValidationError('Please enter your full name.')
+        return name
+
+    def clean_phone(self):
+        phone = ' '.join(self.cleaned_data['phone'].split())
+        if sum(ch.isdigit() for ch in phone) < 8:
+            raise ValidationError('Enter a valid phone number.')
+        return phone
+
+    def clean_email(self):
+        return self.cleaned_data['email'].strip().lower()
+
     def clean_resume(self):
         f = self.cleaned_data['resume']
         if f.size > MAX_RESUME_BYTES:
