@@ -10,7 +10,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ("pages", "0012_seed_webinar"),
+        ("pages", "__latest__"),
         ("crm", "0008_mcp_oauth"),
     ]
 
