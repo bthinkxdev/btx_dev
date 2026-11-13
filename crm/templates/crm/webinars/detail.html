@@ -1,0 +1,133 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{{ reg.name }} · Webinar registrant{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-start justify-between gap-3">
+  <div>
+    <nav aria-label="Breadcrumb" class="mb-1"><ol class="flex flex-wrap items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
+      <li class="inline-flex items-center gap-1.5"><a href="{% url 'crm:webinar_registrations' %}?webinar={{ w.pk }}" class="hover:text-gray-700 dark:hover:text-gray-200">{{ w.title|truncatechars:40 }}</a>{% icon 'chevron_right' 14 %}</li>
+      <li>{{ reg.name }}</li>
+    </ol></nav>
+    <h1 class="page-title">{{ reg.name }} <span class="ml-2 align-middle">{% status_badge wl 'stage' %}</span></h1>
+    <p class="muted mt-1">{{ reg.business_name|default:"No business name" }} · registered for <strong>{{ w.title }}</strong> on {{ reg.created_at|dt }}</p>
+  </div>
+  <a href="{% url 'crm:webinar_registrations' %}?webinar={{ w.pk }}" class="btn btn-secondary">Back to registrations</a>
+</div>
+{% endblock %}
+{% block content %}
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+  <div class="flex flex-col gap-6 xl:col-span-2">
+    <section class="card" aria-labelledby="who-h"><div class="card-body">
+      <h2 id="who-h" class="mb-4 text-base font-semibold text-gray-800 dark:text-white/90">Registrant</h2>
+      <dl class="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
+        <div><dt class="text-theme-xs text-gray-500 dark:text-gray-400">Email</dt><dd class="mt-0.5 text-sm break-words"><a class="btn-link" href="mailto:{{ reg.email }}">{{ reg.email }}</a></dd></div>
+        <div><dt class="text-theme-xs text-gray-500 dark:text-gray-400">Phone</dt><dd class="mt-0.5 text-sm"><a class="btn-link" href="tel:{{ reg.phone }}">{{ reg.phone }}</a></dd></div>
+        <div><dt class="text-theme-xs text-gray-500 dark:text-gray-400">Business</dt><dd class="mt-0.5 text-sm">{{ reg.business_name|default:"-" }}</dd></div>
+        <div><dt class="text-theme-xs text-gray-500 dark:text-gray-400">Came from</dt><dd class="mt-0.5 text-sm">{{ reg.utm_campaign|default:reg.utm_source|default:"Direct" }}{% if reg.utm_source and reg.utm_campaign %} ({{ reg.utm_source }}){% endif %}</dd></div>
+        <div><dt class="text-theme-xs text-gray-500 dark:text-gray-400">Payment</dt><dd class="mt-0.5 text-sm">{% status_badge reg %} {% if reg.status == 'paid' %}Rs. {{ reg.amount|floatformat:0 }}, {{ reg.paid_at|dt }}{% endif %}</dd></div>
+        <div><dt class="text-theme-xs text-gray-500 dark:text-gray-400">Order</dt><dd class="mt-0.5 text-sm break-all">{{ reg.cashfree_order_id }}</dd></div>
+        <div><dt class="text-theme-xs text-gray-500 dark:text-gray-400">Attended</dt><dd class="mt-0.5 text-sm">{% if reg.attended %}Yes{% else %}Not marked{% endif %}</dd></div>
+        <div><dt class="text-theme-xs text-gray-500 dark:text-gray-400">Joining link emailed</dt><dd class="mt-0.5 text-sm">{% if reg.joining_sent_at %}{{ reg.joining_sent_at|dt }}{% else %}Not yet{% endif %}</dd></div>
+      </dl>
+      <div class="mt-5 flex flex-wrap gap-2">
+        <a href="mailto:{{ reg.email }}" class="btn btn-secondary btn-sm">{% icon 'mail' 16 %} Email</a>
+        <a href="tel:{{ reg.phone }}" class="btn btn-secondary btn-sm">{% icon 'phone' 16 %} Call</a>
+        <a href="https://wa.me/91{{ reg.phone }}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">{% icon 'whatsapp' 16 %} WhatsApp</a>
+        {% if can_edit and reg.status == 'paid' %}
+        <form method="post" action="{% url 'crm:webinar_registration_action' wl.pk %}">{% csrf_token %}<input type="hidden" name="next" value="detail"><input type="hidden" name="action" value="resend"><button class="btn btn-secondary btn-sm">Resend confirmation</button></form>
+        {% if w.join_url %}<form method="post" action="{% url 'crm:webinar_registration_action' wl.pk %}">{% csrf_token %}<input type="hidden" name="next" value="detail"><input type="hidden" name="action" value="joining"><button class="btn btn-secondary btn-sm">Email joining link</button></form>{% endif %}
+        <form method="post" action="{% url 'crm:webinar_registration_action' wl.pk %}">{% csrf_token %}<input type="hidden" name="next" value="detail"><input type="hidden" name="action" value="attended"><button class="btn btn-secondary btn-sm">{% if reg.attended %}Undo attended{% else %}Mark attended{% endif %}</button></form>
+        {% endif %}
+      </div>
+    </div></section>
+
+    <section class="card" aria-labelledby="act-h"><div class="card-body">
+      <h2 id="act-h" class="mb-4 text-base font-semibold text-gray-800 dark:text-white/90">Follow-up history</h2>
+      {% if can_edit %}
+      <form method="post" action="{% url 'crm:webinar_lead_note' wl.pk %}" class="mb-6 flex flex-col gap-3 rounded-xl bg-gray-50 p-4 dark:bg-white/[0.03]">{% csrf_token %}
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div><label for="n-kind" class="form-label">Type</label><select id="n-kind" name="kind" class="form-select"><option value="note">Note</option><option value="call">Call</option><option value="whatsapp">WhatsApp</option><option value="email">Email</option></select></div>
+          <div class="sm:col-span-2"><label for="n-fu" class="form-label">Next follow-up (optional)</label><input id="n-fu" type="datetime-local" name="follow_up" class="form-input"></div>
+        </div>
+        <label for="n-text" class="sr-only">What happened</label>
+        <textarea id="n-text" name="text" rows="3" maxlength="2000" required class="form-textarea" placeholder="What did you discuss? What is the next step?"></textarea>
+        <button class="btn btn-primary btn-sm self-start" data-loading-text="Saving…">Save</button>
+      </form>
+      {% endif %}
+      <ol class="flex flex-col gap-4">
+        {% for a in activities %}
+        <li class="flex gap-3 text-sm">
+          <span class="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand-500" aria-hidden="true"></span>
+          <div class="min-w-0"><p class="text-gray-800 dark:text-white/90"><strong>{{ a.get_kind_display }}</strong>{% if a.text %}: <span class="whitespace-pre-line">{{ a.text }}</span>{% endif %}</p>
+          <p class="text-theme-xs text-gray-500 dark:text-gray-400">{{ a.created_at|dt }}{% if a.actor %} · {{ a.actor.get_full_name|default:a.actor.get_username }}{% endif %}</p></div>
+        </li>
+        {% empty %}<li class="muted">Nothing yet. Notes, calls and stage changes appear here.</li>{% endfor %}
+      </ol>
+    </div></section>
+  </div>
+
+  <div class="flex flex-col gap-6">
+    <section class="card" aria-labelledby="move-h"><div class="card-body">
+      <h2 id="move-h" class="mb-1 text-base font-semibold text-gray-800 dark:text-white/90">Move to the CRM</h2>
+      {% if wl.client %}
+        <p class="mb-3 text-sm text-gray-600 dark:text-gray-400">This registrant is a client.</p>
+        <a href="{% url 'crm:client_detail' wl.client_id %}" class="btn btn-primary btn-sm w-full justify-center">Open client</a>
+        <p class="form-help mt-2">Start the onboarding project, contract or invoice from the client page.</p>
+        {% if wl.lead %}<a href="{% url 'crm:lead_detail' wl.lead_id %}" class="btn-link mt-3 inline-block text-sm">View the lead</a>{% endif %}
+      {% elif wl.lead %}
+        <p class="mb-3 text-sm text-gray-600 dark:text-gray-400">In the Leads pipeline as <strong>{{ wl.lead.name }}</strong>.</p>
+        <a href="{% url 'crm:lead_detail' wl.lead_id %}" class="btn btn-primary btn-sm w-full justify-center">Open lead</a>
+        {% if can_edit and can_create_client %}
+        <form method="post" action="{% url 'crm:webinar_lead_convert' wl.pk %}" class="mt-3" data-confirm="Make {{ reg.name }} a client?" data-confirm-body="A client record is created from the lead, so billing, contracts and onboarding projects can start.">{% csrf_token %}<input type="hidden" name="to" value="client"><button class="btn btn-secondary btn-sm w-full justify-center">Make a client now</button></form>
+        {% endif %}
+      {% else %}
+        <p class="mb-4 text-sm text-gray-600 dark:text-gray-400">Registrants stay in this section. When someone is qualified, move them on.</p>
+        {% if can_edit %}
+        <div class="flex flex-col gap-2">
+          {% if can_create_lead %}<form method="post" action="{% url 'crm:webinar_lead_convert' wl.pk %}" data-confirm="Move {{ reg.name }} to Leads?" data-confirm-body="A lead is created in the sales pipeline (or linked to the existing one with the same phone or email).">{% csrf_token %}<input type="hidden" name="to" value="lead"><button class="btn btn-primary btn-sm w-full justify-center">Move to Leads pipeline</button></form>{% endif %}
+          {% if can_create_client %}<form method="post" action="{% url 'crm:webinar_lead_convert' wl.pk %}" data-confirm="Make {{ reg.name }} a client?" data-confirm-body="A lead and a client record are created, so billing, contracts and onboarding projects can start.">{% csrf_token %}<input type="hidden" name="to" value="client"><button class="btn btn-secondary btn-sm w-full justify-center">Make a client now</button></form>{% endif %}
+        </div>
+        {% endif %}
+      {% endif %}
+    </div></section>
+
+    <section class="card" aria-labelledby="stage-h"><div class="card-body">
+      <h2 id="stage-h" class="mb-3 text-base font-semibold text-gray-800 dark:text-white/90">Stage and owner</h2>
+      {% if can_edit %}
+      {% if not wl.is_converted %}
+      <form method="post" action="{% url 'crm:webinar_lead_stage' wl.pk %}" class="mb-5 flex flex-col gap-3">{% csrf_token %}
+        <label for="st" class="form-label">Stage</label>
+        <select id="st" name="stage" class="form-select">{% for v, l in stages %}<option value="{{ v }}" {% if wl.stage == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+        <label for="st-note" class="sr-only">Note</label>
+        <input id="st-note" name="note" maxlength="500" class="form-input" placeholder="Reason or note (optional)">
+        <button class="btn btn-primary btn-sm self-start">Update stage</button>
+      </form>
+      {% else %}<p class="mb-5 text-sm text-gray-600 dark:text-gray-400">Moved to the CRM, so follow-up continues in the lead or client.</p>{% endif %}
+      <form method="post" action="{% url 'crm:webinar_lead_assign' wl.pk %}" class="flex flex-col gap-3">{% csrf_token %}
+        <label for="ow" class="form-label">Owner</label>
+        <select id="ow" name="owner" class="form-select"><option value="">Unassigned</option>{% for v, l in users %}<option value="{{ v }}" {% if wl.owner_id == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+        <button class="btn btn-secondary btn-sm self-start">Assign</button>
+      </form>
+      {% else %}
+      <p class="text-sm">Stage: {{ wl.get_stage_display }}<br>Owner: {{ wl.owner|default:"Unassigned" }}</p>
+      {% endif %}
+    </div></section>
+
+    <section class="card" aria-labelledby="mail-h"><div class="card-body">
+      <h2 id="mail-h" class="mb-3 text-base font-semibold text-gray-800 dark:text-white/90">Emails sent</h2>
+      <ul class="flex flex-col gap-3">
+        {% for m in emails %}<li class="text-sm"><p class="font-medium text-gray-800 dark:text-white/90">{{ m.subject }}</p><p class="text-theme-xs text-gray-500 dark:text-gray-400">{{ m.created_at|dt }} · {% status_badge m %}</p></li>
+        {% empty %}<li class="muted">Nothing sent yet. The confirmation goes out automatically when the payment succeeds.</li>{% endfor %}
+      </ul>
+    </div></section>
+
+    {% if meta_events %}
+    <section class="card" aria-labelledby="meta-h"><div class="card-body">
+      <h2 id="meta-h" class="mb-3 text-base font-semibold text-gray-800 dark:text-white/90">Meta ad events</h2>
+      <ul class="flex flex-col gap-3">
+        {% for e in meta_events %}<li class="text-sm"><p class="font-medium text-gray-800 dark:text-white/90">{{ e.event_name }} · {% status_badge e %}</p><p class="text-theme-xs text-gray-500 dark:text-gray-400">{{ e.created_at|dt }}{% if e.last_error %} · {{ e.last_error }}{% endif %}</p></li>{% endfor %}
+      </ul>
+    </div></section>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -18,7 +18,7 @@ from django.views.decorators.http import require_http_methods
 from crm.core.permissions import is_super_admin
 
 from .models import BlockedBrand, Business, RunResult, SearchRun
-from .services import export, extraction, google_places
+from .services import export, extraction, google_places, instagram
 
 
 def admin_only(view):
@@ -49,7 +49,9 @@ def _result_json(r: RunResult) -> dict:
         'reviews': b.review_count if b else None,
         'websiteOpportunity': b.website_opportunity_label if b else 'unknown',
         'metaOpportunity': b.meta_opportunity_label if b else 'unknown',
-        'overallScore': b.overall_score if b else None, 'mapsUri': b.maps_uri if b else '',
+        'overallScore': b.overall_score if b else None,
+        'igUser': b.ig_username if b else '', 'igFollowers': b.ig_followers if b else None,
+        'igPosts': b.ig_posts if b else None, 'mapsUri': b.maps_uri if b else '',
     }
 
 
@@ -58,7 +60,7 @@ def _run_json(run: SearchRun) -> dict:
         'id': run.pk, 'status': run.status, 'location': run.location, 'category': run.category,
         'discovered': run.discovered_count, 'newCount': run.new_count, 'duplicates': run.duplicate_count,
         'rejected': run.rejected_count, 'invalid': run.invalid_count, 'target': run.target_count,
-        'remaining': run.remaining_target, 'minReviews': run.min_reviews, 'maxReviews': run.max_reviews,
+        'remaining': run.remaining_target, 'phase': run.phase, 'notice': run.notice, 'minReviews': run.min_reviews, 'maxReviews': run.max_reviews,
         'errorMessage': run.error_message,
     }
 
@@ -72,6 +74,7 @@ def index(request):
         'history_count': Business.objects.count(),
         'configured': google_places.is_configured(),
         'brands': BlockedBrand.objects.all(),
+        'apify_ready': instagram.is_configured(),
     })
 
 
@@ -92,7 +95,8 @@ def run_start(request):
     if extraction.has_active_run():
         return JsonResponse({'error': 'A search is already in progress.'}, status=409)
     run = extraction.start_run(location=location, category=category, target_count=target, user=request.user,
-                               min_reviews=body.get('min_reviews'), max_reviews=body.get('max_reviews'))
+                               min_reviews=body.get('min_reviews'), max_reviews=body.get('max_reviews'),
+                               enrich_instagram=body.get('enrich_instagram', True))
     return JsonResponse(_run_json(run))
 
 

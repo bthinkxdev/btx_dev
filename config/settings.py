@@ -181,6 +181,10 @@ GA_MEASUREMENT_ID = os.environ.get('GA_MEASUREMENT_ID', '').strip()
 # Google Places API key — used only by the standalone leadfinder app.
 GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY', '').strip()
 
+# Apify — used only by the leadfinder app to enrich Instagram profiles.
+APIFY_API_TOKEN = os.environ.get('APIFY_API_TOKEN', '').strip()
+APIFY_INSTAGRAM_ACTOR_ID = os.environ.get('APIFY_INSTAGRAM_ACTOR_ID', '').strip()
+
 # Cashfree Payment Gateway — public-site offer landing pages (e.g. the Navaratri
 # offer). 'sandbox' hits sandbox.cashfree.com with test credentials; 'production'
 # hits api.cashfree.com with live credentials. Never commit real keys — set them
@@ -188,6 +192,18 @@ GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY', '').strip()
 CASHFREE_APP_ID = os.environ.get('CASHFREE_APP_ID', '').strip()
 CASHFREE_SECRET_KEY = os.environ.get('CASHFREE_SECRET_KEY', '').strip()
 CASHFREE_ENV = os.environ.get('CASHFREE_ENV', 'sandbox').strip().lower()
+
+# Meta (Facebook / Instagram) tracking for the webinar landing page.
+#   META_PIXEL_ID        browser pixel: PageView, ViewContent, Lead, InitiateCheckout, Purchase. Empty switches it off.
+#   META_CAPI_TOKEN      Conversions API access token (Events Manager > Settings). With it, Lead, InitiateCheckout and
+#                        Purchase are also sent from the server, so a purchase is counted even when the buyer closes the
+#                        browser or has an ad blocker. Events are de-duplicated with the pixel by event id.
+#   META_TEST_EVENT_CODE the "Test events" code from Events Manager. Set it only while testing: events then appear in the
+#                        Test events tab and are not used for ads. Remove it for production.
+META_PIXEL_ID = os.environ.get('META_PIXEL_ID', '').strip()
+META_CAPI_TOKEN = os.environ.get('META_CAPI_TOKEN', '').strip()
+META_TEST_EVENT_CODE = os.environ.get('META_TEST_EVENT_CODE', '').strip()
+META_GRAPH_VERSION = os.environ.get('META_GRAPH_VERSION', 'v21.0').strip()
 
 # Redis cache (recommended for webhook dedupe + rate limiting + multi-worker safety).
 # Set REDIS_URL like: redis://127.0.0.1:6379/1

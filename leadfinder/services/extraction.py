@@ -17,7 +17,7 @@ from django.db.models import F
 from django.utils import timezone
 
 from ..models import BlockedBrand, Business, RunResult, SearchRun
-from . import google_places, lead_qualification, online_presence, website_check
+from . import google_places, instagram, lead_qualification, online_presence, website_check
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +85,8 @@ def has_active_run() -> bool:
     return SearchRun.objects.filter(status__in=SearchRun.ACTIVE_STATUSES).exists()
 
 
-def start_run(*, location: str, category: str, target_count, user, min_reviews=None, max_reviews=None) -> SearchRun:
+def start_run(*, location: str, category: str, target_count, user, min_reviews=None, max_reviews=None,
+              enrich_instagram=True) -> SearchRun:
     try:
         target = int(target_count) if target_count else DEFAULT_TARGET_COUNT
     except (TypeError, ValueError):
@@ -99,6 +100,7 @@ def start_run(*, location: str, category: str, target_count, user, min_reviews=N
             return default
 
     run = SearchRun.objects.create(
+        enrich_instagram=bool(enrich_instagram) and instagram.is_configured(),
         min_reviews=max(_opt(min_reviews, 3), 0),
         max_reviews=(_opt(max_reviews, 500) or None),   # 0 / blank-after-default means no ceiling
         location=(location or '').strip(), category=(category or '').strip(), target_count=target,
@@ -268,6 +270,56 @@ def _process_candidate(run, candidate) -> None:
         _bump(run, 'discovered_count', 'rejected_count')
 
 
+def _enrich_instagram(run: SearchRun) -> None:
+    """One Apify call for all of this run's new businesses that have an Instagram profile; then rescore Meta."""
+    businesses = list(Business.objects.filter(results__run=run, results__outcome=RunResult.Outcome.NEW)
+                      .exclude(instagram_url='').distinct())
+    by_user = {}
+    for b in businesses:
+        user = instagram.username_from_url(b.instagram_url)
+        if user:
+            by_user.setdefault(user, []).append(b)
+    if not by_user:
+        return
+
+    run.phase = 'enriching'
+    run.save(update_fields=['phase'])
+    try:
+        profiles = instagram.fetch_profiles(list(by_user))
+    except instagram.InstagramEnrichmentError as exc:
+        run.notice = f'Instagram enrichment skipped: {exc}'[:255]
+        run.save(update_fields=['notice'])
+        return
+    if not profiles:
+        run.notice = ('Instagram enrichment returned no profiles — check the Apify plan/actor '
+                      '(the default actor needs a paid Apify plan).')
+        run.save(update_fields=['notice'])
+        return
+
+    now = timezone.now()
+    for user, group in by_user.items():
+        profile = profiles.get(user)
+        if not profile:
+            continue
+        social = {'social_presence_type': group[0].social_presence_type,
+                  'social_activity': instagram.activity_of(profile)}
+        for b in group:
+            b.ig_username, b.ig_followers, b.ig_posts = profile['username'], profile['followers'], profile['posts']
+            b.ig_is_business, b.ig_bio = profile['is_business'], profile['bio']
+            b.ig_email, b.ig_phone, b.ig_checked_at = profile['email'][:254], profile['phone'][:50], now
+            update = ['ig_username', 'ig_followers', 'ig_posts', 'ig_is_business', 'ig_bio', 'ig_email', 'ig_phone',
+                      'ig_checked_at']
+            if b.business_quality_score is not None:
+                scores = lead_qualification.rescore_meta(
+                    business_quality_score=b.business_quality_score,
+                    website_opportunity_score=b.website_opportunity_score, social_result=social)
+                b.meta_opportunity_score = scores['meta_opportunity_score']
+                b.meta_opportunity_label = scores['meta_opportunity_label']
+                b.overall_score = scores['overall_score']
+                update += ['meta_opportunity_score', 'meta_opportunity_label', 'overall_score']
+            b.save(update_fields=update)
+
+
 def _finish(run, status, **extra):
     run.status = status
     for k, v in extra.items():
@@ -291,8 +343,9 @@ def _run_safe(run_id: int):
 def _run(run_id: int):
     run = SearchRun.objects.get(pk=run_id)
     run.status = SearchRun.Status.RUNNING
+    run.phase = 'searching'
     run.started_at = timezone.now()
-    run.save(update_fields=['status', 'started_at'])
+    run.save(update_fields=['status', 'phase', 'started_at'])
 
     processed = 0
     last_error = None
@@ -343,4 +396,10 @@ def _run(run_id: int):
         _finish(run, SearchRun.Status.FAILED, error_message=_safe_places_error(last_error),
                 completed_at=timezone.now())
         return
-    _finish(run, SearchRun.Status.COMPLETED, completed_at=timezone.now())
+    if run.enrich_instagram and run.new_count:
+        try:
+            _enrich_instagram(run)
+        except Exception:
+            logger.exception('Lead Finder run %s: Instagram enrichment crashed', run.pk)
+            run.notice = 'Instagram enrichment failed unexpectedly.'
+    _finish(run, SearchRun.Status.COMPLETED, completed_at=timezone.now(), phase='', notice=run.notice)

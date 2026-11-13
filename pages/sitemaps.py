@@ -19,12 +19,15 @@ class StaticViewSitemap(Sitemap):
         'pages:about': 0.5,
         'pages:blog': 0.6,
         'pages:careers': 0.4,
+        'pages:webinar': 0.7,
         'pages:privacy_policy': 0.1,
         'pages:terms': 0.1,
     }
 
     def items(self):
-        return list(self.PRIORITIES.keys())
+        from .webinar import active_webinar
+        live = active_webinar()
+        return [k for k in self.PRIORITIES if k != 'pages:webinar' or (live and live.registration_open)]
 
     def location(self, item):
         return reverse(item)

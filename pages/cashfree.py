@@ -50,7 +50,8 @@ def _headers() -> dict:
 
 
 def create_order(*, order_id: str, amount, customer_id: str, customer_phone: str,
-                  customer_name: str, return_url: str) -> dict:
+                  customer_name: str, return_url: str, customer_email: str = '', notify_url: str = '',
+                  order_note: str = '') -> dict:
     """Returns the Cashfree order response (includes payment_session_id)."""
     if not is_configured():
         raise CashfreeError('Cashfree is not configured (CASHFREE_APP_ID/CASHFREE_SECRET_KEY missing).')
@@ -68,6 +69,12 @@ def create_order(*, order_id: str, amount, customer_id: str, customer_phone: str
             'return_url': return_url,
         },
     }
+    if customer_email:
+        payload['customer_details']['customer_email'] = customer_email
+    if notify_url.startswith('https://'):          # Cashfree only accepts https webhook URLs
+        payload['order_meta']['notify_url'] = notify_url
+    if order_note:
+        payload['order_note'] = order_note[:200]
     try:
         resp = requests.post(f'{_base_url()}/orders', json=payload, headers=_headers(), timeout=15)
     except requests.RequestException as exc:

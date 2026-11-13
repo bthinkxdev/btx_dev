@@ -1,11 +1,11 @@
 from unittest import mock
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from .models import BlockedBrand, Business, RunResult, SearchRun
-from .services import extraction
+from .services import extraction, instagram
 
 DETAILS = {
     'p1': {'placeId': 'p1', 'name': 'Alpha Boutique', 'address': 'MG Road', 'nationalPhoneNumber': '0471 234 5678',
@@ -149,3 +149,57 @@ class SizeScreeningTests(TestCase):
         staff = User.objects.create_user('st2', 's2@x.com', 'pw')
         self.client.force_login(staff)
         self.assertEqual(self.client.post(reverse('leadfinder:lf_brand_add'), {'name': 'X'}).status_code, 403)
+
+
+@override_settings(APIFY_API_TOKEN='tok', APIFY_INSTAGRAM_ACTOR_ID='actor')
+class InstagramEnrichmentTests(TestCase):
+    def _run(self, profiles=None, error=None):
+        d = _d('a', 'Insta Boutique', '9447000001', 40)
+        d['website'] = 'https://www.instagram.com/insta.boutique/'
+        run = SearchRun.objects.create(location='TVM', category='Boutique', target_count=5, enrich_instagram=True)
+        fetch = mock.Mock(side_effect=error) if error else mock.Mock(return_value=profiles or {})
+        with mock.patch('leadfinder.services.extraction.time.sleep'), \
+                mock.patch('leadfinder.services.google_places.search_text_page',
+                           return_value={'results': [{'placeId': 'a', 'name': 'Insta Boutique'}], 'nextPageToken': ''}), \
+                mock.patch('leadfinder.services.google_places.get_place_details', return_value=d), \
+                mock.patch('leadfinder.services.instagram.fetch_profiles', fetch):
+            extraction._run(run.pk)
+        run.refresh_from_db()
+        return run, fetch
+
+    def test_username_from_url(self):
+        u = instagram.username_from_url
+        self.assertEqual(u('https://www.instagram.com/Shop.Name/?hl=en'), 'shop.name')
+        self.assertEqual(u('https://instagram.com/p/Cabc123/'), '')
+        self.assertEqual(u('https://example.com'), '')
+
+    def test_profile_enriches_and_rescores_meta(self):
+        profile = {'username': 'insta.boutique', 'followers': 1200, 'posts': 3, 'is_business': True, 'is_private': False,
+                   'bio': 'Sarees', 'category': '', 'email': 'shop@x.com', 'phone': '9447111222', 'external_url': ''}
+        before_run, _ = self._run(profiles={})              # nothing returned -> baseline scores + notice
+        base = Business.objects.get()
+        base_meta = base.meta_opportunity_score
+        self.assertIn('returned no profiles', before_run.notice)
+        Business.objects.all().delete()
+        run, fetch = self._run(profiles={'insta.boutique': profile})
+        biz = Business.objects.get()
+        fetch.assert_called_once_with(['insta.boutique'])
+        self.assertEqual((biz.ig_followers, biz.ig_posts, biz.ig_email), (1200, 3, 'shop@x.com'))
+        self.assertGreater(biz.meta_opportunity_score, base_meta)   # 3 posts = barely used = bigger Meta opportunity
+        self.assertEqual(run.notice, '')
+        self.assertEqual(run.phase, '')
+
+    def test_apify_failure_is_a_notice_not_a_failed_run(self):
+        run, _ = self._run(error=instagram.InstagramEnrichmentError('Could not reach Apify.'))
+        self.assertEqual(run.status, 'completed')
+        self.assertIn('Could not reach Apify', run.notice)
+        self.assertEqual(run.new_count, 1)
+
+    def test_activity(self):
+        self.assertEqual(instagram.activity_of({'posts': 2}), 'inactive')
+        self.assertEqual(instagram.activity_of({'posts': 80}), 'active')
+        self.assertEqual(instagram.activity_of({'posts': None}), 'unknown')
+
+    def test_normalize_skips_errors(self):
+        self.assertIsNone(instagram.normalize({'error': 'not found'}))
+        self.assertEqual(instagram.normalize({'username': 'A_B', 'follower_count': 5, 'media_count': 9})['username'], 'a_b')

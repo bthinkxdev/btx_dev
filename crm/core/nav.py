@@ -30,6 +30,8 @@ NAV = [
             ('Lost-lead analysis', 'crm:lost_analysis', 'leads', 'view'),
             ('Sources and campaigns', 'crm:source_list', 'leads', 'configure'),
             ('Website chats', 'crm:chat_list', 'chats', 'view'),
+            ('Webinars', 'crm:webinar_list', 'leads', 'view'),
+            ('Webinar registrations', 'crm:webinar_registrations', 'leads', 'view'),
         ]),
         ('pipeline', 'Pipeline', 'board', [
             ('Pipeline board', 'crm:pipeline', 'deals', 'view'),

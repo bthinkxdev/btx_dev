@@ -1,0 +1,72 @@
+{% extends 'pages/webinar_base.html' %}
+{% load static %}
+
+{% block title %}{% if status == 'paid' %}Seat confirmed{% elif status == 'failed' %}Payment not completed{% else %}Confirming your payment{% endif %} | BThinkX Webinar{% endblock %}
+{% block og_title %}BThinkX Webinar{% endblock %}
+{% block meta_robots %}noindex, nofollow{% endblock %}
+
+{% block head_extra %}{% if status == 'processing' %}<noscript><meta http-equiv="refresh" content="8"></noscript>{% endif %}{% endblock %}
+
+{% block content %}
+<section class="wb-result">
+  <div class="wb-wrap">
+    <div class="wb-result__card">
+      {% if status == 'paid' and reg %}
+        <div class="wb-result__icon wb-result__icon--ok"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+        <h1>You are registered, {{ reg.name.split.0|capfirst }}.</h1>
+        <p>Your payment of &#8377;{{ reg.amount|floatformat:0 }} is received. We have emailed your confirmation to <b>{{ reg.email }}</b>. If you do not see it, check your spam folder.</p>
+        <dl class="wb-detail">
+          <div><dt>Webinar</dt><dd>{{ w.title }}</dd></div>
+          <div><dt>Date</dt><dd>{{ date_long }}</dd></div>
+          <div><dt>Time</dt><dd>{{ time_range }}</dd></div>
+          <div><dt>Where</dt><dd>Live online on {{ w.platform }}</dd></div>
+          <div><dt>Registration ID</dt><dd>WEB-{{ reg.pk|stringformat:"05d" }}</dd></div>
+        </dl>
+        <div class="wb-actions">
+          {% if w.join_url %}<a class="wb-btn" href="{{ w.join_url }}">Joining link</a>{% endif %}
+          <a class="wb-btn wb-btn--ghost" href="{% url 'pages:webinar_calendar' %}?order_id={{ reg.cashfree_order_id }}">Add to calendar</a>
+        </div>
+        {% if not w.join_url %}<p style="margin:20px 0 0;font-size:.9rem;">Your joining link will reach your email before the session starts.</p>{% endif %}
+      {% elif status == 'failed' %}
+        <div class="wb-result__icon wb-result__icon--bad"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></div>
+        <h1>Payment was not completed</h1>
+        <p>No problem. If any amount was deducted it is returned automatically by your bank. You can try again to reserve your seat.</p>
+        <div class="wb-actions"><a class="wb-btn" href="{% if w %}{% url 'pages:webinar' w.slug %}{% else %}{% url 'pages:webinar' %}{% endif %}#register">Try again</a></div>
+      {% elif status == 'processing' %}
+        <div class="wb-result__icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg></div>
+        <h1>Confirming your payment</h1>
+        <p>This usually takes a few seconds. This page refreshes by itself. If money was deducted, your seat is safe and your confirmation email is on its way.</p>
+      {% else %}
+        <div class="wb-result__icon wb-result__icon--bad"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v5M12 16.5v.01"/><circle cx="12" cy="12" r="8.5"/></svg></div>
+        <h1>We could not find that payment</h1>
+        <p>If an amount was deducted, write to <a href="mailto:hr@bthinkx.com">hr@bthinkx.com</a> with your phone number and we will sort it out right away.</p>
+        <div class="wb-actions"><a class="wb-btn wb-btn--ghost" href="{% url 'pages:webinar' %}">Back to the webinar</a></div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+{% if status == 'paid' and reg %}
+<script>
+(function () {
+  var key = 'wb_purchase_{{ reg.cashfree_order_id }}';
+  try { if (localStorage.getItem(key)) return; localStorage.setItem(key, '1'); } catch (e) { /* track anyway */ }
+  var value = {{ reg.amount|floatformat:'2u' }};
+  try {
+    if (window.fbq) fbq('track', 'Purchase', { value: value, currency: 'INR', content_name: '{{ w.title|escapejs }}', content_ids: ['{{ w.slug|escapejs }}'], content_type: 'product', num_items: 1, order_id: '{{ reg.cashfree_order_id }}' }, { eventID: '{{ reg.cashfree_order_id }}' });
+    if (window.gtag) gtag('event', 'purchase', { transaction_id: '{{ reg.cashfree_order_id }}', value: value, currency: 'INR' });
+  } catch (e) { /* tracking must never break the page */ }
+})();
+</script>
+{% elif status == 'processing' %}
+<script>
+(function () {
+  var n = 0;
+  try { n = +sessionStorage.getItem('wb_poll') || 0; sessionStorage.setItem('wb_poll', n + 1); } catch (e) { /* ignore */ }
+  if (n < 8) setTimeout(function () { location.reload(); }, 5000);
+})();
+</script>
+{% endif %}
+{% endblock %}

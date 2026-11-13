@@ -1,0 +1,95 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Meta tracking{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+  <div>
+    <h1 class="page-title">Meta tracking</h1>
+    <p class="muted mt-1">The Meta pixel and Conversions API for the webinar pages. Only administrators can change these. Anything left empty uses the server settings.</p>
+  </div>
+  <a href="{% url 'crm:webinar_list' %}" class="btn btn-secondary">Back to webinars</a>
+</div>
+{% endblock %}
+{% block banners %}
+  {% if cfg.capi_on and cfg.pixel_on %}<div class="alert alert-success mb-5"><span class="text-success-500">{% icon 'check' 20 %}</span><p class="text-sm"><strong>Browser and server tracking are on.</strong> Lead, InitiateCheckout and Purchase are reported twice and merged by Meta, so a purchase counts even when the buyer closes the page.</p></div>
+  {% elif cfg.pixel_on %}<div class="alert alert-warning mb-5"><span class="text-warning-500">{% icon 'alert' 20 %}</span><p class="text-sm"><strong>Browser pixel only.</strong> Add the access token to also report purchases from the server. Without it, buyers with ad blockers are not counted.</p></div>
+  {% elif cfg.capi_on %}<div class="alert alert-warning mb-5"><span class="text-warning-500">{% icon 'alert' 20 %}</span><p class="text-sm"><strong>Server events only.</strong> The browser pixel is switched off.</p></div>
+  {% else %}<div class="alert alert-warning mb-5"><span class="text-warning-500">{% icon 'alert' 20 %}</span><p class="text-sm"><strong>Tracking is off.</strong> Add the pixel ID to start.</p></div>{% endif %}
+  {% if cfg.test_code %}<div class="alert alert-warning mb-5"><span class="text-warning-500">{% icon 'alert' 20 %}</span><p class="text-sm"><strong>Test mode.</strong> Server events carry the test event code, so they appear in the Test events tab and are not used for ads. Clear the code when you go live.</p></div>{% endif %}
+{% endblock %}
+{% block content %}
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+  <form method="post" novalidate class="card xl:col-span-2" autocomplete="off">{% csrf_token %}
+    <div class="card-body space-y-8">
+      {% include "crm/components/form_errors.html" %}
+
+      <section aria-labelledby="px-h" class="space-y-4">
+        <div><h2 id="px-h" class="text-base font-semibold text-gray-800 dark:text-white/90">Browser pixel</h2>
+          <p class="muted mt-1">Tracks page views, the form being shown, and the buyer reaching payment and finishing it.</p></div>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {% field form.pixel_id %}
+          <div class="flex items-end pb-1">{% field form.pixel_enabled %}</div>
+        </div>
+        {% if cfg.source == 'environment' %}<p class="text-theme-xs text-gray-500 dark:text-gray-400">No ID is saved here, so the one from the server settings is in use.</p>{% endif %}
+      </section>
+
+      <section aria-labelledby="capi-h" class="space-y-4 border-t border-gray-100 pt-6 dark:border-gray-800">
+        <div><h2 id="capi-h" class="text-base font-semibold text-gray-800 dark:text-white/90">Conversions API</h2>
+          <p class="muted mt-1">Sends the same events from our server. Create the token in Events Manager under Settings, Conversions API, Generate access token.</p></div>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div class="sm:col-span-2">{% field form.capi_token %}
+            <p class="mt-1 text-theme-xs {% if has_token %}text-success-600{% else %}text-gray-500 dark:text-gray-400{% endif %}">
+              {% if has_token %}A token is stored{% if row.token_updated_at %} (set {{ row.token_updated_at|date:"d M Y" }}){% endif %}. Type a new one to replace it.
+              {% elif env_token %}No token is saved here, so the one from the server settings is in use.
+              {% else %}No token yet.{% endif %}</p>
+            {% if has_token %}<div class="mt-2">{% field form.clear_token %}</div>{% endif %}
+          </div>
+          <div class="flex items-end pb-1">{% field form.capi_enabled %}</div>
+          {% field form.graph_version %}
+        </div>
+      </section>
+
+      <section aria-labelledby="test-h" class="space-y-4 border-t border-gray-100 pt-6 dark:border-gray-800">
+        <div><h2 id="test-h" class="text-base font-semibold text-gray-800 dark:text-white/90">Testing</h2>
+          <p class="muted mt-1">Open Events Manager, Test events, and copy the code. While it is saved here, server events go to that tab only.</p></div>
+        <div class="sm:max-w-sm">{% field form.test_event_code %}</div>
+      </section>
+    </div>
+    <div class="flex flex-col-reverse gap-3 border-t border-gray-100 p-5 sm:flex-row sm:justify-end dark:border-gray-800">
+      <a href="{% url 'crm:webinar_list' %}" class="btn btn-secondary">Cancel</a>
+      <button class="btn btn-primary" data-loading-text="Saving…">Save settings</button>
+    </div>
+  </form>
+
+  <div class="space-y-6">
+    <div class="card"><div class="card-header"><h2 class="card-title">Check the connection</h2></div>
+      <div class="card-body space-y-3">
+        <p class="muted">Sends one test event to the Test events tab, so you can confirm the pixel ID and token work before running ads. It needs the test event code, which keeps it out of your ad reports. Save your changes first.</p>
+        <form method="post" action="{% url 'crm:webinar_tracking_test' %}">{% csrf_token %}<button class="btn btn-secondary btn-sm" data-loading-text="Sending…" {% if not cfg.capi_on %}disabled{% endif %}>Send a test event</button></form>
+      </div></div>
+
+    <div class="card"><div class="card-header"><h2 class="card-title">Server events, last 7 days</h2></div>
+      <div class="card-body space-y-3">
+        <div class="grid grid-cols-3 gap-3 text-center">
+          <div class="rounded-xl bg-gray-50 p-3 dark:bg-white/[0.03]"><p class="text-lg font-semibold text-success-600">{{ counts.sent|default:0 }}</p><p class="text-theme-xs text-gray-500 dark:text-gray-400">Sent</p></div>
+          <div class="rounded-xl bg-gray-50 p-3 dark:bg-white/[0.03]"><p class="text-lg font-semibold text-gray-800 dark:text-white/90">{{ counts.pending|default:0 }}</p><p class="text-theme-xs text-gray-500 dark:text-gray-400">Queued</p></div>
+          <div class="rounded-xl bg-gray-50 p-3 dark:bg-white/[0.03]"><p class="text-lg font-semibold {% if counts.failed %}text-error-600{% else %}text-gray-800 dark:text-white/90{% endif %}">{{ counts.failed|default:0 }}</p><p class="text-theme-xs text-gray-500 dark:text-gray-400">Failed</p></div>
+        </div>
+        <p class="text-theme-xs text-gray-500 dark:text-gray-400">{% if last_sent %}Last event sent {{ last_sent|dt }}.{% else %}Nothing sent yet.{% endif %} Failed events are retried automatically for a few days.</p>
+        {% if problems %}
+        <ul class="divide-y divide-gray-100 dark:divide-gray-800">
+          {% for e in problems %}<li class="py-2 text-sm"><a class="btn-link" href="{% url 'crm:webinar_lead_detail' e.registration.crm.pk %}">{{ e.event_name }}, {{ e.registration.name }}</a><p class="text-theme-xs text-gray-500 dark:text-gray-400">{{ e.last_error|default:"Waiting to be retried" }}</p></li>{% endfor %}
+        </ul>
+        {% endif %}
+      </div></div>
+
+    <div class="card"><div class="card-header"><h2 class="card-title">What is tracked</h2></div>
+      <div class="card-body"><ul class="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+        <li><strong class="text-gray-800 dark:text-white/90">PageView, ViewContent</strong> when someone opens the page.</li>
+        <li><strong class="text-gray-800 dark:text-white/90">Lead</strong> when the form is submitted.</li>
+        <li><strong class="text-gray-800 dark:text-white/90">InitiateCheckout</strong> when payment opens.</li>
+        <li><strong class="text-gray-800 dark:text-white/90">Purchase</strong> when the payment is confirmed.</li>
+      </ul>
+      <p class="muted mt-3">Names, email and phone are sent to Meta only as one-way hashes.</p></div></div>
+  </div>
+</div>
+{% endblock %}

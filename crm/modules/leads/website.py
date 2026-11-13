@@ -76,6 +76,16 @@ def quote_request(lead) -> None:
         'campaign': 'Website pricing quotation', 'kind_label': 'Quotation download'})
 
 
+def webinar_registration(reg, *, paid: bool = False) -> None:
+    """Webinar registrants are NOT leads. They get a follow-up record in the Webinar section, and are moved into the
+    Leads pipeline or made a client only when someone qualifies them (crm.modules.webinars.services)."""
+    from crm.modules.webinars import services
+    if paid:
+        services.on_registration_paid(reg)
+    else:
+        services.ensure_lead(reg)
+
+
 def offer_signup(signup, *, paid: bool = False) -> None:
     state = 'PAID' if paid else 'payment started'
     capture(f'offer-{signup.pk}-{"paid" if paid else "started"}', {

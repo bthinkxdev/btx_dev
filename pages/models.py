@@ -566,6 +566,201 @@ class Interview(models.Model):
         return self.status == self.STATUS_SCHEDULED and self.scheduled_at >= timezone.now()
 
 
+def _webinar_uid() -> str:
+    return uuid.uuid4().hex
+
+
+class Webinar(models.Model):
+    """A paid live webinar shown on its own landing page (/webinar/). Everything on the page that changes from one
+    session to the next lives here, so a new webinar is a new row, not a code change."""
+
+    title = models.CharField(max_length=200, default='How to Sell Online 10x Better Than Your Competitors')
+    slug = models.SlugField(max_length=80, unique=True, default='ecommerce-10x')
+    subtitle = models.CharField(
+        max_length=300,
+        default='A live session for business owners on building your own digital sales system: your store, your ads and '
+                'your social media.')
+    starts_at = models.DateTimeField(help_text='Start time in IST.')
+    duration_minutes = models.PositiveSmallIntegerField(default=90)
+    price = models.DecimalField(max_digits=8, decimal_places=2, default=199)
+    platform = models.CharField(max_length=60, default='Google Meet', help_text='Where it is held, e.g. Google Meet or Zoom.')
+    join_url = models.URLField(
+        max_length=500, blank=True,
+        help_text='The joining link. It is emailed to everyone who has paid. You can add it later, then use '
+                  '"Email joining link" in the CRM.')
+    host_name = models.CharField(max_length=120, default='Team BThinkX')
+    host_title = models.CharField(max_length=160, default='E-commerce and digital marketing company, Trivandrum')
+    seat_limit = models.PositiveIntegerField(null=True, blank=True, help_text='Leave empty for no limit.')
+    learn_points = models.TextField(
+        blank=True, help_text='What attendees will learn. One per line, written as "Heading | one-line explanation".',
+        default=(
+            'Sell on your own terms | Why your own online store beats depending on marketplaces and DMs, and how to set '
+            'one up that actually converts.\n'
+            'How digital marketing really works | The simple Meta ads funnel from reach to order: targeting, budgets and '
+            'retargeting.\n'
+            'Run social media like a sales channel | What to post, how often, and how to turn comments and messages into '
+            'orders.\n'
+            'Fix what quietly loses you sales | Checkout friction, a slow website and missing tracking: the leaks your '
+            'competitors never plug.\n'
+            'Payments, tracking and automation | Collect payments by UPI, cards and COD, measure what works and automate '
+            'the follow-ups.\n'
+            'Live questions and answers | Bring your own business questions and get practical answers.'))
+    audience_points = models.TextField(
+        blank=True, help_text='Who it is for. One per line.',
+        default=('Shop owners who take orders on WhatsApp and Instagram\n'
+                 'Small brands that want to grow beyond their local customers\n'
+                 'Business owners spending on ads without clear results\n'
+                 'Anyone planning to start selling products online'))
+    is_active = models.BooleanField(default=True, help_text='Untick to take the page offline.')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-starts_at']
+        verbose_name = 'Webinar'
+        verbose_name_plural = 'Webinars'
+
+    def __str__(self) -> str:
+        return f'{self.title} ({timezone.localtime(self.starts_at):%d %b %Y %H:%M})'
+
+    @property
+    def ends_at(self):
+        return self.starts_at + timedelta(minutes=self.duration_minutes)
+
+    @property
+    def registration_open(self) -> bool:
+        return self.is_active and timezone.now() < self.starts_at
+
+    @property
+    def learn_items(self) -> list[tuple[str, str]]:
+        out = []
+        for line in self.learn_points.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            head, _, body = line.partition('|')
+            out.append((head.strip(), body.strip()))
+        return out
+
+    @property
+    def audience_items(self) -> list[str]:
+        return [x.strip() for x in self.audience_points.splitlines() if x.strip()]
+
+    def paid_count(self) -> int:
+        return self.registrations.filter(status=WebinarRegistration.Status.PAID).count()
+
+    def seats_left(self):
+        return None if self.seat_limit is None else max(0, self.seat_limit - self.paid_count())
+
+
+class WebinarRegistration(models.Model):
+    """One attempt to register for a webinar. A paid row is a confirmed seat; a pending or failed row is a lead
+    who started checkout and can be followed up."""
+
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        PAID = 'paid', 'Paid'
+        FAILED = 'failed', 'Failed'
+
+    webinar = models.ForeignKey(Webinar, on_delete=models.PROTECT, related_name='registrations')
+    name = models.CharField(max_length=200)
+    email = models.EmailField()
+    phone = models.CharField(max_length=20)
+    business_name = models.CharField(max_length=200, blank=True)
+    amount = models.DecimalField(max_digits=8, decimal_places=2)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING, db_index=True)
+    cashfree_order_id = models.CharField(max_length=80, unique=True, db_index=True)
+    cashfree_payment_id = models.CharField(max_length=80, blank=True)
+
+    # where the visitor came from (the ad), copied from the landing page URL
+    utm_source = models.CharField(max_length=100, blank=True)
+    utm_medium = models.CharField(max_length=100, blank=True)
+    utm_campaign = models.CharField(max_length=150, blank=True)
+    utm_content = models.CharField(max_length=150, blank=True)
+    ad_click_id = models.CharField(max_length=200, blank=True)
+
+    # browser details kept so the Meta Conversions API can match a server-side purchase to the ad click
+    # (the payment is confirmed by a webhook, when the visitor's browser is no longer there to ask)
+    fbp = models.CharField(max_length=120, blank=True)
+    fbc = models.CharField(max_length=300, blank=True)
+    client_ip = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=400, blank=True)
+    source_url = models.CharField(max_length=500, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+    confirmation_sent_at = models.DateTimeField(null=True, blank=True)
+    joining_sent_at = models.DateTimeField(null=True, blank=True, help_text='When the joining link was last emailed.')
+    reminder_24h_sent_at = models.DateTimeField(null=True, blank=True)
+    reminder_1h_sent_at = models.DateTimeField(null=True, blank=True)
+    attended = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Webinar registration'
+        verbose_name_plural = 'Webinar registrations'
+
+    def __str__(self) -> str:
+        return f'{self.name} - {self.webinar.slug} ({self.get_status_display()})'
+
+
+class MetaTracking(models.Model):
+    """The Meta pixel and Conversions API settings, edited by an administrator in the CRM (one row). Anything left empty
+    here falls back to the server environment (META_* variables), so existing deployments keep working. The access token
+    is stored encrypted and is write-only: it is never shown again."""
+
+    pixel_enabled = models.BooleanField(default=True, help_text='Run the pixel in the visitor browser.')
+    pixel_id = models.CharField(max_length=30, blank=True, help_text='The pixel (dataset) ID from Events Manager.')
+    capi_enabled = models.BooleanField(default=True, help_text='Also send Lead, InitiateCheckout and Purchase from the server.')
+    capi_token_enc = models.TextField(blank=True, editable=False)
+    token_updated_at = models.DateTimeField(null=True, blank=True, editable=False)
+    test_event_code = models.CharField(max_length=40, blank=True)
+    graph_version = models.CharField(max_length=10, default='v21.0')
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+
+    class Meta:
+        verbose_name = 'Meta tracking settings'
+        verbose_name_plural = 'Meta tracking settings'
+
+    def __str__(self) -> str:
+        return 'Meta tracking settings'
+
+    @classmethod
+    def current(cls) -> 'MetaTracking':
+        return cls.objects.get_or_create(pk=1)[0]
+
+
+class MetaEvent(models.Model):
+    """One server-side event for Meta's Conversions API: an outbox row, so an event is sent once, retried when Meta or the
+    network fails, and can be inspected afterwards. (event_name, event_id) is what Meta uses to merge the server event with
+    the same event fired by the browser pixel."""
+
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Queued'
+        SENT = 'sent', 'Sent'
+        FAILED = 'failed', 'Failed'
+
+    registration = models.ForeignKey(WebinarRegistration, on_delete=models.CASCADE, related_name='meta_events')
+    event_name = models.CharField(max_length=40)
+    event_id = models.CharField(max_length=80)
+    event_time = models.DateTimeField()
+    payload = models.JSONField(default=dict)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING, db_index=True)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    last_attempt_at = models.DateTimeField(null=True, blank=True)
+    last_error = models.CharField(max_length=500, blank=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        constraints = [models.UniqueConstraint(fields=['event_name', 'event_id'], name='uniq_meta_event')]
+        indexes = [models.Index(fields=['status', 'created_at'])]
+
+    def __str__(self) -> str:
+        return f'{self.event_name} {self.event_id} ({self.status})'
+
+
 class OfferSignup(models.Model):
     """A paid signup from a limited-seats campaign landing page (e.g. the
     Navaratri offer). One row per attempt — a retried/abandoned payment just

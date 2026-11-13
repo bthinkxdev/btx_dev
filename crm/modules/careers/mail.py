@@ -74,6 +74,8 @@ def _spec(app, *, subject, heading, preheader, blocks, greeting=None) -> dict:
         'brand': company.display_name if company else 'BThinkX',
         'logo_url': _site('/static/assets/images/pwa/icon-192.png'),
         'site_url': _site('/'),
+        'footer_note': f'You received this email because you applied for a role at '
+                       f'{company.display_name if company else "BThinkX"}. You can reply to this message to reach our HR team.',
     }
 
 

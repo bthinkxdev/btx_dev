@@ -1,0 +1,71 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Webinar registrations{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+  <div>
+    <h1 class="page-title">Webinar registrations</h1>
+    <p class="muted mt-1">{% if webinar %}Registrations for this webinar only. {% else %}Registrations for every webinar. {% endif %}They are tracked here, separate from Leads. Move someone to Leads or make them a client once they are qualified.</p>
+  </div>
+  <div class="flex flex-wrap gap-2">
+    <a href="{% url 'crm:webinar_list' %}" class="btn btn-secondary">All webinars</a>
+    {% if webinar %}
+      <a href="{% url 'crm:webinar_registrations' %}" class="btn btn-secondary">All registrations</a>
+      {% if page_links %}<button type="button" class="btn btn-secondary" data-copy="{{ page_links.0.1 }}" data-copy-message="Registration link copied">{% icon 'copy' 16 %} Copy link</button>{% endif %}
+      <a href="{% url 'pages:webinar' webinar.slug %}" target="_blank" rel="noopener" class="btn btn-secondary">View landing page</a>
+    {% endif %}
+    {% if can_configure %}
+      {% if webinar %}<a href="{% url 'crm:webinar_edit' webinar.pk %}" class="btn btn-secondary">Edit webinar</a>{% endif %}
+      <a href="{% url 'crm:webinar_create' %}" class="btn btn-primary">{% icon 'plus' 18 %} New webinar</a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+{% block content %}
+{% if webinar %}
+<div class="card mb-5">
+  <div class="card-body flex flex-wrap items-start justify-between gap-4">
+    <div class="min-w-0">
+      <p class="text-base font-semibold text-gray-800 dark:text-white/90">{{ webinar.title }}</p>
+      <p class="muted mt-1">{{ webinar.starts_at|dt }} IST, {{ webinar.duration_minutes }} min, {{ webinar.platform }}, Rs. {{ webinar.price|floatformat:0 }} per seat{% if webinar.seat_limit %}, limit {{ webinar.seat_limit }} seats{% endif %}</p>
+      <p class="mt-1 text-sm break-all">{% if webinar.join_url %}Joining link: <a class="btn-link" href="{{ webinar.join_url }}" target="_blank" rel="noopener noreferrer">{{ webinar.join_url }}</a>{% else %}<span class="text-warning-700 dark:text-orange-400">No joining link yet.</span> Add it under Edit webinar, then email it to everyone.{% endif %}</p>
+      <p class="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">Page: {% if webinar.is_active %}live{% else %}offline{% endif %}{% if not webinar.registration_open and webinar.is_active %}, registration closed{% endif %}</p>
+      {% if page_links %}<p class="mt-2 break-all font-mono text-theme-xs text-gray-600 dark:text-gray-400">{{ page_links.0.1 }}</p>{% endif %}
+    </div>
+    {% if can_edit and webinar.join_url and stats.paid %}
+    <div class="flex flex-wrap gap-2">
+      <form method="post" action="{% url 'crm:webinar_send_joining' webinar.pk %}" data-confirm="Email the joining link?" data-confirm-body="It goes to every paid registrant who has not received it yet.">{% csrf_token %}<button class="btn btn-primary btn-sm">Email joining link ({{ stats.paid }} paid)</button></form>
+      <form method="post" action="{% url 'crm:webinar_send_joining' webinar.pk %}" data-confirm="Email everyone again?" data-confirm-body="Every paid registrant gets the joining link again, even if they already have it.">{% csrf_token %}<input type="hidden" name="scope" value="all"><button class="btn btn-secondary btn-sm">Send to all again</button></form>
+    </div>
+    {% endif %}
+  </div>
+</div>
+<div class="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-6">
+  <a href="?webinar={{ webinar.pk }}&quick=paid" class="card hover:border-brand-300 p-4 transition"><p class="text-theme-xs text-gray-500 dark:text-gray-400">Paid seats</p><p class="text-title-sm mt-1 font-bold text-success-600">{{ stats.paid }}{% if webinar.seat_limit %}<span class="text-base font-normal text-gray-500"> / {{ webinar.seat_limit }}</span>{% endif %}</p></a>
+  <div class="card p-4"><p class="text-theme-xs text-gray-500 dark:text-gray-400">Revenue</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">Rs. {{ stats.revenue|floatformat:0 }}</p></div>
+  <a href="?webinar={{ webinar.pk }}&quick=followup" class="card hover:border-brand-300 p-4 transition"><p class="text-theme-xs text-gray-500 dark:text-gray-400">Not paid</p><p class="text-title-sm mt-1 font-bold {% if stats.open %}text-warning-700 dark:text-orange-400{% else %}text-gray-800 dark:text-white/90{% endif %}">{{ stats.open }}</p></a>
+  <a href="?webinar={{ webinar.pk }}&stage=qualified" class="card hover:border-brand-300 p-4 transition"><p class="text-theme-xs text-gray-500 dark:text-gray-400">Qualified</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ stats.qualified }}</p></a>
+  <a href="?webinar={{ webinar.pk }}&stage=converted" class="card hover:border-brand-300 p-4 transition"><p class="text-theme-xs text-gray-500 dark:text-gray-400">Moved to CRM</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ stats.moved }}<span class="text-base font-normal text-gray-500"> · {{ stats.clients }} client{{ stats.clients|pluralize }}</span></p></a>
+  <div class="card p-4"><p class="text-theme-xs text-gray-500 dark:text-gray-400">Attended</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ stats.attended }}</p></div>
+</div>
+{% endif %}
+<div class="card">
+  {% include "crm/components/list_toolbar.html" %}
+  <div class="table-wrap"><table class="data-table responsive-cards">
+    <thead class="border-b border-gray-100 dark:border-gray-800"><tr><th class="th">Registrant</th><th class="th">Contact</th><th class="th">Business</th><th class="th">Registered</th><th class="th">Payment</th><th class="th">Stage</th><th class="th">Owner</th><th class="th"><span class="sr-only">Actions</span></th></tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+    {% for wl in object_list %}{% with r=wl.registration %}
+      <tr>
+        <td class="td" data-label="Registrant"><a class="td-strong hover:text-brand-500" href="{% url 'crm:webinar_lead_detail' wl.pk %}">{{ r.name }}</a>{% if r.attended %}<span class="block text-theme-xs text-success-600">Attended</span>{% endif %}{% if not webinar %}<a class="block text-theme-xs btn-link" href="?webinar={{ r.webinar_id }}">{{ r.webinar.title }}</a>{% endif %}<span class="block text-theme-xs">{{ r.utm_campaign|default:r.utm_source|default:"Direct" }}</span></td>
+        <td class="td" data-label="Contact"><a class="btn-link" href="mailto:{{ r.email }}">{{ r.email }}</a><span class="block text-theme-xs"><a href="tel:{{ r.phone }}">{{ r.phone }}</a> · <a href="https://wa.me/91{{ r.phone }}" target="_blank" rel="noopener noreferrer">WhatsApp</a></span></td>
+        <td class="td" data-label="Business">{{ r.business_name|default:"-" }}</td>
+        <td class="td" data-label="Registered">{{ r.created_at|dt }}</td>
+        <td class="td" data-label="Payment">{% status_badge r %}{% if r.status == 'paid' %}<span class="block text-theme-xs">Rs. {{ r.amount|floatformat:0 }}</span>{% endif %}</td>
+        <td class="td" data-label="Stage">{% status_badge wl 'stage' %}{% if wl.lead_id %}<a class="btn-link block text-theme-xs" href="{% url 'crm:lead_detail' wl.lead_id %}">In Leads</a>{% endif %}{% if wl.client_id %}<a class="btn-link block text-theme-xs" href="{% url 'crm:client_detail' wl.client_id %}">Client</a>{% endif %}</td>
+        <td class="td" data-label="Owner">{% if wl.owner %}{{ wl.owner.get_full_name|default:wl.owner.get_username }}{% else %}<span class="text-gray-500">Unassigned</span>{% endif %}{% if wl.next_follow_up_at %}<span class="block text-theme-xs {% if wl.next_follow_up_at < now and wl.stage != 'converted' %}text-error-600{% endif %}">Follow up {{ wl.next_follow_up_at|dt }}</span>{% endif %}</td>
+        <td class="td" data-label="Actions"><div class="flex flex-wrap gap-2 sm:justify-end"><a href="{% url 'crm:webinar_lead_detail' wl.pk %}" class="btn btn-secondary btn-sm">Open</a></div></td>
+      </tr>
+    {% endwith %}{% empty %}<tr><td colspan="8">{% include "crm/components/empty_state.html" with filtered=any_filter title="No registrations yet" text="When someone registers from the webinar page, they appear here, paid or not." icon="users" %}</td></tr>{% endfor %}
+    </tbody></table></div>
+  {% include "crm/components/pagination.html" %}
+</div>
+{% endblock %}

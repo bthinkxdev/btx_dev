@@ -290,3 +290,14 @@ def evaluate_business(details: dict, *, website_result: dict, social_result: dic
         'overall_score': overall,
         'reason': _build_reason(qualified, details, category, website_result, social_result, quality),
     }
+
+
+def rescore_meta(*, business_quality_score: int, website_opportunity_score: int | None, social_result: dict) -> dict:
+    """Recompute the Meta opportunity and overall score once better social data (e.g. Instagram profile) is known."""
+    meta_score, meta_label = _meta_opportunity(social_result, business_quality_score)
+    overall = round(
+        business_quality_score * WEIGHT_BUSINESS_QUALITY
+        + (website_opportunity_score or 0) * WEIGHT_WEBSITE_OPPORTUNITY
+        + meta_score * WEIGHT_META_OPPORTUNITY
+    )
+    return {'meta_opportunity_score': meta_score, 'meta_opportunity_label': meta_label, 'overall_score': overall}

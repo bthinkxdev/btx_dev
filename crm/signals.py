@@ -17,3 +17,11 @@ def ensure_profile(sender, instance, created, **kwargs):
     if created:
         from crm.models import UserProfile
         UserProfile.objects.get_or_create(user=instance)
+
+
+@receiver(post_save, sender='pages.WebinarRegistration')
+def ensure_webinar_lead(sender, instance, created, **kwargs):
+    """Every webinar registration, however it was created, gets its follow-up record in the Webinar section."""
+    if created:
+        from crm.models import WebinarLead
+        WebinarLead.objects.get_or_create(registration=instance)

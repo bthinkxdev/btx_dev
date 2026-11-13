@@ -179,6 +179,8 @@ def navaratri_offer_webhook(request):
 
     signup = OfferSignup.objects.filter(cashfree_order_id=order_id).first()
     if not signup:
+        from .webinar_views import apply_webhook
+        apply_webhook(payload)          # a webinar order, if that is what this was
         return HttpResponse(status=200)
 
     if payment_status == 'SUCCESS' and signup.status != OfferSignup.Status.PAID:

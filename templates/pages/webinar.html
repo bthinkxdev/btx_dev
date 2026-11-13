@@ -1,0 +1,164 @@
+{% extends 'pages/webinar_base.html' %}
+{% load static %}
+
+{% block title %}{{ w.title }} | Live Webinar, {{ date_short }} | BThinkX{% endblock %}
+{% block meta_description %}{{ w.subtitle }} Live on {{ w.platform }}, {{ date_long }}, {{ time_range }}. Seat Rs. {{ price }}.{% endblock %}
+{% block og_title %}{{ w.title }}{% endblock %}
+{% block og_description %}Live webinar, {{ date_short }} at {{ time_start }} IST. {{ w.subtitle }}{% endblock %}
+
+{% block head_extra %}<script type="application/ld+json">{{ event_schema|safe }}</script>{% endblock %}
+
+{% block header_right %}
+<div class="wb-top__right">
+  <span class="wb-top__when">Live, {{ date_short }} &middot; {{ time_start }} IST</span>
+  {% if not closed and not sold_out %}<a class="wb-btn wb-btn--sm" href="#register">Reserve my seat</a>{% endif %}
+</div>
+{% endblock %}
+
+{% block content %}
+<section class="wb-hero">
+  <div class="wb-wrap wb-hero__grid">
+    <div class="wb-hero__copy">
+      <p class="wb-eyebrow"><span class="wb-dot" aria-hidden="true"></span>Live webinar for business owners</p>
+      <h1>{{ w.title }}</h1>
+      <p class="wb-sub">{{ w.subtitle }}</p>
+
+      <ul class="wb-facts" aria-label="Webinar details">
+        <li><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><span><small>Date</small><b>{{ date_short }}</b></span></li>
+        <li><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><span><small>Time</small><b>{{ time_start }} IST</b></span></li>
+        <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v14H5z" opacity="0"/><path d="M12 4v8l5 3"/><circle cx="12" cy="12" r="8.5"/></svg><span><small>Duration</small><b>{{ w.duration_minutes }} minutes</b></span></li>
+        <li><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2.5"/><path d="M16 10.5l5-3v9l-5-3"/></svg><span><small>Where</small><b>Live on {{ w.platform }}</b></span></li>
+      </ul>
+
+      <ul class="wb-checks">
+        {% for head, body in learn_items|slice:":3" %}
+        <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>{{ head }}</span></li>
+        {% endfor %}
+      </ul>
+      <p class="wb-host">Hosted by <b>{{ w.host_name }}</b>, {{ w.host_title }}</p>
+    </div>
+
+    <aside class="wb-card" id="register" aria-labelledby="regTitle">
+      <div class="wb-card__top">
+        <div>
+          <p class="wb-price"><span class="wb-price__cur">&#8377;</span>{{ price }}</p>
+          <p class="wb-price__note">per seat, one-time</p>
+        </div>
+        <p class="wb-count" id="wbCount" data-start="{{ starts_iso }}" aria-live="polite"></p>
+      </div>
+      <h2 id="regTitle">Reserve your seat</h2>
+
+      {% if closed %}
+        <div class="wb-notice"><b>Registration has closed.</b><p>This webinar has started or ended. Follow us to hear about the next one.</p><a class="wb-btn wb-btn--ghost" href="{% url 'pages:index' %}">Visit BThinkX</a></div>
+      {% elif sold_out %}
+        <div class="wb-notice"><b>All seats are taken.</b><p>Thank you for the interest. Write to hr@bthinkx.com to be told about the next webinar.</p></div>
+      {% else %}
+        {% if seats_left is not None %}<p class="wb-seats"><b>{{ seats_left }}</b> seat{{ seats_left|pluralize }} left</p>{% endif %}
+        <form id="wbForm" method="post" novalidate data-url="{% url 'pages:webinar_register' w.slug %}" data-mode="{{ cashfree_mode }}" data-price="{{ w.price|floatformat:'2u' }}" data-content-id="{{ w.slug }}" data-content-name="{{ w.title }}">
+          {% csrf_token %}
+          {% for key, value in tracking.items %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endfor %}
+          <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" class="wb-hp">
+
+          <div class="wb-field">
+            <label for="wbName">Full name</label>
+            <input id="wbName" name="name" type="text" autocomplete="name" maxlength="200" required placeholder="Your name">
+            <p class="wb-err" data-field="name" role="alert"></p>
+          </div>
+          <div class="wb-field">
+            <label for="wbEmail">Email</label>
+            <input id="wbEmail" name="email" type="email" autocomplete="email" inputmode="email" maxlength="254" required placeholder="you@email.com">
+            <p class="wb-err" data-field="email" role="alert"></p>
+          </div>
+          <div class="wb-field">
+            <label for="wbPhone">WhatsApp number</label>
+            <input id="wbPhone" name="phone" type="tel" autocomplete="tel" inputmode="tel" maxlength="20" required placeholder="10-digit mobile number">
+            <p class="wb-err" data-field="phone" role="alert"></p>
+          </div>
+          <div class="wb-field">
+            <label for="wbBiz">Business name <span>(optional)</span></label>
+            <input id="wbBiz" name="business_name" type="text" autocomplete="organization" maxlength="200" placeholder="Your business or brand">
+            <p class="wb-err" data-field="business_name" role="alert"></p>
+          </div>
+
+          <p class="wb-formerr" id="wbFormErr" role="alert" hidden></p>
+          <button type="submit" class="wb-btn wb-btn--block" id="wbSubmit">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+            <span id="wbSubmitText">Pay &#8377;{{ price }} and reserve my seat</span>
+          </button>
+          <ul class="wb-assure">
+            <li>Secure payment by Cashfree: UPI, cards and net banking</li>
+            <li>Confirmation and joining details arrive by email instantly</li>
+          </ul>
+        </form>
+      {% endif %}
+    </aside>
+  </div>
+</section>
+
+<section class="wb-section" id="learn">
+  <div class="wb-wrap">
+    <p class="wb-kicker">What you will learn</p>
+    <h2 class="wb-h2">Everything you need to sell online on your own terms</h2>
+    <div class="wb-grid">
+      {% for head, body in learn_items %}
+      <article class="wb-item">
+        <span class="wb-item__n">{{ forloop.counter|stringformat:"02d" }}</span>
+        <h3>{{ head }}</h3>
+        {% if body %}<p>{{ body }}</p>{% endif %}
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="wb-section wb-section--alt">
+  <div class="wb-wrap wb-two">
+    <div>
+      <p class="wb-kicker">Who it is for</p>
+      <h2 class="wb-h2">Built for people who want to grow, not just post</h2>
+      <ul class="wb-list">
+        {% for item in audience_items %}<li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>{{ item }}</span></li>{% endfor %}
+      </ul>
+    </div>
+    <div class="wb-panel">
+      <p class="wb-kicker">What you get</p>
+      <ul class="wb-list">
+        <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>A live {{ w.duration_minutes }}-minute session, not a recording</span></li>
+        <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>Practical steps you can apply to your business the same week</span></li>
+        <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>Your questions answered live</span></li>
+        <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>Calendar invite and reminders so you never miss it</span></li>
+      </ul>
+      <p class="wb-panel__host">From the team that builds online stores and runs Meta ad campaigns for businesses across Kerala and India.</p>
+    </div>
+  </div>
+</section>
+
+<section class="wb-section" id="faq">
+  <div class="wb-wrap wb-narrow">
+    <p class="wb-kicker">Questions</p>
+    <h2 class="wb-h2">Before you register</h2>
+    <details class="wb-faq"><summary>When and where does it happen?</summary><p>Live on {{ date_long }}, {{ time_range }}, online on {{ w.platform }}. After you pay, the joining details come to your email, with a reminder before we start.</p></details>
+    <details class="wb-faq"><summary>Do I need any experience?</summary><p>No. We start from the basics and go step by step, whether you already sell online or are just planning to.</p></details>
+    <details class="wb-faq"><summary>Can I join from my phone?</summary><p>Yes. It works on a phone, tablet or laptop with an internet connection.</p></details>
+    <details class="wb-faq"><summary>How do I pay, and is it safe?</summary><p>You pay Rs. {{ price }} by UPI, card or net banking on Cashfree's secure checkout. We never see your card or UPI details.</p></details>
+    <details class="wb-faq"><summary>What if the webinar is cancelled or moved?</summary><p>If we have to cancel or reschedule, you get a full refund or a seat in the new session, whichever you prefer.</p></details>
+    <details class="wb-faq"><summary>I paid but did not get an email.</summary><p>Check your spam folder first. If it is not there, write to hr@bthinkx.com with your phone number and we will sort it out.</p></details>
+  </div>
+</section>
+
+{% if not closed and not sold_out %}
+<section class="wb-final">
+  <div class="wb-wrap">
+    <h2>Your competitors are already selling online.</h2>
+    <p>Join us live on {{ date_short }} at {{ time_start }} IST and learn how to do it better.</p>
+    <a class="wb-btn" href="#register">Reserve my seat for &#8377;{{ price }}</a>
+  </div>
+</section>
+<div class="wb-sticky" id="wbSticky" hidden>
+  <div><b>&#8377;{{ price }}</b><small>{{ date_short }} &middot; {{ time_start }} IST</small></div>
+  <a class="wb-btn" href="#register">Reserve my seat</a>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}<script src="{% static 'assets/webinar.js' %}" defer></script>{% endblock %}

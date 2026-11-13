@@ -34,3 +34,4 @@ from .people import (  # noqa: F401
     LeaveAdjustment, LeaveBalance, LeaveRequest, LeaveType, PayrollAdjustment, PayrollRun, Payslip,
     SalaryComponent, SalaryStructure, SalaryStructureLine, Shift,
 )
+from .webinars import WebinarLead, WebinarLeadActivity  # noqa: F401

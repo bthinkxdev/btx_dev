@@ -15,6 +15,8 @@ from .models import (
     TeamMember,
     TeamSection,
     TechTag,
+    Webinar,
+    WebinarRegistration,
 )
 
 
@@ -281,3 +283,22 @@ class NewsletterSubscriberAdmin(admin.ModelAdmin):
     search_fields = ('email',)
     readonly_fields = ('unsubscribe_token', 'subscribed_at')
     ordering = ('-subscribed_at',)
+
+
+@admin.register(Webinar)
+class WebinarAdmin(admin.ModelAdmin):
+    list_display = ('title', 'starts_at', 'price', 'platform', 'is_active', 'seat_limit')
+    list_filter = ('is_active',)
+    search_fields = ('title', 'slug')
+    prepopulated_fields = {'slug': ('title',)}
+
+
+@admin.register(WebinarRegistration)
+class WebinarRegistrationAdmin(admin.ModelAdmin):
+    list_display = ('name', 'email', 'phone', 'business_name', 'webinar', 'status', 'amount', 'utm_campaign',
+                    'created_at', 'attended')
+    list_filter = ('status', 'webinar', 'attended')
+    search_fields = ('name', 'email', 'phone', 'business_name', 'cashfree_order_id')
+    readonly_fields = ('cashfree_order_id', 'cashfree_payment_id', 'created_at', 'paid_at', 'confirmation_sent_at',
+                       'joining_sent_at', 'reminder_24h_sent_at', 'reminder_1h_sent_at')
+    date_hierarchy = 'created_at'

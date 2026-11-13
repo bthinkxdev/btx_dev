@@ -1,5 +1,5 @@
 from django.urls import path
-from . import offer_views, views
+from . import offer_views, views, webinar_views
 
 app_name = 'pages'
 
@@ -28,6 +28,12 @@ urlpatterns = [
     path('careers/apply/', views.career_apply, name='career_apply'),
     path('careers/<slug:slug>/', views.career_detail, name='career_detail'),
 
+    path('webinar/', webinar_views.landing, name='webinar'),
+    path('webinar/return/', webinar_views.payment_return, name='webinar_return'),
+    path('webinar/webhook/', webinar_views.handle_webhook, name='webinar_webhook'),
+    path('webinar/calendar.ics', webinar_views.calendar_file, name='webinar_calendar'),
+    path('webinar/<slug:slug>/', webinar_views.landing, name='webinar'),
+    path('webinar/<slug:slug>/register/', webinar_views.register, name='webinar_register'),
     path('offers/navaratri/', offer_views.navaratri_offer, name='navaratri_offer'),
     path('offers/navaratri/submit/', offer_views.navaratri_offer_submit, name='navaratri_offer_submit'),
     path('offers/navaratri/return/', offer_views.navaratri_offer_return, name='navaratri_offer_return'),
