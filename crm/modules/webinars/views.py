@@ -35,7 +35,7 @@ def _list_url(w) -> str:
     return f"{reverse('crm:webinar_registrations')}?webinar={w.pk}"
 
 
-RESERVED_SLUGS = {'return', 'webhook', 'register', 'calendar', 'new'}      # addresses the public site already uses
+RESERVED_SLUGS = {'return', 'webhook', 'register', 'calendar', 'new', 'status'}      # addresses the public site already uses
 
 
 def public_url(request, w) -> str:

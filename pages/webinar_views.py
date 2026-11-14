@@ -60,6 +60,14 @@ def _tracking(source) -> dict:
     return out
 
 
+def _public_url(request, name: str) -> str:
+    """Absolute URL for a callback Cashfree must reach. The configured https site address wins over what the request
+    looks like, because behind a proxy the request often says http and Cashfree refuses to call a non-https URL."""
+    base = settings.SITE_BASE_URL
+    path = reverse(name)
+    return f'{base}{path}' if base.startswith('https://') else request.build_absolute_uri(path)
+
+
 def _event_schema(request, w) -> str:
     seats = w.seats_left()
     data = {
@@ -84,11 +92,13 @@ def landing(request, slug=None):
     w = webinar.active_webinar(slug)
     if w is None:
         raise Http404
-    seats = w.seats_left()
+    seats = w.seats_available()
+    sold_out = w.seats_left() == 0
     local = timezone.localtime(w.starts_at)
     end = timezone.localtime(w.ends_at)
     return render(request, 'pages/webinar.html', {
-        'w': w, 'seats_left': seats, 'sold_out': seats == 0, 'closed': not w.registration_open,
+        'w': w, 'seats_left': seats, 'sold_out': sold_out, 'all_held': seats == 0 and not sold_out,
+        'closed': not w.registration_open,
         'date_long': local.strftime('%A, %d %B %Y'), 'date_short': local.strftime('%a, %d %b'),
         'time_range': f'{local.strftime("%I:%M %p").lstrip("0")} to {end.strftime("%I:%M %p").lstrip("0")} IST',
         'time_start': local.strftime('%I:%M %p').lstrip('0'),
@@ -111,6 +121,10 @@ def register(request, slug):
         return JsonResponse({'success': False, 'error': 'Registration for this webinar has closed.'}, status=400)
     if w.seats_left() == 0:
         return JsonResponse({'success': False, 'error': 'All seats for this webinar are taken.'}, status=400)
+    if w.seats_available((request.POST.get('email') or '').strip()) == 0:
+        return JsonResponse({'success': False, 'info': True, 'error': 'The last seats are held for people who are paying '
+                             'right now. Please try again in a few minutes; a seat is released if a payment is not completed.'},
+                            status=409)
     if not ratelimit.hit('webinar-register', client_ip(request) or '', 10, 3600):
         return JsonResponse({'success': False, 'error': 'Too many attempts. Please try again in a little while.'}, status=429)
 
@@ -147,14 +161,18 @@ def register(request, slug):
     reg.amount = w.price
     reg.status = WebinarRegistration.Status.PENDING
     reg.cashfree_order_id = order_id
+    reg.created_at = timezone.now()                      # a fresh attempt starts a fresh seat hold
     for key, value in track.items():
         if value:
             setattr(reg, key, value)
     meta.capture_browser(request, reg)
     reg.save()
 
-    notify_url = request.build_absolute_uri(reverse('pages:webinar_webhook'))
-    return_url = request.build_absolute_uri(reverse('pages:webinar_return')) + '?order_id={order_id}'
+    notify_url = _public_url(request, 'pages:webinar_webhook')
+    return_url = _public_url(request, 'pages:webinar_return') + '?order_id={order_id}'
+    if not notify_url.startswith('https://'):
+        logger.warning('Webinar order %s has no https webhook URL (%s), so Cashfree will not call back; '
+                       'set SITE_BASE_URL to the https site address.', order_id, notify_url)
     try:
         order = cashfree.create_order(
             order_id=order_id, amount=reg.amount, customer_id=f'web{reg.pk}', customer_phone=reg.phone,
@@ -195,6 +213,23 @@ def payment_return(request):
     })
 
 
+@never_cache
+@require_GET
+def payment_status(request):
+    """Polled by the 'confirming your payment' page. Asks Cashfree directly while the order is pending, so the buyer
+    sees the result even when the webhook is slow or never arrives."""
+    from crm.core import ratelimit
+
+    order_id = (request.GET.get('order_id') or '').strip()
+    reg = WebinarRegistration.objects.filter(cashfree_order_id=order_id).first() if order_id else None
+    if reg is None:
+        return JsonResponse({'status': 'not_found'}, status=404)
+    status = reg.status
+    if status == WebinarRegistration.Status.PENDING:
+        status = webinar.reconcile(reg) if ratelimit.hit('webinar-status', order_id, 60, 300) else 'processing'
+    return JsonResponse({'status': status})
+
+
 @csrf_exempt
 @require_POST
 def handle_webhook(request):
@@ -222,10 +257,13 @@ def apply_webhook(payload: dict) -> bool:
     if reg is None:
         return False
     state = payment.get('payment_status')
+    logger.info('Cashfree webhook for webinar order %s: %s', order_id, state)
     if state == 'SUCCESS':
         webinar.mark_paid(reg.pk, str(payment.get('cf_payment_id') or ''))
     elif state in ('FAILED', 'USER_DROPPED'):
         webinar.mark_failed(reg.pk)
+    else:                                                # any other event: let Cashfree's own record decide
+        webinar.reconcile(reg)
     return True
 
 

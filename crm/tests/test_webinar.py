@@ -67,7 +67,7 @@ class WebinarTests(CrmTestCase):
         self.assertEqual(r.status_code, 200)
         html = r.content.decode()
         for needle in ('How to Sell Online 10x Better Than Your Competitors', '&#8377;199', 'name="phone"', 'name="email"',
-                       'name="business_name"', 'Pay &#8377;199 and reserve my seat', '"@type": "Event"', 'id="register"',
+                       'name="business_name"', 'Register now, pay &#8377;199', '"@type": "Event"', 'id="register"',
                        'Live on Google Meet'):
             self.assertIn(needle, html, needle)
         self.assertEqual(re.findall('[\U0001F000-\U0001FAFF☀-➿⭐✨]', html), [])
@@ -925,3 +925,72 @@ class MetaSettingsInCrmTests(CrmTestCase):
         self.assertContains(self.client.get(reverse('crm:webinar_list')), 'Meta tracking')
         self.login('manager')
         self.assertNotContains(self.client.get(reverse('crm:webinar_list')), 'Meta tracking')
+
+
+@override_settings(ALLOWED_HOSTS=['testserver'], **CF)
+class WebinarCheckoutFlowTests(CrmTestCase):
+    """Seat holds while someone pays, the callback addresses sent to Cashfree, and the page that waits for the result."""
+
+    data, register, reg, pay = WebinarTests.data, WebinarTests.register, WebinarTests.reg, WebinarTests.pay
+
+    def setUp(self):
+        super().setUp()
+        cache.clear()
+        from pages.models import Webinar
+        Webinar.objects.all().delete()
+        self.w = Webinar.objects.create(starts_at=timezone.now() + timedelta(days=2), seat_limit=3)
+        self.url = reverse('pages:webinar_register', args=[self.w.slug])
+
+    def landing(self):
+        return self.client.get(reverse('pages:webinar')).content.decode()
+
+    def test_a_started_checkout_holds_a_seat_and_an_abandoned_one_gives_it_back(self):
+        from pages.models import WebinarRegistration
+        self.assertIn('Only 3</b> seats left', self.landing())
+        self.register()
+        self.assertIn('Only 2</b> seats left', self.landing())
+        WebinarRegistration.objects.update(created_at=timezone.now() - timedelta(minutes=20))
+        self.assertIn('Only 3</b> seats left', self.landing())
+
+    def test_paying_keeps_the_seat_taken(self):
+        self.register()
+        self.pay()
+        self.assertIn('Only 2</b> seats left', self.landing())
+
+    def test_last_seats_held_by_others_are_not_sold_twice(self):
+        from pages.models import WebinarRegistration
+        self.w.seat_limit = 1
+        self.w.save()
+        WebinarRegistration.objects.create(webinar=self.w, name='A', email='a@x.test', phone='9847000001', amount=199,
+                                           cashfree_order_id='WEBHOLD1')
+        r = self.register(email='b@x.test')
+        self.assertEqual(r.status_code, 409)
+        self.assertTrue(r.json()['info'])
+        self.assertIn('being booked right now', self.landing())
+        # the person who holds it can still go back and pay
+        self.assertEqual(self.register(email='a@x.test').status_code, 200)
+
+    def test_callback_urls_use_the_https_site_address_even_behind_a_proxy(self):
+        with override_settings(SITE_BASE_URL='https://bthinkx.com'):
+            self.register()
+        kw = self.last_create.call_args.kwargs
+        self.assertEqual(kw['notify_url'], 'https://bthinkx.com/webinar/webhook/')
+        self.assertEqual(kw['return_url'], 'https://bthinkx.com/webinar/return/?order_id={order_id}')
+
+    def test_status_endpoint_checks_with_cashfree_and_confirms_the_seat(self):
+        self.register()
+        order = self.reg().cashfree_order_id
+        url = reverse('pages:webinar_status')
+        with patch('pages.webinar.cashfree.fetch_order', return_value={'order_status': 'ACTIVE'}):
+            self.assertEqual(self.client.get(url, {'order_id': order}).json(), {'status': 'processing'})
+        with patch('pages.webinar.cashfree.fetch_order', return_value={'order_status': 'PAID'}):
+            with self.captureOnCommitCallbacks(execute=True):
+                self.assertEqual(self.client.get(url, {'order_id': order}).json(), {'status': 'paid'})
+        self.assertEqual(self.reg().status, 'paid')
+        self.assertEqual(self.client.get(url, {'order_id': 'nope'}).status_code, 404)
+
+    def test_processing_page_polls_the_status_endpoint(self):
+        self.register()
+        with patch('pages.webinar.cashfree.fetch_order', return_value={'order_status': 'ACTIVE'}):
+            r = self.client.get(reverse('pages:webinar_return'), {'order_id': self.reg().cashfree_order_id})
+        self.assertContains(r, '/webinar/status/?order_id=')

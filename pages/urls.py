@@ -31,6 +31,7 @@ urlpatterns = [
     path('webinar/', webinar_views.landing, name='webinar'),
     path('webinar/return/', webinar_views.payment_return, name='webinar_return'),
     path('webinar/webhook/', webinar_views.handle_webhook, name='webinar_webhook'),
+    path('webinar/status/', webinar_views.payment_status, name='webinar_status'),
     path('webinar/calendar.ics', webinar_views.calendar_file, name='webinar_calendar'),
     path('webinar/<slug:slug>/', webinar_views.landing, name='webinar'),
     path('webinar/<slug:slug>/register/', webinar_views.register, name='webinar_register'),

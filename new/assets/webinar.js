@@ -23,7 +23,8 @@
   if (bar && card && 'IntersectionObserver' in window) {
     bar.hidden = false;
     new IntersectionObserver(function (entries) {
-      bar.classList.toggle('is-on', !entries[0].isIntersecting && entries[0].boundingClientRect.top > 0);
+      // the form is the first thing on a phone, so the bar appears once the visitor has scrolled past it
+      bar.classList.toggle('is-on', !entries[0].isIntersecting);
     }, { threshold: 0.05 }).observe(card);
   }
 
@@ -111,7 +112,7 @@
             if (form.elements[k]) form.elements[k].classList.add('is-bad');
           });
         } else {
-          showError(res.data.error || 'Something went wrong. Please try again.', !!res.data.already);
+          showError(res.data.error || 'Something went wrong. Please try again.', !!(res.data.already || res.data.info));
         }
         return;
       }

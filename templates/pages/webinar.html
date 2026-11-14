@@ -11,7 +11,7 @@
 {% block header_right %}
 <div class="wb-top__right">
   <span class="wb-top__when">Live, {{ date_short }} &middot; {{ time_start }} IST</span>
-  {% if not closed and not sold_out %}<a class="wb-btn wb-btn--sm" href="#register">Reserve my seat</a>{% endif %}
+  {% if not closed and not sold_out %}<a class="wb-btn wb-btn--go wb-btn--sm" href="#register">Register now</a>{% endif %}
 </div>
 {% endblock %}
 
@@ -46,14 +46,17 @@
         </div>
         <p class="wb-count" id="wbCount" data-start="{{ starts_iso }}" aria-live="polite"></p>
       </div>
+      <p class="wb-card__when">{{ w.title }}<br>{{ date_short }} &middot; {{ time_start }} IST &middot; Live on {{ w.platform }}</p>
       <h2 id="regTitle">Reserve your seat</h2>
 
       {% if closed %}
         <div class="wb-notice"><b>Registration has closed.</b><p>This webinar has started or ended. Follow us to hear about the next one.</p><a class="wb-btn wb-btn--ghost" href="{% url 'pages:index' %}">Visit BThinkX</a></div>
       {% elif sold_out %}
         <div class="wb-notice"><b>All seats are taken.</b><p>Thank you for the interest. Write to hr@bthinkx.com to be told about the next webinar.</p></div>
+      {% elif all_held %}
+        <div class="wb-notice"><b>The last seats are being booked right now.</b><p>They are held for people who are paying. If one is not completed the seat is released, so check again in a few minutes.</p><a class="wb-btn wb-btn--ghost" href="">Check again</a></div>
       {% else %}
-        {% if seats_left is not None %}<p class="wb-seats"><b>{{ seats_left }}</b> seat{{ seats_left|pluralize }} left</p>{% endif %}
+        {% if seats_left is not None %}<p class="wb-seats"><b>Only {{ seats_left }}</b> seat{{ seats_left|pluralize }} left{% if seats_left <= 5 %}. Filling fast{% endif %}</p>{% endif %}
         <form id="wbForm" method="post" novalidate data-url="{% url 'pages:webinar_register' w.slug %}" data-mode="{{ cashfree_mode }}" data-price="{{ w.price|floatformat:'2u' }}" data-content-id="{{ w.slug }}" data-content-name="{{ w.title }}">
           {% csrf_token %}
           {% for key, value in tracking.items %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endfor %}
@@ -81,9 +84,9 @@
           </div>
 
           <p class="wb-formerr" id="wbFormErr" role="alert" hidden></p>
-          <button type="submit" class="wb-btn wb-btn--block" id="wbSubmit">
+          <button type="submit" class="wb-btn wb-btn--go wb-btn--block" id="wbSubmit">
             <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
-            <span id="wbSubmitText">Pay &#8377;{{ price }} and reserve my seat</span>
+            <span id="wbSubmitText">Register now, pay &#8377;{{ price }}</span>
           </button>
           <ul class="wb-assure">
             <li>Secure payment by Cashfree: UPI, cards and net banking</li>
@@ -151,12 +154,12 @@
   <div class="wb-wrap">
     <h2>Your competitors are already selling online.</h2>
     <p>Join us live on {{ date_short }} at {{ time_start }} IST and learn how to do it better.</p>
-    <a class="wb-btn" href="#register">Reserve my seat for &#8377;{{ price }}</a>
+    <a class="wb-btn wb-btn--go" href="#register">Register now for &#8377;{{ price }}</a>
   </div>
 </section>
 <div class="wb-sticky" id="wbSticky" hidden>
   <div><b>&#8377;{{ price }}</b><small>{{ date_short }} &middot; {{ time_start }} IST</small></div>
-  <a class="wb-btn" href="#register">Reserve my seat</a>
+  <a class="wb-btn wb-btn--go" href="#register">Register now</a>
 </div>
 {% endif %}
 {% endblock %}

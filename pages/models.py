@@ -649,7 +649,25 @@ class Webinar(models.Model):
         return self.registrations.filter(status=WebinarRegistration.Status.PAID).count()
 
     def seats_left(self):
+        """Seats not yet paid for. This is what the CRM reports."""
         return None if self.seat_limit is None else max(0, self.seat_limit - self.paid_count())
+
+    HOLD_MINUTES = 15
+
+    def held_count(self, exclude_email: str = '') -> int:
+        """Checkouts started in the last few minutes and not yet paid. The seat is held for them while they pay."""
+        since = timezone.now() - timedelta(minutes=self.HOLD_MINUTES)
+        qs = self.registrations.filter(status=WebinarRegistration.Status.PENDING, created_at__gte=since)
+        if exclude_email:
+            qs = qs.exclude(email__iexact=exclude_email)
+        return qs.count()
+
+    def seats_available(self, exclude_email: str = ''):
+        """Seats a new visitor can still take: unpaid seats minus those held by people in the middle of paying. A hold
+        lapses after HOLD_MINUTES, so an abandoned checkout gives the seat back."""
+        if self.seat_limit is None:
+            return None
+        return max(0, self.seat_limit - self.paid_count() - self.held_count(exclude_email))
 
 
 class WebinarRegistration(models.Model):

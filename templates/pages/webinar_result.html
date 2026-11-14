@@ -63,9 +63,20 @@
 {% elif status == 'processing' %}
 <script>
 (function () {
-  var n = 0;
-  try { n = +sessionStorage.getItem('wb_poll') || 0; sessionStorage.setItem('wb_poll', n + 1); } catch (e) { /* ignore */ }
-  if (n < 8) setTimeout(function () { location.reload(); }, 5000);
+  // Ask the server every few seconds; it checks with Cashfree itself, so this works even if the webhook is late.
+  var url = '{% url "pages:webinar_status" %}?order_id={{ reg.cashfree_order_id|urlencode }}';
+  var tries = 0;
+  function check() {
+    tries += 1;
+    fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d.status === 'paid' || d.status === 'failed') { location.reload(); return; }
+        if (tries < 40) setTimeout(check, tries < 10 ? 3000 : 6000);
+      })
+      .catch(function () { if (tries < 40) setTimeout(check, 6000); });
+  }
+  setTimeout(check, 2000);
 })();
 </script>
 {% endif %}

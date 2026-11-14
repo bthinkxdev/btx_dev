@@ -33,6 +33,15 @@ svg{fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-l
 .wb-btn--ghost:hover{background:var(--accent-dim);box-shadow:none}
 .wb-btn:disabled{opacity:.7;cursor:wait;transform:none;box-shadow:none}
 
+/* register button: calm green, a soft glow and a slow light sweep to draw the eye */
+.wb-btn--go{position:relative;overflow:hidden;border-color:#2f9e63;background:linear-gradient(135deg,#2a8a57,#35a96b);color:#fff;animation:wbGlow 2.6s ease-in-out infinite}
+.wb-btn--go:hover{background:linear-gradient(135deg,#31996a,#3dba78);box-shadow:0 10px 28px rgba(47,158,99,.4)}
+.wb-btn--go::after{content:"";position:absolute;top:0;left:-70%;width:45%;height:100%;background:linear-gradient(105deg,transparent,rgba(255,255,255,.28),transparent);transform:skewX(-20deg);animation:wbSweep 3.6s ease-in-out infinite}
+.wb-btn--go:disabled{animation:none}
+.wb-btn--go:disabled::after{display:none}
+@keyframes wbGlow{0%,100%{box-shadow:0 0 0 0 rgba(53,169,107,.45)}50%{box-shadow:0 0 0 9px rgba(53,169,107,0)}}
+@keyframes wbSweep{0%,55%{left:-70%}100%{left:130%}}
+
 /* hero */
 .wb-hero{position:relative;padding:48px 0 72px;background:radial-gradient(ellipse 60% 50% at 20% 0%,rgba(165,164,250,.13),transparent 70%)}
 .wb-hero__grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:56px;align-items:start}
@@ -63,6 +72,7 @@ svg{fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-l
 .wb-price__note{margin:6px 0 0;font-size:.82rem;color:var(--faint)}
 .wb-count{margin:0;padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:var(--bg2);color:var(--muted);font:600 .78rem var(--body);white-space:nowrap}
 .wb-count:empty{display:none}
+.wb-card__when{display:none;margin:10px 0 0;font-size:.84rem;line-height:1.45;color:var(--muted)}
 .wb-card h2{margin:14px 0 14px;font:700 1.2rem var(--display);letter-spacing:-.01em}
 .wb-seats{margin:0 0 14px;padding:8px 12px;border-radius:10px;background:rgba(255,200,87,.08);border:1px solid rgba(255,200,87,.25);color:#ffd98a;font-size:.86rem}
 .wb-seats b{font-weight:700}
@@ -144,7 +154,8 @@ svg{fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-l
 /* tablet and phone */
 @media (max-width:1020px){
   .wb-hero__grid{grid-template-columns:minmax(0,1fr);gap:34px}
-  .wb-card{position:static;max-width:560px}
+  .wb-card{position:static;max-width:560px;order:-1}      /* the form comes first on phones and tablets */
+  .wb-card__when{display:block}
   .wb-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .wb-two{grid-template-columns:minmax(0,1fr);gap:32px}
 }
@@ -152,7 +163,7 @@ svg{fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-l
   body{font-size:.97rem}
   .wb-wrap{padding:0 16px}
   .wb-top__when{display:none}
-  .wb-hero{padding:28px 0 56px}
+  .wb-hero{padding:18px 0 56px}
   .wb-hero__copy{padding-top:0}
   .wb-sub{font-size:1rem;margin-bottom:22px}
   .wb-card{padding:20px 18px;border-radius:18px;max-width:none}
