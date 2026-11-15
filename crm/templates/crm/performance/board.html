@@ -1,0 +1,29 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Team performance{% endblock %}
+{% block page_header %}
+<div class="mb-5">
+  <h1 class="page-title">Team performance</h1>
+  <p class="muted mt-1">Each salesperson for the chosen period. Outcomes and discipline sit side by side. Open a name for the full profile.</p>
+</div>
+{% endblock %}
+{% block content %}
+{% include "crm/performance/_period.html" with mode='individual' %}
+<div class="card"><div class="table-wrap"><table class="data-table responsive-cards">
+  <thead class="border-b border-gray-100 dark:border-gray-800"><tr><th class="th">Person</th><th class="th text-right">Leads</th><th class="th text-right">Won revenue</th><th class="th text-right">Collected</th><th class="th text-right">Win rate</th><th class="th text-right">Calls</th><th class="th text-right">Follow-ups skipped</th><th class="th text-right">Not logged in</th><th class="th text-right">Working time</th><th class="th">Watch</th></tr></thead>
+  <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+  {% for r in rows %}
+    <tr data-href="{% url 'crm:staff_profile' r.user.pk %}">
+      <td class="td" data-label="Person"><a class="td-strong hover:text-brand-500" href="{% url 'crm:staff_profile' r.user.pk %}">{{ r.user|uname }}</a><span class="block text-theme-xs text-gray-500">{{ r.role }}</span></td>
+      <td class="td text-right" data-label="Leads">{{ r.m.leads }}</td>
+      <td class="td text-right font-medium" data-label="Won revenue">{{ r.m.won_value|inr0 }}</td>
+      <td class="td text-right" data-label="Collected">{{ r.m.collected|inr0 }}</td>
+      <td class="td text-right" data-label="Win rate">{% if r.m.win_rate is not None %}{{ r.m.win_rate }}%{% else %}—{% endif %}</td>
+      <td class="td text-right" data-label="Calls">{{ r.m.calls }}</td>
+      <td class="td text-right" data-label="Follow-ups skipped">{% if r.m.fu_skipped %}<span class="badge badge-red">{{ r.m.fu_skipped }}</span>{% else %}0{% endif %}</td>
+      <td class="td text-right" data-label="Not logged in">{% if r.m.absent %}<span class="badge badge-amber">{{ r.m.absent }}</span>{% else %}0{% endif %}</td>
+      <td class="td text-right" data-label="Working time">{{ r.m.worked_text }}</td>
+      <td class="td text-theme-xs" data-label="Watch">{% for f in r.flags|slice:":2" %}<span class="block">{{ f.text }}</span>{% empty %}<span class="text-success-600">Nothing</span>{% endfor %}</td>
+    </tr>
+  {% empty %}<tr><td colspan="10">{% include "crm/components/empty_state.html" with title="No one to show" text="Sales people appear here once they have a role and leads." icon="users" %}</td></tr>{% endfor %}
+  </tbody></table></div></div>
+{% endblock %}

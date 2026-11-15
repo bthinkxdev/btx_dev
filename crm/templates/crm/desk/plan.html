@@ -1,0 +1,43 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Business plan{% endblock %}
+{% block page_header %}
+<div class="mb-5">
+  <nav aria-label="Breadcrumb" class="mb-1"><a href="{% url 'crm:dashboard_owner' %}?tab=ai" class="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400">Business analytics AI</a></nav>
+  <h1 class="page-title">Business plan</h1>
+  <p class="muted mt-1">Upload your plan or financial figures. The staff reads it, proposes monthly goals for you to check, and then measures the business against it.</p>
+</div>
+{% endblock %}
+{% block content %}
+<div class="grid gap-6 lg:grid-cols-3">
+  <div class="card lg:col-span-2">
+    <div class="card-header"><h2 class="card-title">Your plans</h2></div>
+    <ul class="divide-y divide-gray-100 dark:divide-gray-800">
+      {% for p in plans %}
+      <li class="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+        <div class="min-w-0">
+          <p class="text-sm font-medium text-gray-800 dark:text-white/90">{{ p.title }} {% if p.is_active %}<span class="badge badge-green">In use</span>{% elif p.status == 'proposed' %}<span class="badge badge-amber">Needs review</span>{% endif %}</p>
+          <p class="text-theme-xs text-gray-500">{{ p.original_name }} · uploaded {{ p.created_at|dt }} · {{ p.goals.count }} goal{{ p.goals.count|pluralize }} saved</p>
+          {% if p.summary %}<p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ p.summary|truncatechars:220 }}</p>{% endif %}
+        </div>
+        {% if can_configure %}<div class="flex shrink-0 gap-2">
+          <a class="btn btn-primary btn-sm" href="{% url 'crm:desk_plan_review' p.pk %}">{% if p.status == 'confirmed' %}Edit goals{% else %}Review goals{% endif %}</a>
+          <form method="post" action="{% url 'crm:desk_plan_delete' p.pk %}" data-confirm="Delete this plan?" data-confirm-body="The uploaded file and text are removed. Goals already saved from it are kept.">{% csrf_token %}<button class="btn btn-secondary btn-sm">Delete</button></form>
+        </div>{% endif %}
+      </li>
+      {% empty %}<li class="px-5 py-8">{% include "crm/components/empty_state.html" with title="No plan uploaded yet" text="Upload your business plan, targets or financial summary to get started." icon="document" %}</li>{% endfor %}
+    </ul>
+  </div>
+  {% if can_configure %}
+  <div class="card">
+    <div class="card-header"><h2 class="card-title">Upload a plan</h2></div>
+    <form method="post" enctype="multipart/form-data" class="card-body space-y-4">{% csrf_token %}
+      <div><label class="form-label" for="p-title">Name (optional)</label><input id="p-title" name="title" maxlength="200" class="form-input" placeholder="e.g. FY 2026-27 plan"></div>
+      <div><label class="form-label" for="p-file">File</label><input id="p-file" name="file" type="file" class="form-input" accept=".pdf,.docx,.xlsx,.txt,.md,.csv" required>
+        <p class="mt-1 text-theme-xs text-gray-500">{{ allowed }}. Up to 5 MB. Scanned PDFs without text cannot be read.</p></div>
+      <button class="btn btn-primary w-full">Upload and read</button>
+      <p class="text-theme-xs text-gray-500">The file is stored privately and visible only to people with access to this page. {% if ai_on %}The first part of the text is sent to the AI model to find your goals; names and amounts you wrote in the plan are part of that text, so upload only what you are comfortable sharing with your AI provider.{% else %}The AI is not connected, so goals are found by simple rules and need careful checking.{% endif %}</p>
+    </form>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

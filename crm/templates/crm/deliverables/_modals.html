@@ -1,0 +1,99 @@
+{% load crm_tags %}
+{# One set of action dialogs shared by every deliverable page. A button fills in the address and numbers with dlOpen(). #}
+<script>
+function dlOpen(store, modal, url, data) {
+  var form = document.getElementById('form-' + modal);
+  if (!form) return;
+  form.action = url;
+  Object.keys(data || {}).forEach(function (key) {
+    var el = form.elements[key];
+    if (el) { el.value = data[key]; }
+    form.querySelectorAll('[data-slot="' + key + '"]').forEach(function (n) { n.textContent = data[key]; });
+  });
+  if (data && data.max !== undefined && form.elements.done) { form.elements.done.max = data.max; }
+  store.modal.show(modal);
+}
+</script>
+
+{% include "crm/components/modal_start.html" with id="dl_deliver" title="Mark as delivered" subtitle="Say what was delivered, so it can be found later: a file name, an ad name, a report name or a link." %}
+  <form method="post" id="form-dl_deliver" action="" novalidate>{% csrf_token %}{% idem %}
+    <div class="space-y-4">
+      <div><label class="form-label" for="dl-deliver-note">What was delivered <span class="text-error-500">*</span></label>
+        <input id="dl-deliver-note" name="note" class="form-input" maxlength="300" required placeholder="e.g. Diwali-offer-poster-v2.png or Ad: Festive Sale"></div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="form-label" for="dl-deliver-done">How many (of <span data-slot="qty">1</span>)</label>
+          <input id="dl-deliver-done" name="done" type="number" min="1" class="form-input" inputmode="numeric" placeholder="All"></div>
+        <div class="col-span-2 sm:col-span-1 self-end"><p class="form-help">Leave empty if everything was delivered.</p></div>
+      </div>
+      <div><label class="form-label" for="dl-deliver-short">If fewer than promised, why?</label>
+        <input id="dl-deliver-short" name="shortfall_reason" class="form-input" maxlength="300" placeholder="Needed only for a short delivery"></div>
+    </div>
+    {% include "crm/components/modal_actions.html" with label="Mark delivered" %}
+  </form>
+{% include "crm/components/modal_end.html" %}
+
+{% include "crm/components/modal_start.html" with id="dl_progress" title="Update progress" subtitle="Record how many are finished so far. The rest stays on your list." %}
+  <form method="post" id="form-dl_progress" action="" novalidate>{% csrf_token %}{% idem %}
+    <div class="space-y-4">
+      <div><label class="form-label" for="dl-progress-done">Finished so far (of <span data-slot="qty">1</span>)</label>
+        <input id="dl-progress-done" name="done" type="number" min="0" class="form-input" inputmode="numeric" required></div>
+      <div><label class="form-label" for="dl-progress-note">Note (optional)</label>
+        <input id="dl-progress-note" name="note" class="form-input" maxlength="300" placeholder="e.g. 2 posters done, waiting for the product photo"></div>
+    </div>
+    {% include "crm/components/modal_actions.html" with label="Save progress" %}
+  </form>
+{% include "crm/components/modal_end.html" %}
+
+{% include "crm/components/modal_start.html" with id="dl_review_submit" title="Send for review" subtitle="Your manager checks it before it goes to the client." %}
+  <form method="post" id="form-dl_review_submit" action="" novalidate>{% csrf_token %}{% idem %}
+    <label class="form-label" for="dl-review-note">What should they look at <span class="text-error-500">*</span></label>
+    <input id="dl-review-note" name="note" class="form-input" maxlength="300" required placeholder="File name, ad name or link">
+    {% include "crm/components/modal_actions.html" with label="Send for review" %}
+  </form>
+{% include "crm/components/modal_end.html" %}
+
+{% include "crm/components/modal_start.html" with id="dl_review_changes" title="Ask for changes" subtitle="Tell them exactly what to fix. It goes straight back to them." %}
+  <form method="post" id="form-dl_review_changes" action="" novalidate>{% csrf_token %}{% idem %}
+    <label class="form-label" for="dl-changes-note">What needs to change <span class="text-error-500">*</span></label>
+    <textarea id="dl-changes-note" name="note" class="form-textarea" rows="3" maxlength="500" required></textarea>
+    {% include "crm/components/modal_actions.html" with label="Send back" %}
+  </form>
+{% include "crm/components/modal_end.html" %}
+
+{% include "crm/components/modal_start.html" with id="dl_send_client" title="Sent to the client" subtitle="This starts timing how long the client takes to answer." %}
+  <form method="post" id="form-dl_send_client" action="" novalidate>{% csrf_token %}{% idem %}
+    <label class="form-label" for="dl-client-note">How was it sent (optional)</label>
+    <input id="dl-client-note" name="note" class="form-input" maxlength="300" placeholder="e.g. WhatsApp, email, shared drive link">
+    {% include "crm/components/modal_actions.html" with label="Mark as sent" %}
+  </form>
+{% include "crm/components/modal_end.html" %}
+
+{% include "crm/components/modal_start.html" with id="dl_client_changes" title="Client wants changes" subtitle="Record what the client asked for. It goes back to in progress." %}
+  <form method="post" id="form-dl_client_changes" action="" novalidate>{% csrf_token %}{% idem %}
+    <label class="form-label" for="dl-cchanges-note">What they asked for <span class="text-error-500">*</span></label>
+    <textarea id="dl-cchanges-note" name="note" class="form-textarea" rows="3" maxlength="500" required></textarea>
+    {% include "crm/components/modal_actions.html" with label="Save" %}
+  </form>
+{% include "crm/components/modal_end.html" %}
+
+{% include "crm/components/modal_start.html" with id="dl_reschedule" title="Reschedule" subtitle="The date the contract promised stays on record. Only the working date moves." %}
+  <form method="post" id="form-dl_reschedule" action="" novalidate>{% csrf_token %}{% idem %}
+    <div class="space-y-4">
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="form-label" for="dl-resched-date">New date <span class="text-error-500">*</span></label><input id="dl-resched-date" name="new_date" type="date" class="form-input" required></div>
+        <div><label class="form-label" for="dl-resched-time">Due by</label><input id="dl-resched-time" name="new_time" type="time" class="form-input"></div>
+      </div>
+      <div><label class="form-label" for="dl-resched-reason">Why <span class="text-error-500">*</span></label>
+        <input id="dl-resched-reason" name="reason" class="form-input" maxlength="300" required placeholder="e.g. Client has not sent the photos"></div>
+    </div>
+    {% include "crm/components/modal_actions.html" with label="Reschedule" %}
+  </form>
+{% include "crm/components/modal_end.html" %}
+
+{% include "crm/components/modal_start.html" with id="dl_skip" title="Skip this one" subtitle="Use when the client agreed to drop it this time. It is recorded as skipped, not delivered." %}
+  <form method="post" id="form-dl_skip" action="" novalidate>{% csrf_token %}{% idem %}
+    <label class="form-label" for="dl-skip-reason">Why <span class="text-error-500">*</span></label>
+    <input id="dl-skip-reason" name="reason" class="form-input" maxlength="300" required placeholder="e.g. Client is travelling, agreed to skip this week">
+    {% include "crm/components/modal_actions.html" with label="Skip it" %}
+  </form>
+{% include "crm/components/modal_end.html" %}

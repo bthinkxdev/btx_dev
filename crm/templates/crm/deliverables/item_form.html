@@ -1,0 +1,28 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{{ title }}{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title=title subtitle="Say what is promised and when it falls due. Dates for the next 30 days are created when you save." crumbs=crumbs %}{% endblock %}
+{% block content %}
+<form method="post" class="card max-w-4xl" novalidate data-dirty-check x-data="{ f: '{{ form.frequency.value|default:'monthly' }}' }">{% csrf_token %}{% idem %}
+  <div class="card-body grid grid-cols-1 gap-5 sm:grid-cols-2">
+    {% include "crm/components/form_errors.html" %}
+    {% field form.title wrapper_class="sm:col-span-2" %}
+    {% field form.category %}
+    {% field form.quantity %}
+    {% include "crm/deliverables/_schedule_fields.html" %}
+    {% field form.due_time %}
+    {% field form.handled_by help="The media, marketing or design team that makes it. You coordinate; they produce." %}
+    {% field form.start_date %}
+    {% field form.end_date %}
+    {% field form.assignee help="Leave as the plan default unless this item belongs to someone else." %}
+    {% field form.reviewer %}
+    <div class="sm:col-span-2 space-y-3">{% field form.requires_review %}{% field form.needs_client_approval %}</div>
+    {% field form.preferences wrapper_class="sm:col-span-2" help="What this client likes for this kind of item. Shown on every deliverable it creates." %}
+  </div>
+  <div class="flex flex-col-reverse justify-end gap-3 border-t border-gray-100 p-5 sm:flex-row dark:border-gray-800">
+    <a href="{% url 'crm:delivery_plan' plan.pk %}" class="btn btn-secondary">Cancel</a>
+    <button class="btn btn-primary" data-loading-text="Saving…">{% if item %}Save changes{% else %}Add to plan{% endif %}</button>
+  </div>
+</form>
+<datalist id="dl-teams">{% for t in teams %}<option value="{{ t }}">{% endfor %}</datalist>
+<datalist id="dl-categories">{% for c in categories %}<option value="{{ c }}">{% endfor %}</datalist>
+{% endblock %}

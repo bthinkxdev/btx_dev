@@ -1,0 +1,52 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Review goals{% endblock %}
+{% block page_header %}
+<div class="mb-5">
+  <nav aria-label="Breadcrumb" class="mb-1"><a href="{% url 'crm:desk_plan' %}" class="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400">Business plan</a></nav>
+  <h1 class="page-title">Check the goals from "{{ plan.title }}"</h1>
+  <p class="muted mt-1">{% if plan.proposed_by == 'rules' %}These were found by simple rules, so check each one.{% else %}Found by {{ plan.proposed_by }}.{% endif %} AI can misread numbers: correct anything wrong. Nothing is saved until you press Save.</p>
+</div>
+{% endblock %}
+{% block content %}
+<form method="post">{% csrf_token %}
+<div class="grid gap-6 lg:grid-cols-3">
+  <div class="space-y-6 lg:col-span-2">
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Monthly goals for {{ month|date:"F Y" }}</h2><span class="text-theme-xs text-gray-500">Amounts in rupees, per month</span></div>
+      <div class="card-body space-y-4">
+        {% for r in rows %}
+        <div class="grid gap-3 rounded-xl border border-gray-200 p-4 sm:grid-cols-12 dark:border-gray-800">
+          <input type="hidden" name="metric_{{ forloop.counter0 }}" value="{{ r.metric }}">
+          <input type="hidden" name="month_{{ forloop.counter0 }}" value="{{ month|date:'Y-m' }}">
+          <div class="sm:col-span-1 flex items-center"><input type="checkbox" name="keep_{{ forloop.counter0 }}" value="1" checked class="h-5 w-5" aria-label="Keep {{ r.label }}"></div>
+          <div class="sm:col-span-5"><p class="text-sm font-medium text-gray-800 dark:text-white/90">{{ r.label }}</p>
+            {% if r.current %}<p class="text-theme-xs text-warning-700">A goal of {{ r.current|floatformat:"-2" }} already exists for this month and will be replaced.</p>{% endif %}</div>
+          <div class="sm:col-span-3"><label class="sr-only" for="t-{{ forloop.counter0 }}">Target for {{ r.label }}</label><input id="t-{{ forloop.counter0 }}" name="target_{{ forloop.counter0 }}" type="number" step="0.01" min="0" value="{{ r.target|floatformat:'-2' }}" class="form-input" inputmode="decimal"></div>
+          <div class="sm:col-span-3"><label class="sr-only" for="n-{{ forloop.counter0 }}">Source note</label><input id="n-{{ forloop.counter0 }}" name="note_{{ forloop.counter0 }}" value="{{ r.note }}" maxlength="200" class="form-input" placeholder="Where from"></div>
+        </div>
+        {% empty %}
+        <div class="alert alert-warning" role="status"><span>{% icon 'alert' 20 %}</span><p class="text-sm">No goals with numbers were found in this plan. You can add them on the <a class="link" href="{% url 'crm:desk_goals' %}">Goals page</a>, and still save the priorities below so the analyst knows what matters to you.</p></div>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Your priorities and strategy</h2></div>
+      <div class="card-body"><label class="form-label" for="ctx-notes">In your own words. The analyst reads this before every answer.</label>
+        <textarea id="ctx-notes" name="context_notes" rows="6" maxlength="3000" class="form-input" placeholder="e.g. Grow social media management clients. Reach 20 retainers by March. Reduce late deliveries.">{{ plan.context_notes }}</textarea></div>
+    </div>
+    <div class="flex flex-wrap gap-2"><button class="btn btn-primary">Save goals and use this plan</button><a class="btn btn-secondary" href="{% url 'crm:desk_plan' %}">Cancel</a></div>
+  </div>
+  <div class="space-y-6">
+    <div class="card"><div class="card-header"><h2 class="card-title">Summary</h2></div>
+      <div class="card-body space-y-3 text-sm text-gray-700 dark:text-gray-300">
+        <p>{{ plan.summary|default:"No summary was written." }}</p>
+        <button type="submit" formaction="{% url 'crm:desk_plan_reread' plan.pk %}" formnovalidate class="btn btn-secondary btn-sm">Read the plan again</button>
+        {% if not ai_on %}<p class="text-theme-xs text-gray-500">The AI is not connected; reading again will use the same rules.</p>{% endif %}
+      </div></div>
+    <div class="card"><div class="card-header"><h2 class="card-title">Text the staff read</h2></div>
+      <div class="card-body"><pre class="max-h-96 overflow-auto whitespace-pre-wrap text-theme-xs text-gray-600 dark:text-gray-400">{{ preview }}</pre>
+        {% if plan.extracted_text|length > 2500 %}<p class="mt-2 text-theme-xs text-gray-500">Showing the first 2,500 of {{ plan.extracted_text|length }} characters.</p>{% endif %}</div></div>
+  </div>
+</div>
+</form>
+{% endblock %}

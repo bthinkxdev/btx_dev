@@ -44,6 +44,20 @@
       <div x-cloak @click="sidebarToggle = false" :class="sidebarToggle ? 'block xl:hidden' : 'hidden'" class="fixed z-9 h-screen w-full bg-gray-900/50"></div>
 
       {% include "crm/partials/header.html" %}
+      {% if work %}
+      <div class="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-2 sm:hidden dark:border-gray-800 dark:bg-gray-900">{% include "crm/partials/work_clock.html" with clock_id="work-clock-m" %}</div>
+      <script>
+      (function () {
+        var loaded = Date.now();
+        function text(s) { var m = Math.floor(s / 60), h = Math.floor(m / 60); m = m % 60; return h ? h + 'h ' + (m < 10 ? '0' : '') + m + 'm' : m + 'm'; }
+        document.querySelectorAll('.work-clock').forEach(function (el) {
+          var onBreak = el.dataset.state === 'break', out = el.querySelector('[data-clock]');
+          var base = parseInt(onBreak ? el.dataset['break'] : el.dataset.worked, 10) || 0;
+          setInterval(function () { out.textContent = text(base + Math.floor((Date.now() - loaded) / 1000)); }, 30000);
+        });
+      })();
+      </script>
+      {% endif %}
 
       <div id="offline-banner" class="hidden border-b border-warning-500 bg-warning-50 px-4 py-2 text-center text-sm font-medium text-warning-700 dark:bg-warning-500/15 dark:text-orange-400" role="status">
         Connection lost. Changes are not saved. Retrying…
@@ -71,6 +85,17 @@
 
   <script src="{% asset 'crm/js/ui.js' %}"></script>
   <script src="{% asset 'crm/js/pwa.js' %}"></script>
+  {% if pending_report and not work_notice %}{% include "crm/partials/daily_report_modal.html" with report=pending_report report_token=pending_report_token %}{% endif %}
+  {% if work_notice %}
+  <div class="fixed inset-0 z-999999 flex items-center justify-center bg-gray-900/70 p-5 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="notice-title">
+    <div class="w-full max-w-md rounded-3xl bg-white p-7 shadow-2xl dark:bg-gray-900">
+      <h2 id="notice-title" class="text-xl font-semibold text-gray-800 dark:text-white/90">Before you start</h2>
+      <p class="mt-3 text-sm leading-6 text-gray-600 dark:text-gray-400">{{ work_notice_text }}</p>
+      <p class="mt-3 text-sm leading-6 text-gray-600 dark:text-gray-400">You can see your own time any moment under <strong>My time</strong>.</p>
+      <form method="post" action="{% url 'crm:work_notice_ack' %}" class="mt-6">{% csrf_token %}<button class="btn btn-primary w-full justify-center py-3" autofocus>I understand</button></form>
+    </div>
+  </div>
+  {% endif %}
   {% block extra_js %}{% endblock %}
   <script defer src="{% static 'crm/vendor/alpine.min.js' %}"></script>
 </body>

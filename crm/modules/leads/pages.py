@@ -59,13 +59,22 @@ def my_day(request):
     ctx['approvals_waiting'] = [r for r in pending.select_related('requested_by')[:100] if appr.can_decide(u, r)[0]][:10]
     month = today.replace(day=1)
     target = SalesTarget.objects.filter(user=u, month=month).first()
-    collected = Payment.objects.filter(status__in=['verified', 'partially_refunded'], payment_date__gte=month,
-                                       client__owner=u).aggregate(s=Sum('amount'))['s'] or ZERO
+    from crm.core import attribution
+    collected = attribution.collected_total([u.pk], month, today)
     ctx['target'] = target
     ctx['collected'] = collected
     if target and target.collected_value:
         ctx['target_pct'] = min(100, int(collected * 100 / target.collected_value))
         ctx['target_gap'] = max(target.collected_value - collected, ZERO)
+    if permissions.has_perm(u, 'deliverables', 'view'):
+        from crm.models import Deliverable
+        from crm.models.deliverables import OPEN_STATUSES
+        from crm.modules.deliverables.views import primary_step
+        mine = list(Deliverable.objects.filter(assignee=u, status__in=OPEN_STATUSES, due_date__lte=today, plan__status='active')
+                    .select_related('client', 'plan', 'plan__account_owner', 'reviewer', 'assignee').order_by('due_date', 'due_time')[:12])
+        for d in mine:
+            d.step = primary_step(d, u)
+        ctx['deliverables'] = mine
     from crm.models import Task
     ctx['my_tasks'] = list(Task.objects.filter(assignee=u, status__in=['todo', 'in_progress', 'blocked', 'in_review'])
                            .select_related('project').order_by('due_date')[:15]) if permissions.has_perm(u, 'tasks', 'view') else []
@@ -108,9 +117,70 @@ def follow_up_quick(request, pk, action):
 
 # ---------------------------------------------------------------- calendar (4.10)
 
+class CalendarEntry:
+    """One thing on the calendar, whatever it is: a lead follow-up, a client deliverable or a project task."""
+
+    def __init__(self, kind, when, title, sub, url, overdue, obj, badge=''):
+        self.kind, self.when, self.title, self.sub, self.url, self.overdue, self.obj, self.badge = kind, when, title, sub, url, overdue, obj, badge
+
+    @property
+    def tone(self):
+        if self.overdue:
+            return 'overdue'
+        if self.kind == 'followup':
+            return getattr(self.obj, 'kind', 'call')
+        return self.kind
+
+
+def _calendar_entries(request, start_dt, end_dt, owner, show):
+    """Everything the person may see between two moments, merged and in time order."""
+    from crm.models import Deliverable, Task
+    from crm.models.deliverables import OPEN_STATUSES
+    user = request.user
+    now = timezone.now()
+    can_assign = permissions.has_perm(user, 'leads', 'assign')
+    first, last = timezone.localtime(start_dt).date(), timezone.localtime(end_dt).date()
+    out = []
+    if show in ('all', 'followups') and permissions.has_perm(user, 'leads', 'view'):
+        qs = FollowUp.objects.filter(lead__in=scoped_leads(request), status='pending', due_at__range=(start_dt, end_dt)).select_related('lead', 'assignee')
+        if owner.isdigit() and can_assign:
+            qs = qs.filter(assignee_id=int(owner))
+        elif not can_assign:
+            qs = qs.filter(assignee=user)
+        for fu in qs.order_by('due_at'):
+            purpose = f' · {fu.purpose}' if fu.purpose else ''
+            out.append(CalendarEntry('followup', fu.due_at, fu.lead.name, f'{fu.get_kind_display()}{purpose}',
+                                     reverse('crm:lead_detail', args=[fu.lead_id]), fu.due_at < now, fu, fu.get_kind_display()))
+    if show in ('all', 'deliverables') and permissions.has_perm(user, 'deliverables', 'view'):
+        qs = permissions.scoped(Deliverable.objects.all(), user, 'deliverables', 'view').filter(
+            status__in=OPEN_STATUSES, due_date__range=(first, last)).select_related('client', 'assignee')
+        if owner.isdigit() and permissions.has_perm(user, 'deliverables', 'assign'):
+            qs = qs.filter(assignee_id=int(owner))
+        elif not permissions.has_perm(user, 'deliverables', 'assign'):
+            qs = qs.filter(assignee=user)
+        for d in qs:
+            qty = f' x{d.quantity}' if d.quantity > 1 else ''
+            out.append(CalendarEntry('deliverable', d.due_at, d.client.display_name, f'{d.title}{qty}',
+                                     reverse('crm:deliverable_detail', args=[d.pk]), d.is_overdue, d, 'Deliver'))
+    if show in ('all', 'tasks') and permissions.has_perm(user, 'tasks', 'view'):
+        qs = Task.objects.filter(due_date__range=(first, last)).exclude(status__in=['done', 'cancelled']).select_related('project', 'assignee')
+        qs = permissions.scoped(qs, user, 'tasks', 'view')
+        if owner.isdigit() and permissions.has_perm(user, 'tasks', 'assign'):
+            qs = qs.filter(assignee_id=int(owner))
+        elif not permissions.has_perm(user, 'tasks', 'assign'):
+            qs = qs.filter(assignee=user)
+        for t in qs:
+            when = timezone.make_aware(datetime.combine(t.due_date, time(10, 0)))
+            out.append(CalendarEntry('task', when, t.title, f'Task · {t.project}', reverse('crm:task_list'), bool(t.is_overdue), t, 'Task'))
+    out.sort(key=lambda e: e.when)
+    return out
+
+
 @staff_required
 def followup_calendar(request):
-    permissions.require(request.user, 'leads', 'view', request)
+    user = request.user
+    if not any(permissions.has_perm(user, m, 'view') for m in ('leads', 'deliverables', 'tasks')):
+        permissions.require(user, 'leads', 'view', request)
     today = timezone.localdate()
     try:
         year = int(request.GET.get('year', today.year))
@@ -122,12 +192,8 @@ def followup_calendar(request):
     is_phone = 'Mobi' in request.META.get('HTTP_USER_AGENT', '')
     view = request.GET.get('view', 'week' if is_phone else 'month')
     owner = request.GET.get('owner', '')
-    leads = scoped_leads(request)
-    qs = FollowUp.objects.filter(lead__in=leads, status='pending').select_related('lead', 'assignee')
-    if owner.isdigit() and permissions.has_perm(request.user, 'leads', 'assign'):
-        qs = qs.filter(assignee_id=int(owner))
-    elif not permissions.has_perm(request.user, 'leads', 'assign'):
-        qs = qs.filter(assignee=request.user)
+    show = request.GET.get('show', 'all')
+    show = show if show in ('all', 'followups', 'deliverables', 'tasks') else 'all'
     if view == 'week':
         start = today - timedelta(days=today.weekday())
         if request.GET.get('start'):
@@ -137,10 +203,9 @@ def followup_calendar(request):
                 pass
         days = [start + timedelta(days=i) for i in range(7)]
         rng = (timezone.make_aware(datetime.combine(days[0], time.min)), timezone.make_aware(datetime.combine(days[-1], time.max)))
-        items = list(qs.filter(due_at__range=rng).order_by('due_at'))
         by_day = {d: [] for d in days}
-        for fu in items:
-            by_day.setdefault(timezone.localtime(fu.due_at).date(), []).append(fu)
+        for e in _calendar_entries(request, rng[0], rng[1], owner, show):
+            by_day.setdefault(timezone.localtime(e.when).date(), []).append(e)
         selected = today if days[0] <= today <= days[-1] else days[0]
         ctx = {'view': 'week', 'selected_day': selected, 'week': [(d, by_day.get(d, [])) for d in days], 'prev_start': (start - timedelta(days=7)).isoformat(),
                'next_start': (start + timedelta(days=7)).isoformat(), 'start': start}
@@ -150,16 +215,18 @@ def followup_calendar(request):
         rng = (timezone.make_aware(datetime.combine(weeks[0][0], time.min)),
                timezone.make_aware(datetime.combine(weeks[-1][-1], time.max)))
         by_day = {}
-        for fu in qs.filter(due_at__range=rng).order_by('due_at'):
-            by_day.setdefault(timezone.localtime(fu.due_at).date(), []).append(fu)
+        for e in _calendar_entries(request, rng[0], rng[1], owner, show):
+            by_day.setdefault(timezone.localtime(e.when).date(), []).append(e)
         prev_m = (current - timedelta(days=1)).replace(day=1)
         next_m = india.add_months(current, 1)
         ctx = {'view': 'month', 'weeks': [[(d, by_day.get(d, [])) for d in w] for w in weeks], 'current': current,
                'prev': prev_m, 'next': next_m}
     from .forms import assignable_users
-    ctx.update({'today': today, 'owner': owner, 'owners': assignable_users(request.user)
-                if permissions.has_perm(request.user, 'leads', 'assign') else [], 'postpone_form': PostponeForm(prefix='postpone'),
-                'complete_form': CompleteFollowUpForm(prefix='complete'), 'now': timezone.now()})
+    can_pick = any(permissions.has_perm(user, m, 'assign') for m in ('leads', 'deliverables'))
+    ctx.update({'today': today, 'owner': owner, 'show': show, 'owners': assignable_users(user) if can_pick else [],
+                'postpone_form': PostponeForm(prefix='postpone'), 'complete_form': CompleteFollowUpForm(prefix='complete'),
+                'now': timezone.now(),
+                'shows': [('all', 'Everything'), ('followups', 'Follow-ups'), ('deliverables', 'Deliverables'), ('tasks', 'Tasks')]})
     return render(request, 'crm/leads/calendar.html', ctx)
 
 

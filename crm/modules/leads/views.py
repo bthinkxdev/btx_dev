@@ -85,7 +85,7 @@ class LeadList(ListPage):
     template_name = 'crm/leads/list.html'
     title = 'Leads'
     search_fields = ('name__icontains', 'company__icontains', 'email__icontains', 'phone__contains', 'city__icontains')
-    select_related = ('owner', 'source')
+    select_related = ('owner', 'source', 'closed_by')
     prefetch_related = ('services',)
     default_sort = 'next_follow_up_at'
     sort_fields = {'name': 'name', 'next': 'next_follow_up_at', 'value': 'value', 'created': 'created_at',
@@ -357,7 +357,7 @@ def _build_forms(request, lead, bound_action=None):
     matches = list(svc.matching_clients(lead.phone, lead.email, name=lead.company)) if not lead.client_id else []
     kw = {
         'schedule': {'user': request.user, 'lead': lead}, 'assign': {'user': request.user},
-        'stage': {'lead': lead}, 'won': {'lead': lead, 'matches': matches},
+        'stage': {'lead': lead}, 'won': {'lead': lead, 'matches': matches, 'user': request.user},
     }
     forms = {}
     for name, cls in ACTION_FORMS.items():
@@ -493,7 +493,7 @@ def _run_action(request, lead, action, c, matches):
         if choice and choice != 'new':
             client = next((m for m in matches if str(m.pk) == choice), None)
         svc.mark_won(lead, u, won_value=c['won_value'], quotation=c.get('quotation'), note=c.get('note', ''),
-                     expected_start=c.get('expected_start'), client=client, create_client=True)
+                     expected_start=c.get('expected_start'), client=client, create_client=True, credit_to=c.get('credit_to') or None)
         return f'🎉 {lead} marked won. Next: create a contract or project for the client.', '?won=1'
     if action == 'lost':
         _, req = svc.mark_lost(lead, u, reason=c['reason'], competitor=c.get('competitor', ''), price=c.get('price'),

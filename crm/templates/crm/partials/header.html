@@ -28,6 +28,7 @@
 
     <div class="flex shrink-0 items-center justify-end gap-1 pr-3 sm:gap-3 xl:gap-4 xl:px-0">
       <div class="2xsm:gap-3 flex items-center gap-2">
+      {% if work %}<div class="hidden sm:block">{% include "crm/partials/work_clock.html" with clock_id="work-clock-d" %}</div>{% endif %}
         <button type="button" class="btn-icon" @click.prevent="darkMode = !darkMode" aria-label="Toggle dark mode">
           <span class="hidden dark:block">{% icon 'sun' 20 %}</span>
           <span class="dark:hidden">{% icon 'moon' 20 %}</span>

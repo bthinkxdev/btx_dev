@@ -32,6 +32,13 @@ from .expenses import (  # noqa: F401
 from .people import (  # noqa: F401
     Attendance, AttendanceCorrection, ChecklistItem, CommissionEntry, CommissionRule, Employee, Holiday,
     LeaveAdjustment, LeaveBalance, LeaveRequest, LeaveType, PayrollAdjustment, PayrollRun, Payslip,
-    SalaryComponent, SalaryStructure, SalaryStructureLine, Shift,
+    SalaryComponent, SalaryStructure, SalaryStructureLine, Shift, WorkingDayException,
 )
 from .webinars import WebinarLead, WebinarLeadActivity  # noqa: F401
+from .desk import BusinessGoal, BusinessPlan, DailySnapshot, DeskAction, DeskBriefing  # noqa: F401
+from .deliverables import (  # noqa: F401
+    CalendarFeedToken, Deliverable, DeliverableAsset, DeliverableEvent, DeliveryPlan, PlanItem, PlanRevision,
+    ServiceDeliverable,
+)
+from .worktime import BreakPeriod, WorkPeriod  # noqa: F401
+from .performance import DailyReport, StaffDayStat  # noqa: F401

@@ -61,14 +61,17 @@ def accrue(basis: str, *, lead=None, invoice=None, payment=None) -> list:
     made = []
     on = india.today()
     if basis == 'won' and lead is not None:
-        user, doc, base, ref = lead.owner, None, lead.won_value or lead.value or ZERO, {'lead': lead}
+        user, doc, base, ref = (lead.credited_to or lead.owner), None, lead.won_value or lead.value or ZERO, {'lead': lead}
         tag = f'won:lead{lead.pk}'
     elif basis == 'invoiced' and invoice is not None:
         user, doc, base, ref = invoice.owner, invoice, invoice.taxable_total, {'invoice': invoice}
         tag = f'inv:{invoice.pk}'
     elif basis == 'collected' and payment is not None:
         doc = payment.invoice or payment.quotation
-        user = (payment.link.owner if payment.link_id else None) or (doc.owner if doc is not None else payment.client.owner)
+        from django.contrib.auth import get_user_model
+        from crm.core import attribution
+        user = (get_user_model().objects.filter(pk=attribution.payment_credit_id(payment), is_active=True).first()
+                or (payment.link.owner if payment.link_id else None) or (doc.owner if doc is not None else payment.client.owner))
         ratio = (doc.taxable_total / doc.grand_total) if doc is not None and doc.grand_total else Decimal('1')
         base, ref = q2(payment.gross_settled * ratio), {'payment': payment}
         tag = f'pay:{payment.pk}'

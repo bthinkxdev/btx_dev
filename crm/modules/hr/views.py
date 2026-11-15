@@ -14,12 +14,12 @@ from django.views.decorators.http import require_POST
 from crm.core import audit, india, permissions
 from crm.core.views import Filter, ListPage, StaffRequiredMixin, staff_required
 from crm.models import (Attendance, AttendanceCorrection, AuditLog, ChecklistItem, Department, Employee, Holiday, LeaveBalance,
-                        LeaveRequest, LeaveType, Shift)
+                        LeaveRequest, LeaveType, Shift, WorkingDayException)
 from crm.models.people import EMPLOYEE_STATUSES
 
 from . import services as svc
 from .forms import (AdjustForm, AttendanceForm, CorrectionForm, EmployeeForm, HolidayForm, ImportForm, LeaveForm, NewLoginForm,
-                    OffboardForm, RevealForm, ShiftForm, TransferForm)
+                    OffboardForm, RevealForm, ShiftForm, TransferForm, WorkingDayForm)
 
 
 def _team_q(user):
@@ -55,7 +55,17 @@ class EmployeeList(ListPage):
         return qs
 
     def extra_context(self, qs):
-        return {'module_code': 'employees', 'can_create': permissions.has_perm(self.request.user, 'employees', 'create')}
+        can_create = permissions.has_perm(self.request.user, 'employees', 'create')
+        return {'module_code': 'employees', 'can_create': can_create, 'unlinked': unlinked_logins() if can_create else []}
+
+
+def unlinked_logins() -> list:
+    """Staff who can sign in but have no HR record, so their leave, shift and attendance cannot be managed."""
+    from django.contrib.auth import get_user_model
+    from crm.modules.worktime.services import MCP_USERNAME
+    qs = (get_user_model().objects.filter(is_active=True, crm_employee__isnull=True, crm_profile__roles__isnull=False).exclude(username=MCP_USERNAME)
+          .distinct().order_by('first_name', 'username'))
+    return [u for u in qs if not permissions.is_super_admin(u)]
 
 
 def _can_see(user):
@@ -66,8 +76,19 @@ def _can_see(user):
 def employee_form(request, pk=None):
     permissions.require(request.user, 'employees', 'edit' if pk else 'create', request)
     e = get_object_or_404(Employee, pk=pk) if pk else Employee(joining_date=india.today())
-    form = EmployeeForm(request.POST or None, instance=e, can_see=_can_see(request.user))
-    login = NewLoginForm(request.POST or None, prefix='login') if not pk else None
+    # An existing login can be given an HR record: ?user=<id> pre-fills the form, and saving links the two.
+    link_user = None
+    link_id = request.GET.get('user') or request.POST.get('link_user')
+    if not pk and link_id and str(link_id).isdigit():
+        from django.contrib.auth import get_user_model
+        link_user = get_user_model().objects.filter(pk=int(link_id), is_active=True, crm_employee__isnull=True).first()
+    initial = {}
+    if link_user is not None and request.method != 'POST':
+        prof = getattr(link_user, 'crm_profile', None)
+        initial = {'name': link_user.get_full_name() or link_user.get_username(), 'work_email': link_user.email,
+                   'designation': getattr(prof, 'designation', ''), 'phone': getattr(prof, 'phone', '')}
+    form = EmployeeForm(request.POST or None, instance=e, initial=initial, can_see=_can_see(request.user))
+    login = NewLoginForm(request.POST or None, prefix='login') if not pk and link_user is None else None
     if request.method == 'POST' and form.is_valid() and (login is None or login.is_valid()):
         try:
             if pk:
@@ -77,12 +98,13 @@ def employee_form(request, pk=None):
                 audit.log('employee.saved', obj, actor=request.user, changes={'fields': form.changed_data})
             else:
                 data = {f: form.cleaned_data[f] for f in form.cleaned_data if f != 'row_version'}
-                obj = svc.create_employee(request.user, create_login=login.cleaned_data['create_login'], role=login.cleaned_data.get('role'), **data)
+                obj = svc.create_employee(request.user, create_login=login.cleaned_data['create_login'] if login else False,
+                                          role=login.cleaned_data.get('role') if login else None, link_user=link_user, **data)
             messages.success(request, f'{obj.name} saved.')
             return redirect('crm:employee_detail', pk=obj.pk)
         except ValidationError as exc:
             form.add_error(None, ' '.join(exc.messages))
-    return render(request, 'crm/hr/employee_form.html', {'form': form, 'login': login, 'e': e})
+    return render(request, 'crm/hr/employee_form.html', {'form': form, 'login': login, 'e': e, 'link_user': link_user})
 
 
 @staff_required
@@ -354,6 +376,7 @@ def holiday_list(request):
     permissions.require(request.user, 'leave', 'configure', request)
     hform = HolidayForm(request.POST or None, prefix='h')
     sform = ShiftForm(request.POST or None, prefix='s')
+    wform = WorkingDayForm(request.POST or None, prefix='w')
     if request.method == 'POST':
         which = request.POST.get('form')
         if which == 'holiday' and hform.is_valid():
@@ -366,6 +389,22 @@ def holiday_list(request):
             audit.log('shift.added', s, actor=request.user)
             messages.success(request, f'Shift {s} added.')
             return redirect('crm:holiday_list')
+        if which == 'working_day' and wform.is_valid():
+            w = wform.save(commit=False)
+            w.created_by = request.user
+            w.save()
+            audit.log('working_day.added', w, actor=request.user, changes={'date': w.work_date})
+            messages.success(request, f'{w.work_date:%A %d %b} is now a working day.')
+            return redirect('crm:holiday_list')
+        if which == 'delete_working_day':
+            w = get_object_or_404(WorkingDayException, pk=request.POST.get('id'))
+            if w.work_date < india.today():
+                messages.error(request, 'Past working days are kept for attendance history.')
+            else:
+                audit.log('working_day.removed', w, actor=request.user)
+                w.delete()
+                messages.success(request, 'That day is a holiday again.')
+            return redirect('crm:holiday_list')
         if which == 'delete_holiday':
             h = get_object_or_404(Holiday, pk=request.POST.get('id'))
             if h.holiday_date < india.today():
@@ -377,5 +416,6 @@ def holiday_list(request):
             return redirect('crm:holiday_list')
     year = india.today().year
     return render(request, 'crm/hr/holidays.html', {'holidays': Holiday.objects.filter(holiday_date__year__gte=year - 1),
-                                                     'shifts': Shift.objects.all(), 'hform': hform, 'sform': sform, 'today': india.today(),
-                                                     'open_modal': 'holiday' if hform.errors else 'shift' if sform.errors else ''})
+                                                     'shifts': Shift.objects.all(), 'hform': hform, 'sform': sform, 'wform': wform, 'today': india.today(),
+                                                     'working_days': WorkingDayException.objects.filter(work_date__year__gte=year - 1),
+                                                     'open_modal': 'holiday' if hform.errors else 'shift' if sform.errors else 'working' if wform.errors else ''})

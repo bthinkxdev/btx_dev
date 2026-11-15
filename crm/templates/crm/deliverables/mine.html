@@ -1,0 +1,56 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}My deliverables{% endblock %}
+{% block page_header %}
+<div class="mb-5 flex flex-wrap items-start justify-between gap-3">
+  <div>
+    <h1 class="page-title">{% if target.pk == request.user.pk %}My deliverables{% else %}{{ target|uname }}'s deliverables{% endif %}</h1>
+    <p class="muted mt-1">What we promised clients, by when. Start it, finish it, and say what was delivered.</p>
+  </div>
+  <div class="flex flex-wrap items-center gap-2">
+    {% if people %}
+    <form method="get" class="flex items-center gap-2"><input type="hidden" name="tab" value="{{ tab }}"><label class="sr-only" for="dl-who">Person</label>
+      <select id="dl-who" name="who" class="form-select h-10 w-auto" data-autosubmit><option value="">Me</option>{% for u in people %}{% if u.pk != request.user.pk %}<option value="{{ u.pk }}" {% if target.pk == u.pk %}selected{% endif %}>{{ u|uname }}</option>{% endif %}{% endfor %}</select></form>
+    {% endif %}
+    {% can 'deliverables' 'assign' as cb %}{% if cb %}<a href="{% url 'crm:deliverable_list' %}" class="btn btn-secondary">Team board</a>{% endif %}
+    <a href="{% url 'crm:followup_calendar' %}?show=deliverables" class="btn btn-secondary">{% icon 'calendar' 16 %} Calendar</a>
+  </div>
+</div>
+{% endblock %}
+{% block content %}
+{% if overdue_count %}
+<div class="alert alert-error mb-5" role="alert"><span class="text-error-500">{% icon 'alert' 20 %}</span><p class="text-sm text-gray-700 dark:text-gray-300"><strong>{{ overdue_count }} overdue.</strong> Deliver them, or reschedule with a reason so the client and your manager know.</p></div>
+{% endif %}
+
+{% if reviews %}
+<div class="card mb-5"><div class="card-header"><h2 class="card-title">Waiting for your review</h2><span class="badge badge-amber">{{ reviews|length }}</span></div>
+  <ul class="divide-y divide-gray-100 dark:divide-gray-800">
+    {% for d in reviews %}<li class="flex items-center justify-between gap-3 px-5 py-3"><div class="min-w-0"><a href="{% url 'crm:deliverable_detail' d.pk %}" class="block truncate text-sm font-medium text-gray-800 hover:text-brand-500 dark:text-white/90">{{ d.title }} for {{ d.client.display_name }}</a><p class="text-theme-xs text-gray-500">{{ d.assignee|uname }} · {{ d.review_note|truncatechars:70 }}</p></div><a href="{% url 'crm:deliverable_detail' d.pk %}" class="btn btn-primary btn-sm">Review</a></li>{% endfor %}
+  </ul></div>
+{% endif %}
+
+<nav class="mb-5 flex gap-2 overflow-x-auto pb-1" aria-label="Deliverable lists" style="scrollbar-width: none">
+  {% for key, label, n in tabs %}<a href="?tab={{ key }}{% if target.pk != request.user.pk %}&who={{ target.pk }}{% endif %}" class="btn btn-sm shrink-0 {% if tab == key %}btn-primary{% else %}btn-secondary{% endif %}">{{ label }}{% if n %} <span class="{% if tab == key %}opacity-80{% else %}text-gray-500{% endif %}">{{ n }}</span>{% endif %}</a>{% endfor %}
+</nav>
+
+{% if rows %}
+<ul class="grid grid-cols-1 gap-4 xl:grid-cols-2">
+  {% for d in rows %}{% include "crm/deliverables/_card.html" with d=d now=now %}{% endfor %}
+</ul>
+{% else %}
+<div class="card"><div class="card-body">{% include "crm/components/empty_state.html" with title="Nothing here" text="You are clear for this list. New deliverables are created automatically from each client plan, 30 days ahead." icon="check" %}</div></div>
+{% endif %}
+
+<div class="card mt-8" x-data>
+  <div class="card-header"><h2 class="card-title">Put my work on my phone calendar</h2></div>
+  <div class="card-body space-y-3">
+    <p class="muted">One calendar link shows your deliverables, tasks and lead follow-ups on your phone, each with an alert. In Google Calendar choose Other calendars, From URL. On iPhone add a subscribed calendar. Keep the link private: anyone who has it can see your list.</p>
+    <div class="flex flex-wrap items-center gap-2">
+      <p class="min-w-0 flex-1 break-all rounded-lg border border-gray-200 px-3 py-2 font-mono text-theme-xs dark:border-gray-800">{{ feed_url }}</p>
+      <button type="button" class="btn btn-secondary" data-copy="{{ feed_url }}" data-copy-message="Calendar link copied">{% icon 'copy' 16 %} Copy</button>
+      <form method="post" action="{% url 'crm:calendar_feed_reset' %}" data-confirm="Change the link?" data-confirm-body="The old link stops working. You will need to subscribe again with the new one.">{% csrf_token %}<button class="btn btn-secondary">New link</button></form>
+    </div>
+    <p class="text-theme-xs text-gray-500 dark:text-gray-400">Alerts on your phone also arrive as push notifications when they are switched on in your profile.</p>
+  </div>
+</div>
+{% include "crm/deliverables/_modals.html" %}
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Standard plan: {{ service.name }}{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-start justify-between gap-3">
+  <div>
+    <h1 class="page-title">Standard monthly plan: {{ service.name }}</h1>
+    <p class="muted mt-1">What a client normally gets each month with this service. When a contract is activated, these are copied onto the client plan, where each client's executive can add, remove or change them.</p>
+  </div>
+  <div class="flex flex-wrap gap-2"><a href="{% url 'crm:service_list' %}" class="btn btn-secondary">Service catalogue</a><a href="{% url 'crm:template_item_create' service.pk %}" class="btn btn-primary">{% icon 'plus' 18 %} Add item</a></div>
+</div>
+{% endblock %}
+{% block content %}
+<div class="card">
+  <ul class="divide-y divide-gray-100 dark:divide-gray-800">
+    {% for i in items %}
+    <li class="flex flex-wrap items-start justify-between gap-3 px-5 py-4">
+      <div class="min-w-0"><p class="text-base font-medium text-gray-800 dark:text-white/90">{{ i.title }}{% if i.quantity > 1 %} <span class="font-normal text-gray-500">x{{ i.quantity }} each time</span>{% endif %}</p>
+        <p class="mt-0.5 text-sm text-gray-600 dark:text-gray-400">{% if i.frequency == 'weekly' %}Every week{% elif i.frequency == 'monthly' %}Every month{% elif i.frequency == 'quarterly' %}Every 3 months{% else %}Once{% endif %}{% if i.weekdays %} on days {{ i.weekdays }}{% endif %}{% if i.month_days %} on day {{ i.month_days }}{% endif %}, by {{ i.due_time|time:"g:i A" }}{% if i.handled_by %} · {{ i.handled_by }}{% endif %}{% if i.requires_review %} · review{% endif %}{% if i.needs_client_approval %} · client approves{% endif %}</p></div>
+      <div class="flex gap-2"><a href="{% url 'crm:template_item_edit' i.pk %}" class="btn btn-secondary btn-sm">Edit</a>
+        <form method="post" action="{% url 'crm:template_item_delete' i.pk %}" data-confirm="Remove this item?" data-confirm-body="Existing client plans keep their own copy." data-confirm-danger="1">{% csrf_token %}<button class="btn btn-secondary btn-sm text-error-600">Remove</button></form></div>
+    </li>
+    {% empty %}<li>{% include "crm/components/empty_state.html" with title="No standard items yet" text="Add the items this service normally includes each month, for example 4 posters on Sundays and a monthly report on the 28th." icon="tasks" action_url=None %}</li>{% endfor %}
+  </ul>
+</div>
+{% if service.deliverables %}<div class="card mt-6"><div class="card-header"><h2 class="card-title">The service description says</h2></div><div class="card-body"><p class="whitespace-pre-line text-sm text-gray-700 dark:text-gray-300">{{ service.deliverables }}</p><p class="muted mt-2">Until you add items above, a client plan lists these lines switched off, so someone picks the days.</p></div></div>{% endif %}
+{% endblock %}

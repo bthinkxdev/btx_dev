@@ -45,6 +45,8 @@ def _finish_login(request, user, nxt):
                   'last_seen_at': timezone.now(), 'ended_at': None})
     audit.security_event('login_success', user=user, request=request)
     audit.log('auth.login', user, actor=user)
+    from crm.modules.worktime import services as worktime
+    worktime.on_login(user)
     return redirect(_safe_next(request, nxt))
 
 
@@ -55,6 +57,12 @@ def login_view(request):
     if request.user.is_authenticated:
         return redirect('crm:home')
     ctx = {'next': request.GET.get('next', ''), 'username': ''}
+    if request.method == 'GET' and request.GET.get('report'):
+        from crm.modules.performance import daily
+        shown = daily.report_from_token(request.GET['report'])
+        if shown is not None:
+            daily.mark_shown(shown)
+            ctx['report'], ctx['report_token'] = shown, daily.token_for(shown)
     if request.method == 'POST':
         identifier = request.POST.get('username', '').strip()
         password = request.POST.get('password', '')
@@ -125,12 +133,23 @@ def two_factor_view(request):
 @require_POST
 def logout_view(request):
     from crm.models import UserSession
+    report = None
     if request.user.is_authenticated:
         audit.security_event('logout', user=request.user, request=request)
+        from crm.modules.worktime import services as worktime
+        worktime.on_logout(request.user, request.session.session_key or '')
+        from crm.modules.performance import daily
+        try:
+            report = daily.generate(request.user)
+        except Exception:
+            report = None
         if request.session.session_key:
             UserSession.objects.filter(session_key=request.session.session_key).update(ended_at=timezone.now())
     logout(request)
     messages.success(request, 'You have signed out.')
+    if report is not None:
+        from crm.modules.performance import daily
+        return redirect(reverse('crm:login') + '?report=' + daily.token_for(report))
     return redirect('crm:login')
 
 

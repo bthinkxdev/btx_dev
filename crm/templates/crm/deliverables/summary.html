@@ -1,0 +1,43 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{{ client.display_name }} deliveries{% endblock %}
+{% block content %}
+<div class="mb-5 flex flex-wrap items-start justify-between gap-3">
+  <div>
+    <nav aria-label="Breadcrumb" class="mb-1"><ol class="flex flex-wrap items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400"><li class="inline-flex items-center gap-1.5"><a href="{% url 'crm:client_detail' client.pk %}" class="hover:text-gray-700 dark:hover:text-gray-200">{{ client.display_name }}</a>{% icon 'chevron_right' 14 %}</li><li>Deliveries</li></ol></nav>
+    <h1 class="page-title">{{ period|date:"F Y" }} delivery summary</h1>
+    <p class="muted mt-1">What was promised this month and what was delivered, for {{ client.display_name }}.</p>
+  </div>
+  <div class="flex flex-wrap items-center gap-2">
+    <a class="btn btn-secondary btn-sm" href="?month={{ prev_month|date:'Y-m-d' }}" aria-label="Previous month">{% icon 'chevron_left' 16 %}</a>
+    <a class="btn btn-secondary btn-sm" href="{% url 'crm:client_deliverables' client.pk %}">This month</a>
+    <a class="btn btn-secondary btn-sm" href="?month={{ next_month|date:'Y-m-d' }}" aria-label="Next month">{% icon 'chevron_right' 16 %}</a>
+    {% if plans %}{% for p in plans %}<a href="{% url 'crm:delivery_plan' p.pk %}" class="btn btn-secondary">{% if plans|length > 1 %}Plan: {{ p.contract.title|truncatechars:24 }}{% else %}Monthly plan{% endif %}</a>{% endfor %}
+    {% else %}{% for c in client.contracts.all %}{% if c.status == 'active' %}<form method="post" action="{% url 'crm:contract_plan' c.pk %}">{% csrf_token %}<button class="btn btn-primary">Create the monthly plan</button></form>{% endif %}{% endfor %}{% endif %}
+    <a href="{% url 'crm:client_assets' client.pk %}" class="btn btn-secondary">Files and links</a>
+    {% if can_send %}<form method="post" action="{% url 'crm:client_summary_send' client.pk %}" data-confirm="Email this summary to the client?" data-confirm-body="It lists what was delivered in {{ period|date:'F Y' }}.">{% csrf_token %}<input type="hidden" name="month" value="{{ period|date:'Y-m-d' }}"><button class="btn btn-primary" data-loading-text="Sending…">{% icon 'mail' 16 %} Email to client</button></form>{% endif %}
+    <button type="button" class="btn btn-secondary" onclick="window.print()">Print</button>
+  </div>
+</div>
+
+<div class="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+  <div class="card p-4"><p class="text-theme-xs text-gray-500">Delivered</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ summary.delivered }} of {{ summary.promised }}</p></div>
+  <div class="card p-4"><p class="text-theme-xs text-gray-500">Complete</p><p class="text-title-sm mt-1 font-bold {% if summary.percent >= 100 %}text-success-600{% else %}text-gray-800 dark:text-white/90{% endif %}">{{ summary.percent }}%</p></div>
+  <div class="card p-4"><p class="text-theme-xs text-gray-500">Still to come</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ summary.open }}</p></div>
+  <div class="card p-4"><p class="text-theme-xs text-gray-500">Delivered late</p><p class="text-title-sm mt-1 font-bold {% if summary.late %}text-warning-700 dark:text-orange-400{% else %}text-gray-800 dark:text-white/90{% endif %}">{{ summary.late }}</p></div>
+</div>
+
+{% for r in summary.rows %}
+<div class="card mb-4">
+  <div class="card-header"><div class="min-w-0"><h2 class="card-title">{{ r.title }}</h2>{% if r.category %}<p class="muted">{{ r.category }}</p>{% endif %}</div>
+    <div class="text-right"><p class="text-base font-semibold {% if r.delivered >= r.promised %}text-success-600{% else %}text-gray-800 dark:text-white/90{% endif %}">{{ r.delivered }} of {{ r.promised }}</p>{% if r.skipped %}<p class="text-theme-xs text-gray-500">{{ r.skipped }} skipped</p>{% endif %}</div></div>
+  <ul class="divide-y divide-gray-100 dark:divide-gray-800">
+    {% for d in r.items %}<li class="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm">
+      <div class="min-w-0"><a class="font-medium text-gray-800 hover:text-brand-500 dark:text-white/90" href="{% url 'crm:deliverable_detail' d.pk %}">{{ d.due_date|date:"D j M" }}</a>{% if d.reschedule_count %}<span class="text-theme-xs text-gray-500"> · promised {{ d.original_due_date|date:"j M" }}</span>{% endif %}
+        {% if d.delivery_note %}<p class="text-theme-xs text-gray-500 dark:text-gray-400">{{ d.delivery_note }}</p>{% endif %}</div>
+      <div class="flex items-center gap-2">{% if d.status == 'delivered' and d.was_late_against_contract %}<span class="badge badge-amber">Late</span>{% endif %}{% badge d.status d.get_status_display d.tone %}</div></li>{% endfor %}
+  </ul>
+</div>
+{% empty %}
+<div class="card"><div class="card-body">{% include "crm/components/empty_state.html" with title="Nothing was due this month" text="Deliverables appear here once the client has a monthly plan." icon="tasks" %}</div></div>
+{% endfor %}
+{% endblock %}

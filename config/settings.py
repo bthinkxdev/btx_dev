@@ -35,6 +35,11 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'dev-secret-change-in-productio
 
 DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() in ('1', 'true', 'yes')
 
+if not DEBUG and SECRET_KEY.startswith('dev-secret'):
+    import warnings
+    warnings.warn('DJANGO_SECRET_KEY is not set: this production server is using the development secret key. '
+                  'Set a long random DJANGO_SECRET_KEY in the environment.', RuntimeWarning)
+
 ALLOWED_HOSTS = [
     h.strip()
     for h in os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,*').split(',')

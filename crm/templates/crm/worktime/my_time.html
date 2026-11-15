@@ -1,0 +1,54 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{% if own %}My time{% else %}{{ person|uname }}, working time{% endif %}{% endblock %}
+{% block page_header %}
+<div class="mb-5 flex flex-wrap items-start justify-between gap-3">
+  <div>
+    {% if not own %}<nav aria-label="Breadcrumb" class="mb-1"><ol class="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400"><li class="inline-flex items-center gap-1.5"><a href="{% url 'crm:team_time' %}" class="hover:text-gray-700 dark:hover:text-gray-200">Team time</a>{% icon 'chevron_right' 14 %}</li><li>{{ person|uname }}</li></ol></nav>{% endif %}
+    <h1 class="page-title">{% if own %}My working time{% else %}{{ person|uname }}{% endif %}</h1>
+    <p class="muted mt-1">Working time is from login to logout, minus breaks. Taking a break stops the clock; pressing Back to work starts it again.</p>
+  </div>
+  {% if own and tracked %}
+  <div class="flex gap-2">
+    {% if now_day.state == 'break' %}<form method="post" action="{% url 'crm:break_end' %}">{% csrf_token %}<button class="btn btn-primary" data-loading-text="Saving…">Back to work</button></form>
+    {% else %}<form method="post" action="{% url 'crm:break_start' %}">{% csrf_token %}<button class="btn btn-secondary" data-loading-text="Saving…">{% icon 'clock' 16 %} Take a break</button></form>{% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+{% block content %}
+{% if not tracked %}
+<div class="card"><div class="card-body">{% include "crm/components/empty_state.html" with title="Working time is not tracked for this account" text="Time is recorded for the sales and delivery team. Administrators and the owner are not tracked." icon="clock" %}</div></div>
+{% else %}
+{% if own %}<p class="mb-4 rounded-xl bg-gray-50 px-4 py-3 text-theme-xs text-gray-600 dark:bg-white/[0.03] dark:text-gray-400"><strong>What is recorded:</strong> {{ notice_text }}</p>{% endif %}
+<div class="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-5">
+  <div class="card p-4"><p class="text-theme-xs text-gray-500 dark:text-gray-400">Working today</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ now_day.worked_text }}</p></div>
+  <div class="card p-4"><p class="text-theme-xs text-gray-500 dark:text-gray-400">Breaks today</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ now_day.break_text }}<span class="text-sm font-normal text-gray-500"> · {{ now_day.break_count }}</span></p></div>
+  <div class="card p-4"><p class="text-theme-xs text-gray-500 dark:text-gray-400">First login</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{% if now_day.first_in %}{{ now_day.first_in|tm }}{% else %}—{% endif %}</p></div>
+  <div class="card p-4"><p class="text-theme-xs text-gray-500 dark:text-gray-400">This week</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ week_text }}</p></div>
+  <div class="card p-4"><p class="text-theme-xs text-gray-500 dark:text-gray-400">This month</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ month_text }}</p></div>
+</div>
+
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+  <div class="card"><div class="card-header"><h2 class="card-title">Today</h2>{% if now_day.state == 'break' %}<span class="badge badge-amber">On break</span>{% elif now_day.state == 'working' %}<span class="badge badge-green">Working</span>{% elif now_day.state == 'off' %}<span class="badge badge-grey">Logged out</span>{% endif %}</div>
+    <ol class="divide-y divide-gray-100 dark:divide-gray-800">
+      {% for e in timeline %}<li class="flex items-center justify-between gap-3 px-5 py-3 text-sm"><span class="flex items-center gap-2 text-gray-700 dark:text-gray-300"><span class="h-2 w-2 rounded-full {% if e.kind == 'in' or e.kind == 'back' %}bg-success-500{% elif e.kind == 'break' %}bg-warning-500{% else %}bg-gray-400{% endif %}"></span>{{ e.label }}</span><span class="font-medium text-gray-800 dark:text-white/90">{{ e.at|tm }}</span></li>
+      {% empty %}<li class="px-5 py-5 text-sm text-gray-500">Nothing recorded today yet.</li>{% endfor %}
+    </ol></div>
+
+  <div class="card xl:col-span-2"><div class="card-header"><h2 class="card-title">Recent days</h2></div>
+    <div class="table-wrap"><table class="data-table responsive-cards">
+      <thead class="border-b border-gray-100 dark:border-gray-800"><tr><th class="th">Day</th><th class="th">Logged in</th><th class="th">Logged out</th><th class="th">Breaks</th><th class="th text-right">Working time</th></tr></thead>
+      <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+      {% for r in rows %}{% with s=r.s %}
+        <tr>
+          <td class="td" data-label="Day">{{ r.day|date:"D j M" }}{% if r.day == today %} <span class="badge badge-brand">Today</span>{% endif %}</td>
+          <td class="td" data-label="Logged in">{% if s %}{{ s.first_in|tm }}{% else %}<span class="text-gray-400">—</span>{% endif %}</td>
+          <td class="td" data-label="Logged out">{% if s %}{% if s.last_out %}{{ s.last_out|tm }}{% else %}<span class="text-success-600">still working</span>{% endif %}{% else %}<span class="text-gray-400">—</span>{% endif %}</td>
+          <td class="td" data-label="Breaks">{% if s %}{{ s.break_text }}{% if s.break_count %} <span class="text-theme-xs text-gray-500">({{ s.break_count }})</span>{% endif %}{% else %}—{% endif %}</td>
+          <td class="td text-right font-medium" data-label="Working time">{% if s %}{{ s.worked_text }}{% else %}<span class="text-gray-400">—</span>{% endif %}</td>
+        </tr>
+      {% endwith %}{% endfor %}
+      </tbody></table></div></div>
+</div>
+{% endif %}
+{% endblock %}

@@ -715,8 +715,21 @@ def system_stage(lead: Lead, to: str, reason: str, actor=None):
     return lead
 
 
+def _credit_for(lead: Lead, actor, credit_to: str | None):
+    """Whose performance a win counts towards. The owner closing their own lead is credited. When someone else closes it,
+    they say whether the credit is theirs or the owner's; without an answer it stays with the owner."""
+    owner = lead.owner
+    if owner is None:
+        return actor
+    if actor is None or actor.pk == owner.pk:
+        return owner
+    if credit_to not in (None, 'me', 'owner'):
+        raise LeadError('Choose who gets the credit for this win.')
+    return actor if credit_to == 'me' else owner
+
+
 def mark_won(lead: Lead, actor, *, won_value: Decimal, quotation=None, note: str = '', expected_start=None,
-             client=None, create_client: bool = True) -> Lead:
+             client=None, create_client: bool = True, credit_to: str | None = None) -> Lead:
     from crm.models import Quotation
     from crm.modules.clients.services import client_from_lead
     if D(won_value) <= 0:
@@ -738,6 +751,8 @@ def mark_won(lead: Lead, actor, *, won_value: Decimal, quotation=None, note: str
         lead.won_value = D(won_value)
         lead.value = D(won_value)
         lead.won_at = timezone.now()
+        lead.closed_by = actor
+        lead.credited_to = _credit_for(lead, actor, credit_to)
         lead.expected_start = expected_start
         lead.follow_ups.filter(status='pending').update(status='cancelled', completed_at=timezone.now(),
                                                         notes='Lead won', completed_by=actor)
@@ -745,11 +760,13 @@ def mark_won(lead: Lead, actor, *, won_value: Decimal, quotation=None, note: str
         lead.next_follow_up_at = None
         lead.next_action = ''
         _touch(lead)
-        _save(lead, actor, ['client', 'won_value', 'value', 'won_at', 'expected_start', 'stage', 'stage_changed_at',
+        _save(lead, actor, ['client', 'won_value', 'value', 'won_at', 'closed_by', 'credited_to', 'expected_start', 'stage', 'stage_changed_at',
                             'probability', 'next_follow_up_at', 'next_action', 'last_activity_at', 'stale_alert_level'])
         if client is not None:
             Quotation.objects.filter(lead=lead, client__isnull=True).update(client=client)
-        audit.log('lead.won', lead, actor=actor, changes={'won_value': won_value, 'client': str(client) if client else ''})
+        audit.log('lead.won', lead, actor=actor, changes={'won_value': won_value, 'client': str(client) if client else '',
+                                                             'closed_by': str(actor) if actor else '', 'owner': str(lead.owner) if lead.owner else '',
+                                                             'credited_to': str(lead.credited_to) if lead.credited_to else ''})
         from crm.modules.payroll.services import accrue_commission_for_won
         accrue_commission_for_won(lead)
     return lead

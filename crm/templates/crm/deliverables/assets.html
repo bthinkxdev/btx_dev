@@ -1,0 +1,27 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{{ client.display_name }} files{% endblock %}
+{% block content %}
+<div class="mb-5 flex flex-wrap items-start justify-between gap-3">
+  <div>
+    <nav aria-label="Breadcrumb" class="mb-1"><ol class="flex flex-wrap items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400"><li class="inline-flex items-center gap-1.5"><a href="{% url 'crm:client_deliverables' client.pk %}" class="hover:text-gray-700 dark:hover:text-gray-200">{{ client.display_name }}</a>{% icon 'chevron_right' 14 %}</li><li>Files and links</li></ol></nav>
+    <h1 class="page-title">Everything we delivered</h1>
+    <p class="muted mt-1">Files, links, ads and reports attached to {{ client.display_name }}'s deliverables, newest first.</p>
+  </div>
+</div>
+<div class="card">
+  <form method="get" class="flex flex-col gap-3 border-b border-gray-100 p-4 sm:flex-row dark:border-gray-800">
+    <div class="relative min-w-0 flex-1"><span class="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-gray-500">{% icon 'search' 18 %}</span><input type="search" name="q" value="{{ q }}" placeholder="Search by file, ad or report name" aria-label="Search" class="form-input pl-11"></div>
+    <select name="kind" class="form-select w-full sm:w-44" data-autosubmit aria-label="Type"><option value="">All types</option>{% for k, label in kinds %}<option value="{{ k }}" {% if kind == k %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+    <button class="btn btn-secondary">Search</button>
+  </form>
+  <ul class="divide-y divide-gray-100 dark:divide-gray-800">
+    {% for a in assets %}
+    <li class="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+      <div class="min-w-0"><a class="block truncate text-sm font-medium text-gray-800 hover:text-brand-500 dark:text-white/90" href="{% url 'crm:deliverable_asset' a.deliverable_id a.pk %}" {% if a.url and not a.file %}target="_blank" rel="noopener noreferrer"{% endif %}>{{ a.name }}{% if a.version > 1 %} <span class="text-gray-500">v{{ a.version }}</span>{% endif %}</a>
+        <p class="text-theme-xs text-gray-500">{{ a.get_kind_display }} · <a class="btn-link" href="{% url 'crm:deliverable_detail' a.deliverable_id %}">{{ a.deliverable.title }}, {{ a.deliverable.period|date:"M Y" }}</a> · {{ a.added_by|uname }} · {{ a.created_at|d }}</p></div>
+      <a class="btn btn-secondary btn-sm" href="{% url 'crm:deliverable_asset' a.deliverable_id a.pk %}" {% if a.url and not a.file %}target="_blank" rel="noopener noreferrer"{% endif %}>{% if a.file %}Download{% else %}Open{% endif %}</a>
+    </li>
+    {% empty %}<li>{% include "crm/components/empty_state.html" with filtered=q title="Nothing attached yet" text="When a deliverable is marked delivered, add the file or link on its page and it is kept here for the client." icon="folder" %}</li>{% endfor %}
+  </ul>
+</div>
+{% endblock %}

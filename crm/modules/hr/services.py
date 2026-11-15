@@ -53,9 +53,13 @@ def can_approve_for(user, emp: Employee) -> bool:
 
 # ---------------------------------------------------------------- employees
 
-def create_employee(actor, *, create_login=False, role=None, **fields) -> Employee:
+def create_employee(actor, *, create_login=False, role=None, link_user=None, **fields) -> Employee:
     with transaction.atomic():
         e = Employee(**fields, created_by=actor)
+        if link_user is not None:
+            if Employee.objects.filter(user=link_user).exists():
+                raise HRError('That login already has an HR record.')
+            e.user = link_user
         if Employee.objects.filter(work_email__iexact=e.work_email).exists():
             raise HRError('An employee with this work email exists.')
         e.save()
@@ -145,10 +149,11 @@ def offboarding_preview(e: Employee) -> dict:
     from crm.models import FollowUp, Lead, Task, Ticket
     from crm.models.leads import OPEN_STAGES
     u = e.user
+    from . import handover
     return {'leads': Lead.objects.filter(owner=u, stage__in=OPEN_STAGES, archived_at__isnull=True).count(),
             'tasks': Task.objects.filter(assignee=u).exclude(status__in=['done', 'cancelled']).count(),
             'tickets': Ticket.objects.filter(assignee=u, status__in=['open', 'in_progress', 'waiting']).count(),
-            'followups': FollowUp.objects.filter(assignee=u, status='pending').count()}
+            'followups': FollowUp.objects.filter(assignee=u, status='pending').count(), **handover.preview(u)}
 
 
 def initiate_offboarding(e: Employee, actor, *, last_day: date, reason: str):
@@ -165,7 +170,7 @@ def initiate_offboarding(e: Employee, actor, *, last_day: date, reason: str):
 
 def complete_exit(e: Employee, actor) -> dict:
     """On the last working day: reassign open work, deactivate the login and end sessions."""
-    summary = {'leads': {}, 'tasks': 0, 'tickets': 0}
+    summary = {'leads': {}, 'tasks': 0, 'tickets': 0, 'accounts': {}}
     with transaction.atomic():
         e = Employee.objects.select_for_update().get(pk=e.pk)
         if e.status == 'exited':
@@ -175,9 +180,12 @@ def complete_exit(e: Employee, actor) -> dict:
             from crm.models import Task, Ticket
             from crm.modules.leads.services import reassign_open_work
             summary['leads'] = reassign_open_work(u, actor, reason=f'{e.name} left the company')
-            to = e.manager.user if e.manager_id and e.manager.user_id else None
-            summary['tasks'] = Task.objects.filter(assignee=u).exclude(status__in=['done', 'cancelled']).update(assignee=to)
-            summary['tickets'] = Ticket.objects.filter(assignee=u, status__in=['open', 'in_progress', 'waiting']).update(assignee=to)
+            from . import handover
+            to = handover.target_for(e)
+            summary['accounts'] = handover.reassign_accounts(u, to, actor, reason=f'{e.name} left the company')
+            summary['tasks'] = summary['accounts'].get('tasks', 0) + (
+                Task.objects.filter(assignee=u).exclude(status__in=['done', 'cancelled']).update(assignee=to) if to else 0)
+            summary['tickets'] = Ticket.objects.filter(assignee=u, status__in=['open', 'in_progress', 'waiting']).update(assignee=to) if to else 0
             u.is_active = False
             u.save(update_fields=['is_active'])
             end_sessions(u)
@@ -186,7 +194,8 @@ def complete_exit(e: Employee, actor) -> dict:
     mgr = e.manager.user if e.manager_id and e.manager.user_id else None
     notify.notify([mgr] if mgr else notify.owners(), f'{e.name} exited: work reassigned',
                   body=f'Leads {summary["leads"].get("moved", 0) if isinstance(summary["leads"], dict) else 0}, tasks {summary["tasks"]}, '
-                       f'tickets {summary["tickets"]}.', url=emp_url(e), event_type='offboarding', level='info', email=True)
+                       f'tickets {summary["tickets"]}, customers {summary["accounts"].get("clients", 0)}, contracts {summary["accounts"].get("contracts", 0)}, '
+                       f'deliverables {summary["accounts"].get("deliverables", 0)}. Share them out on purpose.', url=emp_url(e), event_type='offboarding', level='info', email=True)
     return summary
 
 
@@ -210,17 +219,11 @@ def exits_due() -> int:
 # ---------------------------------------------------------------- calendar
 
 def is_working_day(d: date) -> bool:
-    return d.weekday() != 6 and not Holiday.objects.filter(holiday_date=d).exists()
+    return india.is_working_day(d)
 
 
 def working_days(start: date, end: date) -> int:
-    holidays = set(Holiday.objects.filter(holiday_date__range=(start, end)).values_list('holiday_date', flat=True))
-    n, d = 0, start
-    while d <= end:
-        if d.weekday() != 6 and d not in holidays:
-            n += 1
-        d += timedelta(days=1)
-    return n
+    return len(india.working_days_list(start, end))
 
 
 # ---------------------------------------------------------------- attendance

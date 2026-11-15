@@ -28,6 +28,17 @@
 </div>
 {% endif %}
 
+{% if deliverables is not None %}
+<section class="card mb-6" aria-labelledby="h-deliver">
+  <div class="card-header"><h2 id="h-deliver" class="card-title">Client deliverables due {% if deliverables %}{% badge 'overdue' deliverables|length %}{% endif %}</h2><a class="btn-link text-sm" href="{% url 'crm:deliverable_mine' %}">All my deliverables</a></div>
+  <div class="card-body">
+    {% if deliverables %}<ul class="grid grid-cols-1 gap-4 xl:grid-cols-2">{% for d in deliverables %}{% include "crm/deliverables/_card.html" with d=d now=now %}{% endfor %}</ul>
+    {% else %}<p class="text-sm text-gray-500">Nothing due for a client today. 👏</p>{% endif %}
+  </div>
+</section>
+{% include "crm/deliverables/_modals.html" %}
+{% endif %}
+
 <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
   {% if overdue is not None %}
   <section class="card" aria-labelledby="h-overdue">

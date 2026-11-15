@@ -1,0 +1,41 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Team time{% endblock %}
+{% block page_header %}
+<div class="mb-5 flex flex-wrap items-start justify-between gap-3">
+  <div>
+    <h1 class="page-title">Team working time</h1>
+    <p class="muted mt-1">Login, logout, breaks and working time for each person ({{ people_count }}). Administrators are not tracked.</p>
+  </div>
+  <div class="flex flex-wrap items-center gap-2">
+    <a class="btn btn-secondary btn-sm" href="?day={{ prev_day|date:'Y-m-d' }}" aria-label="Previous day">{% icon 'chevron_left' 16 %}</a>
+    <form method="get"><label class="sr-only" for="tt-day">Day</label><input id="tt-day" type="date" name="day" value="{{ day|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}" class="form-input h-10 w-auto" data-autosubmit></form>
+    {% if next_day %}<a class="btn btn-secondary btn-sm" href="?day={{ next_day|date:'Y-m-d' }}" aria-label="Next day">{% icon 'chevron_right' 16 %}</a>{% endif %}
+    <a class="btn btn-secondary btn-sm" href="{% url 'crm:team_time' %}">Today</a>
+    <a class="btn btn-primary btn-sm" href="{% url 'crm:team_time_report' %}">{% icon 'chart' 16 %} Report</a>
+    {% can 'attendance' 'export' as cx %}{% if cx %}<a class="btn btn-secondary" href="?export=csv&from={{ week_ago|date:'Y-m-d' }}&to={{ today|date:'Y-m-d' }}">{% icon 'download' 16 %} Export 7 days</a>{% endif %}
+  </div>
+</div>
+{% endblock %}
+{% block content %}
+<div class="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
+  <div class="card p-4"><p class="text-theme-xs text-gray-500 dark:text-gray-400">{% if is_today %}Working now{% else %}Day{% endif %}</p><p class="text-title-sm mt-1 font-bold text-success-600">{% if is_today %}{{ totals.working_now }}{% else %}{{ day|date:"j M" }}{% endif %}</p></div>
+  <div class="card p-4"><p class="text-theme-xs text-gray-500 dark:text-gray-400">{% if is_today %}On a break{% else %}Breaks{% endif %}</p><p class="text-title-sm mt-1 font-bold {% if totals.on_break %}text-warning-700 dark:text-orange-400{% else %}text-gray-800 dark:text-white/90{% endif %}">{% if is_today %}{{ totals.on_break }}{% else %}{{ totals.break_text }}{% endif %}</p></div>
+  <div class="card p-4"><p class="text-theme-xs text-gray-500 dark:text-gray-400">No login</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ totals.no_login }}</p></div>
+  <div class="card p-4"><p class="text-theme-xs text-gray-500 dark:text-gray-400">Total working</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ totals.worked_text }}</p></div>
+  <div class="card p-4"><p class="text-theme-xs text-gray-500 dark:text-gray-400">Total breaks</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ totals.break_text }}</p></div>
+</div>
+<div class="card"><div class="table-wrap"><table class="data-table responsive-cards">
+  <thead class="border-b border-gray-100 dark:border-gray-800"><tr><th class="th">Person</th><th class="th">Status</th><th class="th">First login</th><th class="th">Last logout</th><th class="th">Breaks</th><th class="th text-right">Working time</th></tr></thead>
+  <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+  {% for r in rows %}{% with s=r.s %}
+    <tr data-href="{% url 'crm:person_time' r.user.pk %}">
+      <td class="td" data-label="Person"><a class="td-strong hover:text-brand-500" href="{% url 'crm:person_time' r.user.pk %}">{{ r.user|uname }}</a></td>
+      <td class="td" data-label="Status">{% if r.state == 'working' %}<span class="badge badge-green">Working</span>{% elif r.state == 'break' %}<span class="badge badge-amber">On break</span>{% elif r.state == 'off' %}<span class="badge badge-grey">{{ r.state_text }}</span>{% else %}<span class="badge badge-red">No login</span>{% endif %}</td>
+      <td class="td" data-label="First login">{% if s %}{{ s.first_in|tm }}{% else %}<span class="text-gray-400">—</span>{% endif %}</td>
+      <td class="td" data-label="Last logout">{% if s %}{% if s.last_out %}{{ s.last_out|tm }}{% else %}<span class="text-success-600">still working</span>{% endif %}{% else %}<span class="text-gray-400">—</span>{% endif %}</td>
+      <td class="td" data-label="Breaks">{% if s %}{{ s.break_text }}{% if s.break_count %} <span class="text-theme-xs text-gray-500">({{ s.break_count }})</span>{% endif %}{% if r.long_break %} <span class="badge badge-amber">Long break</span>{% endif %}{% else %}—{% endif %}</td>
+      <td class="td text-right font-medium" data-label="Working time">{% if s %}{{ s.worked_text }}{% else %}<span class="text-gray-400">—</span>{% endif %}</td>
+    </tr>
+  {% endwith %}{% empty %}<tr><td colspan="6">{% include "crm/components/empty_state.html" with title="No one to show" text="Working time is shown for the people in your team." icon="users" %}</td></tr>{% endfor %}
+  </tbody></table></div></div>
+{% endblock %}

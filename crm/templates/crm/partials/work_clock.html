@@ -1,0 +1,14 @@
+{% load crm_tags %}
+{# The running work clock and the Break button. Shown in the header on wider screens, and in a strip under it on a phone. #}
+<div class="work-clock flex items-center gap-2" id="{{ clock_id }}" data-state="{{ work.state }}" data-worked="{{ work.worked }}" data-break="{{ work.break_seconds }}">
+  <a href="{% url 'crm:my_time' %}" class="inline-flex h-10 items-center gap-2 rounded-lg border border-gray-200 px-3 text-sm font-medium dark:border-gray-800 {% if work.state == 'break' %}text-warning-700 dark:text-orange-400{% else %}text-gray-700 dark:text-gray-300{% endif %}" aria-label="My working time">
+    <span class="h-2 w-2 shrink-0 rounded-full {% if work.state == 'break' %}bg-warning-500{% else %}bg-success-500{% endif %}"></span>
+    <span>{% if work.state == 'break' %}On break{% else %}Working{% endif %}</span>
+    <span data-clock>{% if work.state == 'break' %}{{ work.break_text }}{% else %}{{ work.worked_text }}{% endif %}</span>
+  </a>
+  {% if work.state == 'break' %}
+    <form method="post" action="{% url 'crm:break_end' %}">{% csrf_token %}<button class="btn btn-primary btn-sm" data-loading-text="…">Back to work</button></form>
+  {% else %}
+    <form method="post" action="{% url 'crm:break_start' %}">{% csrf_token %}<button class="btn btn-secondary btn-sm" data-loading-text="…">{% icon 'clock' 14 %}<span class="ml-1">Take a break</span></button></form>
+  {% endif %}
+</div>

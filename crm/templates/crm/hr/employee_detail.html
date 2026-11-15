@@ -1,6 +1,6 @@
 {% extends "crm/base.html" %}{% load crm_tags %}
 {% block title %}{{ e.name }}{% endblock %}
-{% block banners %}{% if e.status == 'on_notice' %}<div class="alert alert-warning mb-5"><p class="text-sm">On notice until {{ e.last_working_day|d }} ({{ e.exit_reason }}). On that day open work is reassigned and the login is disabled.{% if preview %} Open now: {{ preview.leads }} leads, {{ preview.tasks }} tasks, {{ preview.tickets }} tickets, {{ preview.followups }} follow-ups.{% endif %}</p></div>{% endif %}{% endblock %}
+{% block banners %}{% if e.status == 'on_notice' %}<div class="alert alert-warning mb-5"><p class="text-sm">On notice until {{ e.last_working_day|d }} ({{ e.exit_reason }}). On that day open work is reassigned and the login is disabled.{% if preview %} Open now: {{ preview.leads }} leads, {{ preview.tasks }} tasks, {{ preview.tickets }} tickets, {{ preview.followups }} follow-ups, {{ preview.clients }} customers, {{ preview.contracts }} contracts, {{ preview.deliverables }} deliverables.{% endif %}</p></div>{% endif %}{% endblock %}
 {% block content %}
 <div class="card mb-6">
   <div class="flex flex-col gap-4 p-5 sm:p-6 lg:flex-row lg:items-start lg:justify-between">
@@ -17,6 +17,7 @@
   </div>
   <nav class="flex gap-6 overflow-x-auto border-t border-gray-100 px-5 sm:px-6 dark:border-gray-800" aria-label="Employee sections">
     <a href="?tab=overview" class="tab {% if tab == 'overview' %}tab-active{% else %}tab-inactive{% endif %}">Overview</a>
+    {% if hr and e.user_id %}<a href="{% url 'crm:staff_profile' e.user_id %}" class="tab tab-inactive">Performance</a>{% endif %}
     <a href="?tab=attendance" class="tab {% if tab == 'attendance' %}tab-active{% else %}tab-inactive{% endif %}">Attendance</a>
     <a href="?tab=leave" class="tab {% if tab == 'leave' %}tab-active{% else %}tab-inactive{% endif %}">Leave</a>
     <a href="?tab=documents" class="tab {% if tab == 'documents' %}tab-active{% else %}tab-inactive{% endif %}">Documents</a>

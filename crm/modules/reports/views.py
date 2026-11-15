@@ -59,6 +59,9 @@ _URL = {'owner': 'crm:dashboard_owner', 'sales': 'crm:dashboard_sales', 'finance
 
 @staff_required
 def dashboard_owner(request):
+    if request.GET.get('tab') == 'ai':
+        from crm.modules.desk import views as desk_views
+        return desk_views.render_home(request)
     return _dashboard(request, 'owner')
 
 

@@ -1,0 +1,145 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{{ plan.client.display_name }} plan{% endblock %}
+{% block banners %}
+  {% if plan.status == 'closed' %}<div class="alert alert-info mb-5"><p class="text-sm">This plan is closed because its contract {{ plan.contract.get_status_display|lower }}. Open items already started stay open. Edit the plan of the current contract instead.</p></div>
+  {% elif plan.status == 'paused' %}<div class="alert alert-warning mb-5"><span class="text-warning-500">{% icon 'alert' 20 %}</span><p class="text-sm">The contract is suspended, so no new deliverables are being created.</p></div>{% endif %}
+  {% if needs_schedule %}<div class="alert alert-warning mb-5" role="alert"><span class="text-warning-500">{% icon 'alert' 20 %}</span><p class="text-sm text-gray-700 dark:text-gray-300"><strong>{{ needs_schedule|length }} item{{ needs_schedule|length|pluralize }} need{{ needs_schedule|length|pluralize:"s," }} a schedule.</strong> They came from the service description and are switched off, so nothing is created yet. Open each one, choose the days, and switch it on.</p></div>{% endif %}
+  {% if plan.frozen_through %}<div class="alert alert-info mb-5"><p class="text-sm">Frozen through {{ plan.frozen_through|d }}. Edits to the plan do not change deliverables due on or before that date.</p></div>{% endif %}
+{% endblock %}
+{% block content %}
+<div class="mb-5">
+  <nav aria-label="Breadcrumb" class="mb-1"><ol class="flex flex-wrap items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
+    <li class="inline-flex items-center gap-1.5"><a href="{% url 'crm:client_deliverables' plan.client_id %}" class="hover:text-gray-700 dark:hover:text-gray-200">{{ plan.client.display_name }}</a>{% icon 'chevron_right' 14 %}</li>
+    <li>Monthly plan</li></ol></nav>
+  <div class="flex flex-wrap items-start justify-between gap-3">
+    <div>
+      <h1 class="page-title">Monthly plan for {{ plan.client.display_name }}</h1>
+      <p class="muted mt-1">Contract {{ plan.contract }} · {{ plan.contract.title }} · {% badge plan.status plan.get_status_display %}</p>
+      <p class="muted mt-1">Account owner <strong class="text-gray-800 dark:text-white/90">{{ plan.account_owner|uname }}</strong> · Work done by <strong class="text-gray-800 dark:text-white/90">{{ plan.assignee|uname }}</strong> unless an item says otherwise</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      {% if can_edit %}<a href="{% url 'crm:plan_item_create' plan.pk %}" class="btn btn-primary">{% icon 'plus' 18 %} Add item</a>
+        <button type="button" class="btn btn-secondary" @click="$store.modal.show('dl_adhoc')">One-off deliverable</button>{% endif %}
+      {% if can_assign %}<button type="button" class="btn btn-secondary" @click="$store.modal.show('dl_plan_reassign')">Reassign client</button>{% endif %}
+      <div class="relative" x-data="{ o: false }" @click.outside="o = false">
+        <button type="button" class="btn btn-secondary" @click="o = !o">More {% icon 'chevron_down' 14 %}</button>
+        <div x-show="o" x-cloak class="shadow-theme-lg absolute right-0 z-99 mt-1 w-60 rounded-xl border border-gray-200 bg-white p-2 dark:border-gray-800 dark:bg-gray-900">
+          {% if can_edit %}<button type="button" class="menu-dropdown-item menu-dropdown-item-inactive w-full text-left" @click="o = false; $store.modal.show('dl_prefs')">Client preferences</button>
+          <form method="post" action="{% url 'crm:delivery_plan_action' plan.pk 'generate' %}">{% csrf_token %}<button class="menu-dropdown-item menu-dropdown-item-inactive w-full text-left">Create upcoming items now</button></form>{% endif %}
+          {% if can_freeze %}{% if plan.frozen_through %}<form method="post" action="{% url 'crm:delivery_plan_action' plan.pk 'unfreeze' %}">{% csrf_token %}<button class="menu-dropdown-item menu-dropdown-item-inactive w-full text-left">Lift the freeze</button></form>
+          {% else %}<button type="button" class="menu-dropdown-item menu-dropdown-item-inactive w-full text-left" @click="o = false; $store.modal.show('dl_freeze')">Freeze a month</button>{% endif %}{% endif %}
+          <a class="menu-dropdown-item menu-dropdown-item-inactive" href="{% url 'crm:client_deliverables' plan.client_id %}">Monthly delivery summary</a>
+          <a class="menu-dropdown-item menu-dropdown-item-inactive" href="{% url 'crm:client_assets' plan.client_id %}">Files and links</a>
+          <a class="menu-dropdown-item menu-dropdown-item-inactive" href="{% url 'crm:deliverable_list' %}?client={{ plan.client_id }}">All deliverables</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+  <div class="space-y-6 xl:col-span-2">
+    <div class="card"><div class="card-header"><h2 class="card-title">What we promised every month</h2><span class="muted">{{ items|length }} item{{ items|length|pluralize }}</span></div>
+      <ul class="divide-y divide-gray-100 dark:divide-gray-800">
+        {% for i in items %}
+        <li class="px-5 py-4 {% if i.is_paused %}bg-gray-50/60 dark:bg-white/[0.02]{% endif %}">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="text-base font-medium text-gray-800 dark:text-white/90">{{ i.title }}{% if i.quantity > 1 %} <span class="font-normal text-gray-500">x{{ i.quantity }} each time</span>{% endif %}{% if i.is_paused %} <span class="badge badge-grey">{% if i.needs_schedule %}Needs a schedule{% else %}Paused{% endif %}</span>{% endif %}</p>
+              <p class="mt-0.5 text-sm text-gray-600 dark:text-gray-400">{{ i.schedule_text }}, by {{ i.due_time|time:"g:i A" }}{% if i.category %} · {{ i.category }}{% endif %}</p>
+              <p class="mt-0.5 text-theme-xs text-gray-500 dark:text-gray-400">{% if i.assignee %}{{ i.assignee|uname }}{% else %}Plan default{% endif %}{% if i.handled_by %} · {{ i.handled_by }}{% endif %}{% if i.requires_review %} · internal review{% endif %}{% if i.needs_client_approval %} · client approves{% endif %}{% if i.end_date %} · ends {{ i.end_date|d }}{% endif %}</p>
+              {% if i.preferences %}<p class="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">Preference: {{ i.preferences|truncatechars:120 }}</p>{% endif %}
+            </div>
+            {% if can_edit %}
+            <div class="flex flex-wrap gap-2">
+              <a href="{% url 'crm:plan_item_edit' i.pk %}" class="btn btn-secondary btn-sm">Edit</a>
+              {% if not i.is_paused %}<form method="post" action="{% url 'crm:plan_item_action' i.pk 'pause' %}">{% csrf_token %}<button class="btn btn-secondary btn-sm">Pause</button></form>{% endif %}
+              {% if i.is_paused %}<form method="post" action="{% url 'crm:plan_item_action' i.pk 'resume' %}">{% csrf_token %}<button class="btn btn-secondary btn-sm">Switch on</button></form>{% endif %}
+              <form method="post" action="{% url 'crm:plan_item_action' i.pk 'remove' %}" data-confirm="Remove &quot;{{ i.title }}&quot; from the plan?" data-confirm-body="Upcoming deliverables nobody has started are removed. Past and started ones stay on record." data-confirm-reason="required" data-confirm-danger="1">{% csrf_token %}<button class="btn btn-secondary btn-sm text-error-600">Remove</button></form>
+            </div>
+            {% endif %}
+          </div>
+        </li>
+        {% empty %}
+        <li>{% include "crm/components/empty_state.html" with title="No items on this plan yet" text="Add what you promised this client each month: posters, reels, a report. Each one gets dated deliverables automatically." icon="tasks" %}</li>
+        {% endfor %}
+      </ul>
+      {% if removed %}<details class="border-t border-gray-100 px-5 py-3 text-sm dark:border-gray-800"><summary class="cursor-pointer text-gray-500">Removed items ({{ removed|length }})</summary>
+        <ul class="mt-2 space-y-1 text-gray-600 dark:text-gray-400">{% for i in removed %}<li>{{ i.title }}: {{ i.removed_reason }}</li>{% endfor %}</ul></details>{% endif %}
+    </div>
+
+    <div class="card"><div class="card-header"><h2 class="card-title">Coming up</h2><a class="btn-link text-sm" href="{% url 'crm:deliverable_list' %}?client={{ plan.client_id }}">See all</a></div>
+      <div class="card-body">
+        {% if upcoming %}<ul class="grid grid-cols-1 gap-4 2xl:grid-cols-2">{% for d in upcoming %}{% include "crm/deliverables/_card.html" with d=d now=today show_assignee=True %}{% endfor %}</ul>
+        {% else %}<p class="muted">Nothing is scheduled in the next 30 days.{% if can_edit %} Add an item above, or press "Create upcoming items now" under More.{% endif %}</p>{% endif %}
+      </div></div>
+  </div>
+
+  <div class="space-y-6">
+    <div class="card"><div class="card-header">
+        <a class="btn-icon-sm" href="?month={{ prev_month|date:'Y-m-d' }}" aria-label="Previous month">{% icon 'chevron_left' 16 %}</a>
+        <h2 class="card-title">{{ period|date:"F Y" }}</h2>
+        <a class="btn-icon-sm" href="?month={{ next_month|date:'Y-m-d' }}" aria-label="Next month">{% icon 'chevron_right' 16 %}</a></div>
+      <div class="card-body space-y-4">
+        <div><div class="flex items-end justify-between"><p class="text-title-sm font-bold text-gray-800 dark:text-white/90">{{ summary.delivered }} of {{ summary.promised }}</p><p class="text-sm text-gray-500">{{ summary.percent }}% delivered</p></div>
+          <div class="mt-2 h-2.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800"><div class="h-full rounded-full {% if summary.percent >= 100 %}bg-success-500{% else %}bg-brand-500{% endif %}" style="width: {{ summary.percent }}%"></div></div></div>
+        <ul class="space-y-2 text-sm">{% for r in summary.rows %}<li class="flex items-center justify-between gap-2"><span class="min-w-0 truncate text-gray-700 dark:text-gray-300">{{ r.title }}</span><span class="shrink-0 {% if r.open %}text-gray-500{% else %}text-success-600{% endif %}">{{ r.delivered }}/{{ r.promised }}{% if r.late %} <span class="badge badge-amber">{{ r.late }} late</span>{% endif %}</span></li>{% empty %}<li class="muted">Nothing was due this month.</li>{% endfor %}</ul>
+        <a href="{% url 'crm:client_deliverables' plan.client_id %}?month={{ period|date:'Y-m-d' }}" class="btn btn-secondary btn-sm w-full">Open the month summary</a>
+      </div></div>
+
+    <div class="card"><div class="card-header"><h2 class="card-title">Client preferences</h2>{% if can_edit %}<button type="button" class="btn-link text-sm" @click="$store.modal.show('dl_prefs')">Edit</button>{% endif %}</div>
+      <div class="card-body"><p class="whitespace-pre-line text-sm text-gray-700 dark:text-gray-300">{{ plan.client_preferences|default:"None recorded yet. Add tone, brand colours and things to avoid, and every deliverable shows them." }}</p></div></div>
+
+    <div class="card"><div class="card-header"><h2 class="card-title">Plan history</h2><span class="muted">v{{ plan.revision }}</span></div>
+      <ul class="divide-y divide-gray-100 dark:divide-gray-800">
+        {% for r in revisions %}<li class="px-5 py-3 text-sm"><p class="text-gray-800 dark:text-white/90">{{ r.summary }}</p><p class="text-theme-xs text-gray-500 dark:text-gray-400">Version {{ r.number }} · {{ r.created_at|dt }}{% if r.changed_by %} · {{ r.changed_by|uname }}{% endif %}</p></li>{% empty %}<li class="px-5 py-4 text-sm text-gray-500">No changes yet.</li>{% endfor %}
+      </ul></div>
+  </div>
+</div>
+
+{% include "crm/deliverables/_modals.html" %}
+<datalist id="dl-teams">{% for t in teams %}<option value="{{ t }}">{% endfor %}</datalist>
+<datalist id="dl-categories">{% for c in categories %}<option value="{{ c }}">{% endfor %}</datalist>
+
+{% if can_edit %}
+{% include "crm/components/modal_start.html" with id="dl_prefs" title="Client preferences" subtitle="Saved on the plan and copied onto every upcoming deliverable." %}
+  <form method="post" action="{% url 'crm:delivery_plan_action' plan.pk 'preferences' %}" novalidate>{% csrf_token %}{% idem %}
+    {% field pref_form.client_preferences %}
+    {% include "crm/components/modal_actions.html" with label="Save preferences" %}
+  </form>
+{% include "crm/components/modal_end.html" %}
+
+{% include "crm/components/modal_start.html" with id="dl_adhoc" title="One-off deliverable" subtitle="Something extra the client asked for, outside the monthly plan." %}
+  <form method="post" action="{% url 'crm:delivery_plan_action' plan.pk 'adhoc' %}" novalidate>{% csrf_token %}{% idem %}
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      {% field adhoc_form.title wrapper_class="sm:col-span-2" %}
+      {% field adhoc_form.due %}{% field adhoc_form.due_time %}
+      {% field adhoc_form.quantity %}{% field adhoc_form.category %}
+      {% field adhoc_form.handled_by wrapper_class="sm:col-span-2" %}
+      {% field adhoc_form.assignee wrapper_class="sm:col-span-2" %}
+      {% field adhoc_form.instructions wrapper_class="sm:col-span-2" %}
+    </div>
+    {% include "crm/components/modal_actions.html" with label="Add deliverable" %}
+  </form>
+{% include "crm/components/modal_end.html" %}
+{% endif %}
+
+{% if can_assign %}
+{% include "crm/components/modal_start.html" with id="dl_plan_reassign" title="Reassign this client" subtitle="Every open deliverable that was with the current person moves, and the new person is told." %}
+  <form method="post" action="{% url 'crm:delivery_plan_action' plan.pk 'reassign' %}" novalidate>{% csrf_token %}{% idem %}
+    <div class="space-y-4">{% field reassign_form.to %}{% field reassign_form.account_owner %}{% field reassign_form.note %}</div>
+    {% include "crm/components/modal_actions.html" with label="Reassign" %}
+  </form>
+{% include "crm/components/modal_end.html" %}
+{% endif %}
+
+{% if can_freeze %}
+{% include "crm/components/modal_start.html" with id="dl_freeze" title="Freeze a month" subtitle="Deliverables due on or before this date are locked. Plan edits will only change what comes after it." %}
+  <form method="post" action="{% url 'crm:delivery_plan_action' plan.pk 'freeze' %}" novalidate>{% csrf_token %}{% idem %}
+    <label class="form-label" for="dl-freeze-date">Freeze through</label>
+    <input id="dl-freeze-date" name="through" type="date" class="form-input" required value="{{ period|date:'Y-m' }}-{{ period|date:'t' }}">
+    {% include "crm/components/modal_actions.html" with label="Freeze" %}
+  </form>
+{% include "crm/components/modal_end.html" %}
+{% endif %}
+{% endblock %}

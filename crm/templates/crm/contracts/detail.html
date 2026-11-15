@@ -11,7 +11,7 @@
 <div class="card mb-6">
   <div class="flex flex-col gap-4 p-5 sm:p-6 xl:flex-row xl:items-start xl:justify-between">
     <div><h1 class="text-xl font-semibold text-gray-800 dark:text-white/90">{{ c }} {% badge c.status c.get_status_display %}</h1>
-      <p class="muted"><a class="link" href="{% url 'crm:client_detail' c.client_id %}">{{ c.client.display_name }}</a> · {{ c.title }}{% if c.quotation_id %} · <a class="link" href="{% url 'crm:quotation_detail' c.quotation_id %}">{{ c.quotation.display_number }}</a>{% endif %} · Owner {{ c.owner|uname }}</p></div>
+      <p class="muted"><a class="link" href="{% url 'crm:client_detail' c.client_id %}">{{ c.client.display_name }}</a> · {{ c.title }}{% if c.quotation_id %} · <a class="link" href="{% url 'crm:quotation_detail' c.quotation_id %}">{{ c.quotation.display_number }}</a>{% endif %} · Owner {{ c.owner|uname }}{% can 'deliverables' 'view' as cdv %}{% if cdv and c.delivery_plan %} · <a class="link" href="{% url 'crm:delivery_plan' c.delivery_plan.pk %}">Monthly deliverables</a>{% endif %}</p></div>
     <div class="grid grid-cols-3 gap-4">
       <div><p class="dl-label">Term</p><p class="dl-value">{{ c.start_date|d }} – {{ c.end_date|d|default:"open" }}</p></div>
       <div><p class="dl-label">Value per period</p><p class="dl-value">{{ c.value|inr }}</p></div>

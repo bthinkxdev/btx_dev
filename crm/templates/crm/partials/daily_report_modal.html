@@ -1,0 +1,45 @@
+{# The end-of-day report pop-up. Needs: report, report_token. Read-only: the person can only copy it. #}
+<div id="dr-modal" class="fixed inset-0 z-999999 flex items-center justify-center bg-gray-900/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="dr-title">
+  <div class="flex max-h-full w-full max-w-lg flex-col rounded-3xl bg-white p-6 shadow-2xl dark:bg-gray-900">
+    <h2 id="dr-title" class="text-xl font-semibold text-gray-800 dark:text-white/90">Your daily report</h2>
+    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Copy it and share it in your group. It cannot be edited. The code lets HR check it is genuine.</p>
+    <textarea id="dr-text" readonly rows="14" spellcheck="false" aria-label="Daily report" class="mt-4 w-full resize-none rounded-xl border border-gray-200 bg-gray-50 p-3 font-mono text-xs leading-5 text-gray-800 dark:border-gray-800 dark:bg-white/5 dark:text-gray-200">{{ report.text }}</textarea>
+    <p class="mt-2 text-theme-xs text-gray-500 dark:text-gray-400">Code <strong class="font-mono text-gray-700 dark:text-gray-300">{{ report.code }}</strong></p>
+    <p id="dr-note" class="mt-2 hidden text-sm font-medium text-success-600" role="status"></p>
+    <div class="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+      <button type="button" id="dr-close" class="btn btn-secondary">Close</button>
+      <button type="button" id="dr-copy" class="btn btn-primary" autofocus>Copy report</button>
+    </div>
+  </div>
+</div>
+<script>
+(function () {
+  var modal = document.getElementById('dr-modal'), area = document.getElementById('dr-text'), note = document.getElementById('dr-note');
+  var token = '{{ report_token|escapejs }}', timer = null, closing = false;
+  function cookie(n) { var m = document.cookie.match('(?:^|; )' + n + '=([^;]*)'); return m ? decodeURIComponent(m[1]) : ''; }
+  function tell(event) {
+    var body = new URLSearchParams({ token: token, event: event });
+    fetch('{% url "crm:report_event" %}', { method: 'POST', credentials: 'same-origin', body: body, headers: { 'X-CSRFToken': cookie('csrftoken') } }).catch(function () {});
+  }
+  function shut() { if (closing) return; closing = true; clearInterval(timer); tell('closed'); modal.remove(); }
+  function copied() {
+    tell('copied');
+    var left = 5;
+    note.classList.remove('hidden');
+    note.textContent = 'Copied. Closing in ' + left + '…';
+    timer = setInterval(function () { left -= 1; if (left <= 0) { shut(); } else { note.textContent = 'Copied. Closing in ' + left + '…'; } }, 1000);
+  }
+  document.getElementById('dr-copy').addEventListener('click', function () {
+    if (timer) return;
+    var text = area.value;
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(copied, function () { fallback(); });
+    } else { fallback(); }
+    function fallback() { area.removeAttribute('readonly'); area.select(); area.setSelectionRange(0, text.length); var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      area.setAttribute('readonly', ''); window.getSelection().removeAllRanges();
+      if (ok) { copied(); } else { note.classList.remove('hidden'); note.classList.remove('text-success-600'); note.classList.add('text-error-600'); note.textContent = 'Could not copy automatically. Select the text and copy it.'; } }
+  });
+  document.getElementById('dr-close').addEventListener('click', shut);
+})();
+</script>

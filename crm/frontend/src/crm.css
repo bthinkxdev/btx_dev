@@ -732,3 +732,21 @@ html {
     display: none !important;
   }
 }
+
+
+/* Phones and touch screens: links that are the main thing to tap in a row or a list get a proper touch target. */
+@media (max-width: 1023px), (pointer: coarse) {
+  .btn-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.5rem;
+  }
+  .data-table .td a:not(.btn):not(.badge),
+  .card a.block:not(.btn):not(.badge),
+  ul.divide-y > li > a:not(.btn):not(.badge),
+  ul.divide-y > li > div > a:not(.btn):not(.badge) {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.5rem;
+  }
+}

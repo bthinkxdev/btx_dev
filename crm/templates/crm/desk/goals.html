@@ -1,0 +1,65 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Goals{% endblock %}
+{% block page_header %}
+<div class="mb-5 flex flex-wrap items-start justify-between gap-3">
+  <div>
+    <nav aria-label="Breadcrumb" class="mb-1"><a href="{% url 'crm:dashboard_owner' %}?tab=ai" class="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400">Business analytics AI</a></nav>
+    <h1 class="page-title">Goals for {{ month|date:"F Y" }}</h1>
+    <p class="muted mt-1">Targets for the month. The business staff measures every report against these and tells you when the pace is too slow.</p>
+  </div>
+  <div class="flex items-center gap-2">
+    <a class="btn btn-secondary btn-sm" href="?month={{ prev_month|date:'Y-m' }}">&larr; {{ prev_month|date:"M Y" }}</a>
+    <a class="btn btn-secondary btn-sm" href="?month={{ next_month|date:'Y-m' }}">{{ next_month|date:"M Y" }} &rarr;</a>
+    <a class="btn btn-secondary btn-sm" href="{% url 'crm:desk_plan' %}">Upload business plan</a>
+  </div>
+</div>
+{% endblock %}
+{% block content %}
+<div class="grid gap-6 lg:grid-cols-3">
+  <div class="card lg:col-span-2">
+    <div class="table-wrap"><table class="data-table responsive-cards">
+      <thead class="border-b border-gray-100 dark:border-gray-800"><tr><th class="th">Goal</th><th class="th text-right">Target</th><th class="th text-right">So far</th><th class="th">Pace</th><th class="th">From</th><th class="th"></th></tr></thead>
+      <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+      {% for g in goals %}
+        {% for p in progress %}{% if p.id == g.pk %}
+        <tr>
+          <td class="td" data-label="Goal"><span class="td-strong">{{ g.get_metric_display }}</span>{% if g.note %}<span class="block text-theme-xs text-gray-500">{{ g.note }}</span>{% endif %}</td>
+          <td class="td text-right" data-label="Target">{% if p.money %}{{ p.target|inr0 }}{% else %}{{ p.target|floatformat:"-1" }}{% endif %}</td>
+          <td class="td text-right" data-label="So far">{% if p.money %}{{ p.actual|inr0 }}{% else %}{{ p.actual|floatformat:"-1" }}{% endif %} <span class="text-theme-xs text-gray-500">({{ p.pct }}%)</span></td>
+          <td class="td" data-label="Pace"><span class="badge {% if p.status == 'ahead' or p.status == 'on_track' %}badge-green{% elif p.status == 'at_risk' %}badge-amber{% else %}badge-red{% endif %}">{% if p.status == 'ahead' %}Ahead{% elif p.status == 'on_track' %}On track{% elif p.status == 'at_risk' %}At risk{% else %}Behind{% endif %}</span></td>
+          <td class="td text-theme-xs text-gray-500" data-label="From">{{ g.get_source_display }}</td>
+          <td class="td text-right" data-label="">{% if can_configure %}<form method="post" action="{% url 'crm:desk_goal_delete' g.pk %}" data-confirm="Remove this goal?">{% csrf_token %}<button class="btn btn-secondary btn-sm">Remove</button></form>{% endif %}</td>
+        </tr>
+        {% endif %}{% endfor %}
+        {% if not progress %}
+        <tr>
+          <td class="td" data-label="Goal"><span class="td-strong">{{ g.get_metric_display }}</span>{% if g.note %}<span class="block text-theme-xs text-gray-500">{{ g.note }}</span>{% endif %}</td>
+          <td class="td text-right" data-label="Target">{{ g.target|floatformat:"-2" }}</td>
+          <td class="td text-right" data-label="So far">—</td><td class="td" data-label="Pace">—</td>
+          <td class="td text-theme-xs text-gray-500" data-label="From">{{ g.get_source_display }}</td>
+          <td class="td text-right" data-label="">{% if can_configure %}<form method="post" action="{% url 'crm:desk_goal_delete' g.pk %}" data-confirm="Remove this goal?">{% csrf_token %}<button class="btn btn-secondary btn-sm">Remove</button></form>{% endif %}</td>
+        </tr>
+        {% endif %}
+      {% empty %}
+        <tr><td colspan="6">{% include "crm/components/empty_state.html" with title="No goals for this month" text="Add one on the right, or upload your business plan and review the goals it finds." icon="chart" %}</td></tr>
+      {% endfor %}
+      </tbody></table></div>
+  </div>
+
+  {% if can_configure %}
+  <div class="card">
+    <div class="card-header"><h2 class="card-title">Add or change a goal</h2></div>
+    <form method="post" class="card-body space-y-4">{% csrf_token %}
+      <input type="hidden" name="month" value="{{ month|date:'Y-m' }}">
+      <div><label class="form-label" for="g-metric">What to measure</label>
+        <select id="g-metric" name="metric" class="form-select" required>{% for k, label in metrics %}<option value="{{ k }}">{{ label }}</option>{% endfor %}</select></div>
+      <div><label class="form-label" for="g-target">Target for the month</label>
+        <input id="g-target" name="target" type="number" step="0.01" min="0.01" class="form-input" required inputmode="decimal">
+        <p class="mt-1 text-theme-xs text-gray-500">Money is in rupees, win rate is a percentage. Saving a metric that already has a goal this month replaces it.</p></div>
+      <div><label class="form-label" for="g-note">Note (optional)</label><input id="g-note" name="note" maxlength="300" class="form-input"></div>
+      <button class="btn btn-primary w-full">Save goal</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

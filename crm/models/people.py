@@ -35,6 +35,20 @@ class Holiday(models.Model):
         return f'{self.name} ({self.holiday_date:%d-%b-%Y})'
 
 
+class WorkingDayException(models.Model):
+    """Saturday and Sunday are holidays. HR or an administrator can make a particular one a working day."""
+    work_date = models.DateField(unique=True)
+    reason = models.CharField(max_length=200, blank=True)
+    created_by = models.ForeignKey(USER, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ['work_date']
+
+    def __str__(self):
+        return f'{self.work_date:%a %d-%b-%Y} (working day)'
+
+
 class Employee(TimeStamped, Versioned):
     user = models.OneToOneField(USER, null=True, blank=True, on_delete=models.PROTECT, related_name='crm_employee')
     code = models.CharField('Employee code', max_length=20, unique=True)

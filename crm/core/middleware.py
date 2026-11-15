@@ -59,7 +59,7 @@ class CrmRequestMiddleware:
         })
         try:
             if request.path.startswith(CRM_PREFIX):
-                early = self._idle_timeout(request) or self._force_password_change(request)
+                early = self._idle_timeout(request) or self._force_password_change(request) or self._break_gate(request)
                 if early is not None:
                     return early
                 idem = self._claim_idempotency(request)
@@ -103,14 +103,13 @@ class CrmRequestMiddleware:
         user = getattr(request, 'user', None)
         if not (user and user.is_authenticated) or request.path.startswith(PUBLIC_PREFIXES):
             return None
-        from crm.models import CompanySettings
+        from crm.modules.worktime import services as worktime
         now = timezone.now()
         last = request.session.get('crm_last_activity')
-        try:
-            minutes = CompanySettings.get().idle_timeout_minutes or 30
-        except Exception:  # database not migrated yet
-            minutes = 30
+        minutes = worktime.idle_limit().total_seconds() / 60          # 12 hours unless an administrator changed it
         if last and now.timestamp() - float(last) > minutes * 60:
+            worktime.on_idle_logout(user, last, request.session.session_key or '')
+            self._end_session_row(request, now)
             logout(request)
             messages.warning(request, 'You were signed out after a period of inactivity. Sign in again to continue.')
             from django.urls import reverse
@@ -118,7 +117,54 @@ class CrmRequestMiddleware:
         # Write at most once a minute to avoid a session save on every request.
         if not last or now.timestamp() - float(last) > 60:
             request.session['crm_last_activity'] = now.timestamp()
+            self._touch(request, user, now)
         return None
+
+    @staticmethod
+    def _end_session_row(request, now):
+        from crm.models import UserSession
+        if request.session.session_key:
+            UserSession.objects.filter(session_key=request.session.session_key).update(ended_at=now)
+
+    @staticmethod
+    def _touch(request, user, now):
+        """Once a minute: note the device was used, and keep the person's working day open (not for administrators)."""
+        from crm.models import UserSession
+        from crm.modules.worktime import services as worktime
+        try:
+            if request.session.session_key:
+                UserSession.objects.filter(session_key=request.session.session_key, ended_at__isnull=True).update(last_seen_at=now)
+            worktime.heartbeat(user, now)
+        except Exception:  # tracking must never stop someone from working
+            logger.exception('Working-time heartbeat failed')
+
+    # ---------------------------------------------------------- break lock
+    def _break_gate(self, request):
+        """Someone on a break cannot use the CRM at all until they press Back to work: every page and action is
+        turned away, on the server as well as on screen. Only the way back, signing out and the app basics stay open."""
+        user = getattr(request, 'user', None)
+        if not (user and user.is_authenticated) or request.path.startswith(PUBLIC_PREFIXES):
+            return None
+        from django.http import JsonResponse
+        from django.urls import reverse
+        open_paths = {reverse('crm:break_end'), reverse('crm:on_break'), reverse('crm:logout'), reverse('crm:manifest'),
+                      reverse('crm:service_worker'), reverse('crm:push_subscribe'), reverse('crm:push_unsubscribe')}
+        if request.path in open_paths:
+            return None
+        from crm.modules.worktime import services as worktime
+        try:
+            on_break = worktime.current_break(user) is not None
+        except Exception:  # a tracking fault must never lock people out
+            logger.exception('Break check failed')
+            return None
+        if not on_break:
+            return None
+        if request.headers.get('x-requested-with') or 'application/json' in request.headers.get('accept', ''):
+            return JsonResponse({'ok': False, 'on_break': True, 'redirect': reverse('crm:on_break'),
+                                 'error': 'You are on a break. Press Back to work to continue.'}, status=423)
+        if request.method in ('GET', 'HEAD'):
+            request.session['crm_break_next'] = request.get_full_path()[:300]
+        return HttpResponseRedirect(reverse('crm:on_break'))
 
     # ---------------------------------------------------------- forced password change
     def _force_password_change(self, request):

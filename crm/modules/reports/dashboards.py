@@ -284,8 +284,8 @@ def sales(request, rng: Range) -> dict:
             targets = targets.filter(user_id__in=permissions.team_member_ids(user))
         ids = list(targets.values_list('user_id', flat=True))
         target_total = targets.aggregate(s=Sum('collected_value'))['s'] or ZERO
-        collected = Payment.objects.filter(status__in=P_COUNTED, client__owner_id__in=ids, payment_date__gte=month,
-                                           payment_date__lte=india.today()).aggregate(s=Sum('amount'))['s'] or ZERO if ids else ZERO
+        from crm.core import attribution
+        collected = attribution.collected_total(ids, month, india.today()) if ids else ZERO
         cards.append(Card('target_gap', 'Collection target gap', max(target_total - collected, ZERO), reverse('crm:targets'),
                           'money', 'target', f'{month:%B %Y}', sub=f'{collected / target_total * 100:.0f}% of target' if target_total else 'No targets set'))
     by_owner = []

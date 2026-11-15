@@ -115,7 +115,14 @@ def activate(c: Contract, actor) -> Contract:
     if c.quotation_id:
         from crm.modules.quotations.services import mark_converted
         mark_converted(c.quotation, actor, 'contract')
+    from crm.modules.deliverables import services as deliverables
+    deliverables.contract_activated(c, actor)      # the monthly deliverables plan (a renewal carries the old one forward)
     return c
+
+
+def _sync_deliverables(c: Contract) -> None:
+    from crm.modules.deliverables import services as deliverables
+    deliverables.contract_status_changed(c)
 
 
 def _supersede(old: Contract, new: Contract):
@@ -292,6 +299,7 @@ def suspend(c: Contract, actor, reason: str):
         raise ContractError('Give a reason of at least 10 characters.')
     Contract.objects.filter(pk=c.pk).update(status='suspended', suspended_reason=reason[:300])
     audit.log('contract.suspended', c, actor=actor, reason=reason)
+    _sync_deliverables(c)
 
 
 def resume(c: Contract, actor):
@@ -300,6 +308,7 @@ def resume(c: Contract, actor):
     Contract.objects.filter(pk=c.pk).update(status='active', suspended_reason='')
     BillingSchedule.objects.filter(contract_line__contract=c, status='skipped', invoice_date__gte=india.today()).update(status='scheduled')
     audit.log('contract.resumed', c, actor=actor)
+    _sync_deliverables(c)
 
 
 def terminate(c: Contract, actor, *, on: date, reason: str):
@@ -311,6 +320,7 @@ def terminate(c: Contract, actor, *, on: date, reason: str):
         Contract.objects.filter(pk=c.pk).update(status='terminated', terminated_on=on, terminated_reason=reason[:300])
         BillingSchedule.objects.filter(contract_line__contract=c, status__in=['scheduled', 'failed'], period_start__gt=on).update(status='skipped')
         audit.log('contract.terminated', c, actor=actor, reason=reason, changes={'on': on})
+    _sync_deliverables(c)
 
 
 def complete(c: Contract, actor):
@@ -320,6 +330,7 @@ def complete(c: Contract, actor):
         raise ContractError('Some billing rows are not invoiced yet.')
     Contract.objects.filter(pk=c.pk).update(status='completed')
     audit.log('contract.completed', c, actor=actor)
+    _sync_deliverables(c)
 
 
 def renew(c: Contract, actor, *, new_end: date, price_change_percent: Decimal = ZERO, note: str = '') -> Contract:
@@ -375,6 +386,7 @@ def renewal_alerts() -> int:
             else:
                 Contract.objects.filter(pk=c.pk).update(status='expired')
                 audit.log('contract.expired', c)
+                _sync_deliverables(c)
                 BillingSchedule.objects.filter(contract_line__contract=c, status='scheduled', period_start__gt=c.end_date).update(status='skipped')
             n += 1
             continue

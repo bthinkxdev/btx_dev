@@ -1,0 +1,352 @@
+{% extends "crm/base.html" %}{% load static crm_tags %}
+{% block title %}Business staff{% endblock %}
+{% block page_header %}
+<nav class="mb-4 flex gap-2 border-b border-gray-200 dark:border-gray-800" aria-label="Owner views">
+  <a href="{% url 'crm:dashboard_owner' %}" class="-mb-px border-b-2 border-transparent px-4 py-3 text-sm font-medium text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white">Overview</a>
+  <a href="{% url 'crm:dashboard_owner' %}?tab=ai" class="-mb-px border-b-2 border-brand-500 px-4 py-3 text-sm font-medium text-brand-500" aria-current="page">Business analytics AI</a>
+</nav>
+<div class="mb-5 flex flex-wrap items-start justify-between gap-3">
+  <div>
+    <h1 class="page-title">Business analytics AI</h1>
+    <p class="muted mt-1">Your private analyst. Figures as of {{ ctx.as_of }}. Only totals and staff first names are shared with the AI; client names stay on this server.</p>
+  </div>
+  <div class="flex flex-wrap items-center gap-2">
+    <a href="{% url 'crm:desk_goals' %}" class="btn btn-secondary">{% icon 'chart' 16 %} Goals</a>
+    <a href="{% url 'crm:desk_plan' %}" class="btn btn-secondary">{% icon 'document' 16 %} Business plan</a>
+    <form method="post" action="{% url 'crm:desk_briefing_generate' %}">{% csrf_token %}<button class="btn btn-primary">{% icon 'sun' 16 %} Write briefing</button></form>
+  </div>
+</div>
+{% endblock %}
+{% block content %}
+<div x-data="deskPage()">
+
+
+  {# ---- ask the analyst #}
+    <div class="mb-8 grid gap-6 lg:grid-cols-3">
+      <div class="card lg:col-span-2 flex flex-col">
+        <div class="card-header"><h2 class="card-title">Ask your business staff</h2><span class="text-theme-xs text-gray-500">{% if ai_on %}AI writer connected{% else %}Built-in summaries (AI key not set){% endif %}</span></div>
+        <div class="flex-1 space-y-4 overflow-y-auto p-5 sm:p-6" style="min-height:24rem;max-height:62vh" x-ref="log" aria-live="polite">
+          <template x-for="(m, i) in msgs" :key="i">
+            <div class="flex" :class="m.role === 'user' ? 'justify-end' : 'justify-start'">
+              <div class="max-w-[92%]">
+                <div class="rounded-2xl px-4 py-2.5 text-sm" :class="m.role === 'user' ? 'bg-brand-500 text-white' : 'bg-gray-100 text-gray-800 dark:bg-white/5 dark:text-white/90'" x-html="fmt(m.text)"></div>
+                <template x-if="m.evidence && m.evidence.length">
+                  <details class="mt-1 text-theme-xs text-gray-500"><summary class="cursor-pointer">Numbers used</summary>
+                    <ul class="mt-1 list-disc pl-5"><template x-for="e in m.evidence"><li x-text="e"></li></template></ul></details>
+                </template>
+                <template x-if="m.suggestions && m.suggestions.length">
+                  <div class="mt-2 space-y-2">
+                    <p class="text-theme-xs font-medium uppercase tracking-wide text-gray-500">Suggested actions</p>
+                    <template x-for="s in m.suggestions" :key="s.id">
+                      <div class="rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800" x-show="!done[s.id]">
+                        <p class="font-medium text-gray-800 dark:text-white/90" x-text="s.title"></p>
+                        <p class="text-theme-xs text-gray-500" x-text="s.detail + ' · for ' + s.who"></p>
+                        <p class="text-theme-xs" :class="notes[s.id] && notes[s.id].error ? 'text-error-600' : 'text-success-600'" x-text="notes[s.id] ? notes[s.id].text : ''"></p>
+                        {% if can_approve %}<div class="mt-2 flex gap-2">
+                          <button type="button" class="btn btn-primary btn-sm" :disabled="busyId === s.id" @click="decide(s.id, 'approve')">Approve</button>
+                          <button type="button" class="btn btn-secondary btn-sm" :disabled="busyId === s.id" @click="decide(s.id, 'dismiss')">Dismiss</button></div>{% endif %}
+                      </div>
+                    </template>
+                  </div>
+                </template>
+                <p class="mt-1 text-theme-xs text-gray-400" x-show="m.engine" x-text="m.engine === 'rules' ? 'Built-in summary' : 'Written by ' + m.engine"></p>
+              </div>
+            </div>
+          </template>
+          <div x-show="busy" x-cloak class="text-theme-sm text-gray-500">Checking the numbers…</div>
+        </div>
+        <div class="border-t border-gray-100 p-4 dark:border-gray-800">
+          <div class="mb-3 flex flex-wrap gap-2">
+            {% for s in suggestions %}<button type="button" class="chip chip-inactive" @click="ask($el.textContent.trim())" :disabled="busy">{{ s }}</button>{% endfor %}
+          </div>
+          <form class="flex gap-2" @submit.prevent="ask(draft)">
+            <label class="sr-only" for="desk-q">Your question</label>
+            <input id="desk-q" x-model="draft" maxlength="500" class="form-input" placeholder="Ask anything about the business, your team, your goals…" autocomplete="off">
+            <button class="btn btn-primary" :disabled="busy || !draft.trim()">Ask</button>
+          </form>
+          {% if not ai_on %}<p class="mt-3 text-theme-xs text-gray-500">The AI writer is not connected, so answers use the built-in summaries. Add CHATBOT_API_KEY in the server settings for plain-English answers.</p>{% endif %}
+        </div>
+      </div>
+      <div class="space-y-6">
+        <div class="card">
+          <div class="card-header"><h2 class="card-title">How this works</h2></div>
+          <div class="card-body space-y-2 text-sm text-gray-700 dark:text-gray-300">
+            <p>Every number comes straight from your database. The AI only explains them, and each answer lists the numbers it used.</p>
+            <p>Suggested actions are only ideas. Nothing happens until you press <strong>Approve</strong>.</p>
+            <p>Ask about today, tomorrow, your team, customers, money, goals, or "plan for next month".</p>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h2 class="card-title">Your plan</h2></div>
+          <div class="card-body space-y-2 text-sm text-gray-700 dark:text-gray-300">
+            {% if plan %}<p><strong>{{ plan.title }}</strong></p><p class="text-theme-xs text-gray-500">{{ plan.summary|truncatechars:240 }}</p>
+            {% else %}<p>No business plan yet. Upload one and the analyst measures progress against it and tells you where to focus.</p>{% endif %}
+            <a href="{% url 'crm:desk_plan' %}" class="btn btn-secondary btn-sm">{% if plan %}Manage plan{% else %}Upload your plan{% endif %}</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  {# ---- the numbers #}
+
+    {% if briefing %}
+    <div class="card mb-6">
+      <div class="card-header">
+        <h2 class="card-title">{{ briefing.get_kind_display }} briefing</h2>
+        <span class="text-theme-xs text-gray-500">{{ briefing.created_at|dt }} · {% if briefing.engine == 'rules' %}built-in summary{% else %}written by AI{% endif %}</span>
+      </div>
+      <div class="card-body text-sm text-gray-700 dark:text-gray-300" x-html="fmt(briefing)"></div>
+    </div>
+    {% else %}
+    <div class="alert alert-info mb-6" role="status"><span>{% icon 'sun' 20 %}</span><p class="text-sm">No briefing yet today. Press <strong>Write briefing</strong>, or it will be written automatically at 8 am and 7 pm.</p></div>
+    {% endif %}
+
+    {# ---- today #}
+    <h2 class="mb-3 text-base font-semibold text-gray-800 dark:text-white/90">Today</h2>
+    <div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      {% for c in comp %}
+      <div class="card p-4">
+        <p class="text-theme-sm text-gray-500 dark:text-gray-400">{{ c.label }}</p>
+        <p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{% if c.money %}{{ c.today|inr0 }}{% else %}{{ c.today|floatformat:"-1" }}{% endif %}</p>
+        <p class="mt-1 text-theme-xs {% if c.vs_yesterday is None or c.vs_yesterday == 0 %}text-gray-500{% elif c.key == 'leads_lost' %}{% if c.vs_yesterday > 0 %}text-error-600{% else %}text-success-600{% endif %}{% elif c.vs_yesterday > 0 %}text-success-600{% else %}text-error-600{% endif %}">
+          {% if c.vs_yesterday is None %}Same as yesterday (0){% elif c.vs_yesterday > 0 %}&#9650; {{ c.vs_yesterday|floatformat:"-0" }}%{% elif c.vs_yesterday < 0 %}&#9660; {{ c.vs_yesterday|absval|floatformat:"-0" }}%{% else %}No change{% endif %}
+          <span class="text-gray-500">vs yesterday ({% if c.money %}{{ c.yesterday|inr0 }}{% else %}{{ c.yesterday|floatformat:"-1" }}{% endif %})</span></p>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="mb-6 grid gap-6 lg:grid-cols-2">
+      {# ---- delivery #}
+      <div class="card">
+        <div class="card-header"><h2 class="card-title">Delivery today</h2><a class="link text-sm" href="{% url 'crm:deliverable_list' %}">Team board</a></div>
+        <div class="card-body">
+          <div class="grid grid-cols-3 gap-3 text-center">
+            <div><p class="text-title-sm font-bold text-success-600">{{ ctx.delivery.delivered_today }}</p><p class="text-theme-xs text-gray-500">Delivered</p></div>
+            <div><p class="text-title-sm font-bold text-gray-800 dark:text-white/90">{{ ctx.delivery.pending_today }}</p><p class="text-theme-xs text-gray-500">Pending today</p></div>
+            <div><p class="text-title-sm font-bold {% if ctx.delivery.overdue %}text-error-600{% else %}text-gray-800 dark:text-white/90{% endif %}">{{ ctx.delivery.overdue }}</p><p class="text-theme-xs text-gray-500">Overdue</p></div>
+          </div>
+          <p class="mt-3 text-theme-xs text-gray-500">{{ ctx.delivery.in_review }} in review · {{ ctx.delivery.awaiting_client }} waiting on clients · {{ ctx.delivery.missed_30d }} missed in 30 days{% if ctx.funnel.on_time_pct is not None %} · {{ ctx.funnel.on_time_pct }}% on time (30 days){% endif %}</p>
+          {% if ctx.delivery.by_person %}
+          <ul class="mt-4 divide-y divide-gray-100 text-sm dark:divide-gray-800">
+            {% for p in ctx.delivery.by_person|slice:":6" %}<li class="flex items-center justify-between gap-3 py-2"><span class="font-medium text-gray-800 dark:text-white/90">{{ p.name }}</span><span class="text-gray-600 dark:text-gray-400">{{ p.delivered }} delivered · {{ p.pending_today }} due · {% if p.overdue %}<span class="text-error-600">{{ p.overdue }} overdue</span>{% else %}0 overdue{% endif %}</span></li>{% endfor %}
+          </ul>
+          {% endif %}
+        </div>
+      </div>
+
+      {# ---- tomorrow #}
+      <div class="card">
+        <div class="card-header"><h2 class="card-title">Tomorrow, {{ ctx.tomorrow.date }}</h2></div>
+        <div class="card-body">
+          <ul class="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+            <li><strong>{{ ctx.tomorrow.deliverables_due }}</strong> deliverables due{% if ctx.tomorrow.deliverables_by_person %} <span class="text-gray-500">({% for n, c in ctx.tomorrow.deliverables_by_person.items %}{{ n }} {{ c }}{% if not forloop.last %}, {% endif %}{% endfor %})</span>{% endif %}</li>
+            <li><strong>{{ ctx.tomorrow.followups_due }}</strong> lead follow-ups scheduled{% if ctx.tomorrow.followups_by_person %} <span class="text-gray-500">({% for n, c in ctx.tomorrow.followups_by_person.items %}{{ n }} {{ c }}{% if not forloop.last %}, {% endif %}{% endfor %})</span>{% endif %}</li>
+            <li><strong>{{ ctx.tomorrow.invoices_to_raise }}</strong> recurring invoices to raise ({{ ctx.tomorrow.invoices_to_raise_value|inr0 }})</li>
+            <li><strong>{{ ctx.tomorrow.quotes_expiring }}</strong> quotations expire · <strong>{{ ctx.tomorrow.contracts_ending }}</strong> contracts end · <strong>{{ ctx.tomorrow.tasks_due }}</strong> tasks due</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    {# ---- attention and strengths #}
+    <div class="mb-6 grid gap-6 lg:grid-cols-3">
+      <div class="card lg:col-span-2">
+        <div class="card-header"><h2 class="card-title">Needs your attention</h2><span class="badge {% if ctx.flags %}badge-amber{% else %}badge-green{% endif %}">{{ ctx.flags|length }}</span></div>
+        <ul class="divide-y divide-gray-100 dark:divide-gray-800">
+          {% for f in ctx.flags|slice:":10" %}
+          <li class="flex items-start gap-3 px-5 py-3 text-sm"><span class="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full {% if f.level == 'red' %}bg-error-500{% else %}bg-warning-500{% endif %}" aria-hidden="true"></span><span class="sr-only">{{ f.level }}:</span><span class="text-gray-700 dark:text-gray-300">{{ f.text }}</span></li>
+          {% empty %}<li class="px-5 py-5 text-sm text-gray-500">Nothing urgent right now.</li>{% endfor %}
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-header"><h2 class="card-title">Going well</h2></div>
+        <ul class="divide-y divide-gray-100 dark:divide-gray-800">
+          {% for s in strengths|slice:":6" %}<li class="px-5 py-3 text-sm text-gray-700 dark:text-gray-300">{{ s }}</li>
+          {% empty %}<li class="px-5 py-5 text-sm text-gray-500">Set goals to see what is on track.</li>{% endfor %}
+        </ul>
+      </div>
+    </div>
+
+    {# ---- team #}
+    <div class="card mb-6">
+      <div class="card-header"><h2 class="card-title">Sales team today</h2><a class="link text-sm" href="{% url 'crm:ai_analyst' %}">Coaching analyst</a></div>
+      <div class="table-wrap"><table class="data-table responsive-cards">
+        <thead class="border-b border-gray-100 dark:border-gray-800"><tr><th class="th">Person</th><th class="th">Status</th><th class="th text-right">New leads</th><th class="th text-right">Calls</th><th class="th text-right">Follow-ups done</th><th class="th text-right">Overdue</th><th class="th text-right">Untouched</th><th class="th text-right">Won</th><th class="th text-right">Collected</th><th class="th">Why</th></tr></thead>
+        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+        {% for p in team %}
+          <tr>
+            <td class="td" data-label="Person"><span class="td-strong">{{ p.name }}</span><span class="block text-theme-xs text-gray-500">{{ p.role }}</span></td>
+            <td class="td" data-label="Status">{% if p.status == 'red' %}<span class="badge badge-red">Delayed</span>{% elif p.status == 'amber' %}<span class="badge badge-amber">Watch</span>{% else %}<span class="badge badge-green">{% if p.doing_well %}Doing well{% else %}On track{% endif %}</span>{% endif %}</td>
+            <td class="td text-right" data-label="New leads">{{ p.leads_created }}</td>
+            <td class="td text-right" data-label="Calls">{{ p.calls }}</td>
+            <td class="td text-right" data-label="Follow-ups done">{{ p.followups_done }}</td>
+            <td class="td text-right" data-label="Overdue">{{ p.overdue_followups }}</td>
+            <td class="td text-right" data-label="Untouched">{{ p.stale_leads }}</td>
+            <td class="td text-right" data-label="Won">{{ p.won }}{% if p.won_value %} <span class="text-theme-xs text-gray-500">({{ p.won_value|inr0 }})</span>{% endif %}</td>
+            <td class="td text-right" data-label="Collected">{{ p.collected|inr0 }}</td>
+            <td class="td text-theme-xs text-gray-600 dark:text-gray-400" data-label="Why">{{ p.reasons|join:"; "|default:"—" }}</td>
+          </tr>
+        {% empty %}<tr><td colspan="10">{% include "crm/components/empty_state.html" with title="No sales users yet" text="People with a sales role appear here." icon="users" %}</td></tr>{% endfor %}
+        </tbody></table></div>
+    </div>
+
+    {# ---- leads, money, customers #}
+    <div class="mb-6 grid gap-6 lg:grid-cols-3">
+      <div class="card">
+        <div class="card-header"><h2 class="card-title">Leads</h2><a class="link text-sm" href="{% url 'crm:lead_list' %}">All leads</a></div>
+        <div class="card-body space-y-3 text-sm text-gray-700 dark:text-gray-300">
+          <p><strong>{{ ctx.leads.open }}</strong> open, pipeline {{ ctx.leads.pipeline_value|inr0 }}. <strong>{{ ctx.leads.unassigned_open }}</strong> unassigned, <strong>{{ ctx.leads.stale_open }}</strong> untouched for a week.</p>
+          <p><strong>{{ ctx.leads.followups_due_today }}</strong> follow-ups due today, <strong>{{ ctx.leads.overdue_followups }}</strong> overdue.</p>
+          <div><p class="text-theme-xs font-medium uppercase tracking-wide text-gray-500">Created today by</p>
+            {% for n, c in ctx.leads.created_today_by_person.items %}<p>{{ n }}: <strong>{{ c }}</strong></p>{% empty %}<p class="text-gray-500">No leads yet today.</p>{% endfor %}</div>
+          <div><p class="text-theme-xs font-medium uppercase tracking-wide text-gray-500">Today by source</p>
+            {% for n, c in ctx.leads.created_today_by_source.items %}<p>{{ n }}: <strong>{{ c }}</strong></p>{% empty %}<p class="text-gray-500">None.</p>{% endfor %}</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h2 class="card-title">Money</h2><a class="link text-sm" href="{% url 'crm:dashboard_owner' %}">Owner dashboard</a></div>
+        <div class="card-body space-y-3 text-sm text-gray-700 dark:text-gray-300">
+          <p>Collected today <strong>{{ ctx.revenue.collected_today|inr0 }}</strong>; this month <strong>{{ ctx.revenue.collected_month|inr0 }}</strong> <span class="text-gray-500">(same point last month {{ ctx.revenue.collected_last_month_same_period|inr0 }})</span>.</p>
+          <p>Invoiced this month <strong>{{ ctx.revenue.invoiced_month|inr0 }}</strong>.</p>
+          <p>Outstanding <strong>{{ ctx.revenue.outstanding|inr0 }}</strong>, of which <strong class="{% if ctx.revenue.overdue_amount %}text-error-600{% endif %}">{{ ctx.revenue.overdue_amount|inr0 }}</strong> is overdue ({{ ctx.revenue.overdue_invoices }} invoices).</p>
+          {% if ctx.revenue.collected_month_by_owner %}<div><p class="text-theme-xs font-medium uppercase tracking-wide text-gray-500">Collected this month by account owner</p>
+            {% for n, v in ctx.revenue.collected_month_by_owner.items %}<p>{{ n }}: <strong>{{ v|inr0 }}</strong></p>{% endfor %}</div>{% endif %}
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h2 class="card-title">Customers</h2><a class="link text-sm" href="{% url 'crm:client_list' %}">All clients</a></div>
+        <div class="card-body space-y-3 text-sm text-gray-700 dark:text-gray-300">
+          <p>Onboarded today: <strong>{% if ctx.customers.onboarded_today %}{{ ctx.customers.onboarded_today|join:", " }}{% else %}none{% endif %}</strong>. New this month: <strong>{{ ctx.customers.new_clients_month }}</strong> of {{ ctx.customers.active_clients }} active.</p>
+          <p>Contracts ended today: <strong>{% if ctx.customers.lost_today %}{{ ctx.customers.lost_today|join:", " }}{% else %}none{% endif %}</strong>. Leads lost today: <strong>{{ ctx.numbers.leads_lost }}</strong>.</p>
+          <div><p class="text-theme-xs font-medium uppercase tracking-wide text-gray-500">Could be lost</p>
+            {% for r in ctx.customers.at_risk|slice:":5" %}<p class="mt-1"><a class="font-medium hover:text-brand-500" href="{% url 'crm:client_detail' r.id %}">{{ r.client }}</a><span class="block text-theme-xs text-gray-500">{{ r.reasons|join:"; " }}</span></p>
+            {% empty %}<p class="text-gray-500">No client shows warning signs.</p>{% endfor %}</div>
+        </div>
+      </div>
+    </div>
+
+    {# ---- goals and weak areas #}
+    <div class="mb-6 grid gap-6 lg:grid-cols-2">
+      <div class="card">
+        <div class="card-header"><h2 class="card-title">Goals this month</h2><a class="link text-sm" href="{% url 'crm:desk_goals' %}">Manage</a></div>
+        <div class="card-body space-y-4">
+          {% for g in ctx.goals %}
+          <div>
+            <div class="flex items-center justify-between gap-3 text-sm"><span class="font-medium text-gray-800 dark:text-white/90">{{ g.label }}</span>
+              <span class="badge {% if g.status == 'ahead' or g.status == 'on_track' %}badge-green{% elif g.status == 'at_risk' %}badge-amber{% else %}badge-red{% endif %}">{% if g.status == 'ahead' %}Ahead{% elif g.status == 'on_track' %}On track{% elif g.status == 'at_risk' %}At risk{% else %}Behind{% endif %}</span></div>
+            <div class="mt-2 h-2 rounded-full bg-gray-100 dark:bg-gray-800" role="progressbar" aria-valuenow="{{ g.pct }}" aria-valuemin="0" aria-valuemax="100" aria-label="{{ g.label }}"><div class="h-2 rounded-full {% if g.status == 'ahead' or g.status == 'on_track' %}bg-success-500{% elif g.status == 'at_risk' %}bg-warning-500{% else %}bg-error-500{% endif %}" style="width: {% if g.pct > 100 %}100{% else %}{{ g.pct }}{% endif %}%"></div></div>
+            <p class="mt-1 text-theme-xs text-gray-500">{% if g.money %}{{ g.actual|inr0 }} of {{ g.target|inr0 }}{% else %}{{ g.actual|floatformat:"-1" }} of {{ g.target|floatformat:"-1" }}{% if g.percent_metric %}%{% endif %}{% endif %} · {{ g.pct }}% done, {{ g.expected_pct }}% of the month gone{% if g.per_day_needed and g.money %} · needs {{ g.per_day_needed|inr0 }} a day{% endif %}</p>
+          </div>
+          {% empty %}
+          <p class="text-sm text-gray-500">No goals for this month. <a class="link" href="{% url 'crm:desk_goals' %}">Add goals</a> or <a class="link" href="{% url 'crm:desk_plan' %}">upload your business plan</a> and the staff will propose them.</p>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h2 class="card-title">Areas to strengthen</h2>{% if plan %}<span class="text-theme-xs text-gray-500">Plan: {{ plan.title|truncatechars:30 }}</span>{% endif %}</div>
+        <ul class="divide-y divide-gray-100 dark:divide-gray-800">
+          {% for w in ctx.weak_areas|slice:":5" %}
+          <li class="px-5 py-3 text-sm"><p class="font-medium text-gray-800 dark:text-white/90">{{ w.area }}</p><p class="text-gray-600 dark:text-gray-400">{{ w.evidence }}.</p><p class="mt-1 text-theme-xs text-brand-600 dark:text-brand-400">Fix: {{ w.fix }}</p></li>
+          {% empty %}<li class="px-5 py-5 text-sm text-gray-500">Nothing stands out as weak right now.</li>{% endfor %}
+        </ul>
+        <div class="border-t border-gray-100 px-5 py-3 dark:border-gray-800"><button type="button" class="btn btn-secondary btn-sm" @click="ask('Plan for next month'); $nextTick(() => $refs.log && $refs.log.scrollIntoView({ behavior: 'smooth', block: 'center' }))">Plan next month with the analyst</button></div>
+      </div>
+    </div>
+
+    {# ---- suggested actions #}
+    <div class="card mb-6">
+      <div class="card-header"><h2 class="card-title">Suggested actions for today</h2>
+        <form method="post" action="{% url 'crm:desk_actions_refresh' %}">{% csrf_token %}<button class="btn btn-secondary btn-sm">Refresh</button></form></div>
+      <ul class="divide-y divide-gray-100 dark:divide-gray-800">
+        {% for a in actions %}
+        <li class="flex flex-wrap items-center justify-between gap-3 px-5 py-3" x-data="{ id: {{ a.pk }} }" x-show="!done[id]">
+          <div class="min-w-0 flex-1"><p class="text-sm font-medium text-gray-800 dark:text-white/90">{{ a.title }}</p>
+            <p class="text-theme-xs text-gray-500">{{ a.detail }} · {% if a.kind == 'follow_up' %}books a follow-up for {{ a.assignee|uname }}{% else %}notifies {{ a.assignee|uname }}{% endif %}</p>
+            <p class="text-theme-xs" :class="notes[id] && notes[id].error ? 'text-error-600' : 'text-success-600'" x-text="notes[id] ? notes[id].text : ''"></p></div>
+          {% if can_approve %}<div class="flex shrink-0 gap-2">
+            <button type="button" class="btn btn-primary btn-sm" :disabled="busyId === id" @click="decide(id, 'approve')">Approve</button>
+            <button type="button" class="btn btn-secondary btn-sm" :disabled="busyId === id" @click="decide(id, 'dismiss')">Dismiss</button></div>{% endif %}
+        </li>
+        {% empty %}<li class="px-5 py-5 text-sm text-gray-500">No suggestions right now. Nothing is created until you approve it.</li>{% endfor %}
+      </ul>
+      {% if handled_actions %}<div class="border-t border-gray-100 px-5 py-3 text-theme-xs text-gray-500 dark:border-gray-800">Handled today: {% for a in handled_actions %}{{ a.title|truncatechars:50 }} ({{ a.get_status_display|lower }}){% if not forloop.last %} · {% endif %}{% endfor %}</div>{% endif %}
+    </div>
+
+    <div class="card mb-6">
+      <div class="card-header"><h2 class="card-title">Last 7 days</h2></div>
+      <div class="card-body"><div id="desk-trend" class="min-h-64"></div></div>
+    </div>
+</div>
+
+{{ briefing.text|default:""|json_script:"desk-briefing" }}
+{{ trend|json_script:"desk-trend-data" }}
+<script src="{% static 'crm/vendor/apexcharts.min.js' %}"></script>
+<script>
+function deskPage() {
+  const briefing = { text: JSON.parse(document.getElementById('desk-briefing').textContent) };
+  const actionUrl = (id, verb) => '{% url "crm:desk_action" 0 "verb" %}'.replace('/0/', '/' + id + '/').replace('/verb/', '/' + verb + '/');
+  return {
+    draft: '', busy: false, busyId: null, done: {}, notes: {}, briefing: briefing,
+    msgs: [{ role: 'bot', text: 'Hello! I am your business staff. Ask me what happened today, who is delayed, what to do next, what is coming tomorrow, which customers are at risk, or how we compare with the plan. I only use the live numbers from your system.' }],
+    fmt(t) {
+      const raw = (t && t.text !== undefined) ? t.text : t;
+      const esc = String(raw || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return esc.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/(^|\s)_(.+?)_(?=\s|$)/g, '$1<em>$2</em>')
+                .replace(/^\s*- /gm, '&bull; ').replace(/\n/g, '<br>');
+    },
+    async post(url, body) {
+      const r = await fetch(url, { method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}', 'X-Requested-With': 'fetch' }, body: JSON.stringify(body || {}) });
+      if (r.redirected || !(r.headers.get('Content-Type') || '').includes('json')) throw new Error('session');
+      return { status: r.status, data: await r.json() };
+    },
+    async ask(q) {
+      q = (q || '').trim();
+      if (!q || this.busy) return;
+      const history = this.msgs.slice(1).map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', text: m.text }));
+      this.msgs.push({ role: 'user', text: q });
+      this.draft = ''; this.busy = true; this.scroll();
+      try {
+        const { data } = await this.post('{% url "crm:desk_ask" %}', { question: q, history });
+        this.msgs.push(data.ok ? { role: 'bot', text: data.answer, evidence: data.evidence, suggestions: data.suggestions, engine: data.engine }
+                               : { role: 'bot', text: data.error || 'Something went wrong.' });
+      } catch (e) {
+        this.msgs.push({ role: 'bot', text: 'Your page had expired. Please refresh and try again.' });
+      }
+      this.busy = false; this.scroll();
+    },
+    async decide(id, verb) {
+      if (this.busyId) return;
+      this.busyId = id;
+      try {
+        const { data } = await this.post(actionUrl(id, verb), {});
+        if (data.ok) {
+          this.notes[id] = { text: verb === 'approve' ? (data.result || 'Done.') : 'Dismissed.', error: false };
+          setTimeout(() => { this.done[id] = true; }, 1600);
+        } else {
+          this.notes[id] = { text: data.error || 'That did not work.', error: true };
+        }
+      } catch (e) {
+        this.notes[id] = { text: 'Your page had expired. Please refresh.', error: true };
+      }
+      this.busyId = null;
+    },
+    scroll() { this.$nextTick(() => { const l = this.$refs.log; if (l) l.scrollTop = l.scrollHeight; }); }
+  };
+}
+(function () {
+  const t = JSON.parse(document.getElementById('desk-trend-data').textContent);
+  const el = document.getElementById('desk-trend');
+  if (!el || !window.ApexCharts) return;
+  const dark = document.documentElement.classList.contains('dark');
+  new ApexCharts(el, {
+    chart: { type: 'line', height: 280, fontFamily: 'Outfit, sans-serif', toolbar: { show: false }, foreColor: dark ? '#98a2b3' : '#667085' },
+    series: [{ name: t.series[0].name, type: 'column', data: t.series[0].data }, { name: t.series[1].name, type: 'line', data: t.series[1].data }],
+    xaxis: { categories: t.labels }, colors: ['#465fff', '#12b76a'], stroke: { width: [0, 3] },
+    plotOptions: { bar: { borderRadius: 4, columnWidth: '40%' } }, dataLabels: { enabled: false }, legend: { position: 'top', horizontalAlign: 'left' },
+    yaxis: [{ title: { text: 'Leads' }, labels: { formatter: v => Math.round(v) } },
+            { opposite: true, title: { text: 'Collected' }, labels: { formatter: v => '₹' + Math.round(v).toLocaleString('en-IN') } }]
+  }).render();
+})();
+</script>
+{% endblock %}

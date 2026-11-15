@@ -1,0 +1,36 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Daily reports{% endblock %}
+{% block page_header %}
+<div class="mb-5 flex flex-wrap items-start justify-between gap-3">
+  <div>
+    <h1 class="page-title">Daily reports</h1>
+    <p class="muted mt-1">The report each person gets when they sign out, day by day. {{ submitted }} of {{ rows|length }} have one for {{ day|date:"j M" }}.</p>
+  </div>
+  <div class="flex flex-wrap items-center gap-2">
+    <a class="btn btn-secondary btn-sm" href="?day={{ prev_day|date:'Y-m-d' }}" aria-label="Previous day">{% icon 'chevron_left' 16 %}</a>
+    <form method="get"><label class="sr-only" for="dr-day">Day</label><input id="dr-day" type="date" name="day" value="{{ day|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}" class="form-input h-10 w-auto" data-autosubmit></form>
+    {% if next_day %}<a class="btn btn-secondary btn-sm" href="?day={{ next_day|date:'Y-m-d' }}" aria-label="Next day">{% icon 'chevron_right' 16 %}</a>{% endif %}
+    <a class="btn btn-secondary btn-sm" href="{% url 'crm:daily_board' %}">Today</a>
+  </div>
+</div>
+{% endblock %}
+{% block content %}
+<form method="get" action="{% url 'crm:daily_find' %}" class="card mb-5"><div class="card-body flex flex-col gap-3 sm:flex-row sm:items-end">
+  <div class="flex-1"><label class="form-label" for="dr-code">Check a report by its code</label><input id="dr-code" name="code" class="form-input font-mono uppercase" placeholder="DR261114-7K2Q-9F" autocomplete="off" maxlength="24"></div>
+  <button class="btn btn-primary">Find the report</button></div></form>
+<div class="card"><div class="table-wrap"><table class="data-table responsive-cards">
+  <thead class="border-b border-gray-100 dark:border-gray-800"><tr><th class="th">Person</th><th class="th">Report</th><th class="th">In and out</th><th class="th text-right">Worked</th><th class="th text-right">Won</th><th class="th text-right">Collected</th><th class="th">Code</th></tr></thead>
+  <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+  {% for r in rows %}{% with rep=r.report %}
+    <tr>
+      <td class="td" data-label="Person"><a class="td-strong hover:text-brand-500" href="{% url 'crm:staff_profile' r.user.pk %}">{{ r.user|uname }}</a></td>
+      <td class="td" data-label="Report">{% if rep %}<a class="btn-link" href="{% url 'crm:daily_report' rep.pk %}">Read{% if rep.seq > 1 %} (version {{ rep.seq }}){% endif %}</a>{% if rep.copied_at %} <span class="badge badge-green">Copied</span>{% endif %}{% else %}<span class="badge badge-red">Not yet</span>{% endif %}</td>
+      <td class="td" data-label="In and out">{% if rep %}{{ rep.data.time.in|default:"-" }} to {{ rep.data.time.out|default:"working" }}{% else %}—{% endif %}</td>
+      <td class="td text-right" data-label="Worked">{% if rep %}{{ rep.data.time.worked }}{% else %}—{% endif %}</td>
+      <td class="td text-right" data-label="Won">{% if rep and rep.data.sales_data %}{{ rep.data.sales_data.won }}{% else %}—{% endif %}</td>
+      <td class="td text-right" data-label="Collected">{% if rep and rep.data.sales_data %}{{ rep.data.sales_data.collected|inr0 }}{% else %}—{% endif %}</td>
+      <td class="td font-mono text-theme-xs" data-label="Code">{% if rep %}{{ rep.code }}{% else %}—{% endif %}</td>
+    </tr>
+  {% endwith %}{% empty %}<tr><td colspan="7">{% include "crm/components/empty_state.html" with title="No one to show" icon="users" %}</td></tr>{% endfor %}
+  </tbody></table></div></div>
+{% endblock %}

@@ -25,4 +25,5 @@
   </div>
 </form>
 <p class="mt-6 text-sm text-gray-500 dark:text-gray-400">Forgot your password? Ask an administrator to reset your access.</p>
+{% if report %}{% include "crm/partials/daily_report_modal.html" %}{% endif %}
 {% endblock %}

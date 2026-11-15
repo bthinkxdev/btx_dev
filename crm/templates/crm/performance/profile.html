@@ -1,0 +1,171 @@
+{% extends "crm/base.html" %}{% load crm_tags static %}
+{% block title %}{{ target|uname }}, performance{% endblock %}
+{% block content %}
+<div class="card mb-5">
+  <div class="flex flex-col gap-4 p-5 sm:p-6 lg:flex-row lg:items-start lg:justify-between">
+    <div class="min-w-0">
+      <nav aria-label="Breadcrumb" class="mb-1"><ol class="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400"><li class="inline-flex items-center gap-1.5"><a href="{% url 'crm:performance_board' %}" class="hover:text-gray-700 dark:hover:text-gray-200">Team performance</a>{% icon 'chevron_right' 14 %}</li><li>{{ target|uname }}</li></ol></nav>
+      <h1 class="text-xl font-semibold text-gray-800 dark:text-white/90">{{ target|uname }} {% if mode == 'team' %}<span class="badge badge-brand">Team of {{ members|length }}</span>{% endif %}</h1>
+      <p class="muted">{% if employee %}{{ employee.code }} · {{ employee.designation|default:"Sales" }}{% if employee.manager %} · reports to {{ employee.manager.name }}{% endif %}{% else %}{{ target.crm_profile.designation|default:"Sales" }}{% endif %} · {{ target.email }}</p>
+      {% if not employee and is_hr %}<p class="mt-1 text-theme-xs text-warning-700 dark:text-orange-400">No HR record is linked to this login yet. Leave, attendance and shift details are missing until one is created under HR, Employees.</p>{% endif %}
+    </div>
+    <div class="flex flex-wrap gap-2">
+      {% if is_manager %}<div class="inline-flex rounded-lg border border-gray-200 p-0.5 dark:border-gray-800"><a href="?{% if period.key == 'custom' %}from={{ period.start|date:'Y-m-d' }}&to={{ period.end|date:'Y-m-d' }}{% else %}range={{ period.key }}{% endif %}" class="rounded-md px-3 py-1.5 text-sm {% if mode == 'individual' %}bg-gray-100 font-medium dark:bg-white/10{% else %}text-gray-500{% endif %}">Individual</a><a href="?view=team&{% if period.key == 'custom' %}from={{ period.start|date:'Y-m-d' }}&to={{ period.end|date:'Y-m-d' }}{% else %}range={{ period.key }}{% endif %}" class="rounded-md px-3 py-1.5 text-sm {% if mode == 'team' %}bg-gray-100 font-medium dark:bg-white/10{% else %}text-gray-500{% endif %}">Team</a></div>{% endif %}
+      {% can 'attendance' 'view' as ca %}{% if ca %}<a href="{% url 'crm:person_time' target.pk %}" class="btn btn-secondary btn-sm">{% icon 'clock' 16 %} Daily time</a>{% endif %}
+      {% if employee and is_hr %}<a href="{% url 'crm:employee_detail' employee.pk %}" class="btn btn-secondary btn-sm">HR record</a>{% endif %}
+      {% can 'leads' 'view' as cl %}{% if cl %}<a href="{% url 'crm:lead_list' %}?owner={{ target.pk }}" class="btn btn-secondary btn-sm">Their leads</a>{% endif %}
+    </div>
+  </div>
+</div>
+
+{% include "crm/performance/_period.html" %}
+
+{% if flags %}
+<div class="card mb-5"><div class="card-header"><h2 class="card-title">Needs attention</h2><span class="muted">{{ period.label }}</span></div>
+  <ul class="divide-y divide-gray-100 dark:divide-gray-800">
+    {% for f in flags %}<li class="flex items-start gap-3 px-5 py-3 text-sm"><span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full {% if f.level == 'bad' %}bg-error-500{% elif f.level == 'warn' %}bg-warning-500{% elif f.level == 'good' %}bg-success-500{% else %}bg-gray-400{% endif %}"></span><span class="text-gray-800 dark:text-gray-200">{{ f.text }}</span></li>{% endfor %}
+  </ul></div>
+{% endif %}
+
+{# ------------------------------------------------------------------ targets #}
+<div class="card mb-5"><div class="card-header"><h2 class="card-title">Targets and results</h2><span class="muted">{% if m.targets.has %}Targets are monthly, shared out by working days{% else %}No target set{% endif %}</span></div>
+  <div class="table-wrap"><table class="data-table responsive-cards">
+    <thead class="border-b border-gray-100 dark:border-gray-800"><tr><th class="th">Measure</th><th class="th text-right">Target</th><th class="th text-right">Actual</th><th class="th text-right">Plus or minus</th><th class="th" style="min-width:9rem">Reached</th>{% if period.is_current %}<th class="th text-right">Should be by now</th>{% endif %}</tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+    {% for r in m.rows %}<tr>
+      <td class="td td-strong" data-label="Measure">{{ r.label }}</td>
+      <td class="td text-right" data-label="Target">{% if r.has %}{% if r.money %}{{ r.target|inr0 }}{% else %}{{ r.target|floatformat:0 }}{% endif %}{% else %}<span class="text-gray-400">not set</span>{% endif %}</td>
+      <td class="td text-right font-medium" data-label="Actual">{% if r.money %}{{ r.actual|inr0 }}{% else %}{{ r.actual }}{% endif %}</td>
+      <td class="td text-right {% if r.diff is not None %}{% if r.diff >= 0 %}text-success-600{% else %}text-error-600{% endif %}{% endif %}" data-label="Plus or minus">{% if r.diff is not None %}{% if r.diff > 0 %}+{% endif %}{% if r.money %}{{ r.diff|inr0 }}{% else %}{{ r.diff|floatformat:0 }}{% endif %}{% else %}—{% endif %}</td>
+      <td class="td" data-label="Reached">{% if r.pct is not None %}<div class="flex items-center gap-2"><div class="h-2 w-24 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800" role="img" aria-label="{{ r.pct }} percent"><div class="h-full rounded-full {% if r.tone == 'good' %}bg-success-500{% elif r.tone == 'warn' %}bg-warning-500{% else %}bg-error-500{% endif %}" style="width: {% if r.pct > 100 %}100{% else %}{{ r.pct }}{% endif %}%"></div></div><span class="text-sm">{{ r.pct }}%</span></div>{% else %}—{% endif %}</td>
+      {% if period.is_current %}<td class="td text-right text-gray-600 dark:text-gray-400" data-label="Should be by now">{% if r.has and r.expected is not None %}{% if r.money %}{{ r.expected|inr0 }}{% else %}{{ r.expected|floatformat:0 }}{% endif %}{% if r.pace is not None %} <span class="text-theme-xs">({{ r.pace }}%)</span>{% endif %}{% else %}—{% endif %}</td>{% endif %}
+    </tr>{% endfor %}
+    </tbody></table></div></div>
+
+{# ------------------------------------------------------------------ headline numbers #}
+<div class="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-6">
+  <div class="card p-4"><p class="text-theme-xs text-gray-500 dark:text-gray-400">Leads assigned</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ m.leads }}</p>{% if prev %}<p class="text-theme-xs text-gray-500">before: {{ prev.leads }}</p>{% endif %}</div>
+  <div class="card p-4"><p class="text-theme-xs text-gray-500 dark:text-gray-400">Won</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ m.won }}</p>{% if prev %}<p class="text-theme-xs text-gray-500">before: {{ prev.won }}</p>{% endif %}</div>
+  <div class="card p-4"><p class="text-theme-xs text-gray-500 dark:text-gray-400">Won revenue</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ m.won_value|inr0 }}</p>{% if prev %}<p class="text-theme-xs text-gray-500">before: {{ prev.won_value|inr0 }}</p>{% endif %}</div>
+  <div class="card p-4"><p class="text-theme-xs text-gray-500 dark:text-gray-400">Collected</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ m.collected|inr0 }}</p>{% if prev %}<p class="text-theme-xs text-gray-500">before: {{ prev.collected|inr0 }}</p>{% endif %}</div>
+  <div class="card p-4"><p class="text-theme-xs text-gray-500 dark:text-gray-400">Win rate</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{% if m.win_rate is not None %}{{ m.win_rate }}%{% else %}—{% endif %}</p><p class="text-theme-xs text-gray-500">{{ m.won }} won, {{ m.lost }} lost</p></div>
+  <div class="card p-4"><p class="text-theme-xs text-gray-500 dark:text-gray-400">Average deal</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{% if m.avg_deal %}{{ m.avg_deal|inr0 }}{% else %}—{% endif %}</p><p class="text-theme-xs text-gray-500">{% if m.days_to_close is not None %}{{ m.days_to_close }} days to close{% endif %}</p></div>
+</div>
+
+{% if mode == 'team' %}
+<div class="card mb-5"><div class="card-header"><h2 class="card-title">The team, side by side</h2><span class="muted">Outcomes and activity together, so neither is read alone</span></div>
+  <div class="table-wrap"><table class="data-table responsive-cards">
+    <thead class="border-b border-gray-100 dark:border-gray-800"><tr><th class="th">Person</th><th class="th text-right">Leads</th><th class="th text-right">Won revenue</th><th class="th text-right">Collected</th><th class="th text-right">Calls</th><th class="th text-right">Follow-ups skipped</th><th class="th text-right">Not logged in</th><th class="th text-right">Working time</th><th class="th">Watch</th></tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+    {% for r in team_rows %}<tr data-href="{% url 'crm:staff_profile' r.user.pk %}">
+      <td class="td" data-label="Person"><a class="td-strong hover:text-brand-500" href="{% url 'crm:staff_profile' r.user.pk %}">{{ r.user|uname }}</a></td>
+      <td class="td text-right" data-label="Leads">{{ r.m.leads }}</td><td class="td text-right" data-label="Won revenue">{{ r.m.won_value|inr0 }}</td><td class="td text-right" data-label="Collected">{{ r.m.collected|inr0 }}</td>
+      <td class="td text-right" data-label="Calls">{{ r.m.calls }}</td><td class="td text-right" data-label="Follow-ups skipped">{% if r.m.fu_skipped %}<span class="badge badge-red">{{ r.m.fu_skipped }}</span>{% else %}0{% endif %}</td>
+      <td class="td text-right" data-label="Not logged in">{% if r.m.absent %}<span class="badge badge-amber">{{ r.m.absent }}</span>{% else %}0{% endif %}</td>
+      <td class="td text-right" data-label="Working time">{{ r.m.worked_text }}</td>
+      <td class="td text-theme-xs" data-label="Watch">{% for f in r.flags %}<span class="block">{{ f.text }}</span>{% empty %}<span class="text-success-600">Nothing</span>{% endfor %}</td>
+    </tr>{% endfor %}
+    <tr class="bg-gray-50 font-medium dark:bg-white/[0.03]"><td class="td">Team average</td><td class="td text-right">{{ team_avg.leads }}</td><td class="td text-right">{{ team_avg.won_value|inr0 }}</td><td class="td"></td><td class="td text-right">{{ team_avg.calls }}</td><td class="td text-right">{{ team_avg.fu_skipped }}</td><td class="td"></td><td class="td"></td><td class="td"></td></tr>
+    </tbody></table></div></div>
+{% endif %}
+
+{# ------------------------------------------------------------------ graphs #}
+<div class="mb-5 grid grid-cols-1 gap-5 xl:grid-cols-2">
+  <div class="card"><div class="card-header"><h2 class="card-title">Revenue against target, 12 months</h2></div><div class="card-body"><div id="chart-revenue" style="min-height:260px"></div></div></div>
+  <div class="card"><div class="card-header"><h2 class="card-title">Weekly activity and hours worked</h2></div><div class="card-body"><div id="chart-weekly" style="min-height:260px"></div></div></div>
+  {% if trend.daily.labels %}<div class="card xl:col-span-2"><div class="card-header"><h2 class="card-title">Overdue follow-ups at the end of each day, last 30 days</h2></div><div class="card-body"><div id="chart-daily" style="min-height:220px"></div></div></div>{% endif %}
+</div>
+
+{# ------------------------------------------------------------------ funnel and pipeline #}
+<div class="mb-5 grid grid-cols-1 gap-5 xl:grid-cols-3">
+  <div class="card xl:col-span-2"><div class="card-header"><h2 class="card-title">Funnel of the leads assigned in this period</h2></div>
+    <div class="card-body space-y-3">{% for f in m.funnel %}<div><div class="flex justify-between text-sm"><span class="text-gray-700 dark:text-gray-300">{{ f.label }}</span><span class="font-medium text-gray-800 dark:text-white/90">{{ f.count }}{% if f.conv is not None %} <span class="text-theme-xs text-gray-500">({{ f.conv }}% of the step before)</span>{% endif %}</span></div><div class="mt-1 h-2.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800"><div class="h-full rounded-full bg-brand-500" style="width: {{ f.width }}%"></div></div></div>{% endfor %}</div></div>
+  <div class="space-y-5">
+    <div class="card"><div class="card-header"><h2 class="card-title">Pipeline right now</h2></div><dl class="card-body grid grid-cols-2 gap-4 text-sm">
+      <div><dt class="dl-label">Open leads</dt><dd class="dl-value">{{ m.open_leads }}</dd></div><div><dt class="dl-label">Open value</dt><dd class="dl-value">{{ m.open_value|inr0 }}</dd></div>
+      <div><dt class="dl-label">Weighted</dt><dd class="dl-value">{{ m.weighted|inr0 }}</dd></div><div><dt class="dl-label">Untouched 3+ days</dt><dd class="dl-value {% if m.stale %}text-warning-700 dark:text-orange-400{% endif %}">{{ m.stale }}</dd></div></dl></div>
+    <div class="card"><div class="card-header"><h2 class="card-title">Why leads were lost</h2></div><ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for r in m.lost_reasons %}<li class="flex justify-between px-5 py-2.5 text-sm"><span>{{ r.label }}</span><span class="font-medium">{{ r.n }}</span></li>{% empty %}<li class="px-5 py-4 text-sm text-gray-500">None lost in this period.</li>{% endfor %}</ul></div>
+  </div>
+</div>
+
+{# ------------------------------------------------------------------ discipline #}
+<div class="mb-5 grid grid-cols-1 gap-5 xl:grid-cols-3">
+  <div class="card"><div class="card-header"><h2 class="card-title">Follow-ups</h2>{% if m.fu_compliance is not None %}<span class="badge {% if m.fu_compliance >= 80 %}badge-green{% elif m.fu_compliance >= 60 %}badge-amber{% else %}badge-red{% endif %}">{{ m.fu_compliance }}% on time</span>{% endif %}</div>
+    <dl class="card-body grid grid-cols-2 gap-4 text-sm">
+      <div><dt class="dl-label">Due</dt><dd class="dl-value">{{ m.fu_due }}</dd></div><div><dt class="dl-label">Done on time</dt><dd class="dl-value text-success-600">{{ m.fu_on_time }}</dd></div>
+      <div><dt class="dl-label">Done late</dt><dd class="dl-value">{{ m.fu_late }}</dd></div><div><dt class="dl-label">Skipped</dt><dd class="dl-value {% if m.fu_skipped %}text-error-600{% endif %}">{{ m.fu_skipped }}</dd></div>
+      <div><dt class="dl-label">Overdue now</dt><dd class="dl-value">{{ m.fu_overdue }}</dd></div><div><dt class="dl-label">Postponed</dt><dd class="dl-value">{{ m.fu_postponed }}</dd></div>
+      <div class="col-span-2 text-theme-xs text-gray-500 dark:text-gray-400">Skipped means cancelled by the person, or still not done 24 hours after it was due. Follow-ups closed because the lead was won or lost are not counted.{% if m.auto_scheduled %} The system had to set {{ m.auto_scheduled }} follow-up{{ m.auto_scheduled|pluralize }} because a lead had none.{% endif %}</div></dl></div>
+  <div class="card"><div class="card-header"><h2 class="card-title">Activity</h2></div>
+    <dl class="card-body grid grid-cols-2 gap-4 text-sm">
+      <div><dt class="dl-label">Calls</dt><dd class="dl-value">{{ m.calls }} <span class="text-theme-xs text-gray-500">({{ m.calls_connected }} connected)</span></dd></div><div><dt class="dl-label">Call time</dt><dd class="dl-value">{{ m.call_minutes }} min</dd></div>
+      <div><dt class="dl-label">Meetings</dt><dd class="dl-value">{{ m.meetings }}</dd></div><div><dt class="dl-label">Messages sent</dt><dd class="dl-value">{{ m.messages }}</dd></div>
+      <div><dt class="dl-label">Quotations sent</dt><dd class="dl-value">{{ m.quotes }} <span class="text-theme-xs text-gray-500">{{ m.quotes_value|inr0 }}</span></dd></div><div><dt class="dl-label">Clients onboarded</dt><dd class="dl-value">{{ m.clients }}</dd></div>
+      <div><dt class="dl-label">First response</dt><dd class="dl-value">{% if m.first_response_min is not None %}{{ m.first_response_min }} min{% else %}—{% endif %}</dd></div><div><dt class="dl-label">Slow first responses</dt><dd class="dl-value">{{ m.slow_first_response }}</dd></div></dl></div>
+  <div class="card"><div class="card-header"><h2 class="card-title">Tasks and client deliverables</h2></div>
+    <dl class="card-body grid grid-cols-2 gap-4 text-sm">
+      <div><dt class="dl-label">Tasks due</dt><dd class="dl-value">{{ m.tasks }}</dd></div><div><dt class="dl-label">Done</dt><dd class="dl-value text-success-600">{{ m.tasks_done }} <span class="text-theme-xs text-gray-500">({{ m.tasks_late }} late)</span></dd></div>
+      <div><dt class="dl-label">Overdue</dt><dd class="dl-value {% if m.tasks_overdue %}text-error-600{% endif %}">{{ m.tasks_overdue }}</dd></div><div><dt class="dl-label">Cancelled</dt><dd class="dl-value">{{ m.tasks_cancelled }}</dd></div>
+      <div><dt class="dl-label">Deliverables</dt><dd class="dl-value">{{ m.dl }}</dd></div><div><dt class="dl-label">Delivered</dt><dd class="dl-value text-success-600">{{ m.dl_done }} <span class="text-theme-xs text-gray-500">({{ m.dl_late }} late)</span></dd></div>
+      <div><dt class="dl-label">Skipped</dt><dd class="dl-value">{{ m.dl_skipped }}</dd></div><div><dt class="dl-label">Missed</dt><dd class="dl-value {% if m.dl_missed %}text-error-600{% endif %}">{{ m.dl_missed }}</dd></div>
+      <div><dt class="dl-label">Rescheduled</dt><dd class="dl-value">{{ m.dl_rescheduled }}</dd></div><div><dt class="dl-label">Overdue now</dt><dd class="dl-value">{{ m.dl_overdue }}</dd></div></dl></div>
+</div>
+
+{# ------------------------------------------------------------------ time and presence #}
+<div class="mb-5 grid grid-cols-1 gap-5 xl:grid-cols-3">
+  <div class="card xl:col-span-2"><div class="card-header"><h2 class="card-title">Time and presence</h2><span class="muted">{{ m.working_days }} working day{{ m.working_days|pluralize }} so far in this period</span></div>
+    <dl class="card-body grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
+      <div><dt class="dl-label">Working time</dt><dd class="dl-value">{{ m.worked_text }}</dd></div><div><dt class="dl-label">Average a day</dt><dd class="dl-value">{{ m.avg_worked|default:"—" }}</dd></div>
+      <div><dt class="dl-label">Days worked</dt><dd class="dl-value">{{ m.days_worked }}</dd></div><div><dt class="dl-label">Not logged in</dt><dd class="dl-value {% if m.absent %}text-error-600{% endif %}">{{ m.absent }} <span class="text-theme-xs text-gray-500">({{ m.absence_spells }} spell{{ m.absence_spells|pluralize }})</span></dd></div>
+      <div><dt class="dl-label">Break time</dt><dd class="dl-value">{{ m.break_text }} <span class="text-theme-xs text-gray-500">{{ m.breaks }} break{{ m.breaks|pluralize }}</span></dd></div><div><dt class="dl-label">Longest break</dt><dd class="dl-value">{{ m.longest_break }}</dd></div>
+      <div><dt class="dl-label">Usual login</dt><dd class="dl-value">{{ m.usual_login|default:"—" }}</dd></div><div><dt class="dl-label">Usual logout</dt><dd class="dl-value">{{ m.usual_logout|default:"—" }}</dd></div>
+      <div><dt class="dl-label">Leave taken</dt><dd class="dl-value">{{ m.leave_days|floatformat:"-1" }} day{{ m.leave_days|pluralize }}</dd></div>
+      <div class="col-span-2 sm:col-span-3"><dt class="dl-label">By type</dt><dd class="dl-value">{% for name, d in m.leave_by_type.items %}{{ name }} {{ d|floatformat:"-1" }}{% if not forloop.last %}, {% endif %}{% empty %}None{% endfor %}</dd></div>
+      <div><dt class="dl-label">Late logins</dt><dd class="dl-value">{% if m.late_logins is None %}<span class="text-gray-400">no shift set</span>{% else %}{{ m.late_logins }}{% endif %}</dd></div>
+      {% if m.absent_days %}<div class="col-span-2 sm:col-span-4"><dt class="dl-label">Days not logged in</dt><dd class="text-theme-xs text-gray-600 dark:text-gray-400">{% for d in m.absent_days|slice:":40" %}{{ d|date:"j M" }}{% if not forloop.last %}, {% endif %}{% endfor %}</dd></div>{% endif %}
+    </dl></div>
+  {% if mode == 'individual' %}
+  <div class="card"><div class="card-header"><h2 class="card-title">Attendance calendar</h2></div><div class="card-body">
+    <div class="grid grid-cols-7 gap-1.5 text-center text-theme-xs">
+      {% for c in calendar %}<div title="{{ c.day|date:'D j M' }}{% if c.text %}: {{ c.text }}{% endif %}" class="rounded-md px-1 py-2 {% if c.kind == 'worked' %}bg-success-50 text-success-700 dark:bg-success-500/15{% elif c.kind == 'leave' %}bg-blue-light-50 text-blue-light-700 dark:bg-blue-light-500/15{% elif c.kind == 'absent' %}bg-error-50 text-error-700 dark:bg-error-500/15{% elif c.kind == 'future' %}bg-transparent text-gray-300{% else %}bg-gray-100 text-gray-500 dark:bg-white/5{% endif %}">{{ c.day.day }}</div>{% endfor %}
+    </div>
+    <p class="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-theme-xs text-gray-500"><span><span class="mr-1 inline-block h-2 w-2 rounded-full bg-success-500"></span>Worked</span><span><span class="mr-1 inline-block h-2 w-2 rounded-full bg-blue-light-500"></span>Leave</span><span><span class="mr-1 inline-block h-2 w-2 rounded-full bg-error-500"></span>Not logged in</span><span><span class="mr-1 inline-block h-2 w-2 rounded-full bg-gray-400"></span>Weekend or holiday</span></p>
+  </div></div>
+  {% endif %}
+</div>
+
+{% if mode == 'individual' %}
+<div class="card mb-5"><div class="card-header"><h2 class="card-title">Daily reports</h2><span class="muted">One per day, newest first. Open one to read it or check its code.</span></div>
+  <ul class="divide-y divide-gray-100 dark:divide-gray-800">
+    {% for r in daily_reports %}<li class="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm"><a class="font-medium text-gray-800 hover:text-brand-500 dark:text-white/90" href="{% url 'crm:daily_report' r.pk %}">{{ r.day|date:"D j M Y" }}</a><span class="text-gray-600 dark:text-gray-400">{{ r.data.time.worked }} worked{% if r.seq > 1 %} · version {{ r.seq }}{% endif %}</span><span class="font-mono text-theme-xs text-gray-500">{{ r.code }}</span></li>
+    {% empty %}<li class="px-5 py-5 text-sm text-gray-500">No report in this period. A report is made each time the person signs out.</li>{% endfor %}
+  </ul></div>
+{% endif %}
+
+{{ trend|json_script:"trend-data" }}
+<script src="{% static 'crm/vendor/apexcharts.min.js' %}"></script>
+<script>
+(function () {
+  if (!window.ApexCharts) return;
+  var d = JSON.parse(document.getElementById('trend-data').textContent);
+  var dark = document.documentElement.classList.contains('dark');
+  var base = { chart: { toolbar: { show: false }, fontFamily: 'inherit', foreground: dark ? '#d1d5db' : '#475467' }, legend: { position: 'top' }, grid: { borderColor: dark ? '#344054' : '#eaecf0' } };
+  function money(v) { return '₹' + Math.round(v).toLocaleString('en-IN'); }
+  new ApexCharts(document.getElementById('chart-revenue'), Object.assign({}, base, {
+    chart: Object.assign({}, base.chart, { type: 'line', height: 280 }), stroke: { width: [0, 0, 3], curve: 'smooth' }, colors: ['#465fff', '#12b76a', '#f79009'],
+    series: [{ name: 'Won', type: 'column', data: d.monthly.won }, { name: 'Collected', type: 'column', data: d.monthly.collected }, { name: 'Target (won)', type: 'line', data: d.monthly.target }],
+    xaxis: { categories: d.monthly.labels }, yaxis: { labels: { formatter: function (v) { return v >= 100000 ? (v / 100000).toFixed(1) + 'L' : v; } } }, tooltip: { y: { formatter: money } }
+  })).render();
+  new ApexCharts(document.getElementById('chart-weekly'), Object.assign({}, base, {
+    chart: Object.assign({}, base.chart, { type: 'line', height: 280 }), stroke: { width: [0, 3], curve: 'smooth' }, colors: ['#465fff', '#12b76a'],
+    series: [{ name: 'Calls, meetings and messages', type: 'column', data: d.weekly.activity }, { name: 'Hours worked', type: 'line', data: d.weekly.hours }],
+    xaxis: { categories: d.weekly.labels }
+  })).render();
+  var daily = document.getElementById('chart-daily');
+  if (daily) new ApexCharts(daily, Object.assign({}, base, {
+    chart: Object.assign({}, base.chart, { type: 'area', height: 240 }), stroke: { width: 2, curve: 'smooth' }, colors: ['#f04438'],
+    series: [{ name: 'Overdue follow-ups', data: d.daily.overdue }], xaxis: { categories: d.daily.labels }
+  })).render();
+})();
+</script>
+{% endblock %}

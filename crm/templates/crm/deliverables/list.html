@@ -1,0 +1,43 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Team board{% endblock %}
+{% block page_header %}
+<div class="mb-5 flex flex-wrap items-start justify-between gap-3">
+  <div>
+    <h1 class="page-title">Deliverables <span class="ml-1 text-base font-normal text-gray-500 dark:text-gray-400">({{ total }})</span></h1>
+    <p class="muted mt-1">Every promised deliverable you can see. Start with the red and amber ones.</p>
+  </div>
+  <div class="flex flex-wrap gap-2">
+    <a href="{% url 'crm:deliverable_mine' %}" class="btn btn-secondary">My deliverables</a>
+    {% if can_assign %}<a href="{% url 'crm:deliverable_workload' %}" class="btn btn-secondary">Team load</a>{% endif %}
+    <a href="{% url 'crm:followup_calendar' %}?show=deliverables" class="btn btn-secondary">{% icon 'calendar' 16 %} Calendar</a>
+  </div>
+</div>
+{% endblock %}
+{% block content %}
+<div class="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
+  <a href="?quick=overdue" class="card p-4 transition hover:border-brand-300"><p class="text-theme-xs text-gray-500 dark:text-gray-400">Overdue</p><p class="text-title-sm mt-1 font-bold {% if stats.overdue %}text-error-600{% else %}text-gray-800 dark:text-white/90{% endif %}">{{ stats.overdue }}</p></a>
+  <a href="?quick=today" class="card p-4 transition hover:border-brand-300"><p class="text-theme-xs text-gray-500 dark:text-gray-400">Due today</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ stats.today }}</p></a>
+  <a href="?quick=review" class="card p-4 transition hover:border-brand-300"><p class="text-theme-xs text-gray-500 dark:text-gray-400">Waiting for review</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ stats.review }}</p></a>
+  <a href="?quick=client" class="card p-4 transition hover:border-brand-300"><p class="text-theme-xs text-gray-500 dark:text-gray-400">Awaiting client</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ stats.client }}</p></a>
+  <a href="?quick=missed" class="card p-4 transition hover:border-brand-300"><p class="text-theme-xs text-gray-500 dark:text-gray-400">Missed this month</p><p class="text-title-sm mt-1 font-bold {% if stats.missed %}text-error-600{% else %}text-gray-800 dark:text-white/90{% endif %}">{{ stats.missed }}</p></a>
+</div>
+<div class="card">
+  {% include "crm/components/list_toolbar.html" with search_placeholder="Search client, deliverable or file name" %}
+  <div class="table-wrap"><table class="data-table responsive-cards">
+    <thead class="border-b border-gray-100 dark:border-gray-800"><tr><th class="th">{% sort_link 'due' 'Due' %}</th><th class="th">{% sort_link 'client' 'Client' %}</th><th class="th">Deliverable</th><th class="th">Assignee</th><th class="th">Progress</th><th class="th">{% sort_link 'status' 'Status' %}</th><th class="th"><span class="sr-only">Open</span></th></tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+    {% for d in object_list %}
+      <tr data-href="{% url 'crm:deliverable_detail' d.pk %}">
+        <td class="td" data-label="Due"><span class="{% if d.is_overdue %}font-semibold text-error-600{% endif %}">{{ d.due_date|date:"D j M" }}</span><span class="block text-theme-xs text-gray-500">{{ d.due_time|time:"g:i A" }}{% if d.reschedule_count %} · promised {{ d.original_due_date|date:"j M" }}{% endif %}</span></td>
+        <td class="td" data-label="Client"><a class="td-strong hover:text-brand-500" href="{% url 'crm:client_deliverables' d.client_id %}">{{ d.client.display_name }}</a></td>
+        <td class="td" data-label="Deliverable"><a class="hover:text-brand-500" href="{% url 'crm:deliverable_detail' d.pk %}">{{ d.title }}</a>{% if d.delivery_note %}<span class="block text-theme-xs text-gray-500">{{ d.delivery_note|truncatechars:50 }}</span>{% endif %}</td>
+        <td class="td" data-label="Assignee">{% if d.assignee %}{{ d.assignee|uname }}{% else %}<span class="badge badge-red">Unassigned</span>{% endif %}<span class="block text-theme-xs text-gray-500">Owner {{ d.plan.account_owner|uname }}</span></td>
+        <td class="td" data-label="Progress">{{ d.quantity_done }} / {{ d.quantity }}</td>
+        <td class="td" data-label="Status">{% badge d.status d.get_status_display d.tone %}{% if d.missed_at %}<span class="badge badge-red ml-1">Missed</span>{% endif %}{% if d.status == 'awaiting_client' %}<span class="block text-theme-xs text-gray-500">{{ d.client_wait_days }} days with client</span>{% endif %}</td>
+        <td class="td" data-label="Open"><a href="{% url 'crm:deliverable_detail' d.pk %}" class="btn btn-secondary btn-sm">Open</a></td>
+      </tr>
+    {% empty %}<tr><td colspan="7">{% include "crm/components/empty_state.html" with filtered=any_filter title="No deliverables yet" text="They appear here once a client has an active contract with a delivery plan." icon="tasks" %}</td></tr>{% endfor %}
+    </tbody></table></div>
+  {% include "crm/components/pagination.html" %}
+</div>
+{% endblock %}

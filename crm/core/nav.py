@@ -16,6 +16,14 @@ NAV = [
             ('Delivery', 'crm:dashboard_delivery', 'projects', 'view'),
             ('HR', 'crm:hr_dashboard', 'employees', 'view', 'company'),
         ]),
+        ('mytime', 'Working time', 'clock', [
+            ('My time', 'crm:my_time', None, None),
+            ('Team time', 'crm:team_time', 'attendance', 'view', 'team'),
+        ]),
+        ('performance', 'Team performance', 'chart', [
+            ('Team performance', 'crm:performance_board', 'attendance', 'view', 'team'),
+            ('Daily reports', 'crm:daily_board', 'attendance', 'view', 'team'),
+        ]),
         ('approvals', 'Approvals', 'shield', [('Approvals', 'crm:approval_list', None, None)]),
         ('myexp', 'My expenses', 'receipt', [('My expenses', 'crm:expense_list', 'expenses', 'view')]),
     ]),
@@ -41,6 +49,11 @@ NAV = [
         ('clients', 'Clients', 'briefcase', [
             ('Client directory', 'crm:client_list', 'clients', 'view'),
             ('Service catalogue', 'crm:service_list', 'services', 'view'),
+        ]),
+        ('deliverables', 'Deliverables', 'tasks', [
+            ('My deliverables', 'crm:deliverable_mine', 'deliverables', 'view'),
+            ('Team board', 'crm:deliverable_list', 'deliverables', 'assign'),
+            ('Team load', 'crm:deliverable_workload', 'deliverables', 'assign'),
         ]),
     ]),
     ('MONEY', [
@@ -145,6 +158,7 @@ MOBILE_TABS = [
     ('My Day', 'crm:my_day', None, None, 'sun'),
     ('Leads', 'crm:lead_list', 'leads', 'view', 'users'),
     ('Follow-ups', 'crm:followup_calendar', 'leads', 'view', 'calendar'),
+    ('Deliveries', 'crm:deliverable_mine', 'deliverables', 'view', 'tasks'),
     ('Pipeline', 'crm:pipeline', 'deals', 'view', 'board'),
     ('Dashboard', 'crm:dashboard_finance', 'invoices', 'view', 'grid'),
     ('Projects', 'crm:project_list', 'projects', 'view', 'tasks'),

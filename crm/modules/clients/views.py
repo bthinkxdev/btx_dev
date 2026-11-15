@@ -116,6 +116,10 @@ def client_detail(request, pk):
         'tickets': client.tickets.count(),
     }
     ctx['counts'] = counts
+    from . import health
+    if client.status == 'active' and not client.archived_at and health.live_clients().filter(pk=client.pk).exists():
+        days = health.quiet_days(client)
+        ctx['quiet_days'] = days if days >= health.QUIET_DAYS else None
     if tab == 'overview':
         ctx['recent_invoices'] = client.invoices.order_by('-invoice_date')[:5]
         ctx['open_quotes'] = client.quotations.filter(status__in=['draft', 'awaiting_approval', 'approved', 'sent', 'viewed'])[:5]

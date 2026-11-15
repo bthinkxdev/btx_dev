@@ -49,6 +49,8 @@ MODULES = {
     'audit': 'Audit log',
     'chats': 'Website chat history',
     'ai_analyst': 'AI sales analyst',
+    'deliverables': 'Monthly deliverables',
+    'business_desk': 'AI business staff',
 }
 
 ACTIONS = {
@@ -101,6 +103,7 @@ OWNER_FIELDS = {
     'leave': ('employee__user',),
     'payroll': ('employee__user',),
     'commissions': ('user',),
+    'deliverables': ('assignee', 'plan__account_owner', 'reviewer'),
 }
 MULTI_VALUED = ('members__',)
 

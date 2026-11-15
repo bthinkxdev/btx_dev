@@ -26,5 +26,16 @@ def crm(request):
     unread = Notification.objects.filter(user=user, read_at__isnull=True)
     ctx['unread_count'] = unread.count()
     ctx['recent_notifications'] = list(unread.order_by('-id')[:8])
+    try:
+        from crm.modules.worktime import services as worktime
+        ctx['work'] = worktime.widget(user)
+        ctx['work_notice'] = worktime.notice_pending(user)
+        ctx['work_notice_text'] = worktime.NOTICE_TEXT
+        from crm.modules.performance import daily
+        pending = daily.pending_for(user)
+        if pending is not None:
+            ctx['pending_report'], ctx['pending_report_token'] = pending, daily.token_for(pending)
+    except Exception:  # never let the clock break a page
+        ctx['work'] = None
     ctx['gateway_test_mode'] = company.gateway_provider != 'none' and not company.gateway_live
     return ctx

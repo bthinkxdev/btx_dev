@@ -94,8 +94,8 @@ class PolicyForm(VersionedModelFormMixin, CrmModelForm):
         if d.get('payment_link_default_expiry_days') and d.get('payment_link_max_expiry_days') \
                 and d['payment_link_default_expiry_days'] > d['payment_link_max_expiry_days']:
             self.add_error('payment_link_default_expiry_days', 'The default expiry cannot exceed the maximum.')
-        if d.get('idle_timeout_minutes') is not None and not 5 <= d['idle_timeout_minutes'] <= 480:
-            self.add_error('idle_timeout_minutes', 'Use 5 to 480 minutes.')
+        if d.get('idle_timeout_minutes') is not None and not 60 <= d['idle_timeout_minutes'] <= 1440:
+            self.add_error('idle_timeout_minutes', 'Use 60 to 1440 minutes (1 to 24 hours). 720 is 12 hours.')
         for f in ('exec_discount_limit', 'manager_discount_limit', 'margin_floor_percent'):
             if d.get(f) is not None and not 0 <= d[f] <= 100:
                 self.add_error(f, 'Use a percentage from 0 to 100.')

@@ -12,7 +12,7 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from crm.core import audit, india, permissions
+from crm.core import attribution, audit, india, permissions
 from crm.core.forms import CrmModelForm, MoneyFormField
 from crm.core.money import ZERO
 from crm.core.views import staff_required
@@ -72,6 +72,9 @@ def pipeline(request):
     })
 
 
+TARGET_FIELDS = ('lead_count', 'quotation_count', 'client_count', 'call_count', 'meeting_count', 'won_value', 'collected_value')
+
+
 class TargetForm(CrmModelForm):
     won_value = MoneyFormField()
     collected_value = MoneyFormField()
@@ -79,7 +82,7 @@ class TargetForm(CrmModelForm):
 
     class Meta:
         model = SalesTarget
-        fields = ['month', 'user', 'team', 'lead_count', 'quotation_count', 'won_value', 'collected_value']
+        fields = ['month', 'user', 'team', 'lead_count', 'quotation_count', 'client_count', 'call_count', 'meeting_count', 'won_value', 'collected_value']
 
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -119,9 +122,8 @@ def targets(request):
         t = SalesTarget.objects.filter(user=u, month=month).first()
         leads_in = Lead.objects.filter(owner=u, created_at__date__gte=month, created_at__date__lt=nxt).count()
         quotes = Quotation.objects.filter(owner=u, sent_at__date__gte=month, sent_at__date__lt=nxt, version=1).count()
-        won = Lead.objects.filter(owner=u, stage='won', won_at__date__gte=month, won_at__date__lt=nxt).aggregate(s=Sum('won_value'))['s'] or ZERO
-        collected = Payment.objects.filter(status__in=['verified', 'partially_refunded'], client__owner=u,
-                                           payment_date__gte=month, payment_date__lt=nxt).aggregate(s=Sum('amount'))['s'] or ZERO
+        won = Lead.objects.filter(attribution.won_q([u.pk]), stage='won', won_at__date__gte=month, won_at__date__lt=nxt).aggregate(s=Sum('won_value'))['s'] or ZERO
+        collected = attribution.collected_total([u.pk], month, nxt - timedelta(days=1))
         weighted = sum((l.weighted_value for l in Lead.objects.filter(owner=u, stage__in=OPEN_STAGES, archived_at__isnull=True,
                                                                       expected_close_date__gte=month, expected_close_date__lt=nxt)), ZERO)
         target_c = t.collected_value if t else ZERO
@@ -180,14 +182,14 @@ def target_save(request):
         c = form.cleaned_data
         lookup = {'month': c['month'], 'user': c.get('user'), 'team': c.get('team')}
         existing = SalesTarget.objects.filter(**{k: v for k, v in lookup.items() if v is not None}).first()
-        before = {f: str(getattr(existing, f)) for f in ('lead_count', 'quotation_count', 'won_value', 'collected_value')} if existing else {}
+        before = {f: str(getattr(existing, f)) for f in TARGET_FIELDS} if existing else {}
         obj = existing or SalesTarget(month=c['month'], user=c.get('user'), team=c.get('team'), created_by=request.user)
-        for f in ('lead_count', 'quotation_count', 'won_value', 'collected_value'):
+        for f in TARGET_FIELDS:
             setattr(obj, f, c[f])
         obj.updated_by = request.user
         obj.save()
         audit.log('target.saved', obj, changes=audit.diff(before, {f: str(getattr(obj, f)) for f in before or
-                                                                  ('lead_count', 'quotation_count', 'won_value', 'collected_value')}))
+                                                                  TARGET_FIELDS}))
         messages.success(request, 'Target saved.')
     else:
         from crm.core.views import form_error_text

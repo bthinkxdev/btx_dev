@@ -1,0 +1,37 @@
+{% load static crm_tags %}<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <title>On a break | {{ company.display_name|default:"BThinkX" }}</title>
+  <link rel="stylesheet" href="{% asset 'crm/css/crm.css' %}">
+</head>
+<body class="h-full bg-gray-950 text-white antialiased">
+  <main class="fixed inset-0 z-99999 flex items-center justify-center bg-gray-950 p-5" role="dialog" aria-modal="true" aria-labelledby="break-title">
+    <div class="w-full max-w-md rounded-3xl bg-white p-8 text-center shadow-2xl dark:bg-gray-900">
+      <div class="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-warning-50 text-warning-600 dark:bg-warning-500/15">{% icon 'clock' 30 %}</div>
+      <h1 id="break-title" class="text-2xl font-semibold text-gray-800 dark:text-white/90">You are on a break</h1>
+      <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Since {{ since|tm }}. This time is not counted as work.</p>
+      <p class="mt-5 text-4xl font-bold tabular-nums text-gray-800 dark:text-white/90" id="break-clock" data-seconds="{{ seconds }}" aria-live="off">{{ seconds|floatformat:0 }}s</p>
+      <form method="post" action="{% url 'crm:break_end' %}" class="mt-7">{% csrf_token %}
+        <button class="btn btn-primary w-full justify-center py-3.5 text-base" id="back-to-work" autofocus>Back to work</button>
+      </form>
+    </div>
+  </main>
+  <script>
+  (function () {
+    var out = document.getElementById('break-clock');
+    var base = parseInt(out.dataset.seconds, 10) || 0, loaded = Date.now();
+    function pad(n) { return n < 10 ? '0' + n : '' + n; }
+    function show() {
+      var s = base + Math.floor((Date.now() - loaded) / 1000), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60);
+      out.textContent = (h ? h + ':' + pad(m) : m) + ':' + pad(s % 60);
+    }
+    show(); setInterval(show, 1000);
+    // the break could be ended from another device: check every minute and leave the screen when it is over
+    setInterval(function () { fetch(location.href, { credentials: 'same-origin', redirect: 'manual' }).then(function (r) { if (r.type === 'opaqueredirect' || r.status === 0 || r.redirected) location.reload(); }).catch(function () {}); }, 60000);
+  })();
+  </script>
+</body>
+</html>

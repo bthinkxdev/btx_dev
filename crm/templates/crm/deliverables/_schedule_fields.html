@@ -1,0 +1,13 @@
+{% load crm_tags %}
+{# The "when is it due" block. The form root must carry x-data="{ f: '<frequency>' }" so the right day picker shows. #}
+{% field form.frequency %}
+<div x-show="f === 'weekly'" x-cloak class="sm:col-span-2">
+  <p class="form-label">On which days</p>
+  <div class="flex flex-wrap gap-2">
+    {% for cb in form.weekdays %}<label class="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-gray-200 px-3 text-sm text-gray-700 dark:border-gray-800 dark:text-gray-300">{{ cb.tag }} {{ cb.choice_label }}</label>{% endfor %}
+  </div>
+  {% for e in form.weekdays.errors %}<p class="form-error mt-1 flex items-center gap-1">{% icon 'alert' 14 %} {{ e }}</p>{% endfor %}
+</div>
+<div x-show="f === 'monthly' || f === 'quarterly'" x-cloak class="sm:col-span-2">
+  {% field form.month_days %}
+</div>

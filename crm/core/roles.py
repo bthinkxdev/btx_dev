@@ -18,6 +18,12 @@ def _grant(**modules):
 
 SALES_VIEW = {'view': 'own'}
 
+# Monthly deliverables. Executives work their own and their clients' items; managers see the team, review, reassign
+# and set the standard plans; project managers can see everything to plan capacity.
+DELIVERABLES_EXECUTIVE = {'view': 'own', 'create': 'own', 'edit': 'own'}
+DELIVERABLES_MANAGER = {'view': 'team', 'create': 'team', 'edit': 'team', 'assign': 'team', 'approve': 'team',
+                        'configure': 'team', 'export': 'team'}
+
 ROLE_TEMPLATES = [
     {
         'code': 'owner', 'name': 'Owner / Super Admin', 'home': 'crm:dashboard_owner',
@@ -39,10 +45,11 @@ ROLE_TEMPLATES = [
             commissions={'view': 'team', 'approve': 'team'},
             reports={'view': 'team', 'export': 'team'},
             leave={'view': 'own', 'create': 'own'},
-            attendance={'view': 'own', 'create': 'own'},
+            attendance={'view': 'team', 'create': 'own', 'export': 'team'},
             expenses={'view': 'own', 'create': 'own'},
             chats={'view': 'company'},
             ai_analyst={'view': 'company'},
+            deliverables=DELIVERABLES_MANAGER,
         ),
         'field_groups': ['internal_notes', 'cost_price'],
     },
@@ -61,6 +68,7 @@ ROLE_TEMPLATES = [
             leave={'view': 'own', 'create': 'own'},
             attendance={'view': 'own', 'create': 'own'},
             expenses={'view': 'own', 'create': 'own'},
+            deliverables=DELIVERABLES_EXECUTIVE,
         ),
         'field_groups': ['internal_notes'],
     },
@@ -189,7 +197,7 @@ ROLE_TEMPLATES = [
     {
         'code': 'auditor', 'name': 'Auditor', 'home': 'crm:dashboard_owner',
         'description': 'Read-only across approved modules, export reports.',
-        'grants': {m: {'view': 'company'} for m in MODULES if m not in ('payroll', 'employees', 'settings', 'chats', 'ai_analyst')}
+        'grants': {m: {'view': 'company'} for m in MODULES if m not in ('payroll', 'employees', 'settings', 'chats', 'ai_analyst', 'business_desk')}
         | {'reports': {'view': 'company', 'export': 'company'}, 'audit': {'view': 'company', 'export': 'company'}},
         'field_groups': ['tax_ids'],
     },

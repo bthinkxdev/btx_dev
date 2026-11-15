@@ -142,11 +142,33 @@ def today() -> date:
     return timezone.localdate()
 
 
+def working_days_list(start: date, end: date) -> list[date]:
+    """Working days between two dates, both included: Monday to Friday, minus holidays. A Saturday or Sunday counts only
+    when HR or an administrator has made that day a working day."""
+    if end < start:
+        return []
+    from crm.models import Holiday, WorkingDayException
+    holidays = set(Holiday.objects.filter(holiday_date__range=(start, end)).values_list('holiday_date', flat=True))
+    extra = set(WorkingDayException.objects.filter(work_date__range=(start, end)).values_list('work_date', flat=True))
+    out, d = [], start
+    while d <= end:
+        if d not in holidays and (d.weekday() < 5 or d in extra):
+            out.append(d)
+        d += timedelta(days=1)
+    return out
+
+
+def is_working_day(d: date) -> bool:
+    return bool(working_days_list(d, d))
+
+
 def next_working_day_at(hour: int = 10, minute: int = 30, start: datetime | None = None) -> datetime:
-    """Default next follow-up: next working day (Mon-Sat) at 10:30 IST."""
+    """Default next follow-up: the next working day (Monday to Friday unless HR changed it) at 10:30 IST."""
     start = timezone.localtime(start or timezone.now())
     d = start.date() + timedelta(days=1)
-    while d.weekday() == 6:  # Sunday
+    for _ in range(14):
+        if is_working_day(d):
+            break
         d += timedelta(days=1)
     return timezone.make_aware(datetime.combine(d, time(hour, minute)))
 

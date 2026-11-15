@@ -1,6 +1,7 @@
 {% extends "crm/base.html" %}{% load crm_tags %}
 {% block title %}{{ client.display_name }}{% endblock %}
 {% block banners %}
+  {% if quiet_days %}<div class="alert alert-warning mb-5" role="alert"><span class="text-warning-500">{% icon 'clock' 20 %}</span><p class="text-sm text-gray-700 dark:text-gray-300"><strong>No contact for {{ quiet_days }} days.</strong> Call or message the client, deliver something, or log what is happening so they are not forgotten.</p></div>{% endif %}
   {% if client.status == 'restricted' %}<div class="alert alert-error mb-5" role="alert"><span class="text-error-500">{% icon 'lock' 20 %}</span><p class="text-sm text-gray-700 dark:text-gray-300"><strong>Restricted client.</strong> New quotations and payment links are blocked. {{ client.status_reason }}</p></div>
   {% elif client.status == 'on_hold' %}<div class="alert alert-warning mb-5"><span class="text-warning-500">{% icon 'alert' 20 %}</span><p class="text-sm text-gray-700 dark:text-gray-300">On hold: {{ client.status_reason }}</p></div>{% endif %}
   {% if client.archived_at %}<div class="alert alert-info mb-5"><p class="text-sm">Archived {{ client.archived_at|d }}. {{ client.archive_reason }}</p></div>{% endif %}
@@ -22,6 +23,7 @@
     </div>
   </div>
   <div class="flex flex-wrap gap-2 border-t border-gray-100 px-5 py-4 sm:px-6 dark:border-gray-800">
+    {% can 'deliverables' 'view' as cdv %}{% if cdv %}<a href="{% url 'crm:client_deliverables' client.pk %}" class="btn btn-secondary btn-sm">{% icon 'tasks' 16 %} Monthly deliverables</a>{% endif %}
     {% if can_edit and not client.archived_at %}
       <a href="{% url 'crm:client_edit' client.pk %}" class="btn btn-secondary btn-sm">{% icon 'edit' 16 %} Edit</a>
       <button type="button" class="btn btn-secondary btn-sm" @click="$store.modal.show('contact')">{% icon 'user' 16 %} Add contact</button>

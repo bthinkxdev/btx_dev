@@ -1,30 +1,39 @@
 {% extends "crm/base.html" %}{% load crm_tags %}
-{% block title %}Follow-up calendar{% endblock %}
-{% block page_header %}{% include "crm/components/page_header.html" with title="Follow-up calendar" subtitle="Pending follow-ups by day. Colour shows the type; red is overdue." %}{% endblock %}
+{% block title %}Calendar{% endblock %}
+{% block page_header %}{% include "crm/components/page_header.html" with title="Calendar" subtitle="Your follow-ups, client deliverables and tasks by day. Red is overdue." %}{% endblock %}
 {% block content %}
 <div class="card">
   <div class="card-header">
     <div class="flex items-center gap-2">
       {% if view == 'month' %}
-        <a class="btn btn-secondary btn-sm" href="?year={{ prev.year }}&month={{ prev.month }}&owner={{ owner }}" aria-label="Previous month">{% icon 'chevron_left' 16 %}</a>
+        <a class="btn btn-secondary btn-sm" href="?year={{ prev.year }}&month={{ prev.month }}&owner={{ owner }}&show={{ show }}" aria-label="Previous month">{% icon 'chevron_left' 16 %}</a>
         <h2 class="card-title min-w-36 text-center">{{ current|date:"F Y" }}</h2>
-        <a class="btn btn-secondary btn-sm" href="?year={{ next.year }}&month={{ next.month }}&owner={{ owner }}" aria-label="Next month">{% icon 'chevron_right' 16 %}</a>
+        <a class="btn btn-secondary btn-sm" href="?year={{ next.year }}&month={{ next.month }}&owner={{ owner }}&show={{ show }}" aria-label="Next month">{% icon 'chevron_right' 16 %}</a>
       {% else %}
-        <a class="btn btn-secondary btn-sm" href="?view=week&start={{ prev_start }}&owner={{ owner }}" aria-label="Previous week">{% icon 'chevron_left' 16 %}</a>
+        <a class="btn btn-secondary btn-sm" href="?view=week&start={{ prev_start }}&owner={{ owner }}&show={{ show }}" aria-label="Previous week">{% icon 'chevron_left' 16 %}</a>
         <h2 class="card-title min-w-36 text-center">Week of {{ start|d }}</h2>
-        <a class="btn btn-secondary btn-sm" href="?view=week&start={{ next_start }}&owner={{ owner }}" aria-label="Next week">{% icon 'chevron_right' 16 %}</a>
+        <a class="btn btn-secondary btn-sm" href="?view=week&start={{ next_start }}&owner={{ owner }}&show={{ show }}" aria-label="Next week">{% icon 'chevron_right' 16 %}</a>
       {% endif %}
-      <a class="btn btn-secondary btn-sm" href="?view={{ view }}&owner={{ owner }}">Today</a>
+      <a class="btn btn-secondary btn-sm" href="?view={{ view }}&owner={{ owner }}&show={{ show }}">Today</a>
     </div>
     <form method="get" class="flex items-center gap-2">
       <input type="hidden" name="view" value="{{ view }}">
+      <label class="sr-only" for="cal-show">Show</label>
+      <select id="cal-show" name="show" class="form-select h-10 w-auto" data-autosubmit>{% for k, label in shows %}<option value="{{ k }}" {% if show == k %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
       {% if owners %}<label class="sr-only" for="cal-owner">Owner</label>
         <select id="cal-owner" name="owner" class="form-select h-10 w-auto" data-autosubmit><option value="">Everyone I can see</option>{% for u in owners %}<option value="{{ u.pk }}" {% if owner == u.pk|stringformat:'s' %}selected{% endif %}>{{ u|uname }}</option>{% endfor %}</select>{% endif %}
       <div class="inline-flex rounded-lg border border-gray-200 p-0.5 dark:border-gray-800">
-        <a href="?view=month&owner={{ owner }}" class="rounded-md px-3 py-1.5 text-sm {% if view == 'month' %}bg-gray-100 font-medium dark:bg-white/10{% else %}text-gray-500{% endif %}">Month</a>
-        <a href="?view=week&owner={{ owner }}" class="rounded-md px-3 py-1.5 text-sm {% if view == 'week' %}bg-gray-100 font-medium dark:bg-white/10{% else %}text-gray-500{% endif %}">Week</a>
+        <a href="?view=month&owner={{ owner }}&show={{ show }}" class="rounded-md px-3 py-1.5 text-sm {% if view == 'month' %}bg-gray-100 font-medium dark:bg-white/10{% else %}text-gray-500{% endif %}">Month</a>
+        <a href="?view=week&owner={{ owner }}&show={{ show }}" class="rounded-md px-3 py-1.5 text-sm {% if view == 'week' %}bg-gray-100 font-medium dark:bg-white/10{% else %}text-gray-500{% endif %}">Week</a>
       </div>
     </form>
+  </div>
+  <div class="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-gray-100 px-5 py-2 text-theme-xs text-gray-500 dark:border-gray-800 dark:text-gray-400">
+    <span><span class="mr-1 inline-block h-2 w-2 rounded-full bg-brand-500"></span>Follow-up</span>
+    <span><span class="mr-1 inline-block h-2 w-2 rounded-full bg-orange-500"></span>Client deliverable</span>
+    <span><span class="mr-1 inline-block h-2 w-2 rounded-full bg-gray-400"></span>Task</span>
+    <span><span class="mr-1 inline-block h-2 w-2 rounded-full bg-error-500"></span>Overdue</span>
+    {% can 'deliverables' 'view' as cdl %}{% if cdl %}<a class="btn-link ml-auto" href="{% url 'crm:deliverable_mine' %}">Put this on my phone calendar</a>{% endif %}
   </div>
   {% if view == 'month' %}
   <div class="overflow-x-auto border-t border-gray-100 dark:border-gray-800">
@@ -36,11 +45,11 @@
           <td class="h-28 border border-gray-100 p-1.5 align-top dark:border-gray-800 {% if day.month != current.month %}bg-gray-50 dark:bg-white/2{% endif %}">
             <p class="mb-1 text-right text-theme-xs {% if day == today %}bg-brand-500 ml-auto flex h-6 w-6 items-center justify-center rounded-full text-white{% else %}text-gray-500{% endif %}">{{ day.day }}</p>
             <ul class="space-y-1">
-              {% for fu in items|slice:":4" %}
-                <li><a href="{% url 'crm:lead_detail' fu.lead_id %}" title="{{ fu.get_kind_display }} with {{ fu.lead.name }} at {{ fu.due_at|tm }}"
-                       class="block truncate rounded px-1.5 py-0.5 text-theme-xs {% if fu.due_at < now %}bg-error-50 text-error-700 dark:bg-error-500/15 dark:text-error-400{% elif fu.kind == 'meeting' %}bg-success-50 text-success-700 dark:bg-success-500/15{% elif fu.kind == 'email' %}bg-blue-light-50 text-blue-light-700 dark:bg-blue-light-500/15{% elif fu.kind == 'whatsapp' %}bg-warning-50 text-warning-700 dark:bg-warning-500/15{% else %}bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300{% endif %}">{{ fu.due_at|tm }} {{ fu.lead.name }}</a></li>
+              {% for e in items|slice:":4" %}
+                <li><a href="{{ e.url }}" title="{{ e.badge }}: {{ e.title }}, {{ e.sub }} at {{ e.when|tm }}"
+                       class="block truncate rounded px-1.5 py-0.5 text-theme-xs {% if e.tone == 'overdue' %}bg-error-50 text-error-700 dark:bg-error-500/15 dark:text-error-400{% elif e.tone == 'deliverable' %}bg-orange-50 text-orange-700 dark:bg-orange-500/15 dark:text-orange-400{% elif e.tone == 'task' %}bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-gray-300{% elif e.tone == 'meeting' %}bg-success-50 text-success-700 dark:bg-success-500/15{% elif e.tone == 'email' %}bg-blue-light-50 text-blue-light-700 dark:bg-blue-light-500/15{% elif e.tone == 'whatsapp' %}bg-warning-50 text-warning-700 dark:bg-warning-500/15{% else %}bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300{% endif %}">{{ e.when|tm }} {{ e.title }}{% if e.kind == 'deliverable' %}: {{ e.obj.title }}{% endif %}</a></li>
               {% endfor %}
-              {% if items|length > 4 %}<li><a class="text-theme-xs text-brand-500" href="?view=week&start={{ day|date:'Y-m-d' }}&owner={{ owner }}">+{{ items|length|add:"-4" }} more</a></li>{% endif %}
+              {% if items|length > 4 %}<li><a class="text-theme-xs text-brand-500" href="?view=week&start={{ day|date:'Y-m-d' }}&owner={{ owner }}&show={{ show }}">+{{ items|length|add:"-4" }} more</a></li>{% endif %}
             </ul>
           </td>
         {% endfor %}
@@ -67,20 +76,26 @@
         <div class="min-h-40 bg-white p-4 md:p-3 dark:bg-gray-900" :class="d === '{{ day|date:'Y-m-d' }}' ? '' : 'max-md:hidden'">
           <p class="mb-3 text-theme-sm font-medium {% if day == today %}text-brand-500{% else %}text-gray-700 dark:text-gray-300{% endif %}">{{ day|date:"l, j M" }}{% if day == today %} · Today{% endif %}</p>
           <ul class="space-y-3">
-            {% for fu in items %}
-              <li class="rounded-2xl border {% if fu.due_at < now %}border-error-200 bg-error-50/40 dark:border-error-500/30 dark:bg-error-500/5{% else %}border-gray-200 dark:border-gray-800{% endif %} p-3">
+            {% for e in items %}
+              <li class="rounded-2xl border {% if e.overdue %}border-error-200 bg-error-50/40 dark:border-error-500/30 dark:bg-error-500/5{% elif e.kind == 'deliverable' %}border-orange-200 dark:border-orange-500/30{% else %}border-gray-200 dark:border-gray-800{% endif %} p-3">
                 <div class="flex items-start justify-between gap-2">
-                  <a href="{% url 'crm:lead_detail' fu.lead_id %}" class="min-w-0 text-sm font-medium text-gray-800 hover:text-brand-500 dark:text-white/90">{{ fu.lead.name }}{% if fu.lead.company %}<span class="block truncate text-theme-xs font-normal text-gray-500">{{ fu.lead.company }}</span>{% endif %}</a>
-                  <span class="badge {% if fu.due_at < now %}badge-red{% else %}badge-brand{% endif %} shrink-0">{{ fu.due_at|tm }}</span>
+                  <a href="{{ e.url }}" class="min-w-0 text-sm font-medium text-gray-800 hover:text-brand-500 dark:text-white/90">{{ e.title }}{% if e.kind == 'followup' and e.obj.lead.company %}<span class="block truncate text-theme-xs font-normal text-gray-500">{{ e.obj.lead.company }}</span>{% elif e.kind == 'deliverable' %}<span class="block truncate text-theme-xs font-normal text-gray-500">{{ e.sub }}</span>{% endif %}</a>
+                  <span class="badge {% if e.overdue %}badge-red{% elif e.kind == 'deliverable' %}badge-amber{% elif e.kind == 'task' %}badge-grey{% else %}badge-brand{% endif %} shrink-0">{% if e.kind == 'task' %}Task{% else %}{{ e.when|tm }}{% endif %}</span>
                 </div>
-                <p class="mt-1 text-theme-xs {% if fu.due_at < now %}text-error-600{% else %}text-gray-500{% endif %}">{{ fu.get_kind_display }}{% if fu.purpose %} · {{ fu.purpose }}{% endif %} · {{ fu.assignee|uname }}</p>
+                <p class="mt-1 text-theme-xs {% if e.overdue %}text-error-600{% else %}text-gray-500{% endif %}">{% if e.kind == 'followup' %}{{ e.sub }} · {{ e.obj.assignee|uname }}{% elif e.kind == 'deliverable' %}Deliver · {{ e.obj.assignee|uname }}{% else %}{{ e.sub }} · {{ e.obj.assignee|uname }}{% endif %}</p>
                 <div class="mt-3 flex flex-wrap items-center gap-2">
-                  {% if fu.lead.phone %}
-                    <a href="tel:{{ fu.lead.phone }}" class="btn btn-secondary btn-sm" aria-label="Call {{ fu.lead.name }}">{% icon 'phone' 16 %}<span class="md:hidden"> Call</span></a>
-                    <a href="https://wa.me/{{ fu.lead.phone|wa }}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm text-success-600" aria-label="WhatsApp {{ fu.lead.name }}">{% icon 'whatsapp' 16 %}<span class="md:hidden"> Chat</span></a>
+                  {% if e.kind == 'followup' %}
+                    {% with fu=e.obj %}
+                    {% if fu.lead.phone %}
+                      <a href="tel:{{ fu.lead.phone }}" class="btn btn-secondary btn-sm" aria-label="Call {{ fu.lead.name }}">{% icon 'phone' 16 %}<span class="md:hidden"> Call</span></a>
+                      <a href="https://wa.me/{{ fu.lead.phone|wa }}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm text-success-600" aria-label="WhatsApp {{ fu.lead.name }}">{% icon 'whatsapp' 16 %}<span class="md:hidden"> Chat</span></a>
+                    {% endif %}
+                    <button type="button" class="btn btn-primary btn-sm" @click="document.getElementById('complete-quick-form').action='{% url 'crm:follow_up_quick' fu.pk 'complete' %}'; $store.modal.show('complete_quick')">Done</button>
+                    <button type="button" class="btn btn-secondary btn-sm" @click="document.getElementById('postpone-quick-form').action='{% url 'crm:follow_up_quick' fu.pk 'postpone' %}'; $store.modal.show('postpone_quick')">Reschedule</button>
+                    {% endwith %}
+                  {% else %}
+                    <a href="{{ e.url }}" class="btn btn-primary btn-sm">Open</a>
                   {% endif %}
-                  <button type="button" class="btn btn-primary btn-sm" @click="document.getElementById('complete-quick-form').action='{% url 'crm:follow_up_quick' fu.pk 'complete' %}'; $store.modal.show('complete_quick')">Done</button>
-                  <button type="button" class="btn btn-secondary btn-sm" @click="document.getElementById('postpone-quick-form').action='{% url 'crm:follow_up_quick' fu.pk 'postpone' %}'; $store.modal.show('postpone_quick')">Reschedule</button>
                 </div>
               </li>
             {% empty %}

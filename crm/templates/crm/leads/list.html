@@ -84,7 +84,7 @@
           <td class="td" data-label="Service">{% for s in l.services.all %}{{ s.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
           <td class="td mobile-hide" data-label="Source">{{ l.source.name }}</td>
           <td class="td" data-label="Owner">{% if l.owner %}{{ l.owner|uname }}{% else %}{% badge 'overdue' 'Unassigned' %}{% endif %}</td>
-          <td class="td" data-label="Stage">{% badge l.stage l.get_stage_display %}</td>
+          <td class="td" data-label="Stage">{% badge l.stage l.get_stage_display %}{% if l.stage == 'won' %}<span class="block text-theme-xs text-gray-500">Closed by {{ l.closed_by|uname|default:"the system" }} · Owner {{ l.owner|uname|default:"none" }}</span>{% endif %}</td>
           <td class="td mobile-hide" data-label="Priority">{% badge l.priority l.get_priority_display %}</td>
           <td class="td text-right whitespace-nowrap mobile-hide" data-label="Value">{{ l.value|inr0 }}</td>
           <td class="td whitespace-nowrap" data-label="Next follow-up">

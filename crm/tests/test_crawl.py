@@ -21,6 +21,7 @@ from crm.modules.reports import catalogue
 
 from .base import CrmTestCase
 
+PUBLIC_APP_FILES = {'/crm/manifest.webmanifest', '/crm/service-worker.js'}      # installable phone app: public on purpose
 SKIP_PARAMS = {'action', 'token', 'order', 'contact_id', 'rule_id', 'source_key', 'model_name', 'provider'}
 SLUGS = {'key': ['owner'], 'slug': [r.slug for r in catalogue.REPORTS]}
 # url-name prefix -> dataset key (first match wins)
@@ -221,6 +222,9 @@ class CrawlTest(CrmTestCase):
             r = self.client.get(url)
             if url.startswith(PUBLIC_PREFIXES):
                 self.assertLess(r.status_code, 500, url)
+                continue
+            if url in PUBLIC_APP_FILES:                       # the phone must read these before anyone signs in
+                self.assertEqual(r.status_code, 200, url)
                 continue
             self.assertIn(r.status_code, (302, 401, 403, 404, 405), url)
             if r.status_code == 302:

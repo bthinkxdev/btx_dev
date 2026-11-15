@@ -1,0 +1,41 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Working time report{% endblock %}
+{% block page_header %}
+<div class="mb-5 flex flex-wrap items-start justify-between gap-3">
+  <div>
+    <nav aria-label="Breadcrumb" class="mb-1"><ol class="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400"><li class="inline-flex items-center gap-1.5"><a href="{% url 'crm:team_time' %}" class="hover:text-gray-700 dark:hover:text-gray-200">Team time</a>{% icon 'chevron_right' 14 %}</li><li>Report</li></ol></nav>
+    <h1 class="page-title">Working time report</h1>
+    <p class="muted mt-1">{{ start|date:"j M Y" }} to {{ end|date:"j M Y" }} · {{ people_count }} people · {{ rep.working_days }} working day{{ rep.working_days|pluralize }} so far (weekends and holidays excluded). Working time is login to logout minus breaks.</p>
+  </div>
+  {% can 'attendance' 'export' as cx %}{% if cx %}<a class="btn btn-secondary" href="?range={{ key }}&from={{ start|date:'Y-m-d' }}&to={{ end|date:'Y-m-d' }}&export=csv">{% icon 'download' 16 %} Export CSV</a>{% endif %}
+</div>
+{% endblock %}
+{% block content %}
+<div class="mb-5 flex flex-wrap items-center gap-2">
+  {% for k, label in presets %}<a href="?range={{ k }}" class="chip {% if key == k %}chip-active{% else %}chip-inactive{% endif %}">{{ label }}</a>{% endfor %}
+  <form method="get" class="ml-auto flex flex-wrap items-center gap-2"><label class="sr-only" for="rp-from">From</label><input id="rp-from" type="date" name="from" value="{{ start|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}" class="form-input h-10 w-auto"><label class="sr-only" for="rp-to">To</label><input id="rp-to" type="date" name="to" value="{{ end|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}" class="form-input h-10 w-auto"><button class="btn btn-secondary">Show</button></form>
+</div>
+<div class="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+  <div class="card p-4"><p class="text-theme-xs text-gray-500 dark:text-gray-400">Total working time</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ rep.total_worked }}</p></div>
+  <div class="card p-4"><p class="text-theme-xs text-gray-500 dark:text-gray-400">Total break time</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ rep.total_break }}</p></div>
+  <div class="card p-4"><p class="text-theme-xs text-gray-500 dark:text-gray-400">People</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ people_count }}</p></div>
+  <div class="card p-4"><p class="text-theme-xs text-gray-500 dark:text-gray-400">Working days</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ rep.working_days }}</p></div>
+</div>
+<div class="card"><div class="table-wrap"><table class="data-table responsive-cards">
+  <thead class="border-b border-gray-100 dark:border-gray-800"><tr><th class="th">Person</th><th class="th text-right">Days worked</th><th class="th text-right">Not logged in</th><th class="th text-right">Working time</th><th class="th text-right">Average a day</th><th class="th text-right">Break time</th><th class="th">Longest break</th><th class="th">Usual login</th><th class="th">Usual logout</th></tr></thead>
+  <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+  {% for r in rep.rows %}
+    <tr data-href="{% url 'crm:person_time' r.user.pk %}">
+      <td class="td" data-label="Person"><a class="td-strong hover:text-brand-500" href="{% url 'crm:person_time' r.user.pk %}">{{ r.user|uname }}</a></td>
+      <td class="td text-right" data-label="Days worked">{{ r.days }}</td>
+      <td class="td text-right" data-label="Not logged in">{% if r.absent %}<span class="badge badge-red" title="{% for d in r.absent_days %}{{ d|date:'j M' }}{% if not forloop.last %}, {% endif %}{% endfor %}">{{ r.absent }}</span>{% else %}0{% endif %}</td>
+      <td class="td text-right font-medium" data-label="Working time">{{ r.worked_text }}</td>
+      <td class="td text-right" data-label="Average a day">{{ r.avg_worked }}</td>
+      <td class="td text-right" data-label="Break time">{{ r.break_text }}{% if r.breaks %} <span class="text-theme-xs text-gray-500">({{ r.breaks }})</span>{% endif %}</td>
+      <td class="td" data-label="Longest break">{{ r.longest_break }}</td>
+      <td class="td" data-label="Usual login">{{ r.avg_in }}</td>
+      <td class="td" data-label="Usual logout">{{ r.avg_out }}</td>
+    </tr>
+  {% empty %}<tr><td colspan="9">{% include "crm/components/empty_state.html" with title="No one to show" text="The report covers the people in your team." icon="users" %}</td></tr>{% endfor %}
+  </tbody></table></div></div>
+{% endblock %}

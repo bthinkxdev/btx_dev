@@ -13,7 +13,7 @@ from django.contrib.auth import get_user_model
 from django.db.models import Avg, Count, Sum
 from django.utils import timezone
 
-from crm.core import llm
+from crm.core import attribution, llm
 from crm.core.money import ZERO
 from crm.models import Lead, LeadActivity, Payment, Quotation
 from crm.models.leads import OPEN_STAGES
@@ -64,8 +64,7 @@ def snapshot(days: int = 30) -> dict:
             'followups_done': u.crm_follow_ups.filter(status='done', completed_at__gte=since).count(),
             'followups_overdue_now': u.crm_follow_ups.filter(status='pending', due_at__lt=now).count(),
             'avg_first_response_minutes': int(frt // 60) if frt else None,
-            'collected_inr': _num(Payment.objects.filter(status__in=['verified', 'partially_refunded'], client__owner=u,
-                                                         payment_date__gte=since.date()).aggregate(s=Sum('amount'))['s'] or ZERO),
+            'collected_inr': _num(attribution.collected_total([u.pk], since.date(), timezone.localdate())),
         })
     team = {
         'new_leads': Lead.objects.filter(created_at__gte=since).count(),

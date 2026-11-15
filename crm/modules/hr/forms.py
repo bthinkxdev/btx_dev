@@ -7,7 +7,7 @@ from django import forms
 
 from crm.core import india
 from crm.core.forms import CrmForm, CrmModelForm, DateInput, PANField, PhoneField, SafeFileField, VersionedModelFormMixin
-from crm.models import (Department, Employee, Holiday, LeaveType, Role, SalaryComponent, Shift)
+from crm.models import (Department, Employee, Holiday, LeaveType, Role, SalaryComponent, Shift, WorkingDayException)
 from crm.models.people import ATTENDANCE_STATUSES
 
 
@@ -105,6 +105,20 @@ class HolidayForm(CrmModelForm):
         model = Holiday
         fields = ['holiday_date', 'name']
         widgets = {'holiday_date': DateInput}
+
+
+class WorkingDayForm(CrmModelForm):
+    class Meta:
+        model = WorkingDayException
+        fields = ['work_date', 'reason']
+        widgets = {'work_date': DateInput}
+        labels = {'work_date': 'Saturday or Sunday to work', 'reason': 'Reason (optional)'}
+
+    def clean_work_date(self):
+        d = self.cleaned_data['work_date']
+        if d.weekday() < 5:
+            raise forms.ValidationError('Only a Saturday or Sunday needs this. Weekdays are working days already.')
+        return d
 
 
 class ShiftForm(CrmModelForm):

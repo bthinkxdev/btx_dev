@@ -263,9 +263,17 @@ class WonForm(CrmForm):
     note = forms.CharField(max_length=500, required=False, widget=forms.Textarea(attrs={'rows': 2}),
                            label='Confirmed order note', help_text='Required when there is no accepted quotation.')
     client_choice = forms.ChoiceField(required=False, widget=forms.RadioSelect, label='Client record')
+    credit_to = forms.ChoiceField(required=False, widget=forms.RadioSelect, label='Who gets the credit for this revenue?')
 
-    def __init__(self, *args, lead=None, matches=(), **kwargs):
+    def __init__(self, *args, lead=None, matches=(), user=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.needs_credit = bool(lead is not None and user is not None and lead.owner_id and lead.owner_id != user.pk)
+        if self.needs_credit:
+            owner_name = lead.owner.get_full_name() or lead.owner.get_username()
+            self.fields['credit_to'].choices = [('me', 'Me, I closed it'), ('owner', f'The lead owner, {owner_name}')]
+            self.fields['credit_to'].required = True
+        else:
+            del self.fields['credit_to']
         self.fields['quotation'].queryset = lead.quotations.exclude(status__in=['void', 'superseded']) if lead else None
         choices = [(str(c.pk), f'Link to existing client: {c}') for c in matches]
         choices.append(('new', 'Create a new client from this lead'))

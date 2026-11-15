@@ -1,0 +1,25 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Daily report {{ report.code }}{% endblock %}
+{% block content %}
+<div class="mb-5">
+  <nav aria-label="Breadcrumb" class="mb-1"><ol class="flex flex-wrap items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400"><li class="inline-flex items-center gap-1.5"><a href="{% url 'crm:daily_board' %}?day={{ report.day|date:'Y-m-d' }}" class="hover:text-gray-700 dark:hover:text-gray-200">Daily reports</a>{% icon 'chevron_right' 14 %}</li><li class="inline-flex items-center gap-1.5"><a href="{% url 'crm:staff_profile' person.pk %}" class="hover:text-gray-700 dark:hover:text-gray-200">{{ person|uname }}</a></li></ol></nav>
+  <h1 class="page-title">{{ person|uname }}, {{ report.day|date:"l j F Y" }}</h1>
+  <p class="muted mt-1">Made {{ report.created_at|dt }}{% if report.seq > 1 %} · version {{ report.seq }}{% endif %}{% if report.copied_at %} · copied {{ report.copied_at|dt }}{% else %} · not copied{% endif %}</p>
+</div>
+<div class="grid grid-cols-1 gap-5 xl:grid-cols-3">
+  <div class="card xl:col-span-2"><div class="card-header"><h2 class="card-title">The report</h2>{% if genuine %}<span class="badge badge-green">Genuine, code matches</span>{% else %}<span class="badge badge-red">Does not match its code</span>{% endif %}</div>
+    <div class="card-body"><pre class="whitespace-pre-wrap rounded-xl bg-gray-50 p-4 font-mono text-xs leading-5 text-gray-800 dark:bg-white/5 dark:text-gray-200">{{ report.text }}</pre>
+      <p class="mt-3 text-theme-xs text-gray-500">Code <strong class="font-mono">{{ report.code }}</strong></p></div></div>
+  <div class="space-y-5">
+    <div class="card"><div class="card-header"><h2 class="card-title">Check a pasted copy</h2></div>
+      <form method="post" class="card-body space-y-3" novalidate>{% csrf_token %}
+        <p class="muted">Paste the report as it was shared. It must match word for word.</p>
+        <textarea name="pasted" rows="6" class="form-textarea font-mono text-xs" aria-label="Pasted report">{{ pasted|default:"" }}</textarea>
+        <button class="btn btn-secondary">Compare</button>
+        {% if matches is True %}<p class="text-sm font-medium text-success-600">It matches this report exactly.</p>{% elif matches is False %}<p class="text-sm font-medium text-error-600">It is different from this report. Something was changed.</p>{% endif %}
+      </form></div>
+    <div class="card"><div class="card-header"><h2 class="card-title">This day</h2></div>
+      <ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for v in versions %}<li class="flex items-center justify-between px-5 py-3 text-sm"><a class="{% if v.pk == report.pk %}font-semibold text-brand-500{% else %}text-gray-800 hover:text-brand-500 dark:text-white/90{% endif %}" href="{% url 'crm:daily_report' v.pk %}">Version {{ v.seq }}</a><span class="text-theme-xs text-gray-500">{{ v.created_at|tm }} · {{ v.data.time.worked }}</span></li>{% endfor %}</ul></div>
+  </div>
+</div>
+{% endblock %}

@@ -195,6 +195,10 @@ class Lead(TimeStamped, Versioned, Archivable):
     probability = models.PositiveSmallIntegerField(default=10)
     won_value = MoneyField(null=True, blank=True, default=None)
     won_at = models.DateTimeField(null=True, blank=True)
+    closed_by = models.ForeignKey(USER, null=True, blank=True, on_delete=models.PROTECT, related_name='+',
+                                  help_text='Who pressed Mark won.')
+    credited_to = models.ForeignKey(USER, null=True, blank=True, on_delete=models.PROTECT, related_name='crm_credited_leads',
+                                    help_text='Whose performance the revenue counts towards.')
     expected_start = models.DateField(null=True, blank=True)
     lost_reason = models.CharField(max_length=20, choices=LOST_REASONS, blank=True)
     lost_competitor = models.CharField(max_length=120, blank=True)
@@ -384,6 +388,9 @@ class SalesTarget(TimeStamped):
     team = models.ForeignKey('crm.Team', null=True, blank=True, on_delete=models.PROTECT, related_name='targets')
     lead_count = models.PositiveIntegerField(default=0)
     quotation_count = models.PositiveIntegerField(default=0)
+    client_count = models.PositiveIntegerField('Clients to onboard', default=0)
+    call_count = models.PositiveIntegerField('Calls', default=0)
+    meeting_count = models.PositiveIntegerField('Meetings', default=0)
     won_value = MoneyField()
     collected_value = MoneyField()
 

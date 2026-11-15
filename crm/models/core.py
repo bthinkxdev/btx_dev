@@ -109,7 +109,7 @@ class CompanySettings(Versioned):
     credit_note_approval_above = MoneyField(default=Decimal('0.00'))
     journal_approval_above = MoneyField(default=Decimal('100000.00'))
     margin_floor_percent = RateField(default=Decimal('20.00'))
-    idle_timeout_minutes = models.PositiveIntegerField(default=30)
+    idle_timeout_minutes = models.PositiveIntegerField(default=720, help_text='Minutes of no activity before someone is signed out. 720 is 12 hours.')
 
     # Payment gateway (Part 6.8); secrets are encrypted and write-only.
     gateway_provider = models.CharField(max_length=20, default='none',
@@ -202,6 +202,8 @@ class UserProfile(Versioned):
     phone = models.CharField(max_length=20, blank=True)
     designation = models.CharField(max_length=120, blank=True)
     receives_leads = models.BooleanField('Receives auto-assigned leads', default=False)
+    work_notice_version = models.PositiveSmallIntegerField(default=0, editable=False)
+    work_notice_at = models.DateTimeField(null=True, blank=True, editable=False)
     is_available = models.BooleanField(default=True, help_text='Off while on leave; assignment skips unavailable users.')
     unavailable_until = models.DateField(null=True, blank=True)
     open_lead_cap = models.PositiveIntegerField(null=True, blank=True)
