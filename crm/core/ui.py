@@ -68,6 +68,8 @@ def humanize_status(code: str) -> str:
 # Stroke icons, 24x24, 1.5px stroke (matches the template's icon weight).
 ICONS = {
     'dot': '<circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/>',
+    'mic': '<rect x="9" y="3.5" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0013 0M12 18v2.5M9 20.5h6"/>',
+    'image': '<rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17l5-4.5 4 3.5 3-2.5 4 3.5"/>',
     'check': '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
     'x': '<path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/>',
     'clock': '<circle cx="12" cy="12" r="8.25"/><path d="M12 7.5V12l3 2"/>',

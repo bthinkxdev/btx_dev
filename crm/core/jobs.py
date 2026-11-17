@@ -39,6 +39,8 @@ JOBS = {
     'deliverables.generate': ('crm.modules.deliverables.jobs.generate', 'daily', 1440),
     'deliverables.reminders': ('crm.modules.deliverables.jobs.reminders', 'frequent', 15),
     'deliverables.digest': ('crm.modules.deliverables.jobs.digest', 'daily', 1440),
+    'images.stale_drafts': ('crm.modules.images.jobs.stale_drafts', 'frequent', 15),
+    'images.reminders': ('crm.modules.images.jobs.reminders', 'frequent', 60),
     'performance.snapshot': ('crm.modules.performance.jobs.snapshot', 'daily', 1440),
     'leads.missing_next_action': ('crm.modules.performance.jobs.missing_next_action', 'frequent', 60),
     'clients.quiet_accounts': ('crm.modules.clients.health.notify_quiet', 'daily', 1440),

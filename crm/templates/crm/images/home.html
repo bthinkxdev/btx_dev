@@ -1,0 +1,50 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Client photos{% endblock %}
+{% block page_header %}
+<div class="mb-5 flex flex-wrap items-start justify-between gap-3">
+  <div><h1 class="page-title">Client photos</h1><p class="muted mt-1">Every photo, who has it, and what is next. Start with the red and amber ones.</p></div>
+  <div class="flex flex-wrap gap-2">
+    {% if can_team %}<a href="{% url 'crm:image_team' %}" class="btn btn-secondary">Team load</a>{% endif %}
+    <a href="{% url 'crm:image_submissions' %}" class="btn btn-secondary">Submissions</a>
+    {% if can_upload %}<a href="{% url 'crm:image_upload' %}" class="btn btn-primary">{% icon 'plus' 18 %} Upload for a client</a>{% endif %}
+  </div>
+</div>
+{% endblock %}
+{% block content %}
+<div class="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-6">
+  <a href="{% url 'crm:image_list' %}?quick=overdue" class="card p-4"><p class="text-theme-xs text-gray-500">Overdue</p><p class="text-title-sm mt-1 font-bold {% if counts.overdue %}text-error-600{% else %}text-gray-800 dark:text-white/90{% endif %}">{{ counts.overdue }}</p></a>
+  <a href="{% url 'crm:image_list' %}?quick=unassigned" class="card p-4"><p class="text-theme-xs text-gray-500">No editor yet</p><p class="text-title-sm mt-1 font-bold {% if counts.unassigned %}text-warning-600{% else %}text-gray-800 dark:text-white/90{% endif %}">{{ counts.unassigned }}</p></a>
+  <a href="{% url 'crm:image_list' %}?status=clarification" class="card p-4"><p class="text-theme-xs text-gray-500">Awaiting clarification</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ counts.clarification }}</p></a>
+  <a href="{% url 'crm:image_list' %}?status=editing" class="card p-4"><p class="text-theme-xs text-gray-500">Being edited</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ counts.being_edited }}</p></a>
+  <a href="{% url 'crm:image_list' %}?quick=review" class="card p-4"><p class="text-theme-xs text-gray-500">Internal review</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ counts.internal_review }}</p></a>
+  <a href="{% url 'crm:image_list' %}?quick=client" class="card p-4"><p class="text-theme-xs text-gray-500">With the client</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ counts.client_review }}</p></a>
+  <a href="{% url 'crm:image_list' %}?quick=revisions" class="card p-4"><p class="text-theme-xs text-gray-500">Revisions</p><p class="text-title-sm mt-1 font-bold {% if counts.revision %}text-warning-600{% else %}text-gray-800 dark:text-white/90{% endif %}">{{ counts.revision }}</p></a>
+  <a href="{% url 'crm:image_list' %}?status=approved" class="card p-4"><p class="text-theme-xs text-gray-500">Approved</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ counts.approved }}</p></a>
+  <a href="{% url 'crm:image_list' %}?status=delivered" class="card p-4"><p class="text-theme-xs text-gray-500">Delivered</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ counts.delivered }}</p></a>
+  <a href="{% url 'crm:image_list' %}" class="card p-4"><p class="text-theme-xs text-gray-500">All photos</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ counts.total }}</p></a>
+  <a href="{% url 'crm:image_submissions' %}" class="card p-4"><p class="text-theme-xs text-gray-500">Submissions</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ counts.submissions }}</p></a>
+  <a href="{% url 'crm:image_list' %}?status=on_hold" class="card p-4"><p class="text-theme-xs text-gray-500">On hold</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ counts.on_hold }}</p></a>
+</div>
+
+{% if attention is not None %}
+<section class="card mb-5" aria-labelledby="h-att">
+  <div class="card-header"><h2 id="h-att" class="card-title">Needs your action {% if attention %}{% badge 'overdue' attention|length %}{% endif %}</h2><a class="btn-link text-sm" href="{% url 'crm:image_list' %}?quick=attention">See all</a></div>
+  {% if attention %}<ul class="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 lg:grid-cols-5">{% for a in attention %}{% include "crm/images/_card.html" with a=a is_client=False %}{% endfor %}</ul>
+  {% else %}<p class="px-5 py-6 text-sm text-gray-500">Nothing is waiting for you.</p>{% endif %}
+</section>
+{% endif %}
+
+{% if queue is not None %}
+<section class="card mb-5" aria-labelledby="h-q">
+  <div class="card-header"><h2 id="h-q" class="card-title">My editing queue {% if queue %}<span class="badge badge-brand">{{ queue|length }}</span>{% endif %}</h2></div>
+  {% if queue %}<ul class="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 lg:grid-cols-5">{% for a in queue %}{% include "crm/images/_card.html" with a=a is_client=False %}{% endfor %}</ul>
+  {% else %}<p class="px-5 py-6 text-sm text-gray-500">No photos are waiting for you. New ones appear here the moment they are assigned.</p>{% endif %}
+</section>
+{% endif %}
+
+<section class="card" aria-labelledby="h-rec">
+  <div class="card-header"><h2 id="h-rec" class="card-title">Latest activity</h2><a class="btn-link text-sm" href="{% url 'crm:image_list' %}">All photos</a></div>
+  {% if recent %}<ul class="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 lg:grid-cols-5">{% for a in recent %}{% include "crm/images/_card.html" with a=a is_client=False %}{% endfor %}</ul>
+  {% else %}<div class="px-6 py-10 text-center"><p class="text-base font-medium text-gray-800 dark:text-white/90">No photos yet</p><p class="muted mt-1">They appear here as soon as a client sends them.</p></div>{% endif %}
+</section>
+{% endblock %}

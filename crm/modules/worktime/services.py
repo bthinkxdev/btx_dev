@@ -63,8 +63,8 @@ def tracked(user) -> bool:
     """Everyone except administrators and the AI service account."""
     if user is None or not getattr(user, 'is_authenticated', False) or not user.is_active:
         return False
-    if user.username == MCP_USERNAME or permissions.is_super_admin(user):
-        return False
+    if user.username == MCP_USERNAME or permissions.is_super_admin(user) or permissions.is_client(user):
+        return False                       # administrators, the AI account and customers' logins are not staff to track
     return True
 
 

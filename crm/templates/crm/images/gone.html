@@ -1,0 +1,10 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Not available{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-lg py-12 text-center">
+  <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">{% icon 'inbox' 26 %}</div>
+  <h1 class="page-title">{{ what }} is not available</h1>
+  <p class="muted mt-2">It may have been removed, or it may not be yours to see. Nothing is lost: open your list to find what you need.</p>
+  <div class="mt-6 flex flex-wrap justify-center gap-2"><a href="{% url 'crm:image_list' %}" class="btn btn-primary">Go to the photo list</a><a href="{% url 'crm:image_home' %}" class="btn btn-secondary">Back to start</a></div>
+</div>
+{% endblock %}

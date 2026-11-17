@@ -1,0 +1,31 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}My photos{% endblock %}
+{% block page_header %}
+<div class="mb-5">
+  <h1 class="page-title">Hello{% if request.user.first_name %}, {{ request.user.first_name }}{% endif %}</h1>
+  <p class="muted mt-1">{% if client %}{{ client.display_name }}. {% endif %}Send us photos and follow each one until it is ready.</p>
+</div>
+{% endblock %}
+{% block content %}
+<a href="{% url 'crm:image_upload' %}" class="btn btn-primary btn-lg mb-5 flex w-full items-center justify-center gap-2 py-5 text-lg">{% icon 'plus' 22 %} Upload photos</a>
+
+{% if waiting %}
+<section class="card mb-5 border-brand-200 dark:border-brand-500/40" aria-labelledby="h-wait">
+  <div class="card-header"><h2 id="h-wait" class="card-title">Ready for you to review ({{ waiting|length }})</h2></div>
+  <ul class="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 lg:grid-cols-4">{% for a in waiting %}{% include "crm/images/_card.html" with a=a is_client=True %}{% endfor %}</ul>
+</section>
+{% endif %}
+
+<div class="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+  <a href="{% url 'crm:image_list' %}" class="card p-4"><p class="text-theme-xs text-gray-500">All photos</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ counts.total }}</p></a>
+  <a href="{% url 'crm:image_list' %}" class="card p-4"><p class="text-theme-xs text-gray-500">Being worked on</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ counts.being_edited|add:counts.internal_review|add:counts.new|add:counts.ready }}</p></a>
+  <a href="{% url 'crm:image_list' %}?quick=revisions" class="card p-4"><p class="text-theme-xs text-gray-500">Changes asked</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ counts.revision }}</p></a>
+  <a href="{% url 'crm:image_list' %}?quick=done" class="card p-4"><p class="text-theme-xs text-gray-500">Approved or delivered</p><p class="text-title-sm mt-1 font-bold text-gray-800 dark:text-white/90">{{ counts.finished }}</p></a>
+</div>
+
+<section class="card" aria-labelledby="h-recent">
+  <div class="card-header"><h2 id="h-recent" class="card-title">Latest</h2><a class="btn-link text-sm" href="{% url 'crm:image_list' %}">See all</a></div>
+  {% if recent %}<ul class="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 lg:grid-cols-4">{% for a in recent %}{% include "crm/images/_card.html" with a=a is_client=True %}{% endfor %}</ul>
+  {% else %}<div class="px-6 py-10 text-center"><p class="text-base font-medium text-gray-800 dark:text-white/90">No photos yet</p><p class="muted mt-1">Tap Upload photos to send your first ones. We will tell you as soon as we start.</p></div>{% endif %}
+</section>
+{% endblock %}

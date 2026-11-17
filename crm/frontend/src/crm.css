@@ -742,7 +742,7 @@ html {
     min-height: 2.5rem;
   }
   .data-table .td a:not(.btn):not(.badge),
-  .card a.block:not(.btn):not(.badge),
+  .card a.block:not(.btn):not(.badge):not(.no-tap),
   ul.divide-y > li > a:not(.btn):not(.badge),
   ul.divide-y > li > div > a:not(.btn):not(.badge) {
     display: inline-flex;

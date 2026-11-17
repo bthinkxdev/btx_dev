@@ -70,15 +70,28 @@ def send_push(user, title: str, *, body: str = '', url: str = '', tag: str = '')
     threading.Thread(target=run, daemon=True, name=f'crm-push-{user.pk}').start()
 
 
+def push_path(url: str) -> str:
+    """Where a tapped notification opens: always a path inside the app (under /crm/), never a full address. A full address built
+    from SITE_BASE_URL opens the wrong site whenever that setting differs from the address the app was installed from (www or
+    not, http or https, or a forgotten default), which is what sent people to an unknown page."""
+    url = (url or '').strip()
+    base = (settings.SITE_BASE_URL or '').rstrip('/')
+    if base and url.startswith(base):
+        url = url[len(base):]
+    if url.startswith('//') or not url.startswith('/crm/'):
+        return '/crm/'
+    return url[:300]
+
+
 def _deliver_push(subs, title: str, body: str, url: str, tag: str) -> None:
     import json
 
     from pywebpush import WebPushException, webpush
 
     from crm.models import PushSubscription
-    link = (settings.SITE_BASE_URL + url) if url.startswith('/') else url
-    payload = json.dumps({'title': title[:150], 'body': body[:300], 'url': link or settings.SITE_BASE_URL,
-                          'tag': tag or 'crm'})
+    path = push_path(url)
+    payload = json.dumps({'title': title[:150], 'body': body[:300], 'url': path, 'type': tag or 'crm',
+                          'tag': f'{tag or "crm"}:{path}'[:120]})
     for sub in subs:
         subscription_info = {'endpoint': sub.endpoint, 'keys': {'p256dh': sub.p256dh, 'auth': sub.auth}}
         try:

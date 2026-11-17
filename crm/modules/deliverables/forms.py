@@ -11,7 +11,7 @@ from crm.models.deliverables import FREQUENCIES, WEEKDAYS
 
 
 def staff_users():
-    return get_user_model().objects.filter(is_active=True).exclude(username__startswith='business_manager').order_by('first_name', 'username')
+    return get_user_model().objects.filter(is_active=True, image_access__isnull=True).exclude(username__startswith='business_manager').order_by('first_name', 'username')
 
 
 class UserChoice(forms.ModelChoiceField):

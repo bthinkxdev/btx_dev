@@ -50,6 +50,13 @@ NAV = [
             ('Client directory', 'crm:client_list', 'clients', 'view'),
             ('Service catalogue', 'crm:service_list', 'services', 'view'),
         ]),
+        ('images', 'Client photos', 'image', [
+            ('Overview', 'crm:image_home', 'images', 'view'),
+            ('All photos', 'crm:image_list', 'images', 'view'),
+            ('Submissions', 'crm:image_submissions', 'images', 'view'),
+            ('Upload for a client', 'crm:image_upload', 'images', 'create'),
+            ('Team load', 'crm:image_team', 'images', 'assign'),
+        ]),
         ('deliverables', 'Deliverables', 'tasks', [
             ('My deliverables', 'crm:deliverable_mine', 'deliverables', 'view'),
             ('Team board', 'crm:deliverable_list', 'deliverables', 'assign'),
@@ -159,6 +166,7 @@ MOBILE_TABS = [
     ('Leads', 'crm:lead_list', 'leads', 'view', 'users'),
     ('Follow-ups', 'crm:followup_calendar', 'leads', 'view', 'calendar'),
     ('Deliveries', 'crm:deliverable_mine', 'deliverables', 'view', 'tasks'),
+    ('Photos', 'crm:image_home', 'images', 'view', 'image'),
     ('Pipeline', 'crm:pipeline', 'deals', 'view', 'board'),
     ('Dashboard', 'crm:dashboard_finance', 'invoices', 'view', 'grid'),
     ('Projects', 'crm:project_list', 'projects', 'view', 'tasks'),
@@ -167,7 +175,22 @@ MOBILE_TABS = [
 ]
 
 
-def mobile_tabs(user, current_url_name: str, limit: int = 4) -> list:
+CLIENT_TABS = [('Home', 'crm:image_home', 'image'), ('My photos', 'crm:image_list', 'grid'), ('Upload', 'crm:image_upload', 'plus'),
+               ('Alerts', 'crm:notification_list', 'bell')]
+
+
+def _client_tabs(current_url_name: str) -> list:
+    tabs = []
+    for label, url_name, icon in CLIENT_TABS:
+        name = url_name.split(':', 1)[1]
+        tabs.append({'label': label, 'href': reverse(url_name), 'icon': icon,
+                     'active': current_url_name == name or (name == 'image_list' and current_url_name in ('image_detail', 'image_submission', 'image_submissions'))})
+    return tabs
+
+
+def mobile_tabs(user, current_url_name: str, limit: int = 5) -> list:
+    if permissions.is_client(user):
+        return _client_tabs(current_url_name)
     tabs = []
     for label, url_name, module, action, icon in MOBILE_TABS:
         if module and not permissions.has_perm(user, module, action):
@@ -208,6 +231,8 @@ def is_sales_only(user) -> bool:
 
 
 def build_nav(user, current_url_name: str) -> list:
+    if permissions.is_client(user):
+        return _client_nav(current_url_name)
     groups = []
     finance = is_finance_team(user)
     hide = set(SALES_HIDDEN_GROUPS) if is_sales_only(user) else set()
@@ -244,6 +269,17 @@ def build_nav(user, current_url_name: str) -> list:
         if visible_items:
             groups.append({'label': group_label, 'items': visible_items})
     return groups
+
+
+def _client_nav(current_url_name: str) -> list:
+    """A customer's menu: their photos and nothing else."""
+    kids = []
+    for label, url_name in (('Home', 'crm:image_home'), ('My photos', 'crm:image_list'), ('My submissions', 'crm:image_submissions'),
+                            ('Upload photos', 'crm:image_upload'), ('Notifications', 'crm:notification_list'), ('My profile', 'crm:profile')):
+        name = url_name.split(':', 1)[1]
+        kids.append({'label': label, 'href': reverse(url_name), 'active': current_url_name == name, 'badge': 0})
+    return [{'label': 'MENU', 'items': [{'key': 'photos', 'label': 'My photos', 'icon': 'image', 'children': kids, 'single': False,
+                                          'active': True}]}]
 
 
 def _nav_badge(url_name: str) -> int:

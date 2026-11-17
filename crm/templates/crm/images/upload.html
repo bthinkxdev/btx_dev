@@ -1,0 +1,161 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Upload photos{% endblock %}
+{% block page_header %}
+<div class="mb-5">
+  <h1 class="page-title">Upload photos</h1>
+  <p class="muted mt-1">{% if is_client %}Choose your photos, tell us what you want, then tap Send. You can send as many as you like at once.{% else %}Upload photos a client sent you (for example over WhatsApp) so everything lives in one place.{% endif %}</p>
+</div>
+{% endblock %}
+{% block extra_js %}<script src="{% asset 'crm/js/voice.js' %}"></script>{% endblock %}
+{% block content %}
+{% if not clients %}
+<div class="card p-6 text-center"><p class="text-base font-medium text-gray-800 dark:text-white/90">{% if is_client %}Your login is not linked to a company yet{% else %}You have no clients to upload for{% endif %}</p><p class="muted mt-1">{% if is_client %}Please contact us and we will fix it.{% else %}Photos can only be added to a client you look after.{% endif %}</p></div>
+{% else %}
+<div class="mx-auto max-w-3xl" x-data="photoUploader()" x-init="init()" data-upload-url="{% url 'crm:image_upload_file' %}" data-send-url="{% url 'crm:image_upload_send' %}" data-voice-url="{% url 'crm:image_upload_voice' %}" data-max="{{ max_mb }}" data-client="{{ client.pk|default:'' }}" data-is-client="{% if is_client %}1{% endif %}">
+  <div class="card p-5 sm:p-6">
+    {% if not is_client %}
+    <div class="mb-5">
+      <label class="form-label" for="up-client">Client</label>
+      <select id="up-client" class="form-select" x-model="client" :disabled="busy"><option value="">Choose the client</option>{% for c in clients %}<option value="{{ c.pk }}">{{ c.display_name }}</option>{% endfor %}</select>
+    </div>
+    {% endif %}
+
+    <label class="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-brand-300 bg-brand-50/40 px-4 py-10 text-center hover:bg-brand-50 dark:border-brand-500/40 dark:bg-brand-500/5" :class="busy && 'pointer-events-none opacity-60'">
+      <span class="text-brand-500">{% icon 'plus' 32 %}</span>
+      <span class="text-lg font-semibold text-gray-800 dark:text-white/90">Choose photos</span>
+      <span class="text-sm text-gray-500">JPEG, PNG, WebP or HEIC (iPhone), up to {{ max_mb }} MB each</span>
+      <input type="file" class="sr-only" multiple accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" @change="add($event)" :disabled="busy">
+    </label>
+
+    <p x-show="problems.length" x-cloak class="mt-3 rounded-lg bg-warning-50 px-3 py-2 text-sm text-warning-700 dark:bg-warning-500/10" x-text="problems.join(' ')"></p>
+
+    <ul class="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3" x-show="files.length" x-cloak>
+      <template x-for="(f, i) in files" :key="f.id">
+        <li class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800">
+          <div class="relative aspect-square bg-gray-100 dark:bg-gray-800">
+            <img x-show="f.url" :src="f.url" alt="" class="h-full w-full object-cover">
+            <span x-show="!f.url" x-cloak class="flex h-full w-full items-center justify-center text-sm text-gray-500">iPhone photo</span>
+            <button type="button" class="absolute top-1 right-1 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-gray-700 shadow" x-show="!busy && f.state !== 'done'" @click="remove(i)" aria-label="Remove this photo">&times;</button>
+            <div class="absolute inset-x-0 bottom-0 h-1.5 bg-gray-200/70" x-show="f.state === 'sending'"><div class="h-full bg-brand-500" :style="'width:' + f.pct + '%'"></div></div>
+            <span class="absolute bottom-1 left-1 rounded-full bg-success-500 px-2 py-0.5 text-xs font-medium text-white" x-show="f.state === 'done'">Sent</span>
+          </div>
+          <p class="truncate px-2 py-1 text-theme-xs text-gray-600 dark:text-gray-400" x-text="f.file.name"></p>
+          <p class="px-2 pb-1 text-theme-xs text-error-600" x-show="f.error" x-text="f.error"></p>
+        </li>
+      </template>
+    </ul>
+
+    <div class="mt-5">
+      <label class="form-label" for="up-note">{% if is_client %}What would you like us to do?{% else %}What did the client ask for?{% endif %} <span class="text-error-600">*</span></label>
+      <textarea id="up-note" rows="4" class="form-textarea" x-model="note" :disabled="busy" required minlength="{{ min_note }}" placeholder="For example: remove the background, brighten the colours, keep the model's face natural"></textarea>
+      <p class="mt-1 text-theme-xs" :class="short ? 'text-warning-600' : 'text-gray-500'" x-text="hint()">At least {{ min_note }} characters, or record a voice message instead.</p>
+      <div class="mt-3"><div x-data="voiceRecorder({{ voice_max }})" @voice-ready="voice = $event.detail; voiceSent = false" @voice-cleared="voice = null" class="rounded-xl border border-gray-200 p-3 dark:border-gray-800">
+  <template x-if="supported">
+    <div>
+      <div class="flex flex-wrap items-center gap-2" x-show="state === 'idle'">
+        <button type="button" class="btn btn-secondary" @click="start()" :disabled="busy">{% icon 'mic' 18 %} <span class="ml-1">Record a voice message instead</span></button>
+        <span class="text-theme-xs text-gray-500">Up to {{ voice_max|floatformat:0 }} seconds. Small and quick to send.</span>
+      </div>
+      <div class="flex items-center gap-3" x-show="state === 'recording'" x-cloak>
+        <span class="relative flex h-3 w-3"><span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-error-400 opacity-75"></span><span class="relative inline-flex h-3 w-3 rounded-full bg-error-500"></span></span>
+        <span class="text-sm font-medium text-gray-800 dark:text-white/90">Recording <span x-text="clock()"></span></span>
+        <button type="button" class="btn btn-primary btn-sm" @click="stop()">Stop</button>
+      </div>
+      <div class="space-y-2" x-show="state === 'ready'" x-cloak>
+        <audio controls :src="url" class="h-10 w-full max-w-xs" preload="metadata"></audio>
+        <div class="flex items-center gap-3"><span class="text-theme-xs text-gray-500">Voice message, <span x-text="clock()"></span></span><button type="button" class="btn-link text-sm" @click="discard()" :disabled="busy">Record again</button></div>
+      </div>
+    </div>
+  </template>
+  <p x-show="error" x-cloak class="mt-2 text-sm text-error-600" x-text="error"></p>
+  <template x-if="!supported"><p class="text-theme-xs text-gray-500">This browser cannot record voice. Please type instead.</p></template>
+</div></div>
+    </div>
+
+    <p x-show="error" x-cloak class="mt-4 rounded-lg bg-error-50 px-3 py-2 text-sm text-error-700 dark:bg-error-500/10" x-text="error" role="alert"></p>
+
+    <button type="button" class="btn btn-primary btn-lg mt-5 w-full justify-center" :disabled="busy || !files.length || !client || !valid()" @click="send()">
+      <span x-show="!busy" x-text="files.length ? 'Send ' + files.length + ' photo' + (files.length === 1 ? '' : 's') : 'Send photos'">Send photos</span>
+      <span x-show="busy" x-cloak x-text="'Sending… ' + sent + ' of ' + files.length"></span>
+    </button>
+    <p class="mt-2 text-center text-theme-xs text-gray-500">Please keep this page open until it says everything was sent.</p>
+  </div>
+</div>
+<script>
+function photoUploader() {
+  return {
+    files: [], note: '', voice: null, voiceSent: false, minNote: {{ min_note }}, client: '', busy: false, error: '', problems: [], sent: 0, batch: '', max: 25, n: 0, root: null,
+    init() {
+      var el = this.$el; this.root = el;
+      this.max = parseInt(el.dataset.max, 10) || 25;
+      this.client = el.dataset.client || '';
+      this.batch = (window.crypto && crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '') : (Date.now().toString(16) + Math.random().toString(16).slice(2))).slice(0, 32);
+      window.addEventListener('beforeunload', function (e) { if (this.busy) { e.preventDefault(); e.returnValue = ''; } }.bind(this));
+    },
+    add(ev) {
+      var ok = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'], bad = [];
+      Array.prototype.forEach.call(ev.target.files, function (f) {
+        var heic = /\.(heic|heif)$/i.test(f.name);               // some phones send HEIC with no type
+        if (ok.indexOf(f.type) < 0 && !heic) { bad.push(f.name + ' is not a JPEG, PNG, WebP or HEIC photo.'); return; }
+        if (f.size > this.max * 1048576) { bad.push(f.name + ' is larger than ' + this.max + ' MB.'); return; }
+        this.files.push({ id: ++this.n, file: f, url: (heic || f.type.indexOf('hei') >= 0) ? '' : URL.createObjectURL(f), state: 'ready', pct: 0, error: '' });
+      }, this);
+      this.problems = bad;
+      ev.target.value = '';
+    },
+    get short() { return this.note.trim().length < this.minNote && !this.voice; },
+    valid() { return this.note.trim().length >= this.minNote || !!this.voice; },
+    hint() {
+      var n = this.note.trim().length;
+      if (this.voice) return 'Your voice message will be sent with the photos.' + (n ? '' : ' You can also type, if you like.');
+      return n >= this.minNote ? 'Thank you, that is enough detail.' : 'Please write at least ' + this.minNote + ' characters (' + (this.minNote - n) + ' more), or record a voice message.';
+    },
+    remove(i) { if (this.files[i].url) URL.revokeObjectURL(this.files[i].url); this.files.splice(i, 1); },
+    upload(f) {
+      var self = this;
+      return new Promise(function (resolve) {
+        var fd = new FormData();
+        fd.append('batch', self.batch); fd.append('client', self.client); fd.append('file', f.file);
+        var x = new XMLHttpRequest();
+        x.open('POST', self.root.dataset.uploadUrl);
+        x.setRequestHeader('X-CSRFToken', document.body.dataset.csrf);
+        x.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        x.upload.onprogress = function (e) { if (e.lengthComputable) f.pct = Math.round(100 * e.loaded / e.total); };
+        x.onload = function () {
+          var r = {}; try { r = JSON.parse(x.responseText); } catch (e) {}
+          if (x.status === 200 && r.ok) { f.state = 'done'; f.pct = 100; f.error = ''; resolve(true); }
+          else { f.state = 'failed'; f.error = r.error || 'This photo did not upload. Try again.'; resolve(false); }
+        };
+        x.onerror = function () { f.state = 'failed'; f.error = 'The connection dropped. Try again.'; resolve(false); };
+        f.state = 'sending'; f.pct = 0; x.send(fd);
+      });
+    },
+    async send() {
+      if (this.busy || !this.files.length || !this.client) return;
+      this.busy = true; this.error = ''; this.problems = [];
+      var failed = 0; this.sent = this.files.filter(function (f) { return f.state === 'done'; }).length;
+      for (var i = 0; i < this.files.length; i++) {
+        if (this.files[i].state === 'done') continue;
+        var ok = await this.upload(this.files[i]);
+        if (ok) this.sent++; else failed++;
+      }
+      if (failed) { this.busy = false; this.error = failed + ' photo' + (failed === 1 ? '' : 's') + ' did not upload. Tap Send again. The ones already sent will not be sent twice.'; return; }
+      if (this.voice && !this.voiceSent) {
+        var vr = await sendVoice(this.root.dataset.voiceUrl, this.voice, { batch: this.batch, client: this.client });
+        if (!vr.ok) { this.busy = false; this.error = vr.error; return; }
+        this.voiceSent = true;
+      }
+      var fd = new FormData(); fd.append('batch', this.batch); fd.append('note', this.note);
+      try {
+        var res = await fetch(this.root.dataset.sendUrl, { method: 'POST', body: fd, headers: { 'X-CSRFToken': document.body.dataset.csrf, 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' });
+        var r = await res.json();
+        if (res.ok && r.ok) { window.location.href = r.url; return; }
+        this.error = r.error || 'We could not finish sending. Tap Send again.';
+      } catch (e) { this.error = 'The connection dropped. Tap Send again.'; }
+      this.busy = false;
+    }
+  };
+}
+</script>
+{% endif %}
+{% endblock %}

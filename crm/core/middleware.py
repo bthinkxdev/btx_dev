@@ -25,6 +25,10 @@ _request_ctx: contextvars.ContextVar[dict] = contextvars.ContextVar('crm_request
 CRM_PREFIX = '/crm/'
 PUBLIC_PREFIXES = ('/crm/pay/', '/crm/q/', '/crm/api/', '/crm/webhooks/', '/crm/login', '/crm/static/')
 IDEMPOTENCY_FIELD = '_idem'
+# A customer's login sees the photo pages and the few shared screens they need (alerts, their own profile, sign out). Nothing else.
+CLIENT_ALLOWED = ('/crm/images/', '/crm/notifications/', '/crm/me/', '/crm/login', '/crm/logout/', '/crm/push/',
+                  '/crm/manifest.webmanifest', '/crm/service-worker.js', '/crm/api/')
+CLIENT_SESSION_SECONDS = 30 * 24 * 3600     # a customer stays signed in on their phone for 30 days since they last used it
 
 
 def current_context() -> dict:
@@ -59,7 +63,8 @@ class CrmRequestMiddleware:
         })
         try:
             if request.path.startswith(CRM_PREFIX):
-                early = self._idle_timeout(request) or self._force_password_change(request) or self._break_gate(request)
+                early = (self._idle_timeout(request) or self._client_wall(request) or self._force_password_change(request)
+                         or self._break_gate(request))
                 if early is not None:
                     return early
                 idem = self._claim_idempotency(request)
@@ -106,7 +111,11 @@ class CrmRequestMiddleware:
         from crm.modules.worktime import services as worktime
         now = timezone.now()
         last = request.session.get('crm_last_activity')
+        from crm.core import permissions
+        client_login = permissions.is_client(user)
         minutes = worktime.idle_limit().total_seconds() / 60          # 12 hours unless an administrator changed it
+        if client_login:
+            minutes = CLIENT_SESSION_SECONDS / 60                     # customers are not timed out like staff
         if last and now.timestamp() - float(last) > minutes * 60:
             worktime.on_idle_logout(user, last, request.session.session_key or '')
             self._end_session_row(request, now)
@@ -117,8 +126,26 @@ class CrmRequestMiddleware:
         # Write at most once a minute to avoid a session save on every request.
         if not last or now.timestamp() - float(last) > 60:
             request.session['crm_last_activity'] = now.timestamp()
+            if client_login:
+                request.session.set_expiry(CLIENT_SESSION_SECONDS)   # sliding: every day of use extends it
             self._touch(request, user, now)
         return None
+
+    # ---------------------------------------------------------- customers stay inside the photo pages
+    @staticmethod
+    def _client_wall(request):
+        user = getattr(request, 'user', None)
+        if not (user and user.is_authenticated):
+            return None
+        path = request.path
+        if path == CRM_PREFIX or path.startswith(CLIENT_ALLOWED) or path.startswith(PUBLIC_PREFIXES):
+            return None
+        from crm.core import audit, permissions
+        if not permissions.is_client(user):
+            return None
+        audit.security_event('forbidden', user=user, request=request, detail=f'client login outside photo pages: {path[:120]}')
+        from django.urls import reverse
+        return HttpResponseRedirect(reverse('crm:image_home'))
 
     @staticmethod
     def _end_session_row(request, now):

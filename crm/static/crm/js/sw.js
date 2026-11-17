@@ -10,7 +10,7 @@
  *
  * Bump CACHE_VERSION when shell assets change so old caches are dropped on activate.
  */
-const CACHE_VERSION = 'v4';
+const CACHE_VERSION = 'v5';
 const SHELL_CACHE = `crm-shell-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `crm-runtime-${CACHE_VERSION}`;
 const OFFLINE_URL = '/static/crm/offline.html';
@@ -73,6 +73,30 @@ self.addEventListener('fetch', (event) => {
   // Everything else (pages' own data/API calls): leave untouched, straight to the network.
 });
 
+// ---- Notifications. The server sends a path inside the app; the click handler decides which window shows it.
+const APP_SCOPE = '/crm/';
+
+// Only ever a path under /crm/ on this site. Anything else (another address, a missing value, a bad string) opens the app home
+// instead of an unknown page.
+function safeTarget(raw) {
+  try {
+    const u = new URL(raw || APP_SCOPE, self.location.origin);
+    if (u.origin !== self.location.origin || !u.pathname.startsWith(APP_SCOPE)) return APP_SCOPE;
+    return u.pathname + u.search + u.hash;
+  } catch (e) {
+    return APP_SCOPE;
+  }
+}
+
+function inApp(w) {
+  try {
+    const u = new URL(w.url);
+    return u.origin === self.location.origin && u.pathname.startsWith(APP_SCOPE);
+  } catch (e) {
+    return false;
+  }
+}
+
 self.addEventListener('push', (event) => {
   let data = {};
   try { data = event.data ? event.data.json() : {}; } catch (e) { /* non-JSON payload, ignore */ }
@@ -81,25 +105,34 @@ self.addEventListener('push', (event) => {
     body: data.body || '',
     icon: '/static/crm/images/icon-192.png',
     badge: '/static/crm/images/icon-192.png',
-    tag: data.tag || 'crm',
+    tag: data.tag || 'crm',          // one per type and destination, so two photos never replace each other
     renotify: true,
-    data: { url: data.url || '/crm/' },
+    data: { url: safeTarget(data.url), type: data.type || '' },
   };
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const target = (event.notification.data && event.notification.data.url) || '/crm/';
-  event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
-      for (const w of windows) {
-        if (w.url === target && 'focus' in w) return w.focus();
-      }
-      for (const w of windows) {
-        if ('focus' in w) { w.focus(); if ('navigate' in w) return w.navigate(target); }
-      }
-      if (self.clients.openWindow) return self.clients.openWindow(target);
-    })
-  );
+  const target = safeTarget(event.notification.data && event.notification.data.url);
+  const absolute = new URL(target, self.location.origin).href;
+  event.waitUntil((async () => {
+    const windows = (await self.clients.matchAll({ type: 'window', includeUncontrolled: true })).filter(inApp);
+    // 1. The right page is already open: show it.
+    for (const w of windows) {
+      if (w.url === absolute && 'focus' in w) return w.focus();
+    }
+    // 2. The app is open on another page (installed app or a browser tab): bring it forward and move it to the right page.
+    for (const w of windows) {
+      try {
+        const focused = (await w.focus()) || w;
+        if ('navigate' in focused) {
+          const moved = await focused.navigate(absolute);
+          if (moved) return moved;
+        }
+      } catch (e) { /* this window cannot be moved; try the next, then open a new one */ }
+    }
+    // 3. The app is closed: open it straight on the right page. If the person is signed out, the sign-in page returns them here.
+    if (self.clients.openWindow) return self.clients.openWindow(absolute);
+  })());
 });

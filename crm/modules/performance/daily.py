@@ -159,7 +159,7 @@ def render(d: dict) -> str:
         out += ['', 'PROJECTS AND TASKS', line]
     q = d['deliverables']
     if q['delivered'] or q['pending'] or q['files'] or q['missed']:
-        kinds = ', '.join(f'{n} {name}' for name, n in q['by_kind'].items())
+        kinds = ', '.join(f'{n} {name}' for name, n in sorted(q['by_kind'].items(), key=lambda kv: (-kv[1], kv[0])))
         line = f"Delivered: {q['delivered']}" + (f' - {kinds}' if kinds else '') + (f" ({_names(q['clients'])})" if q['clients'] else '')
         extra = [f"Files added {q['files']}" if q['files'] else '', f"Pending {q['pending']}" if q['pending'] else '',
                  f"Missed {q['missed']}" if q['missed'] else '']

@@ -1,0 +1,20 @@
+{% load crm_tags %}
+{# One photo as a card: picture, number, status, who and when. Needs a (with a.thumb_id) and is_client. #}
+<li class="card overflow-hidden {% if a.is_overdue and not is_client %}border-error-200 dark:border-error-500/40{% endif %}">
+  <a href="{% url 'crm:image_detail' a.pk %}" class="no-tap block">
+    <div class="relative aspect-4/3 bg-gray-100 dark:bg-gray-800">
+      {% if a.thumb_id %}<img src="{% url 'crm:image_thumb' a.thumb_id %}" alt="{{ a.title }}" loading="lazy" class="h-full w-full object-cover">{% endif %}
+      <span class="absolute top-2 left-2">{% if is_client %}{% badge a.status a.client_label a.client_tone %}{% else %}{% badge a.status a.get_status_display a.tone %}{% endif %}</span>
+      {% if not is_client and a.priority == 'urgent' %}<span class="badge badge-red absolute top-2 right-2">Urgent</span>{% elif not is_client and a.priority == 'high' %}<span class="badge badge-amber absolute top-2 right-2">High</span>{% endif %}
+    </div>
+    <div class="p-3">
+      <p class="truncate text-sm font-semibold text-gray-800 dark:text-white/90">{{ a.number }} <span class="font-normal text-gray-500">· {{ a.title }}</span></p>
+      {% if not is_client %}<p class="truncate text-theme-xs text-gray-600 dark:text-gray-400">{{ a.client.display_name }}</p>{% endif %}
+      <p class="mt-1 flex flex-wrap items-center gap-x-2 text-theme-xs text-gray-500 dark:text-gray-400">
+        {% if not is_client %}<span>{% if a.editor %}{{ a.editor|uname }}{% else %}<span class="text-error-600">No editor</span>{% endif %}</span>{% endif %}
+        {% if a.deadline %}<span class="{% if a.is_overdue %}font-semibold text-error-600{% endif %}">{% if is_client %}Expected {% else %}Due {% endif %}{{ a.deadline|date:"j M" }}{% if a.is_overdue and not is_client %} · late{% endif %}</span>{% endif %}
+        <span>Updated {{ a.last_activity_at|date:"j M, g:i A" }}</span>
+      </p>
+    </div>
+  </a>
+</li>

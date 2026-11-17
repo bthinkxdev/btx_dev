@@ -1,0 +1,23 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}Submissions{% endblock %}
+{% block page_header %}
+<div class="mb-5 flex flex-wrap items-start justify-between gap-3">
+  <div><h1 class="page-title">{% if is_client %}My submissions{% else %}Submissions{% endif %}</h1><p class="muted mt-1">Each time photos were sent, with how far along they are.</p></div>
+  <div class="flex flex-wrap gap-2"><a href="{% url 'crm:image_list' %}" class="btn btn-secondary">All photos</a><a href="{% url 'crm:image_upload' %}" class="btn btn-primary">{% icon 'plus' 18 %} Upload photos</a></div>
+</div>
+{% endblock %}
+{% block content %}
+<form method="get" class="mb-4"><label class="sr-only" for="sq">Search</label><input id="sq" type="search" name="q" value="{{ q }}" placeholder="Search submission number or client" class="form-input max-w-sm" data-debounce-submit></form>
+<div class="space-y-3">
+  {% for r in rows %}
+  <a href="{% url 'crm:image_submission' r.sub.pk %}" class="no-tap card block p-4 hover:border-brand-300">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <p class="text-sm font-semibold text-gray-800 dark:text-white/90">{{ r.sub.number }}{% if not is_client %} <span class="font-normal text-gray-500">· {{ r.sub.client.display_name }}</span>{% endif %}</p>
+      <p class="text-theme-xs text-gray-500">{{ r.sub.submitted_at|dt }} · {{ r.sub.submitted_by|uname }}</p>
+    </div>
+    <div class="mt-3 h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800"><div class="h-full rounded-full bg-success-500" style="width: {{ r.progress.percent }}%"></div></div>
+    <p class="mt-2 text-theme-xs text-gray-500">{{ r.progress.done }} of {{ r.progress.total }} finished{% if r.progress.waiting_client %} · {{ r.progress.waiting_client }} waiting for the client{% endif %}{% if r.progress.new %} · {{ r.progress.new }} not started{% endif %}</p>
+  </a>
+  {% empty %}<div class="card px-6 py-12 text-center"><p class="text-base font-medium text-gray-800 dark:text-white/90">No submissions yet</p><p class="muted mt-1">Upload photos and they will be listed here.</p></div>{% endfor %}
+</div>
+{% endblock %}

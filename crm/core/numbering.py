@@ -27,6 +27,8 @@ DEFAULT_SERIES = {
     'TKT': ('Support ticket', 'TKT'),
     'PRJ': ('Project', 'PRJ'),
     'PL': ('Payment link', 'PL'),
+    'SUB': ('Photo submission', 'SUB'),
+    'IMG': ('Client photo', 'IMG'),
 }
 
 

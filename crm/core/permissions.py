@@ -50,6 +50,7 @@ MODULES = {
     'chats': 'Website chat history',
     'ai_analyst': 'AI sales analyst',
     'deliverables': 'Monthly deliverables',
+    'images': 'Client photos and editing',
     'business_desk': 'AI business staff',
 }
 
@@ -104,8 +105,10 @@ OWNER_FIELDS = {
     'payroll': ('employee__user',),
     'commissions': ('user',),
     'deliverables': ('assignee', 'plan__account_owner', 'reviewer'),
+    # A photo is yours when you own its client, coordinate it, edit it, or it is your own company's photo (a client user).
+    'images': ('client__owner', 'coordinator', 'editor', 'client__image_access__user'),
 }
-MULTI_VALUED = ('members__',)
+MULTI_VALUED = ('members__', 'image_access__')
 
 
 def _profile(user):
@@ -154,6 +157,8 @@ def _load(user) -> dict:
 def clear_cache(user):
     if hasattr(user, '_crm_perm_cache'):
         del user._crm_perm_cache
+    if hasattr(user, '_crm_is_client'):
+        del user._crm_is_client
 
 
 def get_scope(user, module: str, action: str) -> str | None:
@@ -178,6 +183,22 @@ def has_any(user, module: str) -> bool:
 
 def has_role(user, *codes: str) -> bool:
     return bool(set(codes) & _load(user)['roles']) if user and user.is_authenticated else False
+
+
+def is_client(user) -> bool:
+    """True for a customer's own login (linked to their client record). They sign in like staff but see only their company's
+    photos, never CRM pages. Cached on the user object for the request."""
+    if not user or not user.is_authenticated:
+        return False
+    cached = getattr(user, '_crm_is_client', None)
+    if cached is None:
+        from crm.models import ClientAccess
+        cached = ClientAccess.objects.filter(user_id=user.pk).exists()
+        try:
+            user._crm_is_client = cached
+        except AttributeError:
+            pass
+    return cached
 
 
 def is_super_admin(user) -> bool:

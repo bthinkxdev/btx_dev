@@ -1,0 +1,16 @@
+{% load crm_tags %}
+{# The activity timeline. Clients only ever receive the client-visible rows; internal rows are marked for the team. #}
+<ol class="relative space-y-4 border-l border-gray-200 pl-5 dark:border-gray-800">
+  {% for e in events %}
+  <li class="relative">
+    <span class="absolute -left-[27px] mt-1.5 h-3 w-3 rounded-full border-2 border-white {% if e.kind == 'comment' %}bg-brand-500{% elif e.kind == 'status' %}bg-success-500{% elif e.visibility == 'internal' %}bg-gray-400{% else %}bg-blue-light-500{% endif %} dark:border-gray-900"></span>
+    <p class="text-sm text-gray-800 dark:text-white/90">{% if is_client %}{{ e.text_for_client }}{% else %}{{ e.summary }}{% endif %}{% if not is_client and e.visibility == 'internal' %} <span class="badge badge-grey ml-1">Team only</span>{% endif %}</p>
+    {% if e.voice_id %}<audio controls preload="none" class="mt-2 h-10 w-full max-w-xs" src="{% url 'crm:image_voice' e.voice_id %}">Your browser cannot play this voice message.</audio>{% endif %}
+    {% if e.field and e.old_value != e.new_value and e.kind != 'status' and e.kind != 'comment' %}
+      <p class="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">Was: <span class="text-gray-700 dark:text-gray-300">{{ e.old_value|default:"nothing"|truncatechars:160 }}</span><br>Now: <span class="text-gray-700 dark:text-gray-300">{{ e.new_value|default:"nothing"|truncatechars:160 }}</span></p>
+    {% endif %}
+    {% if e.reason and e.kind != 'comment' %}<p class="mt-1 text-theme-xs text-gray-600 dark:text-gray-400">Reason: {{ e.reason }}</p>{% endif %}
+    <p class="mt-0.5 text-theme-xs text-gray-500 dark:text-gray-400">{% if e.actor_name %}{{ e.actor_name }}{% if e.actor_role and not is_client %} · {{ e.actor_role }}{% elif e.actor_role == 'Client' %} · You{% endif %} · {% endif %}{{ e.created_at|dt }}</p>
+  </li>
+  {% empty %}<li class="text-sm text-gray-500">Nothing has happened yet.</li>{% endfor %}
+</ol>

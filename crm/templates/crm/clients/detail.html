@@ -140,6 +140,17 @@
     <ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for a in rows %}<li class="px-5 py-3 text-sm"><span class="font-medium text-gray-800 dark:text-white/90">{{ a.get_kind_display }}</span> · <a class="link" href="{% url 'crm:lead_detail' a.lead_id %}">{{ a.lead.name }}</a><p class="text-gray-600 dark:text-gray-400">{{ a.summary|truncatechars:200 }}</p><p class="text-theme-xs text-gray-400">{{ a.occurred_at|dt }} · {{ a.actor|uname }}</p></li>{% endfor %}
       {% for e in emails %}<li class="px-5 py-3 text-sm"><span class="font-medium">Email</span> · {{ e.subject }} {% badge e.status e.get_status_display %}<p class="text-theme-xs text-gray-500 dark:text-gray-400">{{ e.created_at|dt }} to {{ e.recipient }}</p></li>{% endfor %}
       {% if not rows and not emails %}<li class="px-5 py-6 text-sm text-gray-500">No communication recorded.</li>{% endif %}</ul>
+  {% elif tab == 'photos' %}
+    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-5 py-4 dark:border-gray-800">
+      <p class="text-sm text-gray-600 dark:text-gray-400">{{ counts.photos|default:0 }} photo{{ counts.photos|default:0|pluralize }} in {{ photo_subs }} submission{{ photo_subs|pluralize }}. Everything is tracked on this client, so there is one history.</p>
+      <div class="flex flex-wrap gap-2">
+        <a href="{% url 'crm:image_list' %}?client={{ client.pk }}" class="btn btn-secondary btn-sm">All photos</a>
+        {% can 'images' 'create' as cim %}{% if cim %}<a href="{% url 'crm:image_upload' %}?client={{ client.pk }}" class="btn btn-secondary btn-sm">{% icon 'plus' 16 %} Upload for the client</a>{% endif %}
+        {% if can_photo_logins %}<a href="{% url 'crm:image_client_logins' client.pk %}" class="btn btn-secondary btn-sm">{% icon 'user' 16 %} Client logins ({{ photo_logins }})</a>{% endif %}
+      </div>
+    </div>
+    {% if photos %}<ul class="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 lg:grid-cols-5">{% for a in photos %}{% include "crm/images/_card.html" with a=a is_client=False %}{% endfor %}</ul>
+    {% else %}<p class="px-5 py-8 text-center text-sm text-gray-500">No photos from this client yet.</p>{% endif %}
   {% elif tab == 'activity' %}
     <ul class="divide-y divide-gray-100 dark:divide-gray-800">{% for a in rows %}<li class="px-5 py-3 text-sm"><span class="font-medium text-gray-800 dark:text-white/90">{{ a.action }}</span> · {{ a.actor_name|default:a.actor_type }}<p class="text-theme-xs text-gray-500 dark:text-gray-400">{{ a.created_at|dt }}{% if a.reason %} · {{ a.reason }}{% endif %}</p></li>{% empty %}<li class="px-5 py-6 text-sm text-gray-500">No activity.</li>{% endfor %}</ul>
   {% endif %}

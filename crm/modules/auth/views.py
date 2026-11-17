@@ -37,6 +37,9 @@ def _finish_login(request, user, nxt):
     from crm.models import UserSession
     login(request, user, backend='django.contrib.auth.backends.ModelBackend')
     request.session['crm_last_activity'] = timezone.now().timestamp()
+    if permissions.is_client(user):
+        from crm.core.middleware import CLIENT_SESSION_SECONDS
+        request.session.set_expiry(CLIENT_SESSION_SECONDS)
     if not request.session.session_key:
         request.session.save()
     UserSession.objects.update_or_create(

@@ -1,0 +1,52 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{{ sub.number }}{% endblock %}
+{% block page_header %}
+<div class="mb-4">
+  <a href="{% url 'crm:image_submissions' %}" class="btn-link text-sm">&larr; All submissions</a>
+  <div class="mt-2 flex flex-wrap items-start justify-between gap-3">
+    <div>
+      <h1 class="page-title">{{ sub.number }} <span class="font-normal text-gray-500">· {{ progress.total }} photo{{ progress.total|pluralize }}</span></h1>
+      <p class="muted mt-1">{% if not is_client %}<a class="inline-flex min-h-10 items-center hover:text-brand-500" href="{% url 'crm:client_detail' sub.client_id %}">{{ sub.client.display_name }}</a> · {% endif %}Sent {{ sub.submitted_at|dt }} by {{ sub.submitted_by|uname }}{% if sub.on_behalf %} for the client{% endif %}</p>
+    </div>
+    {% if can_coord %}<form method="post" action="{% url 'crm:image_submission_add' sub.pk %}" enctype="multipart/form-data" class="flex items-center gap-2">{% csrf_token %}{% idem %}
+      <label class="btn btn-secondary cursor-pointer">{% icon 'plus' 16 %} Add photos<input type="file" name="files" multiple accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" class="sr-only" onchange="this.form.submit()"></label></form>{% endif %}
+  </div>
+</div>
+{% endblock %}
+{% block content %}
+<section class="card mb-5 p-5" aria-label="Progress">
+  <div class="flex flex-wrap items-center justify-between gap-2">
+    <p class="text-sm font-medium text-gray-800 dark:text-white/90">{{ progress.done }} of {{ progress.total }} finished</p>
+    <p class="text-theme-xs text-gray-500">{% if progress.new %}{{ progress.new }} waiting to start · {% endif %}{% if progress.editing %}{{ progress.editing }} being edited · {% endif %}{% if progress.review %}{{ progress.review }} in review · {% endif %}{% if progress.waiting_client %}{{ progress.waiting_client }} with the client · {% endif %}{% if progress.revision %}{{ progress.revision }} revision{{ progress.revision|pluralize }}{% endif %}</p>
+  </div>
+  <div class="mt-3 h-3 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800" role="progressbar" aria-valuenow="{{ progress.percent }}" aria-valuemin="0" aria-valuemax="100"><div class="h-full rounded-full bg-success-500" style="width: {{ progress.percent }}%"></div></div>
+  {% for v in brief_voices %}<div class="mt-4"><p class="text-theme-xs font-medium text-gray-500">{% if is_client %}Your voice message{% else %}Client voice message{% endif %} · {{ v.seconds }}s</p><audio controls preload="none" class="mt-1 h-10 w-full max-w-sm" src="{% url 'crm:image_voice' v.pk %}"></audio></div>{% endfor %}
+  {% if sub.note %}<p class="mt-4 whitespace-pre-line rounded-lg bg-gray-50 p-3 text-sm text-gray-800 dark:bg-white/5 dark:text-gray-200"><span class="block text-theme-xs font-medium text-gray-500">{% if is_client %}What you asked for{% else %}What the client asked for{% endif %}</span>{{ sub.note }}</p>{% endif %}
+</section>
+
+<form method="post" action="{% url 'crm:image_submission_bulk' sub.pk %}" x-data="{ picked: [] }">{% csrf_token %}{% idem %}
+  {% if can_assign %}
+  <div class="card mb-5 p-4" x-show="picked.length" x-cloak>
+    <p class="mb-3 text-sm font-medium text-gray-800 dark:text-white/90"><span x-text="picked.length"></span> selected. Give them to an editor together:</p>
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-4">
+      <select name="editor" class="form-select" required aria-label="Editor"><option value="">Choose the editor</option>{% for e in editors %}<option value="{{ e.pk }}">{{ e|uname }}</option>{% endfor %}</select>
+      <select name="priority" class="form-select" aria-label="Priority">{% for k, l in priorities %}<option value="{{ k }}" {% if k == 'normal' %}selected{% endif %}>{{ l }} priority</option>{% endfor %}</select>
+      <input type="date" name="deadline" min="{{ today|date:'Y-m-d' }}" class="form-input" aria-label="Deadline">
+      <button class="btn btn-primary justify-center" data-loading-text="Assigning…">Assign</button>
+    </div>
+  </div>
+  {% endif %}
+  <ul class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
+    {% for a in assets %}
+    <li class="relative">
+      {% if can_assign and not a.archived_at %}<label class="absolute top-2 right-2 z-1 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow"><input type="checkbox" name="asset" value="{{ a.pk }}" x-model="picked" class="form-checkbox-box" aria-label="Select {{ a.number }}"></label>{% endif %}
+      <ul>{% include "crm/images/_card.html" with a=a %}</ul>
+    </li>
+    {% endfor %}
+  </ul>
+</form>
+
+{% if events %}
+<section class="card mt-5"><div class="card-header"><h2 class="card-title">Submission history</h2></div><div class="card-body">{% include "crm/images/_timeline.html" %}</div></section>
+{% endif %}
+{% endblock %}

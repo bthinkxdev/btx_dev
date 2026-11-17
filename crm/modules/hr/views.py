@@ -63,7 +63,7 @@ def unlinked_logins() -> list:
     """Staff who can sign in but have no HR record, so their leave, shift and attendance cannot be managed."""
     from django.contrib.auth import get_user_model
     from crm.modules.worktime.services import MCP_USERNAME
-    qs = (get_user_model().objects.filter(is_active=True, crm_employee__isnull=True, crm_profile__roles__isnull=False).exclude(username=MCP_USERNAME)
+    qs = (get_user_model().objects.filter(is_active=True, crm_employee__isnull=True, crm_profile__roles__isnull=False, image_access__isnull=True).exclude(username=MCP_USERNAME)
           .distinct().order_by('first_name', 'username'))
     return [u for u in qs if not permissions.is_super_admin(u)]
 

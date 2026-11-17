@@ -33,7 +33,7 @@ class UserChoiceField(forms.ModelChoiceField):
 def assignable_users(user):
     """Users this person may assign leads to, limited by their assign scope."""
     User = get_user_model()
-    qs = User.objects.filter(is_active=True).select_related('crm_profile').order_by('first_name', 'username')
+    qs = User.objects.filter(is_active=True, image_access__isnull=True).select_related('crm_profile').order_by('first_name', 'username')
     scope = permissions.get_scope(user, 'leads', 'assign')
     if scope is None:
         return qs.filter(pk=user.pk)

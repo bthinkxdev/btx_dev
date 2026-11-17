@@ -242,6 +242,15 @@ LOGIN_REDIRECT_URL = 'crm:home'
 # served through signed, permission-checked URLs.
 CRM_PRIVATE_MEDIA_ROOT = Path(os.environ.get('CRM_PRIVATE_MEDIA_ROOT', str(BASE_DIR / 'private_media')))
 
+# Client photos. With CRM_IMAGE_BUCKET set the photos live in that private S3 bucket (credentials come from the server
+# environment or an IAM role, never from the browser). Without it they are kept in the private media folder, so a fresh
+# checkout and the tests work with no setup.
+CRM_IMAGE_BUCKET = os.environ.get('CRM_IMAGE_BUCKET', os.environ.get('AWS_STORAGE_BUCKET_NAME', '')).strip()
+CRM_IMAGE_REGION = os.environ.get('CRM_IMAGE_REGION', os.environ.get('AWS_S3_REGION_NAME', os.environ.get('AWS_DEFAULT_REGION', ''))).strip()
+CRM_IMAGE_PREFIX = os.environ.get('CRM_IMAGE_PREFIX', 'crm-images').strip('/ ')
+CRM_IMAGE_MAX_MB = int(os.environ.get('CRM_IMAGE_MAX_MB', '25'))
+CRM_IMAGE_URL_SECONDS = int(os.environ.get('CRM_IMAGE_URL_SECONDS', '300'))
+
 # Key used to encrypt gateway secrets at rest. Keep it outside the database (env / secret
 # manager). Falls back to a key derived from SECRET_KEY for development only.
 CRM_ENCRYPTION_KEY = os.environ.get('CRM_ENCRYPTION_KEY', '').strip()

@@ -31,12 +31,19 @@ class HRBase(CrmTestCase):
         return e
 
 
+def _weekday_on_or_after(day, last=3):
+    """Leave tests need working days, and weekends are holidays, so start from a Monday to Thursday whatever today is."""
+    while day.weekday() > last:
+        day += timedelta(days=1)
+    return day
+
+
 class LeaveTests(HRBase):
     def test_overlap_blocked(self):
         mgr = self.emp('manager', 'E001')
         e = self.emp('sales', 'E002', manager=mgr)
         cl = LeaveType.objects.get(code__iexact='CL')
-        start = india.today() + timedelta(days=10)
+        start = _weekday_on_or_after(india.today() + timedelta(days=10), last=2)
         r = hs.apply_leave(e, self.u['sales'], leave_type=cl, start=start, end=start + timedelta(days=1), reason='Family function')
         hs.decide_leave(r, self.u['manager'], approve=True)
         with self.assertRaisesMessage(hs.HRError, 'overlap'):
@@ -45,7 +52,7 @@ class LeaveTests(HRBase):
     def test_applicant_cannot_approve_own(self):
         e = self.emp('hr', 'E010')
         cl = LeaveType.objects.get(code__iexact='CL')
-        start = india.today() + timedelta(days=5)
+        start = _weekday_on_or_after(india.today() + timedelta(days=5), last=4)
         r = hs.apply_leave(e, self.u['hr'], leave_type=cl, start=start, end=start, reason='Errand')
         with self.assertRaises(hs.HRError):
             hs.decide_leave(r, self.u['hr'], approve=True)

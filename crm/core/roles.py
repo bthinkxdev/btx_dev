@@ -24,6 +24,13 @@ DELIVERABLES_EXECUTIVE = {'view': 'own', 'create': 'own', 'edit': 'own'}
 DELIVERABLES_MANAGER = {'view': 'team', 'create': 'team', 'edit': 'team', 'assign': 'team', 'approve': 'team',
                         'configure': 'team', 'export': 'team'}
 
+# Client photos and editing. The sales team coordinates (they own the client relationship); editors do the work; HR watches.
+IMAGES_COORDINATOR = {'view': 'own', 'create': 'own', 'edit': 'own', 'assign': 'own', 'approve': 'own'}
+IMAGES_MANAGER = {'view': 'team', 'create': 'team', 'edit': 'team', 'assign': 'team', 'approve': 'team', 'export': 'team',
+                  'configure': 'team'}
+IMAGES_EDITOR = {'view': 'own', 'edit': 'own'}
+IMAGES_CLIENT = {'view': 'own', 'create': 'own'}
+
 ROLE_TEMPLATES = [
     {
         'code': 'owner', 'name': 'Owner / Super Admin', 'home': 'crm:dashboard_owner',
@@ -50,6 +57,7 @@ ROLE_TEMPLATES = [
             chats={'view': 'company'},
             ai_analyst={'view': 'company'},
             deliverables=DELIVERABLES_MANAGER,
+            images=IMAGES_MANAGER,
         ),
         'field_groups': ['internal_notes', 'cost_price'],
     },
@@ -69,6 +77,7 @@ ROLE_TEMPLATES = [
             attendance={'view': 'own', 'create': 'own'},
             expenses={'view': 'own', 'create': 'own'},
             deliverables=DELIVERABLES_EXECUTIVE,
+            images=IMAGES_COORDINATOR,
         ),
         'field_groups': ['internal_notes'],
     },
@@ -145,6 +154,7 @@ ROLE_TEMPLATES = [
             commissions={'view': 'company'},
             reports={'view': 'company'},
             expenses={'view': 'own', 'create': 'own'},
+            images={'view': 'company'},          # read-only: HR watches progress, overdue work and who did what
         ),
         'field_groups': ['salary', 'bank_details', 'tax_ids', 'internal_notes'],
     },
@@ -200,5 +210,22 @@ ROLE_TEMPLATES = [
         'grants': {m: {'view': 'company'} for m in MODULES if m not in ('payroll', 'employees', 'settings', 'chats', 'ai_analyst', 'business_desk')}
         | {'reports': {'view': 'company', 'export': 'company'}, 'audit': {'view': 'company', 'export': 'company'}},
         'field_groups': ['tax_ids'],
+    },
+    {
+        'code': 'image_editor', 'name': 'Image Editor', 'home': 'crm:image_home',
+        'description': 'Edits client photos assigned to them: downloads the original, uploads edited versions, sends for review.',
+        'grants': _grant(
+            images=IMAGES_EDITOR,
+            leave={'view': 'own', 'create': 'own'},
+            attendance={'view': 'own', 'create': 'own'},
+            expenses={'view': 'own', 'create': 'own'},
+        ),
+        'field_groups': [],
+    },
+    {
+        'code': 'image_client', 'name': 'Client (photo portal)', 'home': 'crm:image_home',
+        'description': 'A customer login. Sees only their own company photos: uploads, follows progress, approves or asks for changes.',
+        'grants': _grant(images=IMAGES_CLIENT),
+        'field_groups': [],
     },
 ]

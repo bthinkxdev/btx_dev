@@ -1,0 +1,25 @@
+{% extends "crm/base.html" %}{% load crm_tags %}
+{% block title %}{% if is_client %}My photos{% else %}Photos{% endif %}{% endblock %}
+{% block page_header %}
+<div class="mb-5 flex flex-wrap items-start justify-between gap-3">
+  <div><h1 class="page-title">{% if is_client %}My photos{% else %}Photos{% endif %} <span class="ml-1 text-base font-normal text-gray-500 dark:text-gray-400">({{ total }})</span></h1>
+    <p class="muted mt-1">{% if is_client %}Tap a photo to see how it is going.{% else %}Each photo is tracked on its own.{% endif %}</p></div>
+  <div class="flex flex-wrap gap-2">
+    {% if not is_client %}<a href="{% url 'crm:image_home' %}" class="btn btn-secondary">Overview</a><a href="{% url 'crm:image_submissions' %}" class="btn btn-secondary">Submissions</a>{% endif %}
+    {% if can_upload %}<a href="{% url 'crm:image_upload' %}" class="btn btn-primary">{% icon 'plus' 18 %} Upload photos</a>{% endif %}
+  </div>
+</div>
+{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="chip-row flex flex-wrap gap-2 px-5 pt-4">
+    <a href="{{ request.path }}" class="chip {% if not request.GET.quick %}chip-active{% else %}chip-inactive{% endif %}">All</a>
+    {% for key, label in quick_filters %}<a href="?quick={{ key }}" class="chip {% if request.GET.quick == key %}chip-active{% else %}chip-inactive{% endif %}">{{ label }}</a>{% endfor %}
+  </div>
+  {% include "crm/components/list_toolbar.html" with search_placeholder=search_placeholder %}
+  {% if object_list %}
+  <ul class="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">{% for a in object_list %}{% include "crm/images/_card.html" with a=a %}{% endfor %}</ul>
+  {% else %}{% include "crm/components/empty_state.html" with filtered=any_filter title="No photos yet" text="Photos appear here once they are sent." icon="inbox" %}{% endif %}
+  {% include "crm/components/pagination.html" %}
+</div>
+{% endblock %}

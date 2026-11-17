@@ -205,7 +205,7 @@ def check_hr_links():
     from crm.core import permissions
     from crm.modules.worktime.services import MCP_USERNAME
     qs = (get_user_model().objects.filter(is_active=True, crm_employee__isnull=True).exclude(username=MCP_USERNAME)
-          .filter(crm_profile__roles__isnull=False).distinct())
+          .filter(crm_profile__roles__isnull=False, image_access__isnull=True).distinct())
     rows = [f'{u.get_full_name() or u.get_username()} has a login but no HR record' for u in qs if not permissions.is_super_admin(u)]
     return _gap('hr_links', 'Every staff login has an HR record', rows[:50], 'Every staff login is linked to an HR record.',
                 '{n} login(s) have no HR record, so leave, shift and attendance are missing.')
@@ -232,8 +232,27 @@ def check_quiet_clients():
                 '{n} live customer(s) have had no contact for 30 days or more.')
 
 
+def check_images_flow():
+    """Every client photo has somebody to move it: an editor once it is ready, an active editor while it is being worked on."""
+    from datetime import timedelta
+    from django.utils import timezone
+    from crm.models import ImageAsset
+    from crm.models.images import WORKING
+    base = ImageAsset.objects.filter(archived_at__isnull=True, submission__submitted_at__isnull=False)
+    rows = [f'{a.number}: {a.client.display_name} sent it over a day ago and no editor has it'
+            for a in base.filter(status__in=('new', 'ready'), editor__isnull=True, created_at__lt=timezone.now() - timedelta(days=1)).select_related('client')[:20]]
+    rows += [f'{a.number}: with an editor who is no longer active ({a.editor})'
+             for a in base.filter(status__in=WORKING, editor__is_active=False).select_related('editor')[:20]]
+    rows += [f'{a.number}: {a.status.replace("_", " ")} but nobody is assigned'
+             for a in base.filter(status__in=WORKING, editor__isnull=True).exclude(status='revision_requested')[:20]]
+    rows += [f'{a.number}: no coordinator and the client has no active owner'
+             for a in base.filter(coordinator__isnull=True, client__owner__is_active=False).select_related('client')[:20]]
+    return _gap('images_flow', 'Every client photo has someone looking after it', rows, 'Every client photo has an editor or a coordinator.',
+                '{n} client photo(s) have nobody to move them forward.')
+
+
 OPERATIONAL = [check_leads_next_action, check_leads_owned, check_clients_owned, check_contract_coverage, check_work_owned, check_hr_links,
-               check_won_flow, check_quiet_clients]
+               check_won_flow, check_quiet_clients, check_images_flow]
 
 CHECKS = [check_journals, check_trial_balance, check_ar, check_ap, check_invoice_balances, check_payments, check_postings,
           check_numbering, check_audit_chain] + OPERATIONAL

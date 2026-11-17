@@ -90,7 +90,7 @@ def client_form(request, pk=None):
 
 
 TABS = ['overview', 'deals', 'quotations', 'projects', 'contracts', 'invoices', 'payments', 'profitability', 'tickets',
-        'documents', 'communication', 'activity']
+        'photos', 'documents', 'communication', 'activity']
 
 
 @staff_required
@@ -101,8 +101,10 @@ def client_detail(request, pk):
         return redirect('crm:client_detail', pk=client.merged_into_id)
     tab = request.GET.get('tab', 'overview')
     tab = tab if tab in TABS else 'overview'
+    tabs = [t for t in TABS if t != 'photos' or permissions.has_perm(request.user, 'images', 'view')]
+    tab = tab if tab in tabs else 'overview'
     u = request.user
-    ctx = {'client': client, 'tab': tab, 'tabs': TABS, 'summary': svc.financial_summary(client),
+    ctx = {'client': client, 'tab': tab, 'tabs': tabs, 'summary': svc.financial_summary(client),
            'contacts': client.contacts.filter(archived_at__isnull=True), 'contact_form': ContactForm(prefix='contact'),
            'can_edit': permissions.in_scope(u, 'clients', 'edit', client),
            'can_archive': permissions.has_perm(u, 'clients', 'archive'),
@@ -115,6 +117,9 @@ def client_detail(request, pk):
         'contracts': client.contracts.count(), 'invoices': client.invoices.count(), 'payments': client.payments.count(),
         'tickets': client.tickets.count(),
     }
+    from crm.models import ImageAsset
+    if permissions.has_perm(u, 'images', 'view'):
+        counts['photos'] = ImageAsset.objects.filter(client=client, submission__submitted_at__isnull=False, archived_at__isnull=True).count()
     ctx['counts'] = counts
     from . import health
     if client.status == 'active' and not client.archived_at and health.live_clients().filter(pk=client.pk).exists():
@@ -141,6 +146,12 @@ def client_detail(request, pk):
         ctx['profit'] = client_profitability(client)
     elif tab == 'tickets':
         ctx['rows'] = client.tickets.select_related('assignee').order_by('-id')
+    elif tab == 'photos':
+        from crm.modules.images import services as images
+        ctx['photos'] = list(images.with_thumbs(images.assets_for(u).filter(client=client, archived_at__isnull=True).select_related('editor'), u)[:24])
+        ctx['photo_subs'] = images.submissions_for(u).filter(client=client).count()
+        ctx['can_photo_logins'] = permissions.has_perm(u, 'images', 'configure')
+        ctx['photo_logins'] = client.image_access.filter(user__is_active=True).count()
     elif tab == 'documents':
         ct = ContentType.objects.get_for_model(Client)
         ctx['attachments'] = Attachment.objects.filter(content_type=ct, object_id=str(client.pk), archived_at__isnull=True)
