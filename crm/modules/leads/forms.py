@@ -256,6 +256,18 @@ class StageForm(NextFollowUpMixin, CrmForm):
         self.fields['to'].choices = choices
 
 
+class MakeClientForm(CrmForm):
+    """For a won lead that has no client record yet: create one from the lead, or link an existing one."""
+    client_choice = forms.ChoiceField(widget=forms.RadioSelect, label='Client record')
+
+    def __init__(self, *args, lead=None, matches=(), **kwargs):
+        super().__init__(*args, **kwargs)
+        choices = [(str(c.pk), f'Link to existing client: {c}') for c in matches]
+        choices.append(('new', 'Create a new client from this lead'))
+        self.fields['client_choice'].choices = choices
+        self.fields['client_choice'].initial = choices[0][0]
+
+
 class WonForm(CrmForm):
     won_value = MoneyFormField(label='Won value (excluding tax)')
     quotation = forms.ModelChoiceField(queryset=None, required=False, label='Accepted quotation')

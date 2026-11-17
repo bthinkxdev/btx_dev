@@ -21,7 +21,7 @@ from crm.models.leads import CLOSED_STAGES, LOST_REASONS, OPEN_STAGES, PRIORITIE
 
 from . import services as svc
 from .forms import (AssignForm, BulkForm, CancelFollowUpForm, CompleteFollowUpForm, DuplicateDecisionForm, LeadForm,
-                    LogCallForm, LogMeetingForm, LostForm, MessageForm, NoteForm, PostponeForm, ReopenForm,
+                    LogCallForm, LogMeetingForm, LostForm, MakeClientForm, MessageForm, NoteForm, PostponeForm, ReopenForm,
                     ScheduleFollowUpForm, StageForm, WonForm, assignable_users)
 
 
@@ -74,6 +74,7 @@ QUICK = {
     'open': ('Open', lambda qs, r: qs.filter(stage__in=OPEN_STAGES)),
     'unworked': ('Not yet contacted', lambda qs, r: qs.filter(stage__in=OPEN_STAGES, first_contacted_at__isnull=True)),
     'sla_breached': ('First-response SLA breached', _sla_breached),
+    'won_no_client': ('Won, no client yet', lambda qs, r: qs.filter(stage='won', client__isnull=True, archived_at__isnull=True)),
     'archived': ('Archived', lambda qs, r: qs.filter(archived_at__isnull=False)),
 }
 
@@ -348,9 +349,9 @@ ACTION_FORMS = {
     'log_call': LogCallForm, 'log_meeting': LogMeetingForm, 'add_note': NoteForm, 'log_message': MessageForm,
     'schedule': ScheduleFollowUpForm, 'complete': CompleteFollowUpForm, 'postpone': PostponeForm,
     'cancel_follow_up': CancelFollowUpForm, 'stage': StageForm, 'won': WonForm, 'lost': LostForm,
-    'assign': AssignForm, 'reopen': ReopenForm,
+    'assign': AssignForm, 'reopen': ReopenForm, 'make_client': MakeClientForm,
 }
-ACTION_PERMS = {'assign': 'assign', 'won': 'edit', 'lost': 'edit', 'stage': 'edit', 'reopen': 'edit'}
+ACTION_PERMS = {'assign': 'assign', 'won': 'edit', 'lost': 'edit', 'stage': 'edit', 'reopen': 'edit', 'make_client': 'edit'}
 
 
 def _build_forms(request, lead, bound_action=None):
@@ -358,6 +359,7 @@ def _build_forms(request, lead, bound_action=None):
     kw = {
         'schedule': {'user': request.user, 'lead': lead}, 'assign': {'user': request.user},
         'stage': {'lead': lead}, 'won': {'lead': lead, 'matches': matches, 'user': request.user},
+        'make_client': {'lead': lead, 'matches': matches},
     }
     forms = {}
     for name, cls in ACTION_FORMS.items():
@@ -397,6 +399,8 @@ def _detail_context(request, lead, forms, matches, open_modal=''):
         'can_assign': permissions.has_perm(user, 'leads', 'assign'),
         'can_archive': permissions.has_perm(user, 'leads', 'archive'),
         'can_quote': can_quote, 'can_merge': permissions.has_perm(user, 'leads', 'assign'),
+        'can_make_client': bool(lead.stage == 'won' and not lead.client_id and can_edit and not lead.archived_at
+                                and (permissions.has_perm(user, 'clients', 'create') or permissions.has_perm(user, 'clients', 'view'))),
         'quote_block_reason': '' if lead.stage in svc.QUALIFIED_PLUS else 'Qualify the lead first',
         'archive_blockers': svc.archive_blockers(lead), 'client_matches': matches,
         'stage_rules': stage_rules, 'open_modal': open_modal,
@@ -487,6 +491,11 @@ def _run_action(request, lead, action, c, matches):
         svc.change_stage(lead, c['to'], u, reason=c.get('reason', ''), next_due=c.get('next_due'),
                          next_kind=c.get('next_kind') or 'call', next_purpose=c.get('next_purpose', ''))
         return f'Stage changed to {dict(STAGES)[c["to"]]}.', ''
+    if action == 'make_client':
+        choice = c.get('client_choice')
+        existing = next((m for m in matches if str(m.pk) == choice), None) if choice and choice != 'new' else None
+        client = svc.make_client(lead, u, existing=existing)
+        return (f'{lead} is now linked to {client}.' if existing is not None else f'Client {client} was created from this lead.'), ''
     if action == 'won':
         choice = c.get('client_choice')
         client = None

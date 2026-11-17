@@ -772,6 +772,35 @@ def mark_won(lead: Lead, actor, *, won_value: Decimal, quotation=None, note: str
     return lead
 
 
+def make_client(lead: Lead, actor, *, existing=None):
+    """Give a won lead its client record by hand: create one from the lead, or link the lead to a client that already exists.
+    Marking a lead won does this on its own; this is for won leads that ended up without one (older or imported leads, or
+    a win recorded before the client could be chosen). Nothing about the win itself changes: credit, commission and value stay."""
+    from crm.models import Quotation
+    from crm.modules.clients.services import client_from_lead
+    if existing is None and not permissions.has_perm(actor, 'clients', 'create'):
+        permissions.denied(actor, 'clients', 'create', detail=f'make client from lead {lead.pk}')
+    if existing is not None and not (permissions.is_super_admin(actor) or permissions.in_scope(actor, 'clients', 'view', existing)):
+        raise LeadError('That client belongs to someone else. Ask their owner or your manager to link it.')
+    with transaction.atomic():
+        lead = _lock(lead)
+        if lead.client_id:
+            raise LeadError('This lead already has a client record.')
+        if lead.stage != STAGE_WON:
+            raise LeadError('Only a won lead can be made a client. Mark it won first.')
+        client = existing if existing is not None else client_from_lead(lead, actor)
+        lead.client = client
+        _touch(lead)
+        _save(lead, actor, ['client', 'last_activity_at', 'stale_alert_level'])
+        Quotation.objects.filter(lead=lead, client__isnull=True).update(client=client)
+        who = actor.get_full_name() or actor.get_username() if actor else 'The system'
+        _activity(lead, 'system', f'{who} {"linked this lead to the existing client" if existing is not None else "created the client record"} {client}.',
+                  actor=actor)
+        audit.log('lead.client_linked' if existing is not None else 'lead.client_created', lead, actor=actor,
+                  changes={'client': str(client), 'client_id': client.pk, 'created': existing is None})
+    return client
+
+
 def _apply_lost(lead: Lead, actor, data: dict):
     lead.lost_reason = data['reason']
     lead.lost_competitor = data.get('competitor', '')[:120]

@@ -10,6 +10,11 @@
       <form method="post" action="{% url 'crm:lead_mark_invalid' lead.pk %}">{% csrf_token %}{% idem %}<button class="btn btn-danger-outline btn-sm">Mark lead invalid</button></form></div></div>
   {% endif %}
   {% if duplicates %}<div class="alert alert-info mb-5"><span class="text-blue-light-500">{% icon 'users' 20 %}</span><p class="text-sm text-gray-700 dark:text-gray-300">{{ duplicates|length }} other lead{{ duplicates|length|pluralize }} share this phone or email.{% if can_merge %} <a class="link" href="{% url 'crm:duplicate_list' %}">Review duplicates</a>{% endif %}</p></div>{% endif %}
+  {% if can_make_client %}
+  <div class="alert alert-warning mb-5" role="alert"><span class="text-warning-500">{% icon 'alert' 20 %}</span>
+    <div class="flex flex-1 flex-wrap items-center justify-between gap-3"><p class="text-sm text-gray-700 dark:text-gray-300"><strong>This won lead has no client record yet.</strong> Make it a client so contracts, invoices, projects and photos can be linked to it.</p>
+      <button type="button" class="btn btn-primary btn-sm" @click="$store.modal.show('make_client')">{% icon 'briefcase' 16 %} Make client</button></div></div>
+  {% endif %}
   {% if request.GET.won %}<div class="alert alert-success mb-5"><span class="text-success-500">{% icon 'trophy' 22 %}</span><div class="flex flex-1 flex-wrap items-center justify-between gap-3"><p class="text-sm text-gray-700 dark:text-gray-300">Won! Next step: set up delivery and billing.</p>
     <div class="flex flex-wrap gap-2">{% if lead.client_id %}<a href="{% url 'crm:contract_create' %}?client={{ lead.client_id }}" class="btn btn-secondary btn-sm">Create contract</a><a href="{% url 'crm:project_create' %}?client={{ lead.client_id }}&lead={{ lead.pk }}" class="btn btn-secondary btn-sm">Create project</a><a href="{% url 'crm:client_detail' lead.client_id %}" class="btn btn-primary btn-sm">Open client</a>{% endif %}</div></div></div>{% endif %}
 {% endblock %}
@@ -56,6 +61,7 @@
           {% if can_edit_any and not lead.archived_at %}<a class="menu-dropdown-item menu-dropdown-item-inactive" href="{% url 'crm:lead_edit' lead.pk %}">{% icon 'edit' 16 %} Edit details</a>{% endif %}
           {% if can_assign and not lead.archived_at %}<button type="button" class="menu-dropdown-item menu-dropdown-item-inactive w-full" @click="o=false; $store.modal.show('assign')">{% icon 'users' 16 %} Assign or reassign</button>{% endif %}
           {% if lead.client_id %}<a class="menu-dropdown-item menu-dropdown-item-inactive" href="{% url 'crm:client_detail' lead.client_id %}">{% icon 'briefcase' 16 %} Open client</a>{% endif %}
+          {% if can_make_client %}<button type="button" class="menu-dropdown-item menu-dropdown-item-inactive w-full" @click="o=false; $store.modal.show('make_client')">{% icon 'briefcase' 16 %} Make client</button>{% endif %}
           {% if can_merge %}<a class="menu-dropdown-item menu-dropdown-item-inactive" href="{% url 'crm:duplicate_list' %}">{% icon 'swap' 16 %} Merge duplicates</a>{% endif %}
           <button type="button" class="menu-dropdown-item menu-dropdown-item-inactive w-full" data-copy="{{ request.build_absolute_uri }}" data-copy-message="Link copied">{% icon 'link' 16 %} Copy link</button>
           {% if can_archive and not lead.archived_at %}
@@ -258,6 +264,13 @@
   <form method="post" action="{% url 'crm:lead_action' lead.pk 'won' %}" novalidate>{% csrf_token %}{% idem %}
     {% include "crm/components/modal_form.html" with form=f %}{% include "crm/components/modal_actions.html" with label="Mark won" loading="Saving…" %}</form>
 {% include "crm/components/modal_end.html" %}{% endwith %}
+
+{% if can_make_client or open_modal == 'make_client' %}
+{% with f=forms.make_client %}{% include "crm/components/modal_start.html" with id="make_client" title="Make this lead a client" subtitle="The client gets this lead's name, phone, email and city, and everything stays linked to the lead and its win." %}
+  <form method="post" action="{% url 'crm:lead_action' lead.pk 'make_client' %}" novalidate>{% csrf_token %}{% idem %}
+    {% include "crm/components/modal_form.html" with form=f %}{% include "crm/components/modal_actions.html" with label="Make client" loading="Saving…" %}</form>
+{% include "crm/components/modal_end.html" %}{% endwith %}
+{% endif %}
 
 {% with f=forms.lost %}{% include "crm/components/modal_start.html" with id="lost" title="Mark lost" subtitle="A win-back date is set automatically. High-value deals need manager approval." %}
   <form method="post" action="{% url 'crm:lead_action' lead.pk 'lost' %}" novalidate>{% csrf_token %}{% idem %}
