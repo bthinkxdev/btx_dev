@@ -1,0 +1,16 @@
+{% load crm_tags %}
+{# A share button for the page it sits on. On a phone it opens the share sheet (WhatsApp and so on); elsewhere it copies the link. #}
+{# The link is not public: whoever opens it must sign in and be allowed to see it, otherwise they get the "not available" page. #}
+<div x-data="{ ok: false }" class="inline-flex">
+  <button type="button" class="btn btn-secondary btn-sm" aria-label="Share the link to this page"
+    @click="(async () => {
+      const url = '{{ request.build_absolute_uri|escapejs }}';
+      if (navigator.share && window.matchMedia('(pointer: coarse)').matches) {
+        try { await navigator.share({ title: '{{ share_title|default:'BThinkX photos'|escapejs }}', url: url }); return; } catch (e) { if (e && e.name === 'AbortError') return; }
+      }
+      try { await navigator.clipboard.writeText(url); ok = true; setTimeout(() => ok = false, 2200); }
+      catch (e) { window.prompt('Copy this link', url); }
+    })()">
+    {% icon 'link' 16 %} <span class="ml-1" x-text="ok ? 'Link copied' : 'Share link'">Share link</span>
+  </button>
+</div>

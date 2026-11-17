@@ -3,7 +3,7 @@
 {% block page_header %}
 <div class="mb-5 flex flex-wrap items-start justify-between gap-3">
   <div><h1 class="page-title">{% if is_client %}My submissions{% else %}Submissions{% endif %}</h1><p class="muted mt-1">Each time photos were sent, with how far along they are.</p></div>
-  <div class="flex flex-wrap gap-2"><a href="{% url 'crm:image_list' %}" class="btn btn-secondary">All photos</a><a href="{% url 'crm:image_upload' %}" class="btn btn-primary">{% icon 'plus' 18 %} Upload photos</a></div>
+  <div class="flex flex-wrap gap-2">{% include "crm/images/_share.html" with share_title="Submissions" %}<a href="{% url 'crm:image_list' %}" class="btn btn-secondary">All photos</a><a href="{% url 'crm:image_upload' %}" class="btn btn-primary">{% icon 'plus' 18 %} Upload photos</a></div>
 </div>
 {% endblock %}
 {% block content %}

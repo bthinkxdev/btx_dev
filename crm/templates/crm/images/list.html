@@ -5,6 +5,7 @@
   <div><h1 class="page-title">{% if is_client %}My photos{% else %}Photos{% endif %} <span class="ml-1 text-base font-normal text-gray-500 dark:text-gray-400">({{ total }})</span></h1>
     <p class="muted mt-1">{% if is_client %}Tap a photo to see how it is going.{% else %}Each photo is tracked on its own.{% endif %}</p></div>
   <div class="flex flex-wrap gap-2">
+    {% include "crm/images/_share.html" with share_title="Photo list" %}
     {% if not is_client %}<a href="{% url 'crm:image_home' %}" class="btn btn-secondary">Overview</a><a href="{% url 'crm:image_submissions' %}" class="btn btn-secondary">Submissions</a>{% endif %}
     {% if can_upload %}<a href="{% url 'crm:image_upload' %}" class="btn btn-primary">{% icon 'plus' 18 %} Upload photos</a>{% endif %}
   </div>

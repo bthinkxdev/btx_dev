@@ -8,8 +8,9 @@
       <h1 class="page-title">{{ sub.number }} <span class="font-normal text-gray-500">· {{ progress.total }} photo{{ progress.total|pluralize }}</span></h1>
       <p class="muted mt-1">{% if not is_client %}<a class="inline-flex min-h-10 items-center hover:text-brand-500" href="{% url 'crm:client_detail' sub.client_id %}">{{ sub.client.display_name }}</a> · {% endif %}Sent {{ sub.submitted_at|dt }} by {{ sub.submitted_by|uname }}{% if sub.on_behalf %} for the client{% endif %}</p>
     </div>
+    <div class="flex flex-wrap items-center gap-2">{% include "crm/images/_share.html" with share_title=sub.number %}
     {% if can_coord %}<form method="post" action="{% url 'crm:image_submission_add' sub.pk %}" enctype="multipart/form-data" class="flex items-center gap-2">{% csrf_token %}{% idem %}
-      <label class="btn btn-secondary cursor-pointer">{% icon 'plus' 16 %} Add photos<input type="file" name="files" multiple accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" class="sr-only" onchange="this.form.submit()"></label></form>{% endif %}
+      <label class="btn btn-secondary cursor-pointer">{% icon 'plus' 16 %} Add photos<input type="file" name="files" multiple accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" class="sr-only" onchange="this.form.submit()"></label></form>{% endif %}</div>
   </div>
 </div>
 {% endblock %}

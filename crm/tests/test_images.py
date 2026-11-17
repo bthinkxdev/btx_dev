@@ -1156,3 +1156,36 @@ class InstructionsAndVoiceTests(ImagesBase):
         self.assertIn('crm/js/voice.js', html)
         self.assertIn('Record a voice message instead', html)
         self.assertNotIn('crm/js/voice.js', self.web(self.client_user).get(reverse('crm:image_home')).content.decode())
+
+
+class ShareLinkTests(ImagesBase):
+    def test_every_role_gets_a_share_button_with_the_exact_address_of_the_page(self):
+        from django.utils.html import escapejs
+        sub = self.submit(n=1)
+        a = self.assets(sub)[0]
+        self.assign(a)
+        pages = [reverse('crm:image_detail', args=[a.pk]), reverse('crm:image_list'), reverse('crm:image_list') + '?quick=overdue&status=assigned',
+                 reverse('crm:image_submission', args=[sub.pk]), reverse('crm:image_submissions')]
+        for who in (self.client_user, self.u['sales'], self.u['manager'], self.u['hr'], self.u['owner'], self.editor):
+            c = self.web(who)
+            for url in pages:
+                r = c.get(url)
+                if r.status_code != 200:
+                    continue                                              # e.g. an editor has no submission page
+                html = r.content.decode()
+                self.assertIn('Share link', html, (who, url))
+                self.assertIn(escapejs('http://testserver' + url), html, (who, url))   # the filters travel with the link
+        self.assertEqual(self.web(self.client_user).get(pages[0]).status_code, 200)
+
+    def test_a_shared_link_only_opens_for_people_who_may_see_it(self):
+        a = self.assets(self.submit(n=1))[0]
+        url = reverse('crm:image_detail', args=[a.pk])
+        signed_out = HttpClient().get(url)
+        self.assertEqual(signed_out.status_code, 302)
+        self.assertIn('next=' + url, signed_out.url)                 # sign in, then straight to the photo
+        for who in (self.other_user, self.u['sales_b'], self.editor2):
+            r = self.web(who).get(url)
+            self.assertEqual(r.status_code, 404, who)
+            self.assertIn('is not available', r.content.decode())
+        for who in (self.client_user, self.u['sales'], self.u['hr'], self.u['owner']):
+            self.assertEqual(self.web(who).get(url).status_code, 200, who)
