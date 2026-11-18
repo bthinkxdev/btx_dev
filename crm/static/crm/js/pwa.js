@@ -151,5 +151,6 @@
           .catch(function () {});
       },
     });
+    window.Alpine.store('pwa').refreshPushState();      // so every button shows the real state, not always "off"
   });
 })();

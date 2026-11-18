@@ -7,6 +7,7 @@
 </div>
 {% endblock %}
 {% block content %}
+{% include "crm/partials/install_card.html" %}
 <a href="{% url 'crm:image_upload' %}" class="btn btn-primary btn-lg mb-5 flex w-full items-center justify-center gap-2 py-5 text-lg">{% icon 'plus' 22 %} Upload photos</a>
 
 {% if waiting %}

@@ -2,6 +2,7 @@
 {% block title %}My profile and security{% endblock %}
 {% block page_header %}{% include "crm/components/page_header.html" with title="My profile and security" subtitle="Password, two-factor sign-in and active devices." %}{% endblock %}
 {% block content %}
+{% include "crm/partials/install_card.html" with always=1 %}
 <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
   <div class="card">
     <div class="card-header"><h2 class="card-title">Account</h2></div>

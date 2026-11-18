@@ -276,6 +276,39 @@ def attachment_archive(request, pk):
 
 # ---------------------------------------------------------------- PWA: manifest, service worker, push
 
+def _app_kind(user) -> str:
+    """Which app this person installs: a customer's photo app, an editor's work app, or the full Business OS."""
+    from crm.core import permissions
+    if user is None or not user.is_authenticated:
+        return 'staff'
+    if permissions.is_client(user):
+        return 'client'
+    if permissions.has_role(user, 'image_editor') and not permissions.is_super_admin(user):
+        return 'editor'
+    return 'staff'
+
+
+def _shortcut(name, short, url):
+    return {'name': name, 'short_name': short, 'url': url,
+            'icons': [{'src': '/static/crm/images/icon-192.png', 'sizes': '192x192', 'type': 'image/png'}]}
+
+
+# Customers and editors get an app with their own name, their own start page and long-press shortcuts. The id and scope stay the
+# same, so the service worker, notifications and sign-in work exactly as for everyone else.
+APP_KINDS = {
+    'client': {'manifest': lambda n: {
+        'name': f'{n} Photos', 'short_name': 'Photos', 'description': 'Send photos for editing and follow each one until it is ready.',
+        'start_url': '/crm/images/?source=pwa',
+        'shortcuts': [_shortcut('Upload photos', 'Upload', '/crm/images/upload/'), _shortcut('My photos', 'My photos', '/crm/images/list/'),
+                      _shortcut('Alerts', 'Alerts', '/crm/notifications/')]}},
+    'editor': {'manifest': lambda n: {
+        'name': f'{n} Editor', 'short_name': 'Editor', 'description': 'Your photo editing queue, instructions and uploads.',
+        'start_url': '/crm/images/?source=pwa',
+        'shortcuts': [_shortcut('My editing queue', 'My queue', '/crm/images/'), _shortcut('All my photos', 'Photos', '/crm/images/list/'),
+                      _shortcut('Alerts', 'Alerts', '/crm/notifications/')]}},
+}
+
+
 def manifest(request):
     """The web app manifest (Part 2 install surface). Served dynamically, not as a static
     file, so the name/short_name always match the company's current branding."""
@@ -285,6 +318,7 @@ def manifest(request):
         name = company.display_name or 'BThinkX Business OS'
     except Exception:  # pragma: no cover - before migrate
         name = 'BThinkX Business OS'
+    kind = _app_kind(request.user)
     data = {
         'name': f'{name} — Business OS',
         'short_name': name[:30] or 'BThinkX',
@@ -308,7 +342,11 @@ def manifest(request):
              'purpose': 'maskable'},
         ],
     }
-    return JsonResponse(data, content_type='application/manifest+json')
+    data.update(APP_KINDS.get(kind, {}).get('manifest', lambda n: {})(name))
+    resp = JsonResponse(data, content_type='application/manifest+json')
+    resp['Vary'] = 'Cookie'                      # the app a customer installs is not the app staff install
+    resp['Cache-Control'] = 'private, no-cache'
+    return resp
 
 
 def service_worker(request):

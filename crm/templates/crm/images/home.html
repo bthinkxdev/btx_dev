@@ -11,6 +11,7 @@
 </div>
 {% endblock %}
 {% block content %}
+{% if queue is not None %}{% include "crm/partials/install_card.html" %}{% endif %}
 <div class="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-6">
   <a href="{% url 'crm:image_list' %}?quick=overdue" class="card p-4"><p class="text-theme-xs text-gray-500">Overdue</p><p class="text-title-sm mt-1 font-bold {% if counts.overdue %}text-error-600{% else %}text-gray-800 dark:text-white/90{% endif %}">{{ counts.overdue }}</p></a>
   <a href="{% url 'crm:image_list' %}?quick=unassigned" class="card p-4"><p class="text-theme-xs text-gray-500">No editor yet</p><p class="text-title-sm mt-1 font-bold {% if counts.unassigned %}text-warning-600{% else %}text-gray-800 dark:text-white/90{% endif %}">{{ counts.unassigned }}</p></a>

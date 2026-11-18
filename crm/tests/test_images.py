@@ -1189,3 +1189,66 @@ class ShareLinkTests(ImagesBase):
             self.assertIn('is not available', r.content.decode())
         for who in (self.client_user, self.u['sales'], self.u['hr'], self.u['owner']):
             self.assertEqual(self.web(who).get(url).status_code, 200, who)
+
+
+class PwaInstallTests(ImagesBase):
+    def manifest(self, who=None):
+        c = self.web(who) if who is not None else HttpClient()
+        r = c.get(reverse('crm:manifest'))
+        self.assertEqual(r.status_code, 200)
+        return r, json.loads(r.content)
+
+    def test_a_customer_installs_a_photo_app_with_its_own_name_start_page_and_shortcuts(self):
+        r, m = self.manifest(self.client_user)
+        self.assertEqual((m['name'], m['short_name'], m['start_url']), ('BThinkX Photos', 'Photos', '/crm/images/?source=pwa'))
+        self.assertEqual((m['id'], m['scope'], m['display']), ('/crm/', '/crm/', 'standalone'))            # same app identity, so sign-in and push are shared
+        urls = {s['url'] for s in m['shortcuts']}
+        self.assertEqual(urls, {'/crm/images/upload/', '/crm/images/list/', '/crm/notifications/'})
+        self.assertIn('Cookie', r['Vary'])
+        self.assertIn('no-cache', r['Cache-Control'])
+
+    def test_an_editor_installs_an_editing_app(self):
+        _, m = self.manifest(self.editor)
+        self.assertEqual((m['name'], m['short_name'], m['start_url']), ('BThinkX Editor', 'Editor', '/crm/images/?source=pwa'))
+        self.assertIn('/crm/images/', {s['url'] for s in m['shortcuts']})
+
+    def test_staff_and_signed_out_visitors_still_get_the_full_business_os(self):
+        for who in (None, self.u['sales'], self.u['owner'], self.u['manager'], self.u['hr']):
+            _, m = self.manifest(who)
+            self.assertEqual((m['name'], m['start_url']), ('BThinkX — Business OS', '/crm/?source=pwa'), who)
+            self.assertNotIn('shortcuts', m)
+
+    def test_every_shortcut_is_inside_the_app_and_opens_for_that_person(self):
+        for who in (self.client_user, self.editor):
+            _, m = self.manifest(who)
+            c = self.web(who)
+            for s in m['shortcuts']:
+                self.assertTrue(s['url'].startswith(m['scope']), s)
+                self.assertEqual(c.get(s['url']).status_code, 200, (who, s['url']))
+            self.assertEqual(c.get(m['start_url']).status_code, 200)
+            for icon in m['icons'] + [i for s in m['shortcuts'] for i in s['icons']]:
+                from django.contrib.staticfiles import finders
+                self.assertTrue(finders.find(icon['src'].replace('/static/', '', 1)), icon['src'])
+
+    def test_customers_and_editors_see_the_install_card_where_they_land(self):
+        for who in (self.client_user, self.editor):
+            html = self.web(who).get(reverse('crm:image_home')).content.decode()
+            for needle in ('Get the app on your phone', '$store.pwa.install()', 'Turn on notifications', 'Add to Home Screen', 'Not now',
+                           '!$store.pwa.isStandalone'):
+                self.assertIn(needle, html, (who, needle))
+        sales_home = self.web(self.u['sales']).get(reverse('crm:image_home')).content.decode()
+        self.assertNotIn('Get the app on your phone', sales_home)                             # staff already have it in their menu
+
+    def test_the_card_is_also_on_everyones_profile_without_a_not_now_button(self):
+        for who in (self.client_user, self.editor, self.u['sales']):
+            r = self.web(who).get(reverse('crm:profile'))
+            self.assertEqual(r.status_code, 200, who)
+            html = r.content.decode()
+            self.assertIn('Get the app on your phone', html)
+            self.assertNotIn('Not now', html)
+
+    def test_the_app_reads_the_real_notification_state_on_start(self):
+        import os
+        js = open(os.path.join(os.path.dirname(__file__), '..', 'static', 'crm', 'js', 'pwa.js'), encoding='utf-8').read()
+        self.assertIn("Alpine.store('pwa').refreshPushState()", js)
+        self.assertIn('beforeinstallprompt', js)

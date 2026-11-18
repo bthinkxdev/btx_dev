@@ -1,0 +1,29 @@
+{% load crm_tags %}
+{# Get the app on the phone, and turn on notifications. Hidden once the app is installed. Pass always=1 to ignore "Not now". #}
+<section class="card mb-5 border-brand-200 dark:border-brand-500/40" aria-labelledby="h-install"
+         x-data="{ later: (function () { try { return {% if always %}false{% else %}Date.now() < parseInt(localStorage.getItem('installLaterUntil') || '0', 10){% endif %}; } catch (e) { return false; } })() }"
+         x-show="!$store.pwa.isStandalone && !later" x-cloak>
+  <div class="p-4 sm:p-5">
+    <div class="flex items-start gap-3">
+      <span class="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-500 dark:bg-brand-500/10">{% icon 'download' 22 %}</span>
+      <div class="min-w-0">
+        <h2 id="h-install" class="text-base font-semibold text-gray-800 dark:text-white/90">Get the app on your phone</h2>
+        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">It opens full screen like any other app and tells you the moment something needs you.</p>
+      </div>
+    </div>
+
+    <ol x-show="$store.pwa.isIOS" x-cloak class="mt-4 space-y-2 rounded-xl bg-gray-50 p-3 text-sm text-gray-700 dark:bg-white/5 dark:text-gray-300">
+      <li><strong>1.</strong> Tap the <strong>Share</strong> button at the bottom of Safari.</li>
+      <li><strong>2.</strong> Choose <strong>Add to Home Screen</strong>, then <strong>Add</strong>.</li>
+      <li><strong>3.</strong> Open the app from your home screen, then turn on notifications.</li>
+    </ol>
+
+    <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+      <button type="button" class="btn btn-primary justify-center py-3" @click="$store.pwa.install()" x-show="!$store.pwa.isIOS" x-cloak>{% icon 'download' 18 %} <span class="ml-1">Install app</span></button>
+      <button type="button" class="btn btn-secondary justify-center py-3" @click="$store.pwa.toggleNotifications()" :disabled="$store.pwa.busy"
+              x-show="$store.pwa.pushSupported && !$store.pwa.pushEnabled" x-cloak>{% icon 'bell' 18 %} <span class="ml-1">Turn on notifications</span></button>
+      <p x-show="$store.pwa.pushSupported && $store.pwa.pushEnabled" x-cloak class="flex items-center gap-2 text-sm text-success-600">{% icon 'check' 16 %} Notifications are on</p>
+      {% if not always %}<button type="button" class="btn-link justify-center text-sm" @click="try { localStorage.setItem('installLaterUntil', String(Date.now() + 7 * 86400000)); } catch (e) {} later = true">Not now</button>{% endif %}
+    </div>
+  </div>
+</section>
